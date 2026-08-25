@@ -3,15 +3,19 @@
 from __future__ import annotations
 
 import asyncio
-import fnmatch
 from typing import TYPE_CHECKING, cast
 
 from lexigram.ai.governance.exceptions import GovernancePersistenceError
-from lexigram.contracts.ai.governance.resource_unit import ResourceExhaustedError
-from lexigram.di.decorators import inject
-from lexigram.logging import (
-    get_logger,
+from lexigram.ai.governance.services.governance_audit import (
+    emit_audit_event,
+    notify_soft_limit,
 )
+from lexigram.ai.governance.services.model_policy import model_access_allowed
+from lexigram.ai.governance.services.resource_coordinator import (
+    ResourceUnitCoordinator,
+)
+from lexigram.di.decorators import inject
+from lexigram.logging import get_logger
 from lexigram.result import Err, Ok, Result
 
 if TYPE_CHECKING:
@@ -21,12 +25,7 @@ if TYPE_CHECKING:
     from lexigram.ai.governance.config import GovernanceConfig
     from lexigram.ai.governance.exceptions import GovernanceError
     from lexigram.ai.governance.persistence import GovernancePersistence
-    from lexigram.ai.governance.resource.registry import (  # noqa: F401
-        ResourceUnitRegistry,
-    )
-    from lexigram.ai.governance.resource.tracker import (  # noqa: F401
-        ResourceUnitTracker,
-    )
+    from lexigram.ai.governance.resource.tracker import ResourceUnitTracker
     from lexigram.contracts.infra.cache import CacheBackendProtocol
 
 logger = get_logger(__name__)
@@ -50,11 +49,10 @@ class AIGovernanceManager:
     Governance state (request counts, spend totals) is delegated to a
     :class:`~lexigram.ai.governance.persistence.GovernancePersistence`
     backend so the storage strategy is swappable without changing policy
-    logic.  When no explicit *persistence* is given, an
-    :class:`~lexigram.ai.governance.persistence.InMemoryGovernancePersistence`
-    instance is created automatically using the optional *cache* argument to
-    build a :class:`~lexigram.ai.governance.persistence.RedisGovernancePersistence`
-    when a cache backend is available.
+    logic.  With no explicit *persistence*, a Redis backend is built when
+    *cache* is given, else an in-memory backend.  Audit emission lives in
+    :mod:`.governance_audit`; resource-unit consumption in
+    :mod:`.resource_coordinator`.
 
     Args:
         config: Governance policy configuration.
@@ -81,59 +79,31 @@ class AIGovernanceManager:
         self._on_soft_limit = on_soft_limit
         self._audit_store = audit_store
         self._background_tasks: set[asyncio.Task[object]] = set()
-        self._resource_registry: ResourceUnitRegistry | None = None
-        self._resource_tracker: ResourceUnitTracker | None = None
 
-        if persistence is not None:
-            self._persistence = persistence
-        elif cache is not None:
+        if persistence is None:
             from lexigram.ai.governance.persistence import (
+                InMemoryGovernancePersistence,
                 RedisGovernancePersistence,
             )
 
-            self._persistence = cast(
-                "GovernancePersistence", RedisGovernancePersistence(cache)
+            persistence = (
+                RedisGovernancePersistence(cache)
+                if cache is not None
+                else InMemoryGovernancePersistence()
             )
-        else:
-            from lexigram.ai.governance.persistence import (
-                InMemoryGovernancePersistence,
-            )
+        self._persistence = cast("GovernancePersistence", persistence)
 
-            self._persistence = cast(
-                "GovernancePersistence", InMemoryGovernancePersistence()
-            )
-
-        # Initialise resource unit tracker
-        if config.resource_units:
-            from lexigram.ai.governance.resource.registry import (
-                ResourceUnitRegistry,
-            )
-            from lexigram.ai.governance.resource.tracker import (
-                ResourceUnitTracker,
-            )
-
-            self._resource_registry = ResourceUnitRegistry.from_list(
-                config.resource_units
-            )
-            self._resource_tracker = ResourceUnitTracker(
-                registry=self._resource_registry,
-                persistence=self._persistence,
-            )
-        else:
-            self._resource_registry = None
-            self._resource_tracker = None
+        self._resources = ResourceUnitCoordinator(config, self._persistence)
 
     @property
     def resource_tracker(self) -> ResourceUnitTracker | None:
-        """The :class:`ResourceUnitTracker` instance, or ``None`` when no
-        resource units are configured.
+        """The tracker instance, or ``None`` when no units are configured.
 
-        Exposed for DI registration so the same tracker is shared across the
-        application (consume/release calls go through here regardless of
-        whether the caller resolves ``AIGovernanceManager`` or
-        ``ResourceUnitTracker`` from the container).
+        Exposed for DI registration so the same tracker is shared across
+        the application (consume/release calls go through here regardless
+        of which service is resolved from the container).
         """
-        return self._resource_tracker
+        return self._resources.tracker
 
     async def check_request(
         self,
@@ -209,16 +179,8 @@ class AIGovernanceManager:
     def check_model_access(self, user_id: str | None, model: str) -> bool:
         """Check if user is allowed to use the given model.
 
-        Evaluates per-user ``model_allowlist`` and ``model_denylist`` from
-        :class:`~lexigram.ai.config.GovernanceConfig`.  Both support glob
-        patterns (e.g. ``"gpt-4*"``, ``"claude-3-*"``).
-
-        Logic:
-        1. If ``model_allowlist`` has an entry for *user_id*, the model must
-           match at least one pattern in the allowlist.
-        2. If ``model_denylist`` has an entry for *user_id*, the model must
-           not match any pattern in the denylist.
-        3. When no entry exists for *user_id*, access is allowed.
+        Evaluates per-user ``model_allowlist`` / ``model_denylist`` glob
+        patterns (e.g. ``"gpt-4*"``); see :mod:`.model_policy`.
 
         Args:
             user_id: User identifier, or ``None`` for anonymous / global.
@@ -227,41 +189,13 @@ class AIGovernanceManager:
         Returns:
             True if access is permitted, False if denied.
         """
-        key = user_id or "global"
-
-        allowlist = self._config.model_allowlist.get(
-            key
-        ) or self._config.model_allowlist.get("*")
-        if allowlist:
-            if not any(fnmatch.fnmatch(model, pattern) for pattern in allowlist):
-                logger.warning(
-                    "governance_model_not_in_allowlist",
-                    user_id=user_id,
-                    model=model,
-                )
-                return False
-
-        denylist = self._config.model_denylist.get(
-            key
-        ) or self._config.model_denylist.get("*")
-        if denylist:
-            if any(fnmatch.fnmatch(model, pattern) for pattern in denylist):
-                logger.warning(
-                    "governance_model_in_denylist",
-                    user_id=user_id,
-                    model=model,
-                )
-                return False
-
-        return True
+        return model_access_allowed(self._config, user_id, model)
 
     async def check_budget(self, cost: float, user_id: str | None = None) -> bool:
         """Check if a cost would exceed the monthly budget.
 
-        Emits a structured warning when the spend crosses the configured
-        ``soft_limit_pct`` threshold and invokes the optional
-        ``on_soft_limit`` callback.  Returns ``False`` only when the hard
-        limit (``monthly_budget``) would be exceeded.
+        Warns (and invokes ``on_soft_limit``) when the spend crosses the
+        configured soft-limit threshold; blocks only past the hard budget.
 
         Args:
             cost: Estimated cost of the request.
@@ -306,15 +240,9 @@ class AIGovernanceManager:
                     "monthly_budget": budget,
                 },
             )
-            if self._on_soft_limit is not None:
-                import asyncio
-                import inspect
-
-                result = self._on_soft_limit(user_id, current, budget)
-                if inspect.isawaitable(result):
-                    task = asyncio.ensure_future(result)
-                    self._background_tasks.add(task)
-                    task.add_done_callback(self._background_tasks.discard)
+            notify_soft_limit(
+                self._on_soft_limit, self._background_tasks, user_id, current, budget
+            )
 
         allowed = current + cost <= budget
         if not allowed:
@@ -353,9 +281,8 @@ class AIGovernanceManager:
             request_id: Optional request identifier for logging context.
 
         Returns:
-            ``Ok(None)`` if within all budget limits.
-            ``Err(GovernanceError)`` if either per-request or monthly limit
-            is exceeded.
+            ``Ok(None)`` if within all budget limits, else
+            ``Err(GovernanceError)``.
         """
         from lexigram.ai.governance.exceptions import GovernanceError
 
@@ -424,9 +351,8 @@ class AIGovernanceManager:
     def reload_config(self, config: GovernanceConfig) -> None:
         """Hot-reload governance configuration without restart.
 
-        Atomically swaps the internal config reference so that subsequent policy
-        checks use the new limits.  Does **not** touch persistence state — only
-        the thresholds and rules are updated.
+        Atomically swaps the config reference so subsequent checks use the
+        new limits.  Persistence state is untouched.
 
         Args:
             config: New governance configuration to apply.
@@ -448,10 +374,7 @@ class AIGovernanceManager:
             },
         )
 
-    # ------------------------------------------------------------------
-    # Audit helpers
-    # ------------------------------------------------------------------
-
+    # Cross-cutting helpers (audit + fail-open/closed decision)
     def _emit_audit(
         self,
         event_type: str,
@@ -465,19 +388,11 @@ class AIGovernanceManager:
         latency_ms: float | None = None,
         metadata: dict[str, object] | None = None,
     ) -> None:
-        """Fire-and-forget audit event recording.
-
-        Creates an :class:`~lexigram.ai.governance.audit.AIAuditEvent` and
-        schedules ``record()`` on the audit store without blocking the
-        caller.  Silently drops the event when no audit store is configured.
-        """
-        if self._audit_store is None:
-            return
-
-        from lexigram.ai.governance.audit import AIAuditEvent, AuditEventType
-
-        event = AIAuditEvent(
-            event_type=AuditEventType(event_type),
+        """Fire-and-forget audit event recording (see :mod:`.governance_audit`)."""
+        emit_audit_event(
+            self._audit_store,
+            self._background_tasks,
+            event_type,
             model=model,
             provider=provider,
             user_id=user_id,
@@ -485,19 +400,8 @@ class AIGovernanceManager:
             tokens=tokens,
             cost=cost,
             latency_ms=latency_ms,
-            metadata=dict(metadata) if metadata else {},
+            metadata=metadata,
         )
-
-        import asyncio
-
-        try:
-            loop = asyncio.get_running_loop()
-        except RuntimeError:
-            return
-
-        task = loop.create_task(self._audit_store.record(event))
-        self._background_tasks.add(task)
-        task.add_done_callback(self._background_tasks.discard)
 
     def _on_persistence_failure(
         self,
@@ -507,22 +411,18 @@ class AIGovernanceManager:
     ) -> bool:
         """Apply the configured decision when the persistence backend fails.
 
-        Logs a warning with the bucket key, exception type, and resulting
-        decision, then returns whether the caller should allow the request
-        (fail-open) or deny it (fail-closed).  Infrastructure failures are
-        never re-raised here: agent-executor callers treat a raised
-        governance exception as allow-through, so raising would defeat the
-        fail-closed default.
+        Logs the failure and returns whether the caller should allow the
+        request (fail-open) or deny it (fail-closed default).  Failures are
+        never re-raised: agent-executor callers treat a raised governance
+        exception as allow-through, so raising would defeat fail-closed.
 
         Args:
-            operation: Name of the failing governance operation
-                (e.g. ``"rpm_check"``, ``"budget_check"``, ``"cost_track"``).
+            operation: Failing governance operation (``"rpm_check"``, ...).
             bucket_key: Bucket key the operation was reading or writing.
             exception: The exception raised by the persistence backend.
 
         Returns:
-            True when the request should be allowed (fail-open configured),
-            False when it must be denied (fail-closed default).
+            True to allow (fail-open configured), False to deny.
         """
         fail_open = self._config.fail_open_on_persistence_error
         logger.warning(
@@ -551,13 +451,9 @@ class AIGovernanceManager:
     ) -> Result:
         """Consume *amount* of a resource unit for *tenant_id*.
 
-        Delegates to :class:`ResourceUnitTracker` if configured.
+        Delegates to the resource coordinator's tracker if configured.
         """
-        if self._resource_tracker is None:
-            return Err(self._no_tracker_error(tenant_id, unit_name, amount))
-        return await self._resource_tracker.consume(
-            tenant_id, unit_name, amount, actor_id
-        )
+        return await self._resources.consume(tenant_id, unit_name, amount, actor_id)
 
     async def release_resource(
         self,
@@ -566,38 +462,11 @@ class AIGovernanceManager:
         amount: float,
     ) -> None:
         """Release *amount* of a held resource (INSTANTANEOUS units only)."""
-        if self._resource_tracker is None:
-            return
-        await self._resource_tracker.release(tenant_id, unit_name, amount)
+        await self._resources.release(tenant_id, unit_name, amount)
 
-    async def resource_usage(
-        self,
-        tenant_id: str,
-        unit_name: str,
-    ):
+    async def resource_usage(self, tenant_id: str, unit_name: str):
         """Return current usage snapshot for *tenant_id* + *unit_name*."""
-        if self._resource_tracker is None:
-            from lexigram.contracts.ai.governance.resource_unit import (
-                ResourceUsageSnapshot,
-            )
-
-            return ResourceUsageSnapshot(
-                tenant_id=tenant_id,
-                unit_name=unit_name,
-                current=0.0,
-                limit=0.0,
-            )
-        return await self._resource_tracker.usage(tenant_id, unit_name)
-
-    def _no_tracker_error(
-        self, tenant_id: str, unit_name: str, amount: float
-    ) -> ResourceExhaustedError:
-        return ResourceExhaustedError(
-            tenant_id=tenant_id,
-            unit_name=unit_name,
-            limit=0,
-            current=0,
-        )
+        return await self._resources.usage(tenant_id, unit_name)
 
 
 def _current_month() -> str:

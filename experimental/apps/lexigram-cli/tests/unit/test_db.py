@@ -25,7 +25,10 @@ class TestDbCommand:
         assert "Created custom_migrations directory" in result.output
         assert tmp_path.joinpath("custom_migrations").exists()
 
-    @patch("lexigram.cli.commands.db.get_migration_manager", new_callable=AsyncMock)
+    @patch(
+        "lexigram.cli.commands.db_bootstrap.get_migration_manager",
+        new_callable=AsyncMock,
+    )
     def test_db_migrate_create(
         self, mock_get_manager, runner: CliRunner, tmp_path: Path
     ):
@@ -42,7 +45,8 @@ class TestDbCommand:
         )
 
     @patch(
-        "lexigram.cli.commands.db._bootstrap_migration_runner", new_callable=AsyncMock
+        "lexigram.cli.commands.db_bootstrap._bootstrap_migration_runner",
+        new_callable=AsyncMock,
     )
     def test_db_upgrade(self, mock_bootstrap, runner: CliRunner, tmp_path: Path):
         """Test db upgrade command."""
@@ -56,7 +60,8 @@ class TestDbCommand:
         mock_runner.run_migrations.assert_called_once()
 
     @patch(
-        "lexigram.cli.commands.db._bootstrap_migration_runner", new_callable=AsyncMock
+        "lexigram.cli.commands.db_bootstrap._bootstrap_migration_runner",
+        new_callable=AsyncMock,
     )
     def test_db_status(self, mock_bootstrap, runner: CliRunner, tmp_path: Path):
         """Test db status command."""
@@ -72,7 +77,10 @@ class TestDbCommand:
             or "No migrations applied" in result.output
         )
 
-    @patch("lexigram.cli.commands.db.get_migration_manager", new_callable=AsyncMock)
+    @patch(
+        "lexigram.cli.commands.db_bootstrap.get_migration_manager",
+        new_callable=AsyncMock,
+    )
     def test_db_seed(
         self, mock_get_manager, runner: CliRunner, tmp_path: Path, monkeypatch
     ):
@@ -91,7 +99,10 @@ class TestDbCommand:
         assert result.exit_code == 0
         assert "Running seeder: seeds/test_seeder.py" in result.output
 
-    @patch("lexigram.cli.commands.db.get_migration_manager", new_callable=AsyncMock)
+    @patch(
+        "lexigram.cli.commands.db_bootstrap.get_migration_manager",
+        new_callable=AsyncMock,
+    )
     def test_db_reset(self, mock_get_manager, runner: CliRunner, tmp_path: Path):
         """Test db reset command."""
         mock_manager = AsyncMock()
@@ -114,7 +125,7 @@ async def test_bootstrap_db_provider_resolves_usable_provider(
     db_path = tmp_path / "test.db"
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{db_path}")
 
-    from lexigram.cli.commands.db import _bootstrap_db_provider
+    from lexigram.cli.commands.db_bootstrap import _bootstrap_db_provider
 
     provider, db_provider = await _bootstrap_db_provider()
 

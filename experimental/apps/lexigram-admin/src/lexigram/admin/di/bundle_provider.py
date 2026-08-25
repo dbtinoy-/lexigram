@@ -3,9 +3,12 @@
 Follows the AuthBundleProvider pattern from lexigram-auth.
 
 Mount-time phases (controllers, contributors, router) live in the
-``lexigram.admin.di.mount`` mixins; this module keeps the provider lifecycle
-(register/boot/shutdown/health) and the middleware wiring that must stay
-bound to this module's logger.
+``lexigram.admin.di.mount`` mixins; fail-loud boot resolution guards live in
+:mod:`lexigram.admin.di.boot_guards`, built-in singleton registrations in
+:mod:`lexigram.admin.di.registrations`, and health aggregation in
+:mod:`lexigram.admin.di.health`. This module keeps the provider lifecycle
+(register/boot/shutdown) and the middleware wiring that must stay bound to
+this module's logger.
 """
 
 from __future__ import annotations
@@ -13,13 +16,15 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Self
 
 from lexigram.admin.config import AdminRbacConfig
+from lexigram.admin.di.boot_guards import AdminBootGuardsMixin
+from lexigram.admin.di.health import aggregate_sub_provider_health
 from lexigram.admin.di.mount import (
     AdminMountContributorsMixin,
     AdminMountControllersMixin,
     AdminMountCoreMixin,
     MountContext,
 )
-from lexigram.contracts.core.health import HealthCheckResult, HealthStatus
+from lexigram.admin.di.registrations import register_builtin_singletons
 from lexigram.contracts.core.provider import ProviderPriority
 from lexigram.di.provider import Provider
 from lexigram.logging import get_logger
@@ -32,12 +37,14 @@ if TYPE_CHECKING:
         ContainerRegistrarProtocol,
         ContainerResolverProtocol,
     )
+    from lexigram.contracts.core.health import HealthCheckResult
 
 
 class AdminProvider(
     AdminMountCoreMixin,
     AdminMountControllersMixin,
     AdminMountContributorsMixin,
+    AdminBootGuardsMixin,
     Provider,
 ):
     """Orchestrates admin sub-providers for the full admin panel.
@@ -116,10 +123,6 @@ class AdminProvider(
         lifecycle has started.  No resolution is performed in this method —
         only bindings are registered.
         """
-        from lexigram.admin.controllers.dashboard import DashboardController
-        from lexigram.admin.controllers.impersonation import ImpersonationController
-        from lexigram.admin.controllers.tenancy import TenancyController
-        from lexigram.admin.controllers.widgets import WidgetController
         from lexigram.admin.di.sub_providers.auth import AdminAuthSubProvider
         from lexigram.admin.di.sub_providers.contributor import (
             AdminContributorSubProvider,
@@ -176,35 +179,9 @@ class AdminProvider(
         # Register the resolved RBAC config so @inject consumers read the
         # configured super-admin role, not a fresh default instance.
         container.singleton(AdminRbacConfig, self._config.rbac)
-        # Register built-in controllers
-        container.singleton(WidgetController, WidgetController)
-        container.singleton(TenancyController, TenancyController)
-        container.singleton(DashboardController, DashboardController)
-        from lexigram.admin.services.impersonation import ImpersonationService
-
-        container.singleton(ImpersonationService, ImpersonationService)
-        container.singleton(ImpersonationController, ImpersonationController)
-        # Register the RBAC permission inventory (populated at mount time)
-        from lexigram.admin.rbac.inventory import PermissionInventoryService
-
-        container.singleton(PermissionInventoryService, PermissionInventoryService)
-        # Register controller classes for DI resolution
-        for controller_cls in self._controllers:
-            try:
-                container.singleton(controller_cls, controller_cls)
-            except Exception:  # noqa: BLE001 — re-registration is expected; continue loop
-                _log.debug(
-                    "admin.controller_already_registered",
-                    controller=controller_cls.__name__,
-                )
-        # Register resource classes so the container can inject their service dependencies
-        for resource_cls in self._resources:
-            try:
-                container.singleton(resource_cls, resource_cls)
-            except Exception:  # noqa: BLE001 — re-registration is expected; continue loop
-                _log.debug(
-                    "admin.resource_already_registered", resource=resource_cls.__name__
-                )
+        # Built-in controllers/services plus user controllers/resources
+        # (re-registration tolerated, see di.registrations).
+        register_builtin_singletons(container, self._controllers, self._resources)
         for ep in self._extra_providers:
             await ep.register(container)
         for sp in self._sub_providers:
@@ -424,120 +401,18 @@ class AdminProvider(
         """Boot all sub-providers in order.
 
         Raises:
-            RuntimeError: If the CSRF service cannot be resolved — admin
-                must not boot without CSRF enforcement (fail-closed).
+            RuntimeError: If any mandatory service cannot be resolved — admin
+                must not boot without CSRF enforcement, session validation,
+                or RBAC enforcement (fail-closed).
         """
         self._admin_resolver = container
         for sp in self._sub_providers:
             await sp.boot(container)
 
-        # CSRF is mandatory. Resolve here, not in mount_to_app(): boot
-        # failures propagate through the orchestrator and fail application
-        # startup, whereas mount_to_app() exceptions are caught by the web
-        # provider's RouteSetup and logged, silently skipping the admin mount.
-        from lexigram.admin.auth.protocols import AdminCsrfServiceProtocol
-
-        try:
-            self._csrf_service = await container.resolve(
-                AdminCsrfServiceProtocol,
-                bypass_visibility=True,
-            )
-        except Exception as exc:  # noqa: BLE001 — re-raised as fatal below
-            _log.error(
-                "admin.csrf_service_resolution_failed",
-                error=str(exc),
-                error_type=type(exc).__name__,
-            )
-            raise RuntimeError(
-                "CSRF service could not be resolved; refusing to boot admin "
-                "without CSRF enforcement"
-            ) from exc
-
-        # The first-run wizard must be gated: boot refuses to start without
-        # a setup token (admin.auth.security.setup_token, legacy env var
-        # ADMIN_SETUP_TOKEN, or nested LEX_ADMIN_AUTH__SECURITY__SETUP_TOKEN)
-        # unless the operator explicitly opts out with
-        # admin.auth.security.setup_token_optin_unsafe=true for local/
-        # ephemeral environments only.
-        if (
-            not self._config.auth.security.setup_token
-            and not self._config.auth.security.setup_token_optin_unsafe
-        ):
-            raise RuntimeError(
-                "Refusing to boot admin without a setup token: set "
-                "ADMIN_SETUP_TOKEN (or config admin.auth.security.setup_token, "
-                "env LEX_ADMIN_AUTH__SECURITY__SETUP_TOKEN), or explicitly opt "
-                "out for local/ephemeral environments with "
-                "admin.auth.security.setup_token_optin_unsafe=true"
-            )
-
-        # AdminAuthMiddleware's dependencies are mandatory — the middleware
-        # that actually enforces identity must not be silently dropped by a
-        # mount-time resolution failure (RouteSetup swallows mount exception
-        # and skips the admin mount entirely). Resolve at boot with the same
-        # fail-loud shape as the CSRF block above.
-        from lexigram.admin.auth.protocols import AdminSessionServiceProtocol
-        from lexigram.admin.auth.store.protocols import AdminUserStoreProtocol
-
-        try:
-            self._user_store = await container.resolve(
-                AdminUserStoreProtocol,
-                bypass_visibility=True,
-            )
-            self._session_service = await container.resolve(
-                AdminSessionServiceProtocol,
-                bypass_visibility=True,
-            )
-        except Exception as exc:  # noqa: BLE001 — re-raised as fatal below
-            _log.error(
-                "admin.auth_middleware_dependencies_resolution_failed",
-                error=str(exc),
-                error_type=type(exc).__name__,
-            )
-            raise RuntimeError(
-                "AdminAuthMiddleware dependencies could not be resolved; "
-                "refusing to boot admin without session validation"
-            ) from exc
-
-        # AdminAuthorizationMiddleware's authorizer is mandatory — RBAC
-        # enforcement must never silently degrade at startup.
-        from lexigram.admin.middleware.authorization import (
-            RequestAuthorizerProtocol,
-        )
-
-        try:
-            self._authorizer = await container.resolve(
-                RequestAuthorizerProtocol,
-                bypass_visibility=True,
-            )
-        except Exception as exc:  # noqa: BLE001 — re-raised as fatal below
-            _log.error(
-                "admin.authorization_middleware_dependency_resolution_failed",
-                error=str(exc),
-                error_type=type(exc).__name__,
-            )
-            raise RuntimeError(
-                "AdminAuthorizationMiddleware's authorizer could not be "
-                "resolved; refusing to boot admin without RBAC enforcement"
-            ) from exc
-
-        from lexigram.contracts.auth import AuthorizerProtocol
-
-        try:
-            self._authorizer_service = await container.resolve(
-                AuthorizerProtocol,
-                bypass_visibility=True,
-            )
-        except Exception as exc:  # noqa: BLE001 — re-raised as fatal below
-            _log.error(
-                "admin.authorizer_service_resolution_failed",
-                error=str(exc),
-                error_type=type(exc).__name__,
-            )
-            raise RuntimeError(
-                "AuthorizerProtocol could not be resolved; refusing to boot "
-                "admin without a per-resource permission source for search"
-            ) from exc
+        # Fail-loud guards: CSRF → setup token → auth middleware deps →
+        # request authorizer → per-resource authorizer service. Order is
+        # part of the boot contract (see AdminBootGuardsMixin).
+        await self._resolve_mandatory_boot_services(container)
 
         # Wire the container resolver into WidgetController so contributor
         # render_widget() implementations can resolve their service dependencies.
@@ -580,37 +455,10 @@ class AdminProvider(
 
     async def health_check(self, timeout: float = 5.0) -> HealthCheckResult:
         """Aggregate health from all sub-providers."""
-        import asyncio
-
-        worst = HealthStatus.HEALTHY
-        details: dict[str, Any] = {}
-        for sp in self._sub_providers:
-            maybe = sp.health_check(timeout)
-            result: HealthCheckResult = (
-                await maybe if asyncio.iscoroutine(maybe) else maybe
-            )
-            details[result.component] = result.status.value
-            if result.status == HealthStatus.UNHEALTHY:
-                worst = HealthStatus.UNHEALTHY
-            elif (
-                result.status == HealthStatus.DEGRADED
-                and worst != HealthStatus.UNHEALTHY
-            ):
-                worst = HealthStatus.DEGRADED
-            elif (
-                result.status == HealthStatus.UNKNOWN and worst == HealthStatus.HEALTHY
-            ):
-                worst = HealthStatus.UNKNOWN
-
-        if self._mount_failures and worst != HealthStatus.UNHEALTHY:
-            worst = HealthStatus.DEGRADED
-            details["mount_failures"] = dict(self._mount_failures)
-
-        return HealthCheckResult(
-            component="admin",
-            status=worst,
-            message=f"Admin bundle: {worst.value}",
-            details=details,
+        return await aggregate_sub_provider_health(
+            self._sub_providers,
+            self._mount_failures,
+            timeout,
         )
 
 

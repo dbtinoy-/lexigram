@@ -12,7 +12,6 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from lexigram.config.main import LexigramConfig
-from lexigram.web.config import WebConfig
 
 APP_YAML = Path(__file__).resolve().parents[2] / "application.yaml"
 
@@ -37,24 +36,4 @@ def load_lex_config() -> LexigramConfig:
     return LexigramConfig.from_yaml(APP_YAML)
 
 
-def bind_application() -> tuple[WebConfig, RealtimeConfig]:
-    """Bind the web and demo sections from this demo's application.yaml.
-
-    Returns:
-        ``(web_config, demo_config)`` ready for module/provider wiring.
-        ``LEX_`` environment overrides and ``LEX_PROFILE`` overlays are
-        applied by the loader.
-    """
-    lex = LexigramConfig.from_yaml(APP_YAML)
-    return (
-        lex.get_section("web", WebConfig),
-        lex.get_section("demo", RealtimeConfig),
-    )
-
-
-def bind_web() -> WebConfig:
-    """Bind the ``web`` section for server wiring."""
-    return LexigramConfig.from_yaml(APP_YAML).get_section("web", WebConfig)
-
-
-__all__ = ["APP_YAML", "RealtimeConfig", "bind_application", "bind_web"]
+__all__ = ["APP_YAML", "RealtimeConfig", "load_lex_config"]

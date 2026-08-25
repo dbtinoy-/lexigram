@@ -30,8 +30,17 @@ class WebhookAdminProvider(Provider):
         container.singleton(WebhookAdminContributor)
 
     async def boot(self, container: BootContainerProtocol) -> None:
-        """Boot the admin provider.
+        """Attach the root resolver to the contributor.
+
+        The admin host later invokes ``on_admin_boot`` with an
+        admin-scoped resolver whose visibility domain cannot see webhook
+        exports, so the contributor resolves its dependencies through the
+        root (boot-phase) resolver captured here instead.
 
         Args:
             container: DI container resolver.
         """
+        from lexigram.webhook.admin.contributor import WebhookAdminContributor
+
+        contributor = await container.resolve(WebhookAdminContributor)
+        contributor.attach_resolver(container)

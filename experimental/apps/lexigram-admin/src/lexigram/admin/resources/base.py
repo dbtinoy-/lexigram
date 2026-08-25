@@ -4,24 +4,34 @@
 
 Resources define the configuration for admin UI views including
 columns, actions, filters, and permissions.
+
+Cohesive concerns are composed via sibling mixins:
+
+- :class:`~lexigram.admin.resources.specs.IntegrationSpecsMixin` —
+  ``cache_spec`` / ``search_spec`` / ``resilient_spec`` builders
+- :class:`~lexigram.admin.resources.hooks.ResourceHooksMixin` — record
+  lifecycle hooks and action-hook attachment
+- :class:`~lexigram.admin.resources.table_config.TableConfigMixin` —
+  table/form-display/layout configuration resolvers
+- :class:`~lexigram.admin.resources.archive_ops.ArchiveOperationsMixin` —
+  clone/restore/purge flows
 """
 
 from __future__ import annotations
 
-import contextlib
 import re
 from typing import TYPE_CHECKING, Any
 import warnings
 
 from lexigram.admin.data.data_source import IDataSource
 from lexigram.admin.resources.archive_ops import ArchiveOperationsMixin
-from lexigram.admin.resources.config import TableConfiguration
-from lexigram.admin.resources.layouts import apply_layout_config
+from lexigram.admin.resources.hooks import ResourceHooksMixin
+from lexigram.admin.resources.specs import IntegrationSpecsMixin
+from lexigram.admin.resources.table_config import TableConfigMixin
 
 if TYPE_CHECKING:
     from lexigram.admin.actions.base import HeaderAction
     from lexigram.admin.forms.components import FormBase
-    from lexigram.admin.layout.layout_manager import LayoutManager
     from lexigram.admin.rbac.schema import ResourcePermissions
     from lexigram.admin.relations.manager_ext import RelationManager
     from lexigram.admin.ui.filters.base import Filter
@@ -48,7 +58,12 @@ def _validate_resource_name(name: str) -> None:
         )
 
 
-class Resource(ArchiveOperationsMixin):
+class Resource(
+    ResourceHooksMixin,
+    IntegrationSpecsMixin,
+    TableConfigMixin,
+    ArchiveOperationsMixin,
+):
     """Base class for Admin Resources.
 
     Resources define the configuration for list views (tables) and form views
@@ -172,39 +187,6 @@ class Resource(ArchiveOperationsMixin):
     cacheable: bool | Any = False  # True or CacheableSpec enables list caching
     searchable: bool | Any = False  # True or SearchableSpec enables search index
     resilient: bool | Any = False  # True or ResilientSpec enables retry/circuit
-
-    def cache_spec(self) -> Any:
-        """Return a CacheableSpec or None based on the cacheable field."""
-        if self.cacheable is False:
-            return None
-        if self.cacheable is True:
-            from lexigram.admin.integrations.cache import CacheableSpec
-
-            return CacheableSpec()
-        return self.cacheable
-
-    def search_spec(self) -> Any:
-        """Return a SearchableSpec or None based on the searchable field."""
-        if self.searchable is False:
-            return None
-        if self.searchable is True:
-            from lexigram.contracts.search import SearchableSpec
-
-            return SearchableSpec(
-                index_name=self.name,
-                fields=tuple(self.search_fields),
-            )
-        return self.searchable
-
-    def resilient_spec(self) -> Any:
-        """Return a ResilientSpec or None based on the resilient field."""
-        if self.resilient is False:
-            return None
-        if self.resilient is True:
-            from lexigram.admin.integrations.resilience import ResilientSpec
-
-            return ResilientSpec()
-        return self.resilient
 
     # Data source instance for search (set at runtime via set_data_source)
     _data_source: IDataSource | None = None
@@ -330,231 +312,6 @@ class Resource(ArchiveOperationsMixin):
         total = result.total
         return items, total
 
-    async def before_create(self, data: dict) -> dict:
-        """Hook called before a record is created.
-
-        Args:
-            data: Record data to be created
-
-        Returns:
-            Modified data
-        """
-        return data
-
-    async def before_validate(self, data: dict) -> Any:
-        """Validate and coerce form data against the resource model.
-
-        Base implementation coerces HTML form strings to proper Python types
-        via _coerce_form_data, then validates against ``self.model``.
-        Returns Ok(coerced_data) on success, Err(AdminValidationError) with
-        per-field errors on failure.
-
-        Override in subclasses to add custom validation logic.
-        """
-        from lexigram.admin.exceptions import AdminValidationError
-        from lexigram.admin.resources.form_coercion import _coerce_form_data
-        from lexigram.contracts.exceptions.domain import FieldError
-        from lexigram.result import Err, Ok
-
-        coerced = _coerce_form_data(data, self.model)
-        if self.model is None:
-            return Ok(coerced)
-
-        if not hasattr(self.model, "model_validate"):
-            return Ok(coerced)
-
-        try:
-            self.model.model_validate(coerced)
-        except (ValueError, TypeError) as exc:
-            msg = str(exc)
-            errors: list[FieldError] = []
-
-            is_pydantic = (
-                type(exc).__name__ == "ValidationError"
-                and "pydantic" in type(exc).__module__
-            )
-            if is_pydantic:
-                for err in exc.errors():  # type: ignore[union-attr]
-                    field = str(err["loc"][0]) if err.get("loc") else None
-                    if field and field in coerced:
-                        errors.append(FieldError(field=field, message=err["msg"]))
-            else:
-                field = None
-                if msg.startswith("Field '"):
-                    field = msg.split("'")[1]
-                if field:
-                    errors.append(FieldError(field=field, message=msg))
-
-            if errors:
-                return Err(
-                    AdminValidationError(
-                        message="Form validation failed",
-                        errors=errors,
-                    )
-                )
-            return Ok(coerced)
-
-        return Ok(coerced)
-
-    async def after_create(self, record: Any) -> None:
-        """Hook called after a record is created.
-
-        Args:
-            record: Created record
-        """
-
-    async def before_update(self, item_id: Any, data: dict) -> dict:
-        """Hook called before a record is updated.
-
-        Args:
-            item_id: Record identifier
-            data: Updated record data
-
-        Returns:
-            Modified data
-        """
-        return data
-
-    async def after_update(self, record: Any) -> None:
-        """Hook called after a record is updated.
-
-        Args:
-            record: Updated record
-        """
-
-    async def before_delete(self, item_id: Any) -> None:
-        """Hook called before a record is deleted.
-
-        Args:
-            item_id: Record identifier
-        """
-
-    async def after_delete(self, item_id: Any) -> None:
-        """Hook called after a record is deleted.
-
-        Args:
-            item_id: Record identifier
-        """
-
-    @classmethod
-    def get_action_hooks(cls, action_name: str) -> list[Any]:
-        """Get action lifecycle hooks for the named action.
-
-        Override in a resource subclass to attach ``ActionHookProtocol``
-        hooks to registry-based actions. Hooks are collected by
-        ``ActionExecutor`` and run before/after the action body and on
-        failure.
-
-        Args:
-            action_name: Name of the action (e.g. ``"export"``)
-
-        Returns:
-            List of action hooks for the action.
-        """
-        return []
-
-    @classmethod
-    def get_table_config(cls) -> TableConfiguration:
-        """Get the table configuration for this resource.
-
-        Returns:
-            TableConfiguration with columns, actions, filters
-        """
-        cfg = cls.config
-
-        # Resolve configuration with priority: Config Object > Class Attribute
-        per_page = (
-            cls._get_config_value(cfg, "per_page", cls.page_size)
-            if cfg
-            else cls.page_size
-        )
-        default_sort = (
-            cls._get_config_value(
-                cfg,
-                "default_sort_field",
-                cls.default_sort,
-            )
-            if cfg
-            else cls.default_sort
-        )
-        default_sort_order = (
-            cls._get_config_value(cfg, "default_sort_order", "asc") if cfg else "asc"
-        )
-        action_layout = (
-            cls._get_config_value(cfg, "action_layout", cls.action_layout)
-            if cfg
-            else cls.action_layout
-        )
-
-        resource_name = cls.label or cls.__name__.replace("Resource", "")
-        if cfg and cfg.display_name:
-            resource_name = cfg.display_name
-
-        columns = list(
-            cls._get_config_value(cfg, "columns", cls.columns) if cfg else cls.columns
-        )
-        actions = list(
-            cls._get_config_value(cfg, "actions", cls.actions) if cfg else cls.actions
-        )
-        filters = list(
-            cls._get_config_value(cfg, "filters_list", cls.filters)
-            if cfg
-            else cls.filters
-        )
-
-        # Check class attribute `layout_type` as fallback for legacy resources
-        layout_fallback = getattr(cls, "layout_type", "stack")
-        default_layout = (
-            cls._get_config_value(cfg, "layout", layout_fallback)
-            if cfg
-            else layout_fallback
-        )
-        # Check class attribute `data_view` as fallback for legacy resources
-        view_fallback = getattr(cls, "data_view", "tabular")
-        default_view = (
-            cls._get_config_value(cfg, "view", view_fallback) if cfg else view_fallback
-        )
-
-        empty_state_title = (
-            cls._get_config_value(cfg, "empty_state_title", cls.empty_state_title)
-            if cfg
-            else cls.empty_state_title
-        )
-        empty_state_message = (
-            cls._get_config_value(cfg, "empty_state_message", cls.empty_state_message)
-            if cfg
-            else cls.empty_state_message
-        )
-        empty_state_icon = (
-            cls._get_config_value(cfg, "empty_state_icon", cls.empty_state_icon)
-            if cfg
-            else cls.empty_state_icon
-        )
-        group_by = (
-            cls._get_config_value(cfg, "group_by", cls.group_by)
-            if cfg
-            else cls.group_by
-        )
-
-        return TableConfiguration(
-            columns=columns,
-            actions=actions,
-            header_actions=list(cls.header_actions),
-            bulk_actions=list(cls.bulk_actions),
-            filter_options=filters,
-            per_page=per_page,
-            default_sort_by=default_sort,
-            default_sort_order=default_sort_order,
-            resource_name=resource_name,
-            action_layout=action_layout,
-            default_layout=default_layout,
-            default_view=default_view,
-            empty_state_title=empty_state_title,
-            empty_state_message=empty_state_message,
-            empty_state_icon=empty_state_icon,
-            group_by=group_by,
-        )
-
     @classmethod
     def get_form_class(cls) -> type[FormBase] | None:
         """Return the Form class to use for create/edit views.
@@ -563,69 +320,6 @@ class Resource(ArchiveOperationsMixin):
             Form class or None
         """
         return cls.form_class
-
-    @classmethod
-    def get_form_display_mode(cls) -> str:
-        """Return the form display mode for create/edit views.
-
-        Returns:
-            Display mode: "page", "modal", or "slider"
-        """
-        cfg = cls.config
-        return (
-            cls._get_config_value(cfg, "form_display_mode", cls.form_display_mode)
-            if cfg
-            else cls.form_display_mode
-        )
-
-    @classmethod
-    def get_layout_manager(cls) -> LayoutManager:
-        """Get layout manager with configured views.
-
-        Returns:
-            LayoutManager instance
-        """
-        from lexigram.admin.layout import LayoutManager
-
-        manager = LayoutManager()
-        cfg = cls.config
-
-        if cfg and cfg.views_list:
-            for view in cfg.views_list:
-                if hasattr(view, "to_config"):
-                    layout_config = view.to_config()
-                    apply_layout_config(manager, layout_config)
-
-            # Set default view
-            if cfg.view:
-                with contextlib.suppress(ValueError):
-                    manager.set_default(cfg.view)
-
-        return manager
-
-    @staticmethod
-    def _get_config_value(cfg: Any, attr: str, default: Any) -> Any:
-        """Get configuration value with fallback to default or private attribute.
-
-        Args:
-            cfg: Configuration object
-            attr: Attribute name
-            default: Default value if not found
-
-        Returns:
-            Configuration value or default
-        """
-        if cfg is None:
-            return default
-
-        # Try public attribute/property
-        val = getattr(cfg, attr, None)
-
-        # If it's the fluent method (callable) or missing, try the private attribute
-        if val is None or callable(val):
-            val = getattr(cfg, f"_{attr}", None)
-
-        return val if val is not None else default
 
 
 __all__ = ["Resource"]

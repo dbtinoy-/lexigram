@@ -18,8 +18,9 @@ import sys
 import httpx
 
 from lexigram.logging import get_logger
+from lexigram.web.config import WebConfig
 from ops_console.app import create_app
-from ops_console.config import bind_web
+from ops_console.config import load_lex_config
 
 logger = get_logger(__name__)
 
@@ -28,8 +29,9 @@ async def _serve() -> None:
     from lexigram.web.di.provider import WebProvider
     from lexigram.web.server.runner import run_server_async
 
-    web_config = bind_web()
-    app = create_app()
+    config = load_lex_config()
+    web_config = config.get_section("web", WebConfig)
+    app = create_app(config)
     try:
         await app.start()
         web = await app.container.resolve(WebProvider)
@@ -53,7 +55,7 @@ async def _publish(base_url: str, message: str) -> None:
 
 def _default_base_url() -> str:
     """Default target derived from this demo's own application.yaml."""
-    web_config = bind_web()
+    web_config = load_lex_config().get_section("web", WebConfig)
     return f"http://{web_config.server.host}:{web_config.server.port}"
 
 

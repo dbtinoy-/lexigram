@@ -1,0 +1,7 @@
+web:
+  server:
+    host: 127.0.0.1
+    port: 7075
+  security:
+    csrf:
+      enabled: false # curl/scripts target the ask endpoint

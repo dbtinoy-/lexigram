@@ -1,0 +1,7 @@
+web:
+  server:
+    host: 127.0.0.1
+    port: 8086
+  security:
+    csrf:
+      enabled: false # ratings loop driven by scripts

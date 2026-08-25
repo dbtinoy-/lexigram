@@ -32,8 +32,9 @@ async def serve() -> None:
     try:
         await app.start()
         web = await app.container.resolve(WebProvider)
-        logger.info("server.listening", host=web_config.server.host,
-                    port=web_config.server.port)
+        logger.info(
+            "server.listening", host=web_config.server.host, port=web_config.server.port
+        )
         await run_server_async(
             web.starlette,
             host=web_config.server.host,

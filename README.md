@@ -188,17 +188,17 @@ latest `main` run); each job has a local one-liner:
 - [ ] Additional backend support
 
 #### medium term (Q3-Q4 2026)
-- [ ] Advanced monitoring
 - [x] Enhanced security — audit remediation partially implemented (security lanes in progress)
 - [x] Production-grade Admin dashboard — `lexigram-admin` in active development
 - [x] Full-stack starter template — in progress
-- [ ] Distributed tracing
 - [ ] Performance optimizations
 - [x] Reach 80% Unit Tests overall coverage (now 75% in progress)
 - [ ] Reach 80% test coverage overall (unit + integration; integration-only baseline ~35% — in progress)
 
 #### long term (2027)
 - [ ] Enterprise features
+- [ ] Distributed tracing
+- [ ] Advanced monitoring
 - [ ] Enhanced observability
 - [ ] Community expansion (if approved)
 

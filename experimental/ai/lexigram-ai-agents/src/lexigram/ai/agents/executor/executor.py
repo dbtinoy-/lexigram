@@ -7,16 +7,21 @@ of the Lexigram infrastructure.
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
-from datetime import UTC
 from typing import Any
 
-from lexigram.ai.agents.exceptions import BudgetExceededError
+from lexigram.ai.agents.executor.run_support import (
+    assemble_history,
+    check_input_guard,
+    check_output_guard,
+    check_request_governance,
+    execute_strategy,
+    merge_skill_tools,
+    persist_conversation,
+    resume_session,
+    track_cost,
+)
 from lexigram.ai.agents.executor.streaming import astream as _astream
 from lexigram.ai.agents.observability import AgentMetrics, AgentTracer
-from lexigram.ai.agents.strategies.guard_hook import (
-    ToolObservationBlockedError,
-    ToolObservationGuardError,
-)
 from lexigram.contracts.ai.agents import (
     AgentError,
     AgentExecutorProtocol,
@@ -27,10 +32,8 @@ from lexigram.contracts.ai.agents import (
 from lexigram.contracts.ai.governance import AIGovernanceProtocol
 from lexigram.contracts.ai.guards import GuardPipelineProtocol
 from lexigram.contracts.ai.llm import (
-    ChatMessage,
     CostEstimatorProtocol,
     LLMClientProtocol,
-    Role,
 )
 from lexigram.contracts.ai.memory import WorkingMemoryProtocol
 from lexigram.contracts.ai.session import SessionManagerProtocol
@@ -183,37 +186,9 @@ class AgentExecutorImpl(AgentExecutorProtocol):
         )
 
         # 1. Governance check
-        if self._governance:
-            model = getattr(self._llm, "model", "unknown")
-            provider = getattr(self._llm, "provider", "unknown")
-            try:
-                allowed = await self._governance.check_request(
-                    model=model,
-                    provider=provider,
-                    user_id=user_id,
-                )
-                if not allowed:
-                    self._metrics.record_governance_denied(agent.name)
-                    logger.warning(
-                        "agent_governance_denied",
-                        agent=agent.name,
-                        user_id=user_id,
-                    )
-                    await self._publish_event(
-                        "AgentExecutionFailed",
-                        {
-                            "agent_name": agent.name,
-                            "error": "Governance denied",
-                            "error_type": "BudgetExceededError",
-                        },
-                    )
-                    return Err(
-                        BudgetExceededError(
-                            "Agent request denied by governance policy",
-                        )
-                    )
-            except (RuntimeError, OSError) as e:
-                logger.warning("governance_check_failed", error=str(e))
+        denied = await check_request_governance(self, agent, user_id)
+        if denied is not None:
+            return denied
 
         # Agent-level pipeline (AgentBuilder.with_guard_pipeline) wins over the
         # DI-provided one; the DI pipeline remains the standard default.
@@ -223,86 +198,21 @@ class AgentExecutorImpl(AgentExecutorProtocol):
         )
 
         # 1.5 Guard check for input
-        if guard_pipeline:
-            try:
-                guard_res = await guard_pipeline.check_input(
-                    content=message,
-                    metadata={"session_id": session_id, "user_id": user_id},
-                )
-                if not guard_res.is_ok():
-                    return Err(
-                        AgentError(f"Guard pipeline failure: {guard_res.unwrap_err()}")
-                    )
-
-                agg = guard_res.unwrap()
-                blocked = bool(getattr(agg, "blocked", False))
-                if blocked:
-                    blocking_result = getattr(agg, "blocking_result", None)
-                    reason = (
-                        getattr(blocking_result, "reason", None)
-                        or "Input blocked by security guards"
-                    )
-                    return Err(
-                        AgentError(f"Input blocked by security guards: {reason}")
-                    )
-
-                message = str(getattr(agg, "final_content", message))
-            except (RuntimeError, OSError) as e:
-                logger.exception("input_guard_evaluation_failed", agent=agent.name)
-                return Err(AgentError(f"Guard evaluation failed: {e}", cause=e))
+        guard_err, message = await check_input_guard(
+            self, agent, guard_pipeline, message, session_id, user_id
+        )
+        if guard_err is not None:
+            return guard_err
 
         # 2a. Resume or create session
-        session_state = None
-        if self._session_manager and session_id:
-            try:
-                session_state = await self._session_manager.resume(session_id)
-                if session_state is None and user_id:
-                    session_state = await self._session_manager.create(
-                        user_id=user_id,
-                        metadata={"agent": agent.name},
-                    )
-                    session_id = session_state.session_id
-                logger.debug(
-                    "session_loaded",
-                    session_id=session_id,
-                    turns=session_state.turn_count if session_state else 0,
-                )
-            except (RuntimeError, TypeError, AttributeError, LookupError) as e:
-                logger.warning("session_load_failed", error=str(e))
+        session_id = await resume_session(self, agent, session_id, user_id)
 
         # 2b. Assemble context via working memory (preferred) or legacy memory
-        history: list[ChatMessage] = []
-        if self._working_memory:
-            try:
-                entries = await self._working_memory.assemble(
-                    query=message,
-                    token_budget=4096,
-                    owner_id=user_id or session_id or "anonymous",
-                    session_id=session_id,
-                )
-                history = [
-                    ChatMessage(role=Role(e.role), content=e.content) for e in entries
-                ]
-            except (RuntimeError, TypeError, AttributeError, LookupError) as e:
-                logger.warning("working_memory_assemble_failed", error=str(e))
-        elif self._memory and session_id:
-            try:
-                if hasattr(self._memory, "get_messages"):
-                    msgs = await self._memory.get_messages()
-                    history = [
-                        ChatMessage(role=Role(m.role), content=m.content) for m in msgs
-                    ]
-            except (RuntimeError, TypeError, AttributeError, LookupError) as e:
-                logger.warning("memory_load_failed", error=str(e))
+        history = await assemble_history(self, message, session_id, user_id)
 
         # 2c. Merge skills as additional tools
         tools: list[Any] = list(agent.tools) if agent.tools else []
-        if self._skill_registry:
-            try:
-                skill_schemas = self._skill_registry.get_schemas()
-                tools.extend(skill_schemas)
-            except (RuntimeError, TypeError, AttributeError, LookupError) as e:
-                logger.warning("skill_registry_merge_failed", error=str(e))
+        await merge_skill_tools(self, tools)
 
         # 3. Execute strategy with tracing
         strategy = getattr(agent, "strategy", None)
@@ -323,125 +233,28 @@ class AgentExecutorImpl(AgentExecutorProtocol):
             )
             return Err(AgentError("Agent executor has no LLM client configured"))
 
-        try:
-            async with self._tracer.trace_execution(
-                agent.name,
-                message,
-                session_id,
-            ) as span:
-                strategy_history = [
-                    {"role": m.role, "content": m.content} for m in history
-                ]
-
-                result = await strategy.execute(
-                    message=message,
-                    tools=tools,
-                    history=strategy_history,
-                    llm=self._llm,
-                    system_prompt=agent.system_prompt,
-                    temperature=getattr(agent, "temperature", 0.7),
-                    tool_registry=kwargs.get("tool_registry"),
-                    memory=getattr(agent, "memory", None),
-                    guard_pipeline=guard_pipeline,
-                    **kwargs,
-                )
-
-                if span and hasattr(result, "is_ok"):
-                    if result.is_ok():
-                        response = result.unwrap()
-                        if hasattr(span, "set_attribute"):
-                            span.set_attribute("agent.steps", response.step_count)
-                            span.set_attribute("agent.tokens", response.total_tokens)
-                            span.set_attribute(
-                                "agent.tool_calls", response.tool_call_count
-                            )
-
-        except (ToolObservationBlockedError, ToolObservationGuardError) as e:
-            logger.warning(
-                "agent.guard_blocked_observation",
-                agent=agent.name,
-                error=str(e),
-            )
-            self._metrics.record_error(agent.name, type(e).__name__)
-            await self._publish_event(
-                "AgentExecutionFailed",
-                {
-                    "agent_name": agent.name,
-                    "error": str(e),
-                    "error_type": type(e).__name__,
-                },
-            )
-            if isinstance(e, ToolObservationBlockedError):
-                message_text = f"Tool observation blocked by guards: {e}"
-            else:
-                message_text = f"Tool observation guard evaluation failed: {e}"
-            return Err(AgentError(message_text, cause=e))
-
-        except (RuntimeError, OSError) as e:
-            logger.exception("strategy_execution_failed", agent=agent.name)
-            self._metrics.record_error(agent.name, type(e).__name__)
-            await self._publish_event(
-                "AgentExecutionFailed",
-                {
-                    "agent_name": agent.name,
-                    "error": str(e),
-                    "error_type": type(e).__name__,
-                },
-            )
-            return Err(AgentError(f"Strategy failed: {e}", cause=e))
-
-        if not result.is_ok():
-            error = result.unwrap_err()
-            error_type = type(error).__name__
-            self._metrics.record_error(agent.name, error_type)
-            await self._publish_event(
-                "AgentExecutionFailed",
-                {
-                    "agent_name": agent.name,
-                    "error": str(error),
-                    "error_type": error_type,
-                },
-            )
-            if isinstance(error, AgentError):
-                return Err(error)
-            return Err(AgentError(str(error), cause=error))
+        result = await execute_strategy(
+            self,
+            strategy,
+            agent,
+            message,
+            session_id,
+            history,
+            tools,
+            guard_pipeline,
+            kwargs,
+        )
+        if result.is_err():
+            return result
 
         response = result.unwrap()
 
         # 3.5 Guard check for output
-        if guard_pipeline:
-            try:
-                out_guard_res = await guard_pipeline.check_output(
-                    content=response.message,
-                    original_input=message,
-                    metadata={"session_id": session_id, "user_id": user_id},
-                )
-                if not out_guard_res.is_ok():
-                    return Err(
-                        AgentError(
-                            f"Guard pipeline failure: {out_guard_res.unwrap_err()}"
-                        )
-                    )
-
-                agg = out_guard_res.unwrap()
-                blocked = bool(getattr(agg, "blocked", False))
-                if blocked:
-                    blocking_result = getattr(agg, "blocking_result", None)
-                    reason = (
-                        getattr(blocking_result, "reason", None)
-                        or "Output blocked by security guards"
-                    )
-                    return Err(
-                        AgentError(f"Output blocked by security guards: {reason}")
-                    )
-
-                response = replace(
-                    response,
-                    message=str(getattr(agg, "final_content", response.message)),
-                )
-            except (RuntimeError, OSError) as e:
-                logger.exception("output_guard_evaluation_failed", agent=agent.name)
-                return Err(AgentError(f"Guard evaluation failed: {e}", cause=e))
+        out_err, response = await check_output_guard(
+            self, agent, guard_pipeline, response, message, session_id, user_id
+        )
+        if out_err is not None:
+            return out_err
 
         # 4. Record metrics
         self._metrics.record_execution(agent.name, response)
@@ -449,94 +262,10 @@ class AgentExecutorImpl(AgentExecutorProtocol):
             self._metrics.record_tool_call(agent.name, tc)
 
         # 5. Save to memory (working memory, session, and/or legacy)
-        if self._working_memory:
-            try:
-                from datetime import datetime
-
-                from lexigram.contracts.ai.memory import MemoryEntry
-
-                owner = user_id or session_id or "anonymous"
-                user_entry = MemoryEntry(
-                    id=f"{session_id or 'no-session'}-user-{response.step_count}",
-                    owner_id=owner,
-                    content=message,
-                    role="user",
-                    timestamp=datetime.now(UTC),
-                )
-                assistant_entry = MemoryEntry(
-                    id=f"{session_id or 'no-session'}-assistant-{response.step_count}",
-                    owner_id=owner,
-                    content=response.message,
-                    role="assistant",
-                    timestamp=datetime.now(UTC),
-                )
-                await self._working_memory.add(user_entry)
-                await self._working_memory.add(assistant_entry)
-            except (RuntimeError, TypeError, AttributeError, LookupError) as e:
-                logger.warning("working_memory_save_failed", error=str(e))
-
-        if self._session_manager and session_id:
-            try:
-                from datetime import datetime
-
-                from lexigram.contracts.ai.session import SessionTurn
-
-                user_turn = SessionTurn(
-                    turn_id=f"{session_id}-user-{response.step_count}",
-                    role="user",
-                    content=message,
-                    timestamp=datetime.now(UTC),
-                )
-                assistant_turn = SessionTurn(
-                    turn_id=f"{session_id}-assistant-{response.step_count}",
-                    role="assistant",
-                    content=response.message,
-                    timestamp=datetime.now(UTC),
-                    tokens_used=response.total_tokens,
-                    tool_calls=[
-                        {"name": tc.tool_name, "result": tc.result}
-                        for tc in response.tool_calls
-                    ],
-                )
-                await self._session_manager.add_turn(session_id, user_turn)
-                await self._session_manager.add_turn(session_id, assistant_turn)
-            except (RuntimeError, TypeError, AttributeError, LookupError) as e:
-                logger.warning("session_turn_save_failed", error=str(e))
-
-        if self._memory and session_id:
-            try:
-                if hasattr(self._memory, "add"):
-                    await self._memory.add("user", message)
-                    await self._memory.add("assistant", response.message)
-                elif hasattr(self._memory, "add_message"):
-                    await self._memory.add_message(
-                        ChatMessage(role=Role.USER, content=message),
-                    )
-                    await self._memory.add_message(
-                        ChatMessage(role=Role.ASSISTANT, content=response.message),
-                    )
-            except (RuntimeError, TypeError, AttributeError, LookupError) as e:
-                logger.warning("memory_save_failed", error=str(e))
+        await persist_conversation(self, response, message, session_id, user_id)
 
         # 6. Track cost (only when a real estimator is configured)
-        if self._governance and self._cost_estimator and response.total_tokens > 0:
-            try:
-                model = getattr(self._llm, "model", "unknown")
-                estimated_cost = self._cost_estimator.estimate_cost(
-                    model=model,
-                    total_tokens=response.total_tokens,
-                    provider=getattr(self._llm, "provider", None),
-                    prompt_tokens=response.prompt_tokens,
-                    completion_tokens=response.completion_tokens,
-                )
-                await self._governance.track_cost(
-                    cost=estimated_cost,
-                    model=model,
-                    user_id=user_id,
-                )
-                response = replace(response, total_cost=estimated_cost)
-            except (RuntimeError, OSError) as e:
-                logger.warning("cost_tracking_failed", error=str(e))
+        response = await track_cost(self, response, user_id)
 
         response = replace(response, session_id=session_id)
 

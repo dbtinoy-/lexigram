@@ -1,14 +1,13 @@
-"""Resource manager for orchestrating CRUD with validation and authorization.
+"""ResourceManager: CRUD orchestration with validation and authorization.
 
-This module provides the ResourceManager class that coordinates data access,
-validation, and authorization using the Result type for explicit error handling.
-
-SVC-01: ResourceManager implementation.
+SVC-01: coordinates data access (via the safe adapters in
+:mod:`lexigram.admin.services.resource_manager.adapter`), input validation,
+and authorization using the Result type for explicit error handling.
 """
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Generic, Protocol, TypeVar, runtime_checkable
+from typing import TYPE_CHECKING, Any, Generic, TypeVar
 
 from lexigram.admin.data.paged_result import PagedResult
 from lexigram.admin.data.query import QuerySpec
@@ -17,7 +16,18 @@ from lexigram.admin.exceptions import (
     AdminValidationError,
     NotFoundError,
 )
-from lexigram.contracts.audit import AuditEntry, AuditEventSeverity, AuditLoggerProtocol
+from lexigram.admin.services.resource_manager.adapter import (
+    find_many_safe,
+    find_one_safe,
+)
+from lexigram.admin.services.resource_manager.audit import record_audit
+from lexigram.admin.services.resource_manager.protocols import (
+    DefaultAuthorizer,
+    DefaultValidator,
+    ResourceDataSourceProtocol,
+    Validator,
+)
+from lexigram.contracts.audit import AuditEventSeverity, AuditLoggerProtocol
 from lexigram.contracts.auth import AuthorizerProtocol
 from lexigram.contracts.exceptions import PermissionDeniedError as PermissionDenied
 from lexigram.di.decorators import inject
@@ -27,109 +37,6 @@ if TYPE_CHECKING:
     from lexigram.contracts.data.sql.unit_of_work import UnitOfWorkProtocol
 
 T = TypeVar("T")
-
-
-@runtime_checkable
-class ResourceDataSourceProtocol(Protocol[T]):
-    """Protocol for data access operations."""
-
-    async def find_many(self, query: QuerySpec) -> PagedResult[T]: ...
-
-    async def find_one(self, item_id: Any) -> T | None: ...
-
-    async def create(self, data: dict[str, Any]) -> T: ...
-
-    async def update(self, item_id: Any, data: dict[str, Any]) -> T: ...
-
-    async def delete(self, item_id: Any) -> bool: ...
-
-
-@runtime_checkable
-class ResultDataSource(Protocol[T]):
-    """Enhanced protocol for data access operations that return Results.
-
-    This is the idiomatic pattern for new implementations.
-    Existing ResourceDataSourceProtocol implementations can be wrapped or gradually migrated
-    to this protocol.
-    """
-
-    async def find_many(
-        self, query: QuerySpec
-    ) -> Result[PagedResult[T], AdminDataError]: ...
-
-    async def find_one(self, item_id: Any) -> Result[T, AdminDataError]: ...
-
-    async def create(self, data: dict[str, Any]) -> Result[T, AdminDataError]: ...
-
-    async def update(
-        self, item_id: Any, data: dict[str, Any]
-    ) -> Result[T, AdminDataError]: ...
-
-    async def delete(self, item_id: Any) -> Result[bool, AdminDataError]: ...
-
-
-@runtime_checkable
-class Validator(Protocol):
-    """Protocol for data validation."""
-
-    async def validate(
-        self,
-        data: dict[str, Any],
-    ) -> Result[dict[str, Any], AdminValidationError]: ...
-
-
-class DefaultValidator:
-    """Default validator that accepts all data."""
-
-    async def validate(
-        self,
-        data: dict[str, Any],
-    ) -> Result[dict[str, Any], AdminValidationError]:
-        return Ok(data)
-
-
-class DefaultAuthorizer:
-    """Default authorizer that allows all operations."""
-
-    async def can_view(
-        self,
-        user: Any,
-        resource: str,
-        record: Any = None,
-    ) -> bool:
-        return True
-
-    async def can_create(
-        self,
-        user: Any,
-        resource: str,
-    ) -> bool:
-        return True
-
-    async def can_update(
-        self,
-        user: Any,
-        resource: str,
-        record: Any = None,
-    ) -> bool:
-        return True
-
-    async def can_delete(
-        self,
-        user: Any,
-        resource: str,
-        record: Any = None,
-    ) -> bool:
-        return True
-
-    async def can_execute_action(
-        self,
-        user: Any,
-        resource: str,
-        action: str,
-        record: Any | None = None,
-    ) -> bool:
-        return True
 
 
 @inject
@@ -188,75 +95,6 @@ class ResourceManager(Generic[T]):
         self._uow = uow
         self._audit = audit
 
-    def _is_result_data_source(self) -> bool:
-        """Check if data_source implements ResultDataSource protocol.
-
-        Uses a marker attribute for reliable detection rather than isinstance,
-        which doesn't check return types for @runtime_checkable protocols.
-        Only returns True if explicitly marked as result-based.
-        """
-        # Check for explicit marker attribute indicating result-based adapter
-        # Default to False if not explicitly set (conservative approach)
-        return getattr(self.data_source, "returns_result", False) is True
-
-    async def _find_many_safe(
-        self, query: QuerySpec
-    ) -> Result[PagedResult[T], AdminDataError]:
-        """Safely call find_many, handling both ResourceDataSourceProtocol and ResultDataSource.
-
-        If data_source implements ResultDataSource, use it directly.
-        Otherwise, wrap the traditional ResourceDataSourceProtocol method with error handling.
-        """
-        if self._is_result_data_source():
-            return await self.data_source.find_many(query)  # type: ignore[return-value]
-
-        try:
-            result = await self.data_source.find_many(query)
-            return Ok(result)
-        except (ConnectionError, RuntimeError, ValueError, OSError) as e:
-            return Err(AdminDataError(f"Failed to list {self.resource_name}: {e}"))
-
-    async def _find_one_safe(self, item_id: Any) -> Result[T | None, AdminDataError]:
-        """Safely call find_one, handling both ResourceDataSourceProtocol and ResultDataSource."""
-        if self._is_result_data_source():
-            return await self.data_source.find_one(item_id)  # type: ignore[return-value]
-
-        try:
-            result = await self.data_source.find_one(item_id)
-            return Ok(result)
-        except (ConnectionError, RuntimeError, ValueError, OSError) as e:
-            return Err(
-                AdminDataError(f"Failed to find {self.resource_name} {item_id}: {e}")
-            )
-
-    async def _record_audit(
-        self,
-        *,
-        action: str,
-        actor: Any,
-        resource_id: str,
-        outcome: str,
-        severity: AuditEventSeverity,
-        **metadata: object,
-    ) -> None:
-        """Record an audit event for a resource operation."""
-        if self._audit is None:
-            return
-
-        actor_id = getattr(actor, "id", str(actor))
-        await self._audit.log(
-            AuditEntry(
-                action=action,
-                actor_id=actor_id,
-                resource_type=self.resource_name,
-                resource_id=resource_id,
-                outcome=outcome,
-                severity=severity,
-                metadata=dict(metadata),
-                source="admin",
-            )
-        )
-
     async def list(
         self,
         query: QuerySpec,
@@ -282,7 +120,7 @@ class ResourceManager(Generic[T]):
             )
 
         # Use safe wrapper that handles both ResourceDataSourceProtocol and ResultDataSource
-        find_result = await self._find_many_safe(query)
+        find_result = await find_many_safe(self.data_source, self.resource_name, query)
         if find_result.is_err():
             return Err(find_result.unwrap_err())
 
@@ -318,7 +156,7 @@ class ResourceManager(Generic[T]):
             Result containing resource on success, error on failure
         """
         # Use safe wrapper that handles both ResourceDataSourceProtocol and ResultDataSource
-        find_result = await self._find_one_safe(item_id)
+        find_result = await find_one_safe(self.data_source, self.resource_name, item_id)
         if find_result.is_err():
             return Err(find_result.unwrap_err())
 
@@ -384,7 +222,9 @@ class ResourceManager(Generic[T]):
 
         # Record successful creation audit event
         resource_id = getattr(record, "id", str(record))
-        await self._record_audit(
+        await record_audit(
+            self._audit,
+            self.resource_name,
             action="admin.resource.create",
             actor=user,
             resource_id=resource_id,
@@ -445,7 +285,9 @@ class ResourceManager(Generic[T]):
 
         # Record successful update audit event
         resource_id = getattr(updated, "id", str(item_id))
-        await self._record_audit(
+        await record_audit(
+            self._audit,
+            self.resource_name,
             action="admin.resource.update",
             actor=user,
             resource_id=resource_id,
@@ -497,7 +339,9 @@ class ResourceManager(Generic[T]):
 
         # Record successful deletion audit event unless skipped (bulk_delete handles its own audit)
         if not skip_audit:
-            await self._record_audit(
+            await record_audit(
+                self._audit,
+                self.resource_name,
                 action="admin.resource.delete",
                 actor=user,
                 resource_id=str(item_id),
@@ -572,7 +416,9 @@ class ResourceManager(Generic[T]):
                         count += 1
 
         # Record single bulk deletion audit event for both paths
-        await self._record_audit(
+        await record_audit(
+            self._audit,
+            self.resource_name,
             action="admin.resource.bulk_delete",
             actor=user,
             resource_id="bulk",
@@ -629,3 +475,6 @@ class ResourceManager(Generic[T]):
                     count += 1
 
         return Ok(count)
+
+
+__all__ = ["ResourceManager"]

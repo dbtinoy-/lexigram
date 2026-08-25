@@ -17,6 +17,7 @@ from lexigram.contracts.ai.relay.dto import (
     ClaudeStreamEvent,
     GeminiResponse,
     OpenAIChatStreamChunk,
+    ResponsesEvent,
 )
 from lexigram.contracts.ai.relay.ir import StreamDelta
 from lexigram.contracts.ai.relay.types import RelayFormat, RelayUsage
@@ -320,3 +321,67 @@ class GeminiChecker:
                 if candidate.finish_reason:
                     return candidate.finish_reason
         return None
+
+
+class ResponsesChecker:
+    """Reads text/thinking/tools/usage/terminal state out of Responses events."""
+
+    def events(self, events: list[Any]) -> list[ResponsesEvent]:
+        assert all(isinstance(e, ResponsesEvent) for e in events)
+        return [e for e in events if isinstance(e, ResponsesEvent)]
+
+    def text(self, events: list[Any]) -> str:
+        return "".join(
+            e.delta or ""
+            for e in self.events(events)
+            if e.type == "response.output_text.delta"
+        )
+
+    def thinking(self, events: list[Any]) -> str:
+        return "".join(
+            e.delta or ""
+            for e in self.events(events)
+            if e.type == "response.reasoning_summary_text.delta"
+        )
+
+    def tool_calls(self, events: list[Any]) -> list[tuple[int, str, str, str]]:
+        items = self._final_items(events)
+        return [
+            (0, item.call_id or "", item.name or "", item.arguments or "")
+            for item in items
+            if item.type == "function_call"
+        ]
+
+    def _final_items(self, events: list[Any]) -> list[Any]:
+        completed = [e for e in self.events(events) if e.type == "response.completed"]
+        if not completed:
+            return []
+        response = completed[-1].response
+        return list(response.output) if response is not None else []
+
+    def usage(self, events: list[Any]) -> dict[str, Any] | None:
+        completed = [e for e in self.events(events) if e.type == "response.completed"]
+        if not completed:
+            return None
+        response = completed[-1].response
+        if response is None or response.usage is None:
+            return None
+        return response.usage.to_dict()
+
+    def finished(self, events: list[Any]) -> str | None:
+        completed = [e for e in self.events(events) if e.type == "response.completed"]
+        if not completed:
+            return None
+        response = completed[-1].response
+        return response.status if response is not None else None
+
+    def types(self, events: list[Any]) -> list[str]:
+        return [e.type for e in self.events(events)]
+
+
+CHECKERS: dict[RelayFormat, Any] = {
+    RelayFormat.OPENAI_CHAT: ChatChecker(),
+    RelayFormat.OPENAI_RESPONSES: ResponsesChecker(),
+    RelayFormat.CLAUDE: ClaudeChecker(),
+    RelayFormat.GEMINI: GeminiChecker(),
+}

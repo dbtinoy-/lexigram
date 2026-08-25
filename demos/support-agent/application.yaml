@@ -1,0 +1,7 @@
+web:
+  server:
+    host: 127.0.0.1
+    port: 8082
+  security:
+    csrf:
+      enabled: false # scripted agent console

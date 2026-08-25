@@ -77,14 +77,31 @@ class WebhookAdminContributor(BaseAdminContributor):
         self._subscription_store: WebhookSubscriptionStoreProtocol | None = None
         self._delivery_store: WebhookDeliveryStoreProtocol | None = None
         self._config: WebhookConfig | None = None
+        self._root_resolver: ContainerResolverProtocol | None = None
+
+    def attach_resolver(self, resolver: ContainerResolverProtocol) -> None:
+        """Attach the root boot-phase resolver for dependency resolution.
+
+        The webhook module's exports are visible in this resolver's scope,
+        whereas the admin-scoped resolver passed to :meth:`on_admin_boot`
+        cannot see them.
+
+        Args:
+            resolver: Root container resolver captured at provider boot.
+        """
+        self._root_resolver = resolver
 
     async def on_admin_boot(self, container: ContainerResolverProtocol | None) -> None:
         """Resolve dependencies from the DI container.
 
+        Prefers the root resolver attached by
+        :class:`~lexigram.webhook.di.sub_providers.admin_provider.WebhookAdminProvider`;
+        falls back to the admin-scoped one.
+
         Args:
             container: The admin-scoped container resolver.
         """
-        if container is None:
+        if container is None and self._root_resolver is None:
             return
         from lexigram.contracts.webhook.protocols import (
             WebhookDeliveryStoreProtocol,
@@ -93,11 +110,12 @@ class WebhookAdminContributor(BaseAdminContributor):
         from lexigram.webhook.config import WebhookConfig
 
         try:
-            self._subscription_store = await container.resolve(
+            resolver = self._root_resolver or container
+            self._subscription_store = await resolver.resolve(
                 WebhookSubscriptionStoreProtocol
             )
-            self._delivery_store = await container.resolve(WebhookDeliveryStoreProtocol)
-            self._config = await container.resolve(WebhookConfig)
+            self._delivery_store = await resolver.resolve(WebhookDeliveryStoreProtocol)
+            self._config = await resolver.resolve(WebhookConfig)
         except Exception:  # noqa: BLE001
             logger.warning("webhook.admin_contributor_boot_failed", exc_info=True)
 

@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from lexigram.cli.registry.health import (
     CheckResult,
     CheckStatus,
@@ -11,7 +9,6 @@ from lexigram.cli.registry.health import (
     DependenciesCheck,
     DockerCheck,
     GitCheck,
-    HealthCheck,
     HealthCheckRegistry,
     PackageManagerCheck,
     ProjectStructureCheck,
@@ -61,7 +58,9 @@ class TestPythonVersionCheck:
         mock_vi.major = 3
         mock_vi.minor = 11
         mock_vi.micro = 0
-        with patch("lexigram.cli.registry.health.sys.version_info", mock_vi):
+        with patch(
+            "lexigram.cli.registry.health_checks.python_env.sys.version_info", mock_vi
+        ):
             result = PythonVersionCheck().check()
             assert result.status is CheckStatus.PASS
 
@@ -70,7 +69,9 @@ class TestPythonVersionCheck:
         mock_vi.major = 3
         mock_vi.minor = 9
         mock_vi.micro = 0
-        with patch("lexigram.cli.registry.health.sys.version_info", mock_vi):
+        with patch(
+            "lexigram.cli.registry.health_checks.python_env.sys.version_info", mock_vi
+        ):
             result = PythonVersionCheck().check()
             assert result.status is CheckStatus.FAIL
 
@@ -83,13 +84,19 @@ class TestPythonVersionCheck:
 
 class TestPackageManagerCheck:
     def test_uv_found(self) -> None:
-        with patch("lexigram.cli.registry.health.shutil.which", return_value="/usr/bin/uv"):
+        with patch(
+            "lexigram.cli.registry.health_checks.tools.shutil.which",
+            return_value="/usr/bin/uv",
+        ):
             result = PackageManagerCheck().check()
             assert result.status is CheckStatus.PASS
             assert "uv found" in result.message
 
     def test_uv_not_found(self) -> None:
-        with patch("lexigram.cli.registry.health.shutil.which", return_value=None):
+        with patch(
+            "lexigram.cli.registry.health_checks.tools.shutil.which",
+            return_value=None,
+        ):
             result = PackageManagerCheck().check()
             assert result.status is CheckStatus.FAIL
             assert "uv not installed" in result.message
@@ -100,109 +107,173 @@ class TestPackageManagerCheck:
 
 class TestRequiredToolsCheck:
     def test_all_tools_available(self) -> None:
-        with patch("lexigram.cli.registry.health.shutil.which", return_value="/usr/bin/tool"):
+        with patch(
+            "lexigram.cli.registry.health_checks.tools.shutil.which",
+            return_value="/usr/bin/tool",
+        ):
             result = RequiredToolsCheck().check()
             assert result.status is CheckStatus.PASS
 
     def test_some_missing(self) -> None:
-        with patch("lexigram.cli.registry.health.shutil.which", side_effect=lambda x: "/bin/pytest" if x == "pytest" else None):
+        with patch(
+            "lexigram.cli.registry.health_checks.tools.shutil.which",
+            side_effect=lambda x: "/bin/pytest" if x == "pytest" else None,
+        ):
             result = RequiredToolsCheck().check()
             assert result.status is CheckStatus.WARNING
 
     def test_all_missing(self) -> None:
-        with patch("lexigram.cli.registry.health.shutil.which", return_value=None):
+        with patch(
+            "lexigram.cli.registry.health_checks.tools.shutil.which",
+            return_value=None,
+        ):
             result = RequiredToolsCheck().check()
             assert result.status is CheckStatus.FAIL
 
 
 class TestConfigFileCheck:
     def test_file_not_found(self) -> None:
-        with patch("lexigram.cli.registry.health.Path.exists", return_value=False):
+        with patch(
+            "lexigram.cli.registry.health_checks.project.Path.exists",
+            return_value=False,
+        ):
             result = ConfigFileCheck().check()
             assert result.status is CheckStatus.FAIL
 
     def test_valid_yaml(self, tmp_path: Path) -> None:
         config = tmp_path / "application.yaml"
         config.write_text("key: value\n")
-        with patch("lexigram.cli.registry.health.Path", return_value=config):
+        with patch(
+            "lexigram.cli.registry.health_checks.project.Path", return_value=config
+        ):
             result = ConfigFileCheck().check()
             assert result.status is CheckStatus.PASS
 
     def test_invalid_yaml(self, tmp_path: Path) -> None:
         config = tmp_path / "application.yaml"
         config.write_text(": invalid")
-        with patch("lexigram.cli.registry.health.Path", return_value=config):
+        with patch(
+            "lexigram.cli.registry.health_checks.project.Path", return_value=config
+        ):
             result = ConfigFileCheck().check()
             assert result.status is CheckStatus.FAIL
 
 
 class TestProjectStructureCheck:
     def test_all_exist(self) -> None:
-        with patch("lexigram.cli.registry.health.Path.exists", return_value=True):
+        with patch(
+            "lexigram.cli.registry.health_checks.project.Path.exists",
+            return_value=True,
+        ):
             result = ProjectStructureCheck().check()
             assert result.status is CheckStatus.PASS
 
     def test_some_missing(self) -> None:
-        with patch("lexigram.cli.registry.health.Path.exists", side_effect=[True, False]):
+        with patch(
+            "lexigram.cli.registry.health_checks.project.Path.exists",
+            side_effect=[True, False],
+        ):
             result = ProjectStructureCheck().check()
             assert result.status is CheckStatus.WARNING
 
 
 class TestDependenciesCheck:
     def test_no_pyproject(self) -> None:
-        with patch("lexigram.cli.registry.health.Path.exists", return_value=False):
+        with patch(
+            "lexigram.cli.registry.health_checks.project.Path.exists",
+            return_value=False,
+        ):
             result = DependenciesCheck().check()
             assert result.status is CheckStatus.FAIL
 
     def test_node_modules_exists(self) -> None:
-        with patch("lexigram.cli.registry.health.Path.exists", side_effect=[True, True]):
+        with patch(
+            "lexigram.cli.registry.health_checks.project.Path.exists",
+            side_effect=[True, True],
+        ):
             result = DependenciesCheck().check()
             assert result.status is CheckStatus.PASS
 
     def test_uv_lock_exists(self) -> None:
-        with patch("lexigram.cli.registry.health.Path.exists", side_effect=[True, False, True]):
-            with patch("lexigram.cli.registry.health.Path.glob", return_value=[]):
+        with patch(
+            "lexigram.cli.registry.health_checks.project.Path.exists",
+            side_effect=[True, False, True],
+        ):
+            with patch(
+                "lexigram.cli.registry.health_checks.project.Path.glob",
+                return_value=[],
+            ):
                 result = DependenciesCheck().check()
                 assert result.status is CheckStatus.WARNING
 
 
 class TestGitCheck:
     def test_git_not_installed(self) -> None:
-        with patch("lexigram.cli.registry.health.shutil.which", return_value=None):
+        with patch(
+            "lexigram.cli.registry.health_checks.vcs_docker.shutil.which",
+            return_value=None,
+        ):
             result = GitCheck().check()
             assert result.status is CheckStatus.SKIP
 
     def test_git_repo(self) -> None:
-        with patch("lexigram.cli.registry.health.shutil.which", return_value="/usr/bin/git"):
-            with patch("lexigram.cli.registry.health.Path.exists", return_value=True):
-                with patch("lexigram.cli.registry.health.subprocess.run") as mock_run:
+        with patch(
+            "lexigram.cli.registry.health_checks.vcs_docker.shutil.which",
+            return_value="/usr/bin/git",
+        ):
+            with patch(
+                "lexigram.cli.registry.health_checks.vcs_docker.Path.exists",
+                return_value=True,
+            ):
+                with patch(
+                    "lexigram.cli.registry.health_checks.vcs_docker.subprocess.run"
+                ) as mock_run:
                     mock_run.return_value.returncode = 0
                     result = GitCheck().check()
                     assert result.status is CheckStatus.PASS
 
     def test_no_git_dir(self) -> None:
-        with patch("lexigram.cli.registry.health.shutil.which", return_value="/usr/bin/git"):
-            with patch("lexigram.cli.registry.health.Path.exists", return_value=False):
+        with patch(
+            "lexigram.cli.registry.health_checks.vcs_docker.shutil.which",
+            return_value="/usr/bin/git",
+        ):
+            with patch(
+                "lexigram.cli.registry.health_checks.vcs_docker.Path.exists",
+                return_value=False,
+            ):
                 result = GitCheck().check()
                 assert result.status is CheckStatus.WARNING
 
 
 class TestDockerCheck:
     def test_docker_not_installed(self) -> None:
-        with patch("lexigram.cli.registry.health.shutil.which", return_value=None):
+        with patch(
+            "lexigram.cli.registry.health_checks.vcs_docker.shutil.which",
+            return_value=None,
+        ):
             result = DockerCheck().check()
             assert result.status is CheckStatus.SKIP
 
     def test_docker_available(self) -> None:
-        with patch("lexigram.cli.registry.health.shutil.which", return_value="/usr/bin/docker"):
-            with patch("lexigram.cli.registry.health.subprocess.run") as mock_run:
+        with patch(
+            "lexigram.cli.registry.health_checks.vcs_docker.shutil.which",
+            return_value="/usr/bin/docker",
+        ):
+            with patch(
+                "lexigram.cli.registry.health_checks.vcs_docker.subprocess.run"
+            ) as mock_run:
                 mock_run.return_value.returncode = 0
                 result = DockerCheck().check()
                 assert result.status is CheckStatus.PASS
 
     def test_docker_not_running(self) -> None:
-        with patch("lexigram.cli.registry.health.shutil.which", return_value="/usr/bin/docker"):
-            with patch("lexigram.cli.registry.health.subprocess.run") as mock_run:
+        with patch(
+            "lexigram.cli.registry.health_checks.vcs_docker.shutil.which",
+            return_value="/usr/bin/docker",
+        ):
+            with patch(
+                "lexigram.cli.registry.health_checks.vcs_docker.subprocess.run"
+            ) as mock_run:
                 mock_run.return_value.returncode = 1
                 result = DockerCheck().check()
                 assert result.status is CheckStatus.WARNING

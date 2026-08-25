@@ -8,14 +8,10 @@ Covers:
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Any
-from unittest.mock import MagicMock, patch
-import textwrap
-import tempfile
 import os
-
-import pytest
+from pathlib import Path
+import textwrap
+from unittest.mock import MagicMock, patch
 
 from lexigram.cli.registry.health import (
     CheckStatus,
@@ -23,7 +19,6 @@ from lexigram.cli.registry.health import (
     InstalledLexigramPackagesCheck,
     ProviderPackagesCheck,
 )
-
 
 # ---------------------------------------------------------------------------
 # InstalledLexigramPackagesCheck
@@ -46,7 +41,7 @@ class TestInstalledLexigramPackagesCheck:
             self._make_dist("unrelated-package", "99.0"),
         ]
         with patch(
-            "lexigram.cli.registry.health.distributions",
+            "lexigram.cli.registry.health_checks.deps.distributions",
             return_value=fake_dists,
         ):
             result = InstalledLexigramPackagesCheck().check()
@@ -63,7 +58,7 @@ class TestInstalledLexigramPackagesCheck:
     def test_warning_when_no_packages(self) -> None:
         """Returns WARNING when no lexigram-* packages are installed."""
         with patch(
-            "lexigram.cli.registry.health.distributions",
+            "lexigram.cli.registry.health_checks.deps.distributions",
             return_value=[self._make_dist("unrelated", "1.0")],
         ):
             result = InstalledLexigramPackagesCheck().check()
@@ -76,7 +71,7 @@ class TestInstalledLexigramPackagesCheck:
         no_name = MagicMock()
         no_name.metadata = {"Name": None, "Version": "1.0"}
         with patch(
-            "lexigram.cli.registry.health.distributions",
+            "lexigram.cli.registry.health_checks.deps.distributions",
             return_value=[no_name],
         ):
             result = InstalledLexigramPackagesCheck().check()
@@ -112,13 +107,15 @@ class TestProviderPackagesCheck:
 
     def test_pass_when_all_packages_installed(self, tmp_path: Path) -> None:
         """Returns PASS when every configured provider has its package installed."""
-        (tmp_path / "application.yaml").write_text("database:\n  dsn: postgres://localhost\n")
+        (tmp_path / "application.yaml").write_text(
+            "database:\n  dsn: postgres://localhost\n"
+        )
 
         orig_cwd = os.getcwd()
         os.chdir(tmp_path)
         try:
             with patch(
-                "lexigram.cli.registry.health.distribution",
+                "lexigram.cli.registry.health_checks.providers.distribution",
                 return_value=MagicMock(),
             ):
                 result = ProviderPackagesCheck().check()
@@ -138,7 +135,7 @@ class TestProviderPackagesCheck:
         os.chdir(tmp_path)
         try:
             with patch(
-                "lexigram.cli.registry.health.distribution",
+                "lexigram.cli.registry.health_checks.providers.distribution",
                 side_effect=PackageNotFoundError("lexigram-cache"),
             ):
                 result = ProviderPackagesCheck().check()
@@ -161,9 +158,13 @@ class TestProviderPackagesCheck:
 
         assert result.status is CheckStatus.SKIP
 
-    def test_security_section_is_not_treated_as_deleted_provider(self, tmp_path: Path) -> None:
+    def test_security_section_is_not_treated_as_deleted_provider(
+        self, tmp_path: Path
+    ) -> None:
         """Security config should not require the deleted lexigram-security package."""
-        (tmp_path / "application.yaml").write_text("security:\n  headers:\n    enabled: true\n")
+        (tmp_path / "application.yaml").write_text(
+            "security:\n  headers:\n    enabled: true\n"
+        )
 
         orig_cwd = os.getcwd()
         os.chdir(tmp_path)
@@ -288,7 +289,9 @@ class TestCrossExtensionImportCheck:
         finally:
             os.chdir(orig_cwd)
 
-        assert result.status is CheckStatus.PASS  # no violations found; bad file is gracefully skipped
+        assert (
+            result.status is CheckStatus.PASS
+        )  # no violations found; bad file is gracefully skipped
 
     def test_get_name_and_category(self) -> None:
         """Check name and category are set correctly."""

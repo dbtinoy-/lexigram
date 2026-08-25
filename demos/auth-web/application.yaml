@@ -1,0 +1,11 @@
+auth:
+  secret_key: "auth-web-demo-secret-key-0123456789abcd"
+  token:
+    secret_key: "auth-web-demo-secret-key-0123456789abcd"
+web:
+  server:
+    host: 127.0.0.1
+    port: 8081
+  security:
+    csrf:
+      enabled: false # plain JSON posts over local http

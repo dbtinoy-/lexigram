@@ -2,13 +2,9 @@
 
 from __future__ import annotations
 
-import asyncio
-from contextlib import asynccontextmanager
-import inspect
 from typing import (
     TYPE_CHECKING,
     Any,
-    Self,
     TypeVar,
     cast,
     overload,
@@ -18,8 +14,9 @@ from lexigram.contracts.core.di import (
     ContainerRegistrarProtocol,
     ContainerResolverProtocol,
 )
-from lexigram.contracts.core.scopes import ServiceScope
 from lexigram.contracts.exceptions.provider import ModuleVisibilityError
+from lexigram.di.container.container_introspection import ContainerIntrospectionMixin
+from lexigram.di.container.container_runtime import ContainerRuntimeMixin
 from lexigram.di.container.registrar import ContainerRegistrarImpl
 from lexigram.di.container.resolver import ContainerResolverImpl
 from lexigram.di.container.scope import Scope
@@ -37,10 +34,6 @@ from lexigram.di.resolution.type_hints import TypeHintResolverImpl
 from lexigram.logging import get_logger
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator, Awaitable, Callable
-    import types
-
-    from lexigram.di.extensions.strategies import ResolutionStrategy
     from lexigram.di.resolution.descriptor import ServiceDescriptor
     from lexigram.di.resolution.type_hints import BoundedCache
     from lexigram.di.types import ServiceFactory
@@ -50,7 +43,12 @@ T = TypeVar("T")
 logger = get_logger(__name__)
 
 
-class Container(ContainerRegistrarProtocol, ContainerResolverProtocol):
+class Container(
+    ContainerRuntimeMixin,
+    ContainerIntrospectionMixin,
+    ContainerRegistrarProtocol,
+    ContainerResolverProtocol,
+):
     """Dependency injection container.
 
     Manages service registration, resolution, and lifecycle.
@@ -137,6 +135,83 @@ class Container(ContainerRegistrarProtocol, ContainerResolverProtocol):
         """Internal: Get the service resolver. For Scope and internal use only."""
         return self.__service_resolver
 
+    def _get_descriptor(self, service_type: type) -> ServiceDescriptor | None:
+        """Internal: Get descriptor for a service type. For Scope use only."""
+        return self._registry.get(service_type)
+
+    async def _create_with_injection(
+        self,
+        implementation: type,
+        service_type: type,
+    ) -> Any:
+        """Internal: Create instance with DI. For Scope use only."""
+        return await self.__service_resolver.create_with_injection(
+            implementation, service_type
+        )
+
+    # -- Registration ------------------------------------------------------
+
+    # -- Query ---
+    # -- Query -------------------------------------------------------------
+
+    def has(self, service_type: object) -> bool:
+        """Check if a service is explicitly registered."""
+        if self._registry.has(service_type):
+            return True
+        return self._parent.has(service_type) if self._parent else False
+
+    @overload
+    async def resolve_optional(self, service_type: type[T]) -> T | None: ...
+
+    @overload
+    async def resolve_optional(self, service_type: Any) -> Any | None: ...
+
+    async def resolve_optional(self, service_type: Any) -> Any | None:
+        """Resolve a service, returning None if not registered.
+
+        Provides graceful handling for optional dependencies without
+        requiring callers to catch exceptions.
+
+        Args:
+            service_type: The type to resolve.
+
+        Returns:
+            The resolved instance or None if the service is not registered.
+        """
+        if self.has(service_type):
+            return await self.resolve(service_type)
+        return None
+
+    @overload
+    async def resolve_all(self, service_type: type[T]) -> list[T]: ...
+
+    @overload
+    async def resolve_all(self, service_type: Any) -> list[Any]: ...
+
+    async def resolve_all(self, service_type: Any) -> list[Any]:
+        """Resolve all registered implementations that are subtypes of a service type.
+
+        Args:
+            service_type: The base type whose implementations to resolve.
+
+        Returns:
+            A list of resolved instances for matching registrations.
+        """
+        results: list[Any] = []
+        for registered_type in (d.service_type for d in self._registry.all()):
+            if isinstance(registered_type, type) and issubclass(
+                registered_type,
+                service_type,
+            ):
+                results.append(await self.resolve(registered_type))
+        if self._parent:
+            results.extend(await self._parent.resolve_all(service_type))
+        return results
+
+    def is_singleton(self, service_type: object) -> bool:
+        """Check if a service is registered as a singleton."""
+        return self._registry.is_singleton(service_type)
+
     def create_invoker(self) -> FunctionInvoker:
         """Create a :class:`~lexigram.di.resolution.invoker.FunctionInvoker` bound to this container.
 
@@ -154,20 +229,6 @@ class Container(ContainerRegistrarProtocol, ContainerResolverProtocol):
             result = await invoker.call(my_function)
         """
         return FunctionInvoker(self.__service_resolver, self._hints_cache)  # type: ignore[arg-type]
-
-    def _get_descriptor(self, service_type: type) -> ServiceDescriptor | None:
-        """Internal: Get descriptor for a service type. For Scope use only."""
-        return self._registry.get(service_type)
-
-    async def _create_with_injection(
-        self,
-        implementation: type,
-        service_type: type,
-    ) -> Any:
-        """Internal: Create instance with DI. For Scope use only."""
-        return await self.__service_resolver.create_with_injection(
-            implementation, service_type
-        )
 
     # -- Registration ------------------------------------------------------
 
@@ -242,40 +303,6 @@ class Container(ContainerRegistrarProtocol, ContainerResolverProtocol):
     ) -> None:
         """Register a scoped service (instance per scope)."""
         self._registrar.scoped(service_type, factory, validate=validate, name=name)
-
-    def bind(self, service_type: type[T], instance: T) -> None:
-        """Bind a pre-built singleton instance, overwriting any existing binding.
-
-        Unlike ``singleton()``, this works on frozen containers, making it
-        suitable for updating singleton instances during the boot phase
-        (e.g. wrapping a store with a tenancy decorator).
-
-        The service *must* already be registered as a singleton.
-
-        Args:
-            service_type: The registered service type to rebind.
-            instance: The replacement singleton instance.
-        """
-        self._registrar.bind(service_type, instance)
-
-    def override(self, service_type: type[T], instance: T) -> None:
-        """Replace a service registration for testing purposes.
-
-        This method is restricted to containers created with ``testing_mode=True``.
-        It works even on frozen containers, intended for test scenarios where
-        you need to swap a real service with a fake or mock.
-
-        Args:
-            service_type: The service type to override.
-            instance: The replacement instance.
-
-        Raises:
-            ContainerError: If the container is not in testing mode.
-            ContainerError: If the service is not registered.
-        """
-        self._registrar.override(service_type, instance)
-
-    # -- Lifecycle control -------------------------------------------------
 
     @property
     def is_frozen(self) -> bool:
@@ -434,235 +461,7 @@ class Container(ContainerRegistrarProtocol, ContainerResolverProtocol):
 
     # -- Validation ----------------------------------------------------------
 
-    def validate(self) -> list[str]:
-        """Validate the container configuration.
-
-        Checks:
-        - All registered services have resolvable dependencies (missing dependencies)
-        - No circular dependencies across the entire graph
-        - No scope violations (singleton depending on scoped/transient)
-
-        Returns:
-            List of validation issues (empty if valid).
-        """
-        return self._validator.validate()
-
-    def validate_no_orphans(self) -> list[OrphanedRegistration]:
-        """Find registrations that no other service depends on.
-
-        This is a development-time validator to identify dead code
-        services that are registered but never used.
-
-        Returns:
-            List of potentially orphaned registrations.
-        """
-        return self._validator.validate_no_orphans()
-
-    # -- Query -------------------------------------------------------------
-
-    def has(self, service_type: object) -> bool:
-        """Check if a service is explicitly registered."""
-        if self._registry.has(service_type):
-            return True
-        return self._parent.has(service_type) if self._parent else False
-
-    @overload
-    async def resolve_optional(self, service_type: type[T]) -> T | None: ...
-
-    @overload
-    async def resolve_optional(self, service_type: Any) -> Any | None: ...
-
-    async def resolve_optional(self, service_type: Any) -> Any | None:
-        """Resolve a service, returning None if not registered.
-
-        Provides graceful handling for optional dependencies without
-        requiring callers to catch exceptions.
-
-        Args:
-            service_type: The type to resolve.
-
-        Returns:
-            The resolved instance or None if the service is not registered.
-        """
-        if self.has(service_type):
-            return await self.resolve(service_type)
-        return None
-
-    @overload
-    async def resolve_all(self, service_type: type[T]) -> list[T]: ...
-
-    @overload
-    async def resolve_all(self, service_type: Any) -> list[Any]: ...
-
-    async def resolve_all(self, service_type: Any) -> list[Any]:
-        """Resolve all registered implementations that are subtypes of a service type.
-
-        Args:
-            service_type: The base type whose implementations to resolve.
-
-        Returns:
-            A list of resolved instances for matching registrations.
-        """
-        results: list[Any] = []
-        for registered_type in (d.service_type for d in self._registry.all()):
-            if isinstance(registered_type, type) and issubclass(
-                registered_type,
-                service_type,
-            ):
-                results.append(await self.resolve(registered_type))
-        if self._parent:
-            results.extend(await self._parent.resolve_all(service_type))
-        return results
-
-    def is_singleton(self, service_type: object) -> bool:
-        """Check if a service is registered as a singleton."""
-        return self._registry.is_singleton(service_type)
-
-    def _registered_services(self) -> list[str]:
-        """Get all registered service names."""
-        services = {
-            getattr(d.service_type, "__name__", str(d.service_type))
-            for d in self._registry.all()
-        }
-        if self._parent:
-            services.update(self._parent._registered_services())
-        return sorted(services)
-
-    # -- Diagnostics -------------------------------------------------------
-
-    def dump_registrations(self) -> list[dict[str, Any]]:
-        """Return a JSON-serialisable snapshot of all container registrations."""
-        return self._diagnostics.dump_registrations()
-
-    def dump_dependency_graph(self) -> dict[str, list[str]]:
-        """Return an adjacency map of service → direct dependency names."""
-        return self._diagnostics.dump_dependency_graph()
-
-    def log_registrations(self) -> None:
-        """Log a human-readable table of all container registrations."""
-        self._diagnostics.log_registrations()
-
     # -- Scoping -----------------------------------------------------------
-
-    def create_scope(self) -> Scope:
-        """Create a request-scoped resolution context."""
-        return Scope(self)
-
-    @asynccontextmanager
-    async def scope(self) -> AsyncIterator[Scope]:
-        """Async context manager for a request-scoped container.
-
-        Creates a new :class:`~lexigram.di.container.scope.Scope` and
-        disposes it automatically when the context exits.
-
-        Usage::
-
-            async with container.scope() as scoped:
-                service = await scoped.resolve(UserService)
-
-        Yields:
-            A fresh :class:`~lexigram.di.container.scope.Scope` instance.
-        """
-        s = self.create_scope()
-        try:
-            yield s
-        finally:
-            await s.dispose()
-
-    # -- Function calling with DI (Framework internal use only) ------------
-
-    async def _call(
-        self,
-        func: Callable[..., Awaitable[T] | T],
-        *args: Any,
-        strategies: list[ResolutionStrategy] | None = None,
-        **kwargs: Any,
-    ) -> T:
-        """Call a function with automatic dependency injection."""
-        return cast(
-            "T",
-            await self._invoker.call(
-                func,
-                *args,
-                strategies=strategies,
-                **kwargs,
-            ),
-        )
-
-    async def call(
-        self,
-        func: Callable[..., Awaitable[T] | T],
-        *args: Any,
-        **kwargs: Any,
-    ) -> T:
-        """Call a function with dependency injection (Protocol implementation)."""
-        return await self._call(func, *args, **kwargs)
-
-    async def dispose(self) -> None:
-        """Dispose the container and all internal singletons.
-
-        Iterates through all registered singletons and disposes of those
-        that implement AsyncDisposableProtocol or have a close/aclose method.
-        """
-        logger.debug("container.dispose_started")
-        errors: list[Exception] = []
-
-        for descriptor in reversed(list(self._registry.all())):
-            if (
-                descriptor.scope == ServiceScope.SINGLETON
-                and descriptor.instance is not None
-            ):
-                instance = descriptor.instance
-                # The container registers itself as a singleton (ContainerResolverProtocol).
-                # Calling dispose() on self would recurse infinitely — skip it.
-                if instance is self:
-                    continue
-                try:
-                    if hasattr(instance, "dispose"):
-                        result = instance.dispose()
-                        if inspect.isawaitable(result):
-                            await result
-                    elif hasattr(instance, "close"):
-                        result = instance.close()
-                        if inspect.isawaitable(result):
-                            await result
-                    elif hasattr(instance, "aclose"):
-                        await instance.aclose()
-                except asyncio.CancelledError:
-                    raise
-                except (
-                    RuntimeError,
-                    OSError,
-                    AttributeError,
-                    ValueError,
-                    TypeError,
-                ) as err:
-                    logger.warning(
-                        "container.dispose_error",
-                        type=type(instance).__name__,
-                        error=str(err),
-                    )
-                    errors.append(err)
-
-        self._registry.clear()
-        self._hints_cache.clear()
-
-        if errors:
-            raise ExceptionGroup("Container dispose errors", errors)
-
-    async def __aenter__(self) -> Self:
-        """Enter async context manager - returns self."""
-        return self
-
-    async def __aexit__(
-        self,
-        exc_type: type[BaseException] | None,
-        exc_val: BaseException | None,
-        exc_tb: types.TracebackType | None,
-    ) -> None:
-        """Exit async context manager - disposes the container."""
-        await self.dispose()
-        logger.debug("container.dispose_completed")
 
 
 __all__ = ["Container", "OrphanedRegistration", "Scope"]

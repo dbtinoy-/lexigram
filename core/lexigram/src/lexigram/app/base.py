@@ -12,6 +12,7 @@ from lexigram.app.exceptions import AppShutdownError
 from lexigram.app.invoker import Invoker
 from lexigram.app.lifecycle import ApplicationLifecycle
 from lexigram.app.pipeline import MiddlewarePipeline
+from lexigram.app.secrets import SecretsMixin
 from lexigram.config import LexigramConfig
 from lexigram.contracts.core import MiddlewarePipelineProtocol, MiddlewareProtocol
 from lexigram.contracts.core.config import ConfigProtocol
@@ -46,7 +47,7 @@ class AppState(StrEnum):
     STOPPED = "stopped"
 
 
-class Application:
+class Application(SecretsMixin):
     """The composition root.
 
     Usage::
@@ -143,82 +144,6 @@ class Application:
         return self._orchestrator.providers
 
     # -- Secrets registration ----------------------------------------------
-
-    def register_secrets(
-        self,
-        secrets: dict[str, str],
-        *,
-        policy: Any | None = None,
-    ) -> None:
-        """Register secrets to be validated before providers boot.
-
-        The framework validates these secrets during :meth:`start`, before any
-        provider's ``register()`` is called.  The app declares *what* to
-        validate; the framework supplies the logic via
-        :class:`~lexigram.config.secrets.SecretsValidator`.
-
-        Args:
-            secrets: Mapping of secret name → value.  Names should be
-                descriptive (e.g. ``"JWT_SECRET"``), as they appear in
-                error messages.
-            policy: Optional :class:`~lexigram.config.secrets.SecretsPolicy`
-                that controls strictness.  When ``None`` a default policy is
-                derived from the active :class:`~lexigram.contracts.core.config.Environment`.
-
-        Example::
-
-            app.register_secrets(
-                {
-                    "JWT_SECRET": os.environ["JWT_SECRET"],
-                    "OAUTH_CLIENT_SECRET": os.environ["OAUTH_CLIENT_SECRET"],
-                },
-            )
-        """
-        self._registered_secrets.update(secrets)
-        if policy is not None:
-            self._secrets_policy = policy
-
-    def register_secrets_from_store(
-        self,
-        store: Any,
-        secret_names: list[str],
-        *,
-        policy: Any | None = None,
-    ) -> None:
-        """Register secrets sourced from a SecretStore to be validated before providers boot.
-
-        The framework validates these secrets during :meth:`start`, before any
-        provider's ``register()`` is called. Secrets are retrieved from the store
-        at validation time and validated using the same
-        :class:`~lexigram.config.secrets.SecretsValidator` logic as literal secrets.
-
-        Args:
-            store: An implementation of
-                :class:`~lexigram.contracts.security.secrets.SecretStoreProtocol`.
-            secret_names: List of secret names to retrieve from the store.
-                Names should be descriptive (e.g. ``"JWT_SECRET"``), as they
-                appear in error messages.
-            policy: Optional :class:`~lexigram.config.secrets.SecretsPolicy`
-                that controls strictness. When ``None`` a default policy is
-                derived from the active :class:`~lexigram.contracts.core.config.Environment`.
-
-        Raises:
-            SecretNotFoundError: In strict mode, if any secret is not found in
-                the store. In non-strict mode, missing secrets are logged as
-                warnings and boot continues.
-
-        Example::
-
-            from lexigram.security.secrets import EnvSecretStore
-
-            app.register_secrets_from_store(
-                EnvSecretStore(),
-                ["NEXTAUTH_SECRET", "DATABASE_PASSWORD"],
-            )
-        """
-        self._secrets_from_stores.append((store, secret_names))
-        if policy is not None:
-            self._secrets_policy = policy
 
     # -- Middleware registration -------------------------------------------
 
@@ -435,44 +360,6 @@ class Application:
             self._state = AppState.STOPPED
             raise
 
-    def _validate_secrets(self) -> None:
-        """Run boot-time secrets validation.
-
-        Uses the policy stored on this instance (or derives a default from the
-        active environment) to validate all secrets registered via
-        :meth:`register_secrets` and :meth:`register_secrets_from_store`.
-        """
-        from lexigram.config.secrets import SecretsPolicy, SecretsValidator
-        from lexigram.contracts.security import SecretNotFoundError
-
-        if self._secrets_policy is not None:
-            policy = self._secrets_policy
-        else:
-            policy = SecretsPolicy.for_environment(self._config.env)
-
-        # Collect all secrets (literals + from stores)
-        all_secrets: dict[str, str] = dict(self._registered_secrets)
-
-        # Pull secrets from stores
-        for store, secret_names in self._secrets_from_stores:
-            for name in secret_names:
-                try:
-                    value = store.get_secret(name)
-                    all_secrets[name] = value
-                except SecretNotFoundError:
-                    # Treat missing secrets from store like missing literal secrets
-                    all_secrets[name] = ""
-
-        validator = SecretsValidator(policy)
-        total_count = len(all_secrets)
-        self._logger.info(
-            "application.secrets_validation",
-            name=self.name,
-            secret_count=total_count,
-            strict=policy.strict,
-        )
-        validator.validate(all_secrets)
-
     async def stop(self) -> None:
         """Shutdown all providers in reverse order.
 
@@ -601,24 +488,10 @@ class Application:
         await handler(scope, receive, send)
 
     async def _handle_lifespan(self, receive: Any, send: Any) -> None:
-        """Handle ASGI lifespan protocol (startup/shutdown events)."""
-        message = await receive()
-        if message["type"] == "lifespan.startup":
-            try:
-                if self._state == AppState.CREATED:
-                    await self.start()
-                await send({"type": "lifespan.startup.complete"})
-            except BaseException:
-                await send({"type": "lifespan.startup.failed"})
-                raise
-        message = await receive()
-        if message["type"] == "lifespan.shutdown":
-            try:
-                await self.stop()
-                await send({"type": "lifespan.shutdown.complete"})
-            except BaseException:
-                await send({"type": "lifespan.shutdown.failed"})
-                raise
+        """Delegate ASGI lifespan handling."""
+        from lexigram.app.asgi_lifespan import handle_lifespan
+
+        await handle_lifespan(self, receive, send)
 
     def __repr__(self) -> str:
         return f"<Application name={self.name!r} state={self._state.value}>"

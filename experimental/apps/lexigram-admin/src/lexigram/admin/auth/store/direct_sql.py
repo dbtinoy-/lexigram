@@ -1,5 +1,10 @@
 """
 Direct SQL admin user store implementation.
+
+SQL statements and row parsing live in the sibling query-builder modules
+(:mod:`lexigram.admin.auth.store.user_sql`,
+:mod:`lexigram.admin.auth.store.user_rows`); this store owns schema
+bootstrap, transaction flow, and error handling.
 """
 
 from __future__ import annotations
@@ -8,6 +13,22 @@ from typing import Any
 import uuid
 
 from lexigram.admin.auth.errors import SetupAlreadyCompletedError
+from lexigram.admin.auth.store.user_rows import (
+    CreatedUser,
+    first_row,
+    row_to_user,
+)
+from lexigram.admin.auth.store.user_sql import (
+    claim_first_admin_params,
+    claim_first_admin_sql,
+    create_table_sql,
+    insert_user_payload,
+    insert_user_sql,
+    table_exists_sql,
+    update_user_payload,
+    upsert_user_params,
+    upsert_user_sql,
+)
 from lexigram.admin.sql_dialect import is_postgres
 from lexigram.auth import PasswordHasher
 from lexigram.contracts.auth import PasswordHasherProtocol
@@ -15,68 +36,8 @@ from lexigram.contracts.data import DatabaseProviderProtocol
 from lexigram.di.decorators import inject
 from lexigram.logging import get_logger
 from lexigram.result import Err, Ok, Result
-from lexigram.serialization import dumps_str
-from lexigram.serialization import loads as json_loads
 
 logger = get_logger(__name__)
-
-
-def _parse_list(value: Any) -> list[str]:
-    """Normalize a roles/permissions column value into a string list.
-
-    Handles real lists (Postgres JSONB arrays), Postgres array literals
-    (``"{admin,editor}"``), and JSON text (SQLite TEXT columns).
-
-    Args:
-        value: Raw column value.
-
-    Returns:
-        List of string entries; empty when the value is ``None`` or empty.
-    """
-    if value is None:
-        return []
-    if isinstance(value, list):
-        return [str(v) for v in value]
-    text = str(value).strip()
-    if text.startswith("{") and text.endswith("}"):
-        inner = text[1:-1].strip()
-        return [part.strip() for part in inner.split(",")] if inner else []
-    if text.startswith("[") and text.endswith("]"):
-        try:
-            parsed = json_loads(text)
-        except ValueError:
-            return []
-        return [str(v) for v in parsed] if isinstance(parsed, list) else []
-    return []
-
-
-def _row_to_user(row: dict[str, Any]) -> Any:
-    """Build a mutable user record object from an ``admin_users`` row."""
-
-    class _UserObj:
-        def __init__(self, row: dict[str, Any]) -> None:
-            self.user_id = str(row.get("id") or row.get("user_id"))
-            self.name = row.get("name")
-            self.email = row.get("email")
-            self.roles = _parse_list(row.get("roles"))
-            self.permissions = _parse_list(row.get("permissions"))
-            self.hashed_password = row.get("hashed_password")
-            self.is_active = row.get("is_active")
-
-        def record_login(self) -> Any:
-            """Record login - no-op for admin users"""
-
-    return _UserObj(row)
-
-
-class _CreatedUser:
-    """Lightweight created-user record returned by claim_first_admin."""
-
-    def __init__(self, uid: str, name: str, email: str) -> None:
-        self.user_id = uid
-        self.name = name
-        self.username = name
-        self.email = email
 
 
 @inject
@@ -108,16 +69,18 @@ class DirectSQLAdminUserStore:
             exists = False
 
             if db_type.lower() in ("postgres", "postgresql"):
-                check_sql = "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'admin_users')"
-                result = await self.db_provider.execute_query(check_sql, [])
+                result = await self.db_provider.execute_query(
+                    table_exists_sql(db_type), []
+                )
                 if hasattr(result, "rows") and result.rows:
                     exists = result.rows[0].get("exists", False)
                 elif isinstance(result, list) and result:
                     exists = result[0].get("exists", False)
             else:
                 # SQLite fallback
-                check_sql = "SELECT name FROM sqlite_master WHERE type='table' AND name='admin_users'"
-                result = await self.db_provider.execute_query(check_sql, [])
+                result = await self.db_provider.execute_query(
+                    table_exists_sql(db_type), []
+                )
                 # Direct check if result has any rows
                 if hasattr(result, "rows"):
                     exists = len(result.rows) > 0
@@ -130,34 +93,7 @@ class DirectSQLAdminUserStore:
 
             if not exists:
                 logger.info("Table 'admin_users' not found; creating it...")
-                # Note: UUID in SQLite is TEXT, JSONB is TEXT
-                sql = """
-                    CREATE TABLE admin_users (
-                        id VARCHAR(255) PRIMARY KEY,
-                        name VARCHAR(255) NOT NULL,
-                        email VARCHAR(255) UNIQUE NOT NULL,
-                        hashed_password TEXT,
-                        roles TEXT,
-                        permissions TEXT,
-                        is_active BOOLEAN DEFAULT true,
-                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                    )
-                """
-                if db_type.lower() in ("postgres", "postgresql"):
-                    sql = """
-                        CREATE TABLE admin_users (
-                            id VARCHAR(255) PRIMARY KEY,
-                            name VARCHAR(255) NOT NULL,
-                            email VARCHAR(255) UNIQUE NOT NULL,
-                            hashed_password TEXT,
-                            roles JSONB,
-                            permissions JSONB,
-                            is_active BOOLEAN DEFAULT true,
-                            created_at TIMESTAMPTZ DEFAULT NOW(),
-                            updated_at TIMESTAMPTZ DEFAULT NOW()
-                        )
-                    """
+                sql = create_table_sql(db_type)
 
                 await self.db_provider.execute(sql, [])
                 logger.info("✅ admin_users table created successfully")
@@ -187,7 +123,7 @@ class DirectSQLAdminUserStore:
             rows = result
         elif isinstance(result, dict):
             rows = [result]
-        return [_row_to_user(row) for row in rows]
+        return [row_to_user(row) for row in rows]
 
     async def get_admin_count(self) -> int:
         """Count total admin users."""
@@ -217,42 +153,24 @@ class DirectSQLAdminUserStore:
         admin_id = str(uuid.uuid4())
         # SQLite cannot bind Python lists — store roles/permissions as JSON text.
         serialize_lists = not is_postgres(self.db_provider)
-        payload = {
-            "id": admin_id,
-            "name": name,
-            "email": email,
-            "hashed_password": hashed_password,
-            "roles": dumps_str(roles or []) if serialize_lists else roles or [],
-            "permissions": (
-                dumps_str(permissions or []) if serialize_lists else permissions or []
-            ),
-            "is_active": True,
-        }
+        payload = insert_user_payload(
+            admin_id,
+            name,
+            email,
+            hashed_password,
+            roles,
+            permissions,
+            serialize_lists=serialize_lists,
+        )
 
-        # Attempt an atomic upsert when running against Postgres to avoid races
         db_type = getattr(self.db_provider, "database_type", "") or ""
+        # Attempt an atomic upsert when running against Postgres to avoid races
         if db_type.lower() in ("postgres", "postgresql"):
             # Use RETURNING to fetch created/updated row atomically.
-            # Explicit ::jsonb casts are required because asyncpg cannot
-            # infer the column type for unparameterised JSONB columns
-            # (DataError: expected str, got list).
-            sql = (
-                "INSERT INTO admin_users (id, name, email, hashed_password, roles, permissions, is_active) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?) "
-                "ON CONFLICT (email) DO UPDATE SET "
-                "name = EXCLUDED.name, hashed_password = EXCLUDED.hashed_password, "
-                "roles = EXCLUDED.roles, permissions = EXCLUDED.permissions, is_active = EXCLUDED.is_active, updated_at = NOW() "
-                "RETURNING id, name, email"
+            sql = upsert_user_sql()
+            params = upsert_user_params(
+                admin_id, name, email, hashed_password, roles, permissions
             )
-            params = [
-                admin_id,
-                name,
-                email,
-                hashed_password,
-                roles or [],
-                permissions or [],
-                True,
-            ]
             try:
                 result = await self.db_provider.execute(sql, params)
                 # db_provider.execute() returns a QueryResult object
@@ -270,16 +188,8 @@ class DirectSQLAdminUserStore:
                     row = result
 
                 if row:
-
-                    class _CreatedUser:
-                        def __init__(self, uid: str, name: str, email: str) -> None:
-                            self.user_id = uid
-                            self.name = name
-                            self.username = name
-                            self.email = email
-
                     logger.info("Created or updated admin user %s via upsert", name)
-                    return _CreatedUser(
+                    return CreatedUser(
                         str(row.get("id")),
                         str(row.get("name") or ""),
                         str(row.get("email") or ""),
@@ -294,22 +204,11 @@ class DirectSQLAdminUserStore:
         # falling back to execute_insert for other databases.
         try:
             if db_type.lower() in ("postgres", "postgresql"):
-                # Use explicit ::jsonb casts for Postgres
-                fallback_sql = (
-                    "INSERT INTO admin_users (id, name, email, hashed_password, roles, permissions, is_active) "
-                    "VALUES (?, ?, ?, ?, ?, ?, ?)"
-                )
-                fallback_params = [
-                    admin_id,
-                    name,
-                    email,
-                    hashed_password,
-                    roles or [],
-                    permissions or [],
-                    True,
-                ]
                 fallback_result = await self.db_provider.execute(
-                    fallback_sql, fallback_params
+                    insert_user_sql(),
+                    upsert_user_params(
+                        admin_id, name, email, hashed_password, roles, permissions
+                    ),
                 )
                 if hasattr(fallback_result, "success") and not fallback_result.success:
                     raise RuntimeError(
@@ -318,16 +217,8 @@ class DirectSQLAdminUserStore:
             else:
                 await self.db_provider.execute_insert("admin_users", payload)
 
-            # Return lightweight created object similar shape used by adapter
-            class _CreatedUser:  # type: ignore[no-redef]
-                def __init__(self, uid: str, name: str, email: str) -> None:
-                    self.user_id = uid
-                    self.name = name
-                    self.username = name
-                    self.email = email
-
             logger.info("Created admin user %s via AdminUserStore", name)
-            return _CreatedUser(admin_id, name, email)
+            return CreatedUser(admin_id, name, email)
         except Exception as e:  # noqa: BLE001 — duplicate-key detection requires inspecting the exception type from any DB driver
             # Handle duplicate-key errors by resolving existing user and updating if needed
             err_str = str(e).lower()
@@ -416,7 +307,7 @@ class DirectSQLAdminUserStore:
             roles: Role strings for the new account.
 
         Returns:
-            Ok(_CreatedUser) when this call inserted the first admin account;
+            Ok(CreatedUser) when this call inserted the first admin account;
             ``Err(SetupAlreadyCompletedError)`` when the table already holds
             an admin account and nothing was inserted.
         """
@@ -424,30 +315,15 @@ class DirectSQLAdminUserStore:
         admin_id = str(uuid.uuid4())
         serialize_lists = not is_postgres(self.db_provider)
 
-        if serialize_lists:
-            sql = (
-                "INSERT INTO admin_users "
-                "(id, name, email, hashed_password, roles, permissions, is_active) "
-                "SELECT ?, ?, ?, ?, ?, ?, ? "
-                "WHERE NOT EXISTS (SELECT 1 FROM admin_users)"
-            )
-            params: list[Any] = [
-                admin_id,
-                name,
-                email,
-                hashed_password,
-                dumps_str(roles),
-                "[]",
-                True,
-            ]
-        else:
-            sql = (
-                "INSERT INTO admin_users "
-                "(id, name, email, hashed_password, roles, permissions, is_active) "
-                "SELECT ?, ?, ?, ?, roles::jsonb, permissions::jsonb, ? "
-                "WHERE NOT EXISTS (SELECT 1 FROM admin_users)"
-            )
-            params = [admin_id, name, email, hashed_password, roles, [], True]
+        sql = claim_first_admin_sql(serialize_lists=serialize_lists)
+        params = claim_first_admin_params(
+            admin_id,
+            name,
+            email,
+            hashed_password,
+            roles,
+            serialize_lists=serialize_lists,
+        )
 
         result = await self.db_provider.execute(sql, params)
         if hasattr(result, "success") and not result.success:
@@ -472,20 +348,16 @@ class DirectSQLAdminUserStore:
 
         if row:
             return Ok(
-                _CreatedUser(
+                CreatedUser(
                     str(row.get("id")),
                     str(row.get("name") or ""),
                     str(row.get("email") or ""),
                 )
             )
-        return Ok(_CreatedUser(admin_id, name, email))
+        return Ok(CreatedUser(admin_id, name, email))
 
-    # Also need helper for email lookup if we use it in logic
     async def get_user_by_email(self, email: str) -> Any | None:
         await self.ensure_schema()
-        from lexigram.logging import get_logger
-
-        logger = get_logger(__name__)
 
         sql = "SELECT * FROM admin_users WHERE email = ?"
         result = await self.db_provider.execute_query(sql, [email])
@@ -495,16 +367,7 @@ class DirectSQLAdminUserStore:
             result,
         )
 
-        row = None
-        if hasattr(result, "rows") and result.rows:
-            row = result.rows[0]
-        elif hasattr(result, "fetchone"):
-            row = result.fetchone()
-        elif isinstance(result, dict):
-            row = result
-        elif isinstance(result, list) and result:
-            row = result[0] if result else None
-
+        row = first_row(result)
         logger.debug("Parsed row: %s", row)
 
         if not row:
@@ -518,25 +381,14 @@ class DirectSQLAdminUserStore:
             bool(row.get("hashed_password")),
         )
 
-        return _row_to_user(row)
+        return row_to_user(row)
 
     async def get_user_by_id(self, user_id: str) -> Any | None:
         await self.ensure_schema()
-        from lexigram.logging import get_logger
-
-        logger = get_logger(__name__)
 
         sql = "SELECT * FROM admin_users WHERE id = ?"
         result = await self.db_provider.execute_query(sql, [user_id])
-        row = None
-        if hasattr(result, "rows") and result.rows:
-            row = result.rows[0]
-        elif hasattr(result, "fetchone"):
-            row = result.fetchone()
-        elif isinstance(result, dict):
-            row = result
-        elif isinstance(result, list) and result:
-            row = result[0]
+        row = first_row(result)
 
         if not row:
             logger.debug("No user found with id: %s", user_id)
@@ -548,31 +400,15 @@ class DirectSQLAdminUserStore:
             row.get("is_active"),
         )
 
-        return _row_to_user(row)
+        return row_to_user(row)
 
     async def update_user(self, user: Any) -> None:
         await self.ensure_schema()
         # SQLite cannot bind Python lists — store roles/permissions as JSON text.
         serialize_lists = not is_postgres(self.db_provider)
-        payload = {
-            "name": user.name,
-            "email": user.email,
-            "hashed_password": getattr(user, "hashed_password", None),
-            "roles": (
-                dumps_str(getattr(user, "roles", []))
-                if serialize_lists
-                else getattr(user, "roles", [])
-            ),
-            "permissions": (
-                dumps_str(getattr(user, "permissions", []))
-                if serialize_lists
-                else getattr(user, "permissions", [])
-            ),
-            "is_active": getattr(user, "is_active", True),
-        }
         await self.db_provider.execute_update(
             "admin_users",
-            payload,
+            update_user_payload(user, serialize_lists=serialize_lists),
             "id = ?",
             [user.user_id],
         )
@@ -613,3 +449,6 @@ class DirectSQLAdminUserStore:
     async def get_by_id(self, admin_id: str) -> Any | None:
         """Alias for get_user_by_id — used by AdminAuthMiddleware."""
         return await self.get_user_by_id(admin_id)
+
+
+__all__ = ["DirectSQLAdminUserStore"]

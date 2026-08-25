@@ -1,399 +1,94 @@
-from __future__ import annotations
-
 """Field rendering for admin resources."""
 
-from typing import Any, Protocol
+from __future__ import annotations
+
+from typing import Any
 
 from starlette.responses import HTMLResponse
 
 from lexigram.admin.config import AdminConfig
-from lexigram.admin.schema import (
-    BelongsToField,
-    BooleanField,
-    ColorField,
-    DateField,
-    DateTimeField,
-    EmailField,
-    HasManyField,
-    JsonField,
-    MorphField,
-    MultiSelectField,
-    NumberField,
-    PasswordField,
-    SchemaField,
-    SelectField,
-    TagsField,
-    TextAreaField,
-    TextField,
+from lexigram.admin.resources.field_renderers_common import (
+    FieldRendererProtocol as FieldRendererProtocol,
 )
+from lexigram.admin.resources.field_renderers_datetime import (
+    DateFieldRenderer as DateFieldRenderer,
+)
+from lexigram.admin.resources.field_renderers_datetime import (
+    DateTimeFieldRenderer as DateTimeFieldRenderer,
+)
+from lexigram.admin.resources.field_renderers_number import (
+    BooleanFieldRenderer as BooleanFieldRenderer,
+)
+from lexigram.admin.resources.field_renderers_number import (
+    NumberFieldRenderer as NumberFieldRenderer,
+)
+from lexigram.admin.resources.field_renderers_relations import (
+    BelongsToFieldRenderer as BelongsToFieldRenderer,
+)
+from lexigram.admin.resources.field_renderers_relations import (
+    HasManyFieldRenderer as HasManyFieldRenderer,
+)
+from lexigram.admin.resources.field_renderers_relations import (
+    MorphFieldRenderer as MorphFieldRenderer,
+)
+from lexigram.admin.resources.field_renderers_select import (
+    MultiSelectFieldRenderer as MultiSelectFieldRenderer,
+)
+from lexigram.admin.resources.field_renderers_select import (
+    SelectFieldRenderer as SelectFieldRenderer,
+)
+from lexigram.admin.resources.field_renderers_text import (
+    ColorFieldRenderer as ColorFieldRenderer,
+)
+from lexigram.admin.resources.field_renderers_text import (
+    DefaultFieldRenderer as DefaultFieldRenderer,
+)
+from lexigram.admin.resources.field_renderers_text import (
+    EmailFieldRenderer as EmailFieldRenderer,
+)
+from lexigram.admin.resources.field_renderers_text import (
+    JsonFieldRenderer as JsonFieldRenderer,
+)
+from lexigram.admin.resources.field_renderers_text import (
+    ListFieldRenderer as ListFieldRenderer,
+)
+from lexigram.admin.resources.field_renderers_text import (
+    PasswordFieldRenderer as PasswordFieldRenderer,
+)
+from lexigram.admin.resources.field_renderers_text import (
+    TextAreaFieldRenderer as TextAreaFieldRenderer,
+)
+from lexigram.admin.resources.field_renderers_text import (
+    TextFieldRenderer as TextFieldRenderer,
+)
+from lexigram.admin.schema import SchemaField
 from lexigram.di.decorators import inject
 from lexigram.logging import get_logger
-from lexigram.serialization import dumps_str
-from lexigram.ui import (
-    BelongsTo,
-    DateInput,
-    MultiSelect,
-    NumberInput,
-    Select,
-    Switch,
-    TextArea,
-    TextInput,
-    el,
-    render_to_string,
-)
+from lexigram.ui import el, render_to_string
 
 logger = get_logger(__name__)
 
-
-class FieldRendererProtocol(Protocol):
-    """Protocol for field renderers."""
-
-    def can_render(self, field_schema: SchemaField) -> bool: ...
-
-    def render_field(
-        self,
-        field_schema: SchemaField,
-        value: Any,
-        common_args: dict[str, Any],
-    ) -> Any: ...
-
-
-def _atom_args(
-    common_args: dict[str, Any], value: Any, extra: dict[str, Any] | None = None
-) -> dict[str, Any]:
-    """Build atom kwargs from shared inline-editing args.
-
-    Args:
-        common_args: Shared args (name, label, required, disabled, hx_*, ...).
-        value: Current field value.
-        extra: Additional atom-specific kwargs.
-
-    Returns:
-        Kwargs acceptable by lexigram.ui input atoms.
-    """
-    args: dict[str, Any] = {
-        "name": common_args["name"],
-        "value": value if value is not None else "",
-        "label": common_args.get("label"),
-        "required": common_args.get("required", False),
-        "disabled": common_args.get("disabled", False),
-    }
-    for key in ("placeholder", "error"):
-        if common_args.get(key):
-            args[key] = common_args[key]
-    args.update({k: v for k, v in common_args.items() if k.startswith("hx_")})
-    if extra:
-        args.update(extra)
-    return args
-
-
-class TextAreaFieldRenderer:
-    """Renderer for multi-line text fields."""
-
-    def can_render(self, field_schema: SchemaField) -> bool:
-        return isinstance(field_schema, TextAreaField)
-
-    def render_field(
-        self,
-        field_schema: SchemaField,
-        value: Any,
-        common_args: dict[str, Any],
-    ) -> Any:
-        return TextArea(**_atom_args(common_args, value))
-
-
-class ListFieldRenderer:
-    """Renderer for tag-style list fields (comma-joined text area)."""
-
-    def can_render(self, field_schema: SchemaField) -> bool:
-        return isinstance(field_schema, TagsField)
-
-    def render_field(
-        self,
-        field_schema: SchemaField,
-        value: Any,
-        common_args: dict[str, Any],
-    ) -> Any:
-        display_value = (
-            ", ".join(str(v) for v in value)
-            if isinstance(value, list)
-            else str(value or "")
-        )
-        return TextArea(**_atom_args(common_args, display_value))
-
-
-class JsonFieldRenderer:
-    """Renderer for JSON fields."""
-
-    def can_render(self, field_schema: SchemaField) -> bool:
-        return isinstance(field_schema, JsonField)
-
-    def render_field(
-        self,
-        field_schema: SchemaField,
-        value: Any,
-        common_args: dict[str, Any],
-    ) -> Any:
-        display_value = dumps_str(value) if value is not None else ""
-        args = _atom_args(common_args, display_value, extra={"rows": 8})
-        return TextArea(**args)
-
-
-class NumberFieldRenderer:
-    """Renderer for numeric fields."""
-
-    def can_render(self, field_schema: SchemaField) -> bool:
-        return isinstance(field_schema, NumberField)
-
-    def render_field(
-        self,
-        field_schema: SchemaField,
-        value: Any,
-        common_args: dict[str, Any],
-    ) -> Any:
-        return NumberInput(**_atom_args(common_args, value))
-
-
-class BooleanFieldRenderer:
-    """Renderer for boolean fields."""
-
-    def can_render(self, field_schema: SchemaField) -> bool:
-        return isinstance(field_schema, BooleanField)
-
-    def render_field(
-        self,
-        field_schema: SchemaField,
-        value: Any,
-        common_args: dict[str, Any],
-    ) -> Any:
-        hx_props = {k: v for k, v in common_args.items() if k.startswith("hx_")}
-        return Switch(
-            label=common_args.get("label") or "",
-            name=common_args["name"],
-            value=bool(value),
-            **hx_props,
-        )
-
-
-class MultiSelectFieldRenderer:
-    """Renderer for multi-select fields."""
-
-    def can_render(self, field_schema: SchemaField) -> bool:
-        return isinstance(field_schema, MultiSelectField)
-
-    def render_field(
-        self,
-        field_schema: SchemaField,
-        value: Any,
-        common_args: dict[str, Any],
-    ) -> Any:
-        if not isinstance(field_schema, MultiSelectField):
-            return None
-        choices = field_schema.options or []
-        selected = value if isinstance(value, list) else []
-        return MultiSelect(
-            **_atom_args(common_args, selected, extra={"choices": choices})
-        )
-
-
-class HasManyFieldRenderer:
-    """Renderer for HAS_MANY relation fields."""
-
-    def can_render(self, field_schema: SchemaField) -> bool:
-        return isinstance(field_schema, HasManyField)
-
-    def render_field(
-        self,
-        field_schema: SchemaField,
-        value: Any,
-        common_args: dict[str, Any],
-    ) -> Any:
-        if not isinstance(field_schema, HasManyField):
-            return None
-        choices = field_schema.options or []
-        selected = value if isinstance(value, list) else []
-        return MultiSelect(
-            **_atom_args(common_args, selected, extra={"choices": choices})
-        )
-
-
-class BelongsToFieldRenderer:
-    """Renderer for BELONGS_TO relation fields."""
-
-    def can_render(self, field_schema: SchemaField) -> bool:
-        return isinstance(field_schema, BelongsToField)
-
-    def render_field(
-        self,
-        field_schema: SchemaField,
-        value: Any,
-        common_args: dict[str, Any],
-    ) -> Any:
-        if not isinstance(field_schema, BelongsToField):
-            return None
-        return BelongsTo(
-            **_atom_args(
-                common_args,
-                value,
-                extra={
-                    "resource": field_schema.resource,
-                    "choices": field_schema.options or [],
-                },
-            )
-        )
-
-
-class MorphFieldRenderer:
-    """Renderer for polymorphic relation fields."""
-
-    def can_render(self, field_schema: SchemaField) -> bool:
-        return isinstance(field_schema, MorphField)
-
-    def render_field(
-        self,
-        field_schema: SchemaField,
-        value: Any,
-        common_args: dict[str, Any],
-    ) -> Any:
-        if not isinstance(field_schema, MorphField):
-            return None
-        args = _atom_args(
-            common_args, value, extra={"choices": field_schema.options or []}
-        )
-        return Select(**args)
-
-
-class SelectFieldRenderer:
-    """Renderer for select fields."""
-
-    def can_render(self, field_schema: SchemaField) -> bool:
-        return isinstance(field_schema, SelectField)
-
-    def render_field(
-        self,
-        field_schema: SchemaField,
-        value: Any,
-        common_args: dict[str, Any],
-    ) -> Any:
-        if not isinstance(field_schema, SelectField):
-            return None
-        args = _atom_args(
-            common_args, value, extra={"choices": field_schema.options or []}
-        )
-        return Select(**args)
-
-
-class DateFieldRenderer:
-    """Renderer for date fields."""
-
-    def can_render(self, field_schema: SchemaField) -> bool:
-        return isinstance(field_schema, DateField)
-
-    def render_field(
-        self,
-        field_schema: SchemaField,
-        value: Any,
-        common_args: dict[str, Any],
-    ) -> Any:
-        iso_value = value.isoformat() if value is not None else ""
-        return DateInput(**_atom_args(common_args, iso_value))
-
-
-class DateTimeFieldRenderer:
-    """Renderer for datetime fields."""
-
-    def can_render(self, field_schema: SchemaField) -> bool:
-        return isinstance(field_schema, DateTimeField)
-
-    def render_field(
-        self,
-        field_schema: SchemaField,
-        value: Any,
-        common_args: dict[str, Any],
-    ) -> Any:
-        iso_value = value.isoformat() if value is not None else ""
-        return DateInput(**_atom_args(common_args, iso_value))
-
-
-class EmailFieldRenderer:
-    """Renderer for email fields."""
-
-    def can_render(self, field_schema: SchemaField) -> bool:
-        return isinstance(field_schema, EmailField)
-
-    def render_field(
-        self,
-        field_schema: SchemaField,
-        value: Any,
-        common_args: dict[str, Any],
-    ) -> Any:
-        return TextInput(
-            **_atom_args(common_args, value, extra={"input_type": "email"})
-        )
-
-
-class PasswordFieldRenderer:
-    """Renderer for password fields."""
-
-    def can_render(self, field_schema: SchemaField) -> bool:
-        return isinstance(field_schema, PasswordField)
-
-    def render_field(
-        self,
-        field_schema: SchemaField,
-        value: Any,
-        common_args: dict[str, Any],
-    ) -> Any:
-        return TextInput(
-            **_atom_args(common_args, value, extra={"input_type": "password"})
-        )
-
-
-class ColorFieldRenderer:
-    """Renderer for color fields."""
-
-    def can_render(self, field_schema: SchemaField) -> bool:
-        return isinstance(field_schema, ColorField)
-
-    def render_field(
-        self,
-        field_schema: SchemaField,
-        value: Any,
-        common_args: dict[str, Any],
-    ) -> Any:
-        return TextInput(
-            **_atom_args(common_args, value, extra={"input_type": "color"})
-        )
-
-
-class TextFieldRenderer:
-    """Renderer for plain text fields."""
-
-    def can_render(self, field_schema: SchemaField) -> bool:
-        return isinstance(field_schema, TextField)
-
-    def render_field(
-        self,
-        field_schema: SchemaField,
-        value: Any,
-        common_args: dict[str, Any],
-    ) -> Any:
-        return TextInput(**_atom_args(common_args, value))
-
-
-class DefaultFieldRenderer:
-    """Default renderer for unknown field types."""
-
-    def can_render(self, field_schema: SchemaField) -> bool:
-        return True
-
-    def render_field(
-        self,
-        field_schema: SchemaField,
-        value: Any,
-        common_args: dict[str, Any],
-    ) -> Any:
-        return TextInput(**_atom_args(common_args, value))
+__all__ = [
+    "BelongsToFieldRenderer",
+    "ColorFieldRenderer",
+    "DateFieldRenderer",
+    "DateTimeFieldRenderer",
+    "DefaultFieldRenderer",
+    "EmailFieldRenderer",
+    "FieldRenderer",
+    "FieldRendererProtocol",
+    "FieldRendererRegistry",
+    "HasManyFieldRenderer",
+    "JsonFieldRenderer",
+    "ListFieldRenderer",
+    "MorphFieldRenderer",
+    "MultiSelectFieldRenderer",
+    "NumberFieldRenderer",
+    "PasswordFieldRenderer",
+    "SelectFieldRenderer",
+    "TextAreaFieldRenderer",
+    "TextFieldRenderer",
+]
 
 
 class FieldRendererRegistry:
@@ -577,27 +272,3 @@ class FieldRenderer:
         # Use registry to get the appropriate renderer
         renderer = _field_renderer_registry.get_renderer(field_schema)
         return renderer.render_field(field_schema, value, common_args)
-
-
-__all__ = [
-    "BelongsToFieldRenderer",
-    "BooleanFieldRenderer",
-    "ColorFieldRenderer",
-    "DateFieldRenderer",
-    "DateTimeFieldRenderer",
-    "DefaultFieldRenderer",
-    "EmailFieldRenderer",
-    "FieldRenderer",
-    "FieldRendererProtocol",
-    "FieldRendererRegistry",
-    "HasManyFieldRenderer",
-    "JsonFieldRenderer",
-    "ListFieldRenderer",
-    "MorphFieldRenderer",
-    "MultiSelectFieldRenderer",
-    "NumberFieldRenderer",
-    "PasswordFieldRenderer",
-    "SelectFieldRenderer",
-    "TextAreaFieldRenderer",
-    "TextFieldRenderer",
-]

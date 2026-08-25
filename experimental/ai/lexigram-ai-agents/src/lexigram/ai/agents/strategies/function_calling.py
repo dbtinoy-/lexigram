@@ -23,6 +23,14 @@ import time
 from typing import TYPE_CHECKING, Any, cast
 
 from lexigram.ai.agents.strategies.base import AbstractStrategy
+from lexigram.ai.agents.strategies.function_calling_support import (
+    _SYSTEM_SUFFIX,
+    execute_tool_with_retry,
+    finalize_observation,
+    get_memory_context,
+    handle_text_tool,
+    parse_tool_args,
+)
 from lexigram.ai.agents.strategies.parsing import (
     build_chat_messages_from_dict,
     extract_final_answer,
@@ -41,26 +49,11 @@ from lexigram.logging import (
     get_logger,
 )
 from lexigram.result import Err, Ok, Result
-from lexigram.serialization import loads_str
 
 if TYPE_CHECKING:
-    from lexigram.contracts.ai.agents import MemoryProtocol
     from lexigram.contracts.ai.llm import CompletionProtocol, LLMClientProtocol
 
 logger = get_logger(__name__)
-
-_SYSTEM_SUFFIX = """
-You are a function-calling assistant. Use the tools available to you to
-complete the user's request. The tool schema is enforced by the model, so
-request tools through native function calls rather than free text.
-
-## Rules
-- Call a tool when you need information you do not already have.
-- Read each tool result before deciding the next step.
-- Once the request is satisfied, answer the user directly in natural language.
-"""
-
-_OBSERVATION_TEMPLATE = "OBSERVATION: {observation}"
 
 
 class FunctionCallingStrategy(AbstractStrategy):
@@ -147,7 +140,7 @@ class FunctionCallingStrategy(AbstractStrategy):
         tool_map: dict[str, ToolProtocol] = {t.name: t for t in tools}
         schemas = self._build_schemas(tools, tool_registry)
 
-        memory_context = await self._get_memory_context(memory)
+        memory_context = await get_memory_context(memory)
         full_system = system_prompt + memory_context + _SYSTEM_SUFFIX
         messages = build_chat_messages_from_dict(message, history, full_system)
 
@@ -156,10 +149,10 @@ class FunctionCallingStrategy(AbstractStrategy):
             if completion is None:
                 return Err(AgentError(f"LLM failed at iteration {iteration}"))
 
-            step_prompt, step_completion = self._token_split(completion)
+            step_prompt, step_completion = token_split(completion)
             prompt_tokens += step_prompt
             completion_tokens += step_completion
-            total_tokens += self._count_tokens(completion)
+            total_tokens += count_tokens(completion)
 
             native_calls = getattr(completion, "tool_calls", None) or []
             if native_calls:
@@ -214,7 +207,8 @@ class FunctionCallingStrategy(AbstractStrategy):
                         iteration=iteration,
                         tool=tool_name,
                     )
-                    await self._handle_text_tool(
+                    await handle_text_tool(
+                        self,
                         tool_name,
                         tool_args,
                         content,
@@ -362,22 +356,6 @@ class FunctionCallingStrategy(AbstractStrategy):
             return None
         return result.unwrap()
 
-    def _count_tokens(self, completion: CompletionProtocol) -> int:
-        """Extract total token usage from a completion, if reported."""
-        return count_tokens(completion)
-
-    def _token_split(self, completion: CompletionProtocol) -> tuple[int, int]:
-        """Extract the prompt/completion token split, if reported.
-
-        Args:
-            completion: LLM completion result.
-
-        Returns:
-            Tuple of ``(prompt_tokens, completion_tokens)``.  Both are
-            ``0`` when usage is missing.
-        """
-        return token_split(completion)
-
     # ------------------------------------------------------------------
     # Native tool loop
     # ------------------------------------------------------------------
@@ -413,8 +391,14 @@ class FunctionCallingStrategy(AbstractStrategy):
             if function is None:
                 continue
             tool_name = function.name
-            tool_args = self._parse_args(getattr(function, "arguments", {}))
-            record = await self._execute_tool(tool_name, tool_args, tool_map)
+            tool_args = parse_tool_args(getattr(function, "arguments", {}))
+            record = await execute_tool_with_retry(
+                tool_name,
+                tool_args,
+                tool_map,
+                tool_timeout=self.tool_timeout,
+                tool_max_retries=self.tool_max_retries,
+            )
             tool_records.append(record)
             executed = True
 
@@ -422,15 +406,12 @@ class FunctionCallingStrategy(AbstractStrategy):
                 str(record.result) if record.succeeded else f"Error: {record.error}"
             )
             # Guard before truncation so detectors see the full content
-            from lexigram.ai.agents.strategies.guard_hook import guard_observation
-
-            observation = await guard_observation(
-                guard_pipeline, observation, tool_name=tool_name
+            observation = await finalize_observation(
+                guard_pipeline,
+                observation,
+                tool_name=tool_name,
+                max_chars=self.observation_max_chars,
             )
-            if len(observation) > self.observation_max_chars:
-                observation = (
-                    observation[: self.observation_max_chars] + "\n[TRUNCATED]"
-                )
 
             steps.append(
                 ReasoningStep(
@@ -459,154 +440,6 @@ class FunctionCallingStrategy(AbstractStrategy):
                 ),
             )
         return executed
-
-    async def _handle_text_tool(
-        self,
-        tool_name: str,
-        tool_args: dict[str, Any],
-        content: str,
-        iteration: int,
-        messages: list[ChatMessage],
-        steps: list[ReasoningStep],
-        tool_records: list[ToolExecutionRecord],
-        tool_map: dict[str, ToolProtocol],
-        guard_pipeline: Any = None,
-    ) -> None:
-        """Execute a tool requested through text markers (fallback path)."""
-        record = await self._execute_tool(tool_name, tool_args, tool_map)
-        tool_records.append(record)
-
-        observation = (
-            str(record.result) if record.succeeded else f"Error: {record.error}"
-        )
-        # Guard before truncation so detectors see the full content
-        from lexigram.ai.agents.strategies.guard_hook import guard_observation
-
-        observation = await guard_observation(
-            guard_pipeline, observation, tool_name=tool_name
-        )
-        if len(observation) > self.observation_max_chars:
-            observation = observation[: self.observation_max_chars] + "\n[TRUNCATED]"
-
-        steps.append(
-            ReasoningStep(
-                step_number=iteration,
-                thought=content,
-                action=tool_name,
-                tool_call=record,
-                observation=observation,
-            )
-        )
-        messages.append(ChatMessage(role=Role.ASSISTANT, content=content))
-        messages.append(
-            ChatMessage(
-                role=Role.USER,
-                content=_OBSERVATION_TEMPLATE.format(observation=observation),
-            )
-        )
-
-    # ------------------------------------------------------------------
-    # Tool execution
-    # ------------------------------------------------------------------
-
-    def _parse_args(self, raw: Any) -> dict[str, Any]:
-        """Parse tool-call arguments that may arrive JSON-encoded or as a dict."""
-        if isinstance(raw, dict):
-            return raw
-        if not raw:
-            return {}
-        try:
-            parsed = loads_str(raw)
-            return parsed if isinstance(parsed, dict) else {}
-        except (TypeError, ValueError):
-            return {}
-
-    async def _execute_tool(
-        self,
-        tool_name: str,
-        tool_args: dict[str, Any],
-        tool_map: dict[str, ToolProtocol],
-    ) -> ToolExecutionRecord:
-        """Execute a tool with timeout and retry on transient errors."""
-        if tool_name not in tool_map:
-            return ToolExecutionRecord(
-                tool_name=tool_name,
-                arguments=tool_args,
-                error=f"Unknown tool: {tool_name}. Available: {list(tool_map)}",
-            )
-
-        tool = tool_map[tool_name]
-        start = time.monotonic()
-        last_error: BaseException | None = None
-
-        for attempt in range(self.tool_max_retries):
-            try:
-                output = await asyncio.wait_for(
-                    tool.execute(**tool_args),
-                    timeout=self.tool_timeout,
-                )
-                duration = (time.monotonic() - start) * 1000
-                return ToolExecutionRecord(
-                    tool_name=tool_name,
-                    arguments=tool_args,
-                    result=output,
-                    duration_ms=duration,
-                )
-            except TimeoutError:
-                duration = (time.monotonic() - start) * 1000
-                return ToolExecutionRecord(
-                    tool_name=tool_name,
-                    arguments=tool_args,
-                    error=f"Tool '{tool_name}' timed out after {self.tool_timeout}s",
-                    duration_ms=duration,
-                )
-            except (ConnectionError, OSError) as exc:
-                last_error = exc
-                logger.warning(
-                    "function_calling_tool_transient_error",
-                    tool=tool_name,
-                    attempt=attempt + 1,
-                    error=str(exc),
-                )
-                if attempt < self.tool_max_retries - 1:
-                    await asyncio.sleep(1.0 * (2**attempt))
-            except (RuntimeError, TypeError, ValueError, LookupError) as exc:
-                duration = (time.monotonic() - start) * 1000
-                return ToolExecutionRecord(
-                    tool_name=tool_name,
-                    arguments=tool_args,
-                    error=f"Tool '{tool_name}' failed: {exc}",
-                    duration_ms=duration,
-                )
-
-        duration = (time.monotonic() - start) * 1000
-        return ToolExecutionRecord(
-            tool_name=tool_name,
-            arguments=tool_args,
-            error=(
-                f"Tool '{tool_name}' failed after {self.tool_max_retries} "
-                f"retries: {last_error}"
-            ),
-            duration_ms=duration,
-        )
-
-    # ------------------------------------------------------------------
-    # Memory context
-    # ------------------------------------------------------------------
-
-    @staticmethod
-    async def _get_memory_context(memory: MemoryProtocol | None) -> str:
-        """Retrieve context from memory backend if available."""
-        if memory is None:
-            return ""
-        try:
-            past_messages = await memory.get_messages()
-            if past_messages:
-                context_str = "\n".join(str(m) for m in past_messages[-5:])
-                return f"\n\nRelevant context from memory:\n{context_str}"
-        except (RuntimeError, TypeError, ValueError, OSError, AttributeError):
-            pass
-        return ""
 
 
 __all__ = ["FunctionCallingStrategy"]
