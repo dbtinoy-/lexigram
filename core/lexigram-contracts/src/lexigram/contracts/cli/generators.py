@@ -65,6 +65,19 @@ class GenerationOptions:
     quiet: bool = False
     policy: CollisionPolicy | None = None
 
+    def __post_init__(self) -> None:
+        """Normalize ``policy`` so it is never None after construction.
+
+        Explicit policy wins; otherwise ``force`` maps to OVERWRITE;
+        otherwise SKIP.
+        """
+        if self.policy is None:
+            object.__setattr__(
+                self,
+                "policy",
+                CollisionPolicy.OVERWRITE if self.force else CollisionPolicy.SKIP,
+            )
+
 
 def resolve_options(
     *,

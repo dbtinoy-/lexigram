@@ -7,6 +7,12 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from lexigram.contracts.cli.generators import (
+    CollisionPolicy as CollisionPolicy,
+)
+from lexigram.contracts.cli.generators import (
+    GenerationOptions as GenerationOptions,
+)
+from lexigram.contracts.cli.generators import (
     GenerationResult as GenerationResult,
 )
 from lexigram.contracts.cli.generators import (
@@ -16,12 +22,15 @@ from lexigram.contracts.cli.generators import (
     pascal_case as pascal_case,
 )
 from lexigram.contracts.cli.generators import (
+    resolve_options as resolve_options,
+)
+from lexigram.contracts.cli.generators import (
     snake_case as snake_case,
 )
 from lexigram.contracts.cli.generators import (
     validate_component_name as validate_component_name,
 )
-from lexigram.contracts.exceptions.infra import InfrastructureError
+from lexigram.contracts.exceptions.infra import CollidingFileError, InfrastructureError
 
 if TYPE_CHECKING:
     import jinja2
@@ -44,9 +53,100 @@ class GeneratorBase:
         self.output_dir = self._resolve_output_dir(self.raw_output_dir)
         self.template_root = self._resolve_template_root(template_root)
         self._environment: jinja2.Environment | None = None
+        self._staged: list[tuple[Path, str]] = []
 
     def generate(self, name: str, **options: Any) -> GenerationResult:
         raise NotImplementedError
+
+    # ── staged generation ────────────────────────────────────────────
+
+    def stage(self, rel_path: str | Path, content: str) -> None:
+        """Queue a rendered file for the next :meth:`commit`.
+
+        Validates immediately (traversal guard, duplicate detection) so a
+        misdirected or double-staged file fails before any I/O.
+
+        Args:
+            rel_path: Path relative to ``output_dir`` (absolute paths are
+                accepted when already inside ``output_dir``).
+            content: Full rendered file content.
+
+        Raises:
+            ValueError: If the path escapes ``output_dir`` or was already
+                staged in this run.
+        """
+        target = self._ensure_inside_output(rel_path)
+        for staged_path, _ in self._staged:
+            if staged_path == target:
+                raise ValueError(f"Path {target} is already staged")
+        self._staged.append((target, content))
+
+    def commit(self, options: GenerationOptions | None = None) -> GenerationResult:
+        """Validate and write every staged file atomically (validate-all-then-write-all).
+
+        Collision checks against disk run for **all** staged paths before
+        the first byte is written; under
+        :attr:`CollisionPolicy.FAIL` any collision raises
+        ``CollidingFileError`` leaving the tree untouched. Writes happen
+        in sorted path order for deterministic trees.
+
+        Args:
+            options: Fully-resolved run options; defaults to SKIP.
+
+        Returns:
+            The resulting :class:`GenerationResult`. With ``dry_run`` the
+            same result is computed without touching disk.
+
+        Raises:
+            CollidingFileError: Under the FAIL policy when a staged path
+                already exists.
+        """
+        resolved = options if options is not None else resolve_options()
+        actions: dict[Path, str] = {}
+        for target, _content in self._staged:
+            if not target.exists():
+                actions[target] = "created"
+            elif resolved.policy is CollisionPolicy.OVERWRITE:
+                actions[target] = "overwritten"
+            elif resolved.policy is CollisionPolicy.FAIL:
+                raise CollidingFileError(
+                    f"Generated file {target} collides with an existing "
+                    "file under collision policy FAIL"
+                )
+            else:
+                actions[target] = "skipped"
+
+        created: list[Path] = []
+        skipped: list[Path] = []
+        overwritten: list[Path] = []
+        for target in sorted(actions, key=str):
+            action = actions[target]
+            if action == "skipped":
+                skipped.append(target)
+                continue
+            content = next(c for p, c in self._staged if p == target)
+            if not resolved.dry_run:
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text(content, encoding="utf-8")
+            if action == "overwritten":
+                overwritten.append(target)
+            else:
+                created.append(target)
+
+        self._staged = []
+        return GenerationResult(
+            files_created=created,
+            files_skipped=skipped,
+            files_overwritten=overwritten,
+        )
+
+    def finalize(self, result: GenerationResult) -> GenerationResult:
+        """Post-commit hook for transforms (formatting, verification).
+
+        Subclasses override to post-process committed files; the default
+        returns *result* unchanged.
+        """
+        return result
 
     @property
     def env(self) -> jinja2.Environment:
@@ -87,14 +187,7 @@ class GeneratorBase:
     ) -> GenerationResult:
         existed = file_path.exists()
 
-        # Path-traversal guard: the resolved target must stay inside the
-        # generator's output directory (spec finding 15).
-        base = Path(self.output_dir).resolve()
-        resolved = file_path.resolve()
-        if not resolved.is_relative_to(base):
-            raise ValueError(
-                f"Generated path {file_path} escapes output directory {base}"
-            )
+        self._ensure_inside_output(file_path)
 
         if existed and not force:
             return GenerationResult(files_skipped=[file_path])
@@ -107,6 +200,29 @@ class GeneratorBase:
             return GenerationResult(files_overwritten=[file_path])
 
         return GenerationResult(files_created=[file_path])
+
+    def _ensure_inside_output(self, rel_path: str | Path) -> Path:
+        """Resolve *rel_path* against ``output_dir`` and enforce the traversal guard.
+
+        Returns:
+            The resolved absolute target path.
+
+        Raises:
+            ValueError: If the resolved path escapes ``output_dir``.
+        """
+        target = Path(rel_path)
+        if not target.is_absolute():
+            target = Path(self.output_dir) / target
+
+        # Path-traversal guard: the resolved target must stay inside the
+        # generator's output directory (spec finding 15).
+        base = Path(self.output_dir).resolve()
+        resolved = target.resolve()
+        if not resolved.is_relative_to(base):
+            raise ValueError(
+                f"Generated path {rel_path} escapes output directory {base}"
+            )
+        return target
 
     @classmethod
     def _resolve_output_dir(cls, output_dir: Path) -> Path:

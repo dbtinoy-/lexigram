@@ -27,15 +27,21 @@ class TestCollisionPolicy:
 
 
 class TestGenerationOptions:
-    def test_defaults_are_skip_without_dry_run(self) -> None:
+    def test_defaults_resolve_to_skip_without_dry_run(self) -> None:
         options = GenerationOptions()
         assert options.dry_run is False
         assert options.quiet is False
-        assert options.policy is None
+        assert options.policy is CollisionPolicy.SKIP
+
+    def test_policy_is_never_none_after_construction(self) -> None:
+        assert GenerationOptions(policy=None).policy is CollisionPolicy.SKIP
+        assert GenerationOptions(force=True).policy is CollisionPolicy.OVERWRITE
 
     def test_frozen(self) -> None:
+        import dataclasses
+
         options = GenerationOptions()
-        with pytest.raises(Exception):
+        with pytest.raises(dataclasses.FrozenInstanceError):
             options.dry_run = True  # type: ignore[misc]
 
 
