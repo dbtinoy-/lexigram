@@ -8,15 +8,25 @@ from lexigram.contracts.cli.contributions import (
 )
 from lexigram.contracts.cli.types import GeneratorDefinition
 
-_GENERATOR_DEFINITIONS: tuple[GeneratorDefinition, ...] = (
-    GeneratorDefinition(
-        name="storage_driver",
-        title="Generate Storage Driver",
-        description="Generate a file storage backend driver",
-        contributor="storage",
-        generator_path="lexigram.storage.cli.generators.storage_driver:StorageDriverGenerator",
-        default_output_dir="src/storage/backends",
+# (name, description, generator_path, output_dir) — titles derive via make()
+_SPECS: tuple[tuple[str, str, str, str], ...] = (
+    (
+        "storage_driver",
+        "Generate a file storage backend driver",
+        "lexigram.storage.cli.generators.storage_driver:StorageDriverGenerator",
+        "src/storage/backends",
     ),
+)
+
+_GENERATOR_DEFINITIONS: tuple[GeneratorDefinition, ...] = tuple(
+    GeneratorDefinition.make(
+        name,
+        description=description,
+        generator_path=generator_path,
+        output_dir=output_dir,
+        contributor="storage",
+    )
+    for name, description, generator_path, output_dir in _SPECS
 )
 
 

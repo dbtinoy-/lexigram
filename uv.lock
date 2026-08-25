@@ -8272,7 +8272,7 @@ test = [
 
 [[package]]
 name = "lexigram-sql"
-version = "0.1.5004"
+version = "0.1.5005"
 source = { editable = "packages/lexigram-sql" }
 dependencies = [
     { name = "aiosqlite" },
