@@ -167,7 +167,7 @@ latest `main` run); each job has a local one-liner:
 - [Env vars](docs/reference/REF_ENV_VARS.md) — every `LEX_*` environment variable
 - [Error codes](docs/reference/REF_ERROR_CODES.md) — error codes and their meanings
 - [Dependency tree](docs/reference/DEPENDENCY_TREE.md) — full locked workspace
-  dependency graph; regenerate with `uv tree --locked > docs/reference/DEPENDENCY_TREE.md`
+  dependency graph; regenerate with `make dep-tree`
 - the workspace root intentionally declares **zero dependencies** — it is a
   virtual manifest (`[tool.uv.workspace]` only, not a published distribution);
   each package's real dependency surface lives in its own `pyproject.toml`,
@@ -185,12 +185,14 @@ latest `main` run); each job has a local one-liner:
 #### short term (Q2 2026)
 - [x] Extended AI capabilities — AI subsystem packages (agents, guard, memory, rag, …) - in testing
 - [x] Reactive state and event wiring — streams, subjects, operators, retry, end-event signaling (`docs/reference/REF_REACTIVE.md`)
+- [x] Demos — runnable demo apps covering agents, memory, guardrails, resilience and more - in progress
 - [ ] Additional backend support
 
 #### medium term (Q3-Q4 2026)
 - [x] Enhanced security — audit remediation partially implemented (security lanes in progress)
 - [x] Production-grade Admin dashboard — `lexigram-admin` in active development
 - [x] Full-stack starter template — in progress
+- [x] CLI — `lexigram-cli` in active development
 - [ ] Performance optimizations
 - [x] Reach 80% Unit Tests overall coverage (now 75% in progress)
 - [ ] Reach 80% test coverage overall (unit + integration; integration-only baseline ~35% — in progress)
