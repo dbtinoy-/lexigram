@@ -14,13 +14,17 @@ Usage:
 
 from __future__ import annotations
 
+import sys as _sys
+from pathlib import Path as _Path
+
+_sys.path.insert(0, str(_Path(__file__).resolve().parents[1]))
+
 import argparse
 from pathlib import Path
 import re
 import sys
 import tomllib
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from dev.core.package_inventory import discover_package_paths
 
@@ -50,7 +54,9 @@ def violations(root: Path) -> list[tuple[str, str]]:
     """Tier violations as ``(relative package dir, dependency name)`` pairs."""
 
     experimental = {
-        rel.name: rel for rel in discover_package_paths(root) if tier_of(rel) == "experimental"
+        rel.name: rel
+        for rel in discover_package_paths(root)
+        if tier_of(rel) == "experimental"
     }
     bad: list[tuple[str, str]] = []
     for rel in discover_package_paths(root):

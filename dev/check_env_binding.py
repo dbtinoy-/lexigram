@@ -21,7 +21,10 @@ from pathlib import Path
 import re
 import sys
 
-ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from dev.core.bootstrap import REPO_ROOT as ROOT  # noqa: E402 — needs bootstrap first
+
 EXAMPLE = ROOT / ".env.example"
 
 _ENV_NAME = r"[A-Z][A-Z0-9_]{1,}"
@@ -51,10 +54,6 @@ def run_check(
     injectable so tests can supply canned verdicts.
     """
     if probe is None:
-        if str(ROOT) not in sys.path:
-            # Script invocation (python dev/check_env_binding.py) puts dev/
-            # on sys.path but not the repo root that owns the dev package.
-            sys.path.insert(0, str(ROOT))
         from dev.core.env_binding import check_var as probe
 
     live: list[str] = []

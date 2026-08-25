@@ -17,6 +17,11 @@ Note:
 
 from __future__ import annotations
 
+import sys as _sys
+from pathlib import Path as _Path
+
+_sys.path.insert(0, str(_Path(__file__).resolve().parents[1]))
+
 import argparse
 import json  # noqa: TID251 — standalone CI guard; runs before workspace serialization
 from pathlib import Path
@@ -25,7 +30,6 @@ import tomllib
 
 from packaging.requirements import Requirement
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from dev.core.package_inventory import discover_package_paths
 

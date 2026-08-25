@@ -31,6 +31,11 @@ Per-package publish flow (no all-package test runs):
 
 from __future__ import annotations
 
+import sys as _sys
+from pathlib import Path as _Path
+
+_sys.path.insert(0, str(_Path(__file__).resolve().parents[1]))
+
 import argparse
 import json  # noqa: TID251 — standalone publish tool; runs before workspace imports
 from pathlib import Path
@@ -40,11 +45,9 @@ import sys
 import urllib.error
 import urllib.request
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from dev.core.package_inventory import discover_package_paths
 
-ROOT = Path(__file__).resolve().parent.parent
 PYPI_URL = "https://pypi.org/pypi/{name}/json"
 
 

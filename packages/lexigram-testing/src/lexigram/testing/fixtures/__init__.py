@@ -2,11 +2,6 @@
 
 from __future__ import annotations
 
-from lexigram.testing.demo import (
-    freeze_logging_config,
-    install_demo_src,
-    make_app_fixture,
-)
 from lexigram.testing.fixtures._lazy import get_ai_fixture, is_ai_fixture
 from lexigram.testing.fixtures.core import (
     ContainerTestFixture,
