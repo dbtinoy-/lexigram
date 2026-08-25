@@ -6162,7 +6162,7 @@ test = [
 
 [[package]]
 name = "lexigram-auth"
-version = "0.1.5002"
+version = "0.1.5003"
 source = { editable = "packages/lexigram-auth" }
 dependencies = [
     { name = "argon2-cffi" },
@@ -6552,7 +6552,7 @@ test = [
 
 [[package]]
 name = "lexigram-events"
-version = "0.1.5002"
+version = "0.1.5003"
 source = { editable = "packages/lexigram-events" }
 dependencies = [
     { name = "jinja2" },
@@ -6920,7 +6920,7 @@ test = [
 
 [[package]]
 name = "lexigram-http"
-version = "0.1.5002"
+version = "0.1.5003"
 source = { editable = "packages/lexigram-http" }
 dependencies = [
     { name = "aiohttp" },
@@ -9234,7 +9234,7 @@ test = [
 
 [[package]]
 name = "lexigram-workflow"
-version = "0.1.5002"
+version = "0.1.5003"
 source = { editable = "packages/lexigram-workflow" }
 dependencies = [
     { name = "lexigram" },

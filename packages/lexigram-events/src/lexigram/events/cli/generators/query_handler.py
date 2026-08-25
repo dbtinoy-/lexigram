@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from jinja2 import Environment, PackageLoader, select_autoescape
-
 from lexigram.codegen import FieldSpec, parse_fields
 from lexigram.codegen.base import GenerationResult, GeneratorBase
 
@@ -36,12 +34,7 @@ class QueryHandlerGenerator(GeneratorBase):
             "fields": fields,
         }
 
-        env = Environment(
-            loader=PackageLoader("lexigram.events.cli", "templates"),
-            autoescape=select_autoescape(),
-        )
-        template = env.get_template("query_handler.py.jinja2")
-        content = template.render(**context)
+        content = self.render_template("query_handler.py.jinja2", context)
 
         file_path = output_path / query_filename
         if file_path.exists() and not options.get("force", False):

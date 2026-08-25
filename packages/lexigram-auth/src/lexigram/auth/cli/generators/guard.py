@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from jinja2 import Environment, PackageLoader, select_autoescape
-
 from lexigram.codegen.base import GenerationResult, GeneratorBase
 
 
@@ -29,12 +27,7 @@ class AuthGuardGenerator(GeneratorBase):
             "guard_type": guard_type,
         }
 
-        env = Environment(
-            loader=PackageLoader("lexigram.auth.cli", "templates"),
-            autoescape=select_autoescape(),
-        )
-        template = env.get_template("guard.py.jinja2")
-        content = template.render(**context)
+        content = self.render_template("guard.py.jinja2", context)
 
         file_path = output_path / guard_filename
         if file_path.exists() and not options.get("force", False):

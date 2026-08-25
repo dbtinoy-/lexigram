@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from lexigram.nosql.cli.generators.document_repository import DocumentRepositoryGenerator
 
@@ -35,14 +35,11 @@ class TestDocumentRepositoryGenerator:
 
     def test_generate_creates_file(self, tmp_path: Path) -> None:
         output_dir = str(tmp_path)
-        with patch(
-            "lexigram.nosql.cli.generators.document_repository.Environment",
-        ) as mock_env:
-            env_instance = MagicMock()
-            template = MagicMock()
-            template.render.return_value = "generated content"
-            env_instance.get_template.return_value = template
-            mock_env.return_value = env_instance
+        with patch.object(
+            self.generator,
+            "render_template",
+            return_value="generated content",
+        ):
 
             result = self.generator.generate("product", output_dir=output_dir)
 
@@ -56,14 +53,11 @@ class TestDocumentRepositoryGenerator:
         repo_file = tmp_path / "product_repository.py"
         repo_file.write_text("existing content")
 
-        with patch(
-            "lexigram.nosql.cli.generators.document_repository.Environment",
-        ) as mock_env:
-            env_instance = MagicMock()
-            template = MagicMock()
-            template.render.return_value = "new content"
-            env_instance.get_template.return_value = template
-            mock_env.return_value = env_instance
+        with patch.object(
+            self.generator,
+            "render_template",
+            return_value="new content",
+        ):
 
             result = self.generator.generate("product", output_dir=output_dir)
 
@@ -72,14 +66,11 @@ class TestDocumentRepositoryGenerator:
 
     def test_generate_with_fields_str(self, tmp_path: Path) -> None:
         output_dir = str(tmp_path)
-        with patch(
-            "lexigram.nosql.cli.generators.document_repository.Environment",
-        ) as mock_env:
-            env_instance = MagicMock()
-            template = MagicMock()
-            template.render.return_value = "generated with fields"
-            env_instance.get_template.return_value = template
-            mock_env.return_value = env_instance
+        with patch.object(
+            self.generator,
+            "render_template",
+            return_value="generated with fields",
+        ):
 
             self.generator.generate(
                 "item", output_dir=output_dir, fields_str="name:str,price:float"

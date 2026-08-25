@@ -6,8 +6,6 @@ from pathlib import Path
 import re
 from typing import Any
 
-from jinja2 import Environment, PackageLoader, select_autoescape
-
 from lexigram.codegen import FieldSpec, parse_fields
 from lexigram.codegen.base import GenerationResult, GeneratorBase
 
@@ -70,13 +68,7 @@ class APIClientGenerator(GeneratorBase):
         }
 
         # Render template
-        env = Environment(
-            loader=PackageLoader("lexigram.cli", "templates"),
-            autoescape=select_autoescape(),
-        )
-
-        template = env.get_template("api_client.py.jinja2")
-        content = template.render(**context)
+        content = self.render_template("api_client.py.jinja2", context)
 
         # Write file
         file_path = output_path / client_filename

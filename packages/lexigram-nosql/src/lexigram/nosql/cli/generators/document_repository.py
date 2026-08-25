@@ -6,8 +6,6 @@ from pathlib import Path
 import re
 from typing import Any, cast
 
-from jinja2 import Environment, PackageLoader, select_autoescape
-
 from lexigram.codegen import FieldSpec, parse_fields
 from lexigram.codegen.base import GenerationResult, GeneratorBase
 
@@ -74,13 +72,7 @@ class DocumentRepositoryGenerator(GeneratorBase):
             "fields": fields,
         }
 
-        env = Environment(
-            loader=PackageLoader("lexigram.cli", "templates"),
-            autoescape=select_autoescape(),
-        )
-
-        template = env.get_template("document_repository.py.jinja2")
-        content = template.render(**context)
+        content = self.render_template("document_repository.py.jinja2", context)
 
         file_path = output_path / repo_filename
         if file_path.exists() and not options.get("force", False):
