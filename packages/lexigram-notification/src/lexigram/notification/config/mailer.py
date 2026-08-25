@@ -173,6 +173,19 @@ class MailerConfig(BaseConfig):
             "render email sending unavailable (MailerProtocol unbindable)."
         ),
     )
+    retry_max_attempts: int = Field(
+        default=0,
+        ge=0,
+        description=(
+            "When > 0, wrap the default MailerProtocol in RetryingMailer with "
+            "this many attempts, persisting delivery state so transient SMTP "
+            "failures are retried instead of dropped."
+        ),
+    )
+    retry_base_delay: float = Field(
+        default=60.0,
+        description="Base delay in seconds for the exponential backoff.",
+    )
 
     @classmethod
     def from_named(cls, entry: NamedMailerConfig) -> MailerConfig:
