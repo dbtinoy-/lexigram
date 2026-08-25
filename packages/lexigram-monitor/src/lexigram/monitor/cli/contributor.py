@@ -11,16 +11,26 @@ from lexigram.contracts.cli.contributions import (
 )
 from lexigram.contracts.cli.types import GeneratorDefinition
 
-_GENERATOR_DEFINITIONS: tuple[GeneratorDefinition, ...] = (
-    GeneratorDefinition(
-        name="metric",
-        title="Generate Metric",
-        description="Generate a custom metric definition with backend registration",
-        contributor="monitor",
-        generator_path="lexigram.monitor.cli.generators.metric:MetricGenerator",
-        default_output_dir="src/metrics",
-        category="monitoring",
+# (name, description, generator_path, output_dir) — titles derive via make()
+_SPECS: tuple[tuple[str, str, str, str], ...] = (
+    (
+        "metric",
+        "Generate a custom metric definition with backend registration",
+        "lexigram.monitor.cli.generators.metric:MetricGenerator",
+        "src/metrics",
     ),
+)
+
+_GENERATOR_DEFINITIONS: tuple[GeneratorDefinition, ...] = tuple(
+    GeneratorDefinition.make(
+        name,
+        description=description,
+        generator_path=generator_path,
+        output_dir=output_dir,
+        contributor="monitor",
+        category="monitoring",
+    )
+    for name, description, generator_path, output_dir in _SPECS
 )
 
 

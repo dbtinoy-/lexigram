@@ -6920,7 +6920,7 @@ test = [
 
 [[package]]
 name = "lexigram-http"
-version = "0.1.5001"
+version = "0.1.5002"
 source = { editable = "packages/lexigram-http" }
 dependencies = [
     { name = "aiohttp" },
