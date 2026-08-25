@@ -11,16 +11,26 @@ from lexigram.contracts.cli.contributions import (
 )
 from lexigram.contracts.cli.types import GeneratorDefinition
 
-_GENERATOR_DEFINITIONS: tuple[GeneratorDefinition, ...] = (
-    GeneratorDefinition(
-        name="vector_collection",
-        title="Generate Vector Collection",
-        description="Generate a vector collection definition with backend registration",
-        contributor="vector",
-        generator_path="lexigram.vector.cli.generators.collection:VectorCollectionGenerator",
-        default_output_dir="src/collections",
-        category="vector",
+# (name, description, generator_path, output_dir) — titles derive via make()
+_SPECS: tuple[tuple[str, str, str, str], ...] = (
+    (
+        "vector_collection",
+        "Generate a vector collection definition with backend registration",
+        "lexigram.vector.cli.generators.collection:VectorCollectionGenerator",
+        "src/collections",
     ),
+)
+
+_GENERATOR_DEFINITIONS: tuple[GeneratorDefinition, ...] = tuple(
+    GeneratorDefinition.make(
+        name,
+        description=description,
+        generator_path=generator_path,
+        output_dir=output_dir,
+        contributor="vector",
+        category="vector",
+    )
+    for name, description, generator_path, output_dir in _SPECS
 )
 
 
