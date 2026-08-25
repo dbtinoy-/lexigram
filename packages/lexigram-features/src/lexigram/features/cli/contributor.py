@@ -12,16 +12,26 @@ from lexigram.contracts.cli.contributions import (
 )
 from lexigram.contracts.cli.types import GeneratorDefinition
 
-_GENERATOR_DEFINITIONS: tuple[GeneratorDefinition, ...] = (
-    GeneratorDefinition(
-        name="feature_flag",
-        title="Generate Feature Flag",
-        description="Generate a feature flag definition",
-        contributor="features",
-        generator_path="lexigram.features.cli.generators.flag:FeatureFlagGenerator",
-        default_output_dir="src/features",
-        category="features",
+# (name, description, generator_path, output_dir) — titles derive via make()
+_SPECS: tuple[tuple[str, str, str, str], ...] = (
+    (
+        "feature_flag",
+        "Generate a feature flag definition",
+        "lexigram.features.cli.generators.flag:FeatureFlagGenerator",
+        "src/features",
     ),
+)
+
+_GENERATOR_DEFINITIONS: tuple[GeneratorDefinition, ...] = tuple(
+    GeneratorDefinition.make(
+        name,
+        description=description,
+        generator_path=generator_path,
+        output_dir=output_dir,
+        contributor="features",
+        category="features",
+    )
+    for name, description, generator_path, output_dir in _SPECS
 )
 
 
