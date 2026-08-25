@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from orders.app import create_app
 from orders.commands import PayOrder, PlaceOrder, ShipOrder
 from orders.domain import (
     Order,
@@ -13,7 +14,6 @@ from orders.domain import (
     OrderStatus,
 )
 from orders.events import NotificationHandler, OrdersView, OrderView
-from orders.module import OrdersModule
 from orders.repository.order_repository import OrderRepository
 from orders.repository.outbox import Outbox, OutboxRecord, OutboxStatus
 from orders.services.orders_api import OrdersApi
@@ -30,7 +30,6 @@ __all__ = [
     "OrderStatus",
     "OrderView",
     "OrdersApi",
-    "OrdersModule",
     "OrdersView",
     "Outbox",
     "OutboxRecord",
@@ -38,4 +37,5 @@ __all__ = [
     "PayOrder",
     "PlaceOrder",
     "ShipOrder",
+    "create_app",
 ]

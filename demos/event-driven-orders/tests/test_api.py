@@ -15,20 +15,22 @@ import pytest
 from lexigram.app import Application
 from lexigram.web.di.provider import WebProvider
 
-from orders.module import OrdersModule
+from orders.app import create_app
 
 
 @pytest.fixture
 async def client() -> AsyncIterator[httpx.AsyncClient]:
-    async with Application.boot(
-        name="orders-api-test", modules=[OrdersModule.configure()]
-    ) as app:
-        web = await app.container.resolve(WebProvider)
+    application = create_app()
+    await application.start()
+    try:
+        web = await application.container.resolve(WebProvider)
         transport = httpx.ASGITransport(app=web.starlette)
         async with httpx.AsyncClient(
             transport=transport, base_url="http://test"
         ) as http:
             yield http
+    finally:
+        await application.stop()
 
 
 def _place_payload(customer: str = "Alice") -> dict[str, object]:

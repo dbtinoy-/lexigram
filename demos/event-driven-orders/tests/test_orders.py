@@ -21,19 +21,31 @@ from lexigram.result import Err, Result
 from orders.commands import PayOrder, PlaceOrder, ShipOrder
 from orders.domain import OrderItem, OrderNotPaidError, OrderPlaced, OrderStatus
 from orders.events import NotificationHandler, OrdersView
-from orders.main import _build_parser, _run
-from orders.module import OrdersModule
+from structlog.testing import capture_logs
+
+from orders.app import create_app
+from orders.cli import build_parser, run
 from orders.repository.outbox import Outbox, OutboxError
 from orders.repository.order_repository import OrderRepository
 from orders.services.orders_api import OrdersApi
 
 
+@pytest.fixture(autouse=True)
+def _freeze_logging_config(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep structlog processors stable so capture_logs sees CLI events."""
+    monkeypatch.setattr(
+        "lexigram.app.base._apply_logging_config", lambda _cfg: None
+    )
+
+
 @pytest.fixture
 async def app() -> AsyncIterator[Application]:
-    async with Application.boot(
-        name="orders-test", modules=[OrdersModule.configure()]
-    ) as instance:
+    instance = create_app()
+    await instance.start()
+    try:
         yield instance
+    finally:
+        await instance.stop()
 
 
 def item(sku: str, qty: int = 1, price: str = "10.00") -> OrderItem:
@@ -142,18 +154,18 @@ class TestOutbox:
 
 
 class TestDemoCommand:
-    async def test_demo_runs_full_lifecycle_in_one_process(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        args = _build_parser().parse_args(["demo"])
-        await _run(args)
+    async def test_demo_runs_full_lifecycle_in_one_process(self) -> None:
+        args = build_parser().parse_args(["demo"])
+        with capture_logs() as events:
+            exit_code = await run(args)
 
-        out = capsys.readouterr().out
-        assert "order placed:" in out
-        assert "order paid:" in out
-        assert "order shipped:" in out
-        assert "\tshipped" in out
-        assert "flushed: 3" in out
+        assert exit_code == 0
+        names = [e["event"] for e in events]
+        for marker in ("order.placed", "order.paid", "order.shipped",
+                       "outbox.record", "outbox.flushed"):
+            assert marker in names, f"missing narration event: {marker}"
+        flushed = next(e for e in events if e["event"] == "outbox.flushed")
+        assert flushed["count"] == 3
 
 
 class TestOutboxFailurePaths:

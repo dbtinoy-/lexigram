@@ -1,8 +1,4 @@
-"""Application composition root for the event-driven-orders demo.
-
-``create_app`` is the only place that knows how the modules fit together;
-sections are bound inline from the demo's ``application.yaml``.
-"""
+"""Application composition root for the event-driven orders demo."""
 
 from __future__ import annotations
 
@@ -14,11 +10,11 @@ from lexigram.web.module import WebModule
 from orders.config import load_lex_config
 from orders.controllers.api import OrdersApiController
 from orders.di.provider import OrdersProvider
-from orders.pages import OrdersPageController
+from orders.ui.pages import OrdersPageController
 
 
 def create_app(config: LexigramConfig | None = None) -> Application:
-    """Create the configured (not yet started) application."""
+    """Create the configured (not yet started) orders application."""
     config = config or load_lex_config()
     web_config = config.get_section("web", WebConfig)
 
