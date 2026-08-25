@@ -4,7 +4,8 @@
 Scans all Python source trees (packages, scripts, and demos, excluding
 tests and virtualenvs) for direct `os.getenv` / `os.environ` reads of
 environment variables, then diffs the referenced names against the keys
-present in ``.env.example``. Exits non-zero if any referenced variable is
+present in ``.env.full.example`` (the generated superset; ``.env.example``
+is a curated core subset). Exits non-zero if any referenced variable is
 missing, so CI can gate on environment-doc hygiene.
 
 Usage:
@@ -19,7 +20,7 @@ import re
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
-EXAMPLE = ROOT / ".env.example"
+EXAMPLE = ROOT / ".env.full.example"  # completeness target (superset of slim .env.example)
 
 _ENV_NAME = r"[A-Z][A-Z0-9_]{1,}"
 

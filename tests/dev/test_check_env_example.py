@@ -109,4 +109,4 @@ def test_check_fails_when_example_missing(tmp_path: Path) -> None:
 def test_check_matches_full_repo_example() -> None:
     import dev.check_env_example as check
 
-    assert _run_check(check.ROOT, check.ROOT / ".env.example") == 0
+    assert _run_check(check.ROOT, check.ROOT / ".env.full.example") == 0
