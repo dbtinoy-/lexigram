@@ -9,15 +9,25 @@ from lexigram.contracts.cli.contributions import (
 )
 from lexigram.contracts.cli.types import GeneratorDefinition
 
-_GENERATOR_DEFINITIONS: tuple[GeneratorDefinition, ...] = (
-    GeneratorDefinition(
-        name="task",
-        title="Generate Task",
-        description="Generate a background task with queue registration",
-        contributor="tasks",
-        generator_path="lexigram.tasks.cli.generators.task:TaskGenerator",
-        default_output_dir="src/tasks",
+# (name, description, generator_path, output_dir) — titles derive via make()
+_SPECS: tuple[tuple[str, str, str, str], ...] = (
+    (
+        "task",
+        "Generate a background task with queue registration",
+        "lexigram.tasks.cli.generators.task:TaskGenerator",
+        "src/tasks",
     ),
+)
+
+_GENERATOR_DEFINITIONS: tuple[GeneratorDefinition, ...] = tuple(
+    GeneratorDefinition.make(
+        name,
+        description=description,
+        generator_path=generator_path,
+        output_dir=output_dir,
+        contributor="tasks",
+    )
+    for name, description, generator_path, output_dir in _SPECS
 )
 
 
