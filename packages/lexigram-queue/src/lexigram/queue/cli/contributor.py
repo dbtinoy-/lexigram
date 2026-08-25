@@ -8,15 +8,25 @@ from lexigram.contracts.cli.contributions import (
 )
 from lexigram.contracts.cli.types import GeneratorDefinition
 
-_GENERATOR_DEFINITIONS: tuple[GeneratorDefinition, ...] = (
-    GeneratorDefinition(
-        name="message_consumer",
-        title="Generate Message Consumer",
-        description="Generate a message consumer with queue routing",
-        contributor="queue",
-        generator_path="lexigram.queue.cli.generators.consumer:ConsumerGenerator",
-        default_output_dir="src/consumers",
+# (name, description, generator_path, output_dir) — titles derive via make()
+_SPECS: tuple[tuple[str, str, str, str], ...] = (
+    (
+        "message_consumer",
+        "Generate a message consumer with queue routing",
+        "lexigram.queue.cli.generators.consumer:ConsumerGenerator",
+        "src/consumers",
     ),
+)
+
+_GENERATOR_DEFINITIONS: tuple[GeneratorDefinition, ...] = tuple(
+    GeneratorDefinition.make(
+        name,
+        description=description,
+        generator_path=generator_path,
+        output_dir=output_dir,
+        contributor="queue",
+    )
+    for name, description, generator_path, output_dir in _SPECS
 )
 
 

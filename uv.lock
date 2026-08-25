@@ -7814,7 +7814,7 @@ test = [
 
 [[package]]
 name = "lexigram-notification"
-version = "0.1.5002"
+version = "0.1.5003"
 source = { editable = "packages/lexigram-notification" }
 dependencies = [
     { name = "aiofiles" },
