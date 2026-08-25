@@ -8,6 +8,8 @@ from lexigram.contracts.cli.contributions import (
     SchemaSetupContribution,
     ShellContextContribution,
 )
+from collections.abc import Iterable
+
 from lexigram.contracts.cli.types import GeneratorDefinition
 
 
@@ -85,3 +87,27 @@ class BaseCliContributor:
             An empty list by default; override to provide schema setup steps.
         """
         return []
+
+
+def definitions_from_specs(
+    contributor_id: str,
+    specs: Iterable[tuple[str, str, str, str]],
+    *,
+    category: str = "general",
+) -> list[GeneratorDefinition]:
+    """Build generator definitions from compact spec tuples.
+
+    Each spec is ``(name, description, generator_path, output_dir)``; titles
+    derive conventionally via :meth:`GeneratorDefinition.make`.
+    """
+    return [
+        GeneratorDefinition.make(
+            name,
+            description=description,
+            generator_path=generator_path,
+            output_dir=output_dir,
+            contributor=contributor_id,
+            category=category,
+        )
+        for name, description, generator_path, output_dir in specs
+    ]
