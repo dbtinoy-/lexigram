@@ -4,8 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
-from typing import TYPE_CHECKING, Any
-
+from typing import Any
 
 from lexigram.auth.authn.core import User
 from lexigram.auth.authn.security import PasswordHasher

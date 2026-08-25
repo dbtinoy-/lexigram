@@ -16,7 +16,6 @@ from lexigram.graphql.types import SubscriptionInfo
 from lexigram.logging import get_logger
 
 if TYPE_CHECKING:
-
     from lexigram.contracts.web import WebSocketProtocol
 
 logger = get_logger(__name__)

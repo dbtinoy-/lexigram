@@ -22,7 +22,6 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 
-
 @dataclass
 class DispatcherStats:
     """Statistics for the stream dispatcher."""

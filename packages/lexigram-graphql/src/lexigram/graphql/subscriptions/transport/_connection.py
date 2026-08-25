@@ -14,8 +14,6 @@ from lexigram.graphql.subscriptions.protocol import GQLWSMessageType
 from lexigram.graphql.types import SubscriptionInfo
 from lexigram.logging import get_logger
 
-
-
 logger = get_logger(__name__)
 
 

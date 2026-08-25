@@ -18,7 +18,6 @@ from lexigram.logging import get_logger
 from lexigram.primitives import clock as ambient_clock
 from lexigram.validation import Field
 
-
 logger = get_logger(__name__)
 
 

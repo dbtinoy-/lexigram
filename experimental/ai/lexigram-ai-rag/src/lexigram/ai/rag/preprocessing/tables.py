@@ -8,8 +8,6 @@ integrate with libraries like camelot, tabula, or deep learning models.
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING
-
 
 from lexigram.ai.rag.preprocessing.base import AbstractPreprocessor
 from lexigram.ai.rag.preprocessing.document import PreprocessedDocument

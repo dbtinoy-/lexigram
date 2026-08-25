@@ -7,8 +7,7 @@ from lexigram-resilience.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Protocol
-
+from typing import Protocol
 
 
 @dataclass

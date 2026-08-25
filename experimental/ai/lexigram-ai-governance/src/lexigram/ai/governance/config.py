@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, ClassVar, cast
+from typing import ClassVar, cast
 
 from lexigram.ai.governance import constants as const
 from lexigram.config import (
@@ -11,7 +11,6 @@ from lexigram.config import (
 )
 from lexigram.contracts.core.config import ConfigIssue, Environment
 from lexigram.validation import ConfigDict, Field
-
 
 
 @dataclass(init=False)

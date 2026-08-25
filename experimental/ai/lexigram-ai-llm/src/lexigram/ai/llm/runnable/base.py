@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from lexigram.ai.llm.runnable.sequence import RunnableSequence
 from lexigram.contracts.ai.runnable import RunnableProtocol
-
 
 
 class RunnableMixin(RunnableProtocol):

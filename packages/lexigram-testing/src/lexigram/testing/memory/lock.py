@@ -12,13 +12,12 @@ import asyncio
 from dataclasses import dataclass
 from time import time
 from types import TracebackType
-from typing import TYPE_CHECKING, Self
+from typing import Self
 from uuid import uuid4
 
 from lexigram.contracts.core.lock import DistributedLockProtocol, LockInfo
 from lexigram.contracts.exceptions.components import LockAcquisitionError
 from lexigram.logging import get_logger
-
 
 logger = get_logger(__name__)
 
