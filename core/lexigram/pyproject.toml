@@ -30,7 +30,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "lexigram"
-version = "0.1.5001"
+version = "0.1.5002"
 description = "Async-first DI/IoC framework for Python — core package"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -73,8 +73,7 @@ dependencies = [
     "lexigram-contracts>=0.1.4",
     "orjson>=3.0.0",
     "structlog>=25.1.0",             # Structured logging foundation
-    "pydantic>=2.10.0",               # Required: used unconditionally by config, validation
-    "jinja2>=3.1.0",
+    "pydantic>=2.10.0",              # Required: used unconditionally by config, validation
 ]
 
 # =============================================================================
@@ -92,6 +91,12 @@ dev = [
     "ruff>=0.11.0",
     "mypy>=1.0.0",
     "pre-commit>=3.0.0",
+]
+
+# Codegen extra — opt-in template engine for lexigram.codegen scaffolders.
+# The base classes import jinja2 lazily; only template rendering needs it.
+codegen = [
+    "jinja2>=3.1.0",
 ]
 
 test = [

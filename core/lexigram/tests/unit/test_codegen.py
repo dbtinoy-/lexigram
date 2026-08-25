@@ -83,6 +83,10 @@ def test_model_generator_renders_sqlalchemy_model_content(tmp_path: Path) -> Non
     content = (tmp_path / "src" / "models" / "user_profile.py").read_text(
         encoding="utf-8"
     )
+    # NOTE: the emitted `from lexigram.sql.base import Base` targets a module
+    # that does not exist in lexigram-sql — a known upstream defect tracked by
+    # test_generated_model_is_importable below. This assertion only documents
+    # the currently emitted shape.
     assert "from lexigram.sql.base import Base" in content
     assert "class UserProfileModel(Base):" in content
     assert '__tablename__ = "user_profiles"' in content
@@ -106,3 +110,28 @@ def test_service_generator_creates_user_service_file(tmp_path: Path) -> None:
     assert "from ..models.user import UserModel" in content
     assert "async def list(self) -> list[UserModel]:" in content
     assert "async def get(self, item_id: int) -> UserModel | None:" in content
+
+
+@pytest.mark.xfail(
+    reason=(
+        "upstream defect: ModelGenerator emits `from lexigram.sql.base "
+        "import Base`, but that module does not exist in lexigram-sql"
+    ),
+    strict=True,
+)
+def test_generated_model_is_importable(tmp_path: Path) -> None:
+    """Ratchet: flips to pass (and then enforces) once upstream is fixed."""
+
+    import importlib.util
+
+    generator = ModelGenerator(output_dir=tmp_path / "src" / "models")
+    generator.generate("User", fields_str="email:str")
+    generated = tmp_path / "src" / "models" / "user.py"
+
+    spec = importlib.util.spec_from_file_location("codegen_user_model", generated)
+    assert spec is not None
+    assert spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    assert hasattr(module, "UserModel")

@@ -4275,10 +4275,9 @@ wheels = [
 
 [[package]]
 name = "lexigram"
-version = "0.1.5001"
+version = "0.1.5002"
 source = { editable = "core/lexigram" }
 dependencies = [
-    { name = "jinja2" },
     { name = "lexigram-contracts" },
     { name = "orjson" },
     { name = "pydantic" },
@@ -4348,6 +4347,9 @@ auth = [
 cache = [
     { name = "lexigram-cache" },
 ]
+codegen = [
+    { name = "jinja2" },
+]
 db = [
     { name = "lexigram-nosql" },
     { name = "lexigram-search" },
@@ -4392,7 +4394,7 @@ web = [
 [package.metadata]
 requires-dist = [
     { name = "cryptography", marker = "extra == 'security'", specifier = ">=41.0.0" },
-    { name = "jinja2", specifier = ">=3.1.0" },
+    { name = "jinja2", marker = "extra == 'codegen'", specifier = ">=3.1.0" },
     { name = "lexigram-admin", marker = "extra == 'all'", editable = "experimental/apps/lexigram-admin" },
     { name = "lexigram-ai", marker = "extra == 'all'", editable = "experimental/ai/lexigram-ai" },
     { name = "lexigram-ai-agents", marker = "extra == 'all'", editable = "experimental/ai/lexigram-ai-agents" },
@@ -4473,11 +4475,11 @@ requires-dist = [
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.11.0" },
     { name = "structlog", specifier = ">=25.1.0" },
 ]
-provides-extras = ["dev", "test", "docs", "security", "web", "db", "cache", "auth", "events", "tasks", "monitor", "graphql", "all"]
+provides-extras = ["dev", "codegen", "test", "docs", "security", "web", "db", "cache", "auth", "events", "tasks", "monitor", "graphql", "all"]
 
 [[package]]
 name = "lexigram-admin"
-version = "0.1.5001"
+version = "0.1.5002"
 source = { editable = "experimental/apps/lexigram-admin" }
 dependencies = [
     { name = "aiofiles" },
@@ -4485,6 +4487,7 @@ dependencies = [
     { name = "htpy" },
     { name = "httpx" },
     { name = "itsdangerous" },
+    { name = "jinja2" },
     { name = "lexigram" },
     { name = "lexigram-contracts" },
     { name = "lexigram-ui" },
@@ -4589,6 +4592,7 @@ requires-dist = [
     { name = "htpy", specifier = ">=0.9" },
     { name = "httpx", specifier = ">=0.27.0" },
     { name = "itsdangerous", specifier = ">=2.2.0" },
+    { name = "jinja2", specifier = ">=3.1.0" },
     { name = "ldap3", marker = "extra == 'full'", specifier = ">=2.9.0" },
     { name = "ldap3", marker = "extra == 'ldap'", specifier = ">=2.9.0" },
     { name = "lexigram", editable = "core/lexigram" },
@@ -5376,9 +5380,10 @@ test = [
 
 [[package]]
 name = "lexigram-ai-mcp"
-version = "0.1.5001"
+version = "0.1.5002"
 source = { editable = "experimental/ai/lexigram-ai-mcp" }
 dependencies = [
+    { name = "jinja2" },
     { name = "lexigram" },
     { name = "lexigram-contracts" },
     { name = "typer" },
@@ -5413,6 +5418,7 @@ test = [
 
 [package.metadata]
 requires-dist = [
+    { name = "jinja2", specifier = ">=3.1.0" },
     { name = "lexigram", editable = "core/lexigram" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
     { name = "lexigram-testing", marker = "extra == 'test'", editable = "packages/lexigram-testing" },
@@ -6488,7 +6494,7 @@ test = [
 
 [[package]]
 name = "lexigram-contracts"
-version = "0.1.5001"
+version = "0.1.5002"
 source = { editable = "core/lexigram-contracts" }
 dependencies = [
     { name = "typing-extensions" },
@@ -6676,9 +6682,10 @@ test = [
 
 [[package]]
 name = "lexigram-features"
-version = "0.1.5001"
+version = "0.1.5002"
 source = { editable = "packages/lexigram-features" }
 dependencies = [
+    { name = "jinja2" },
     { name = "lexigram" },
     { name = "lexigram-contracts" },
     { name = "typer" },
@@ -6715,6 +6722,7 @@ test = [
 
 [package.metadata]
 requires-dist = [
+    { name = "jinja2", specifier = ">=3.1.0" },
     { name = "lexigram", editable = "core/lexigram" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
     { name = "lexigram-testing", marker = "extra == 'test'", editable = "packages/lexigram-testing" },
@@ -6984,9 +6992,10 @@ test = [
 
 [[package]]
 name = "lexigram-monitor"
-version = "0.1.5001"
+version = "0.1.5002"
 source = { editable = "packages/lexigram-monitor" }
 dependencies = [
+    { name = "jinja2" },
     { name = "lexigram" },
     { name = "lexigram-contracts" },
     { name = "starlette" },
@@ -7050,6 +7059,7 @@ test = [
 [package.metadata]
 requires-dist = [
     { name = "black", marker = "extra == 'dev'", specifier = ">=23.0.0" },
+    { name = "jinja2", specifier = ">=3.1.0" },
     { name = "lexigram", editable = "core/lexigram" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
     { name = "lexigram-tasks", marker = "extra == 'test'", editable = "packages/lexigram-tasks" },
@@ -7808,11 +7818,12 @@ test = [
 
 [[package]]
 name = "lexigram-notification"
-version = "0.1.5001"
+version = "0.1.5002"
 source = { editable = "packages/lexigram-notification" }
 dependencies = [
     { name = "aiofiles" },
     { name = "aiohttp" },
+    { name = "jinja2" },
     { name = "lexigram" },
     { name = "lexigram-contracts" },
     { name = "pywebpush" },
@@ -7875,6 +7886,7 @@ requires-dist = [
     { name = "httpx", marker = "extra == 'slack'", specifier = ">=0.27.0" },
     { name = "httpx", marker = "extra == 'whatsapp'", specifier = ">=0.27.0" },
     { name = "httpx", extras = ["http2"], marker = "extra == 'apns'", specifier = ">=0.27.0" },
+    { name = "jinja2", specifier = ">=3.1.0" },
     { name = "lexigram", editable = "core/lexigram" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
     { name = "lexigram-testing", marker = "extra == 'test'", editable = "packages/lexigram-testing" },
@@ -8598,9 +8610,10 @@ test = [
 
 [[package]]
 name = "lexigram-tenancy"
-version = "0.1.5001"
+version = "0.1.5002"
 source = { editable = "packages/lexigram-tenancy" }
 dependencies = [
+    { name = "jinja2" },
     { name = "lexigram" },
     { name = "lexigram-contracts" },
     { name = "typer" },
@@ -8651,6 +8664,7 @@ test = [
 
 [package.metadata]
 requires-dist = [
+    { name = "jinja2", specifier = ">=3.1.0" },
     { name = "lexigram", editable = "core/lexigram" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
     { name = "lexigram-sql", marker = "extra == 'sql'", editable = "packages/lexigram-sql" },
@@ -8914,10 +8928,11 @@ test = [
 
 [[package]]
 name = "lexigram-vector"
-version = "0.1.5001"
+version = "0.1.5002"
 source = { editable = "packages/lexigram-vector" }
 dependencies = [
     { name = "aiohttp" },
+    { name = "jinja2" },
     { name = "lexigram" },
     { name = "lexigram-contracts" },
     { name = "typer" },
@@ -8985,6 +9000,7 @@ requires-dist = [
     { name = "aiohttp", marker = "extra == 'embed'", specifier = ">=3.9.0" },
     { name = "asyncpg", marker = "extra == 'pgvector'", specifier = ">=0.30.0" },
     { name = "chromadb", marker = "extra == 'chroma'", specifier = ">=0.4.0" },
+    { name = "jinja2", specifier = ">=3.1.0" },
     { name = "lexigram", editable = "core/lexigram" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
     { name = "lexigram-testing", marker = "extra == 'test'", editable = "packages/lexigram-testing" },
@@ -9228,9 +9244,10 @@ test = [
 
 [[package]]
 name = "lexigram-workflow"
-version = "0.1.5001"
+version = "0.1.5002"
 source = { editable = "packages/lexigram-workflow" }
 dependencies = [
+    { name = "jinja2" },
     { name = "lexigram" },
     { name = "lexigram-contracts" },
     { name = "typer" },
@@ -9265,6 +9282,7 @@ test = [
 
 [package.metadata]
 requires-dist = [
+    { name = "jinja2", specifier = ">=3.1.0" },
     { name = "lexigram", editable = "core/lexigram" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
     { name = "lexigram-testing", marker = "extra == 'test'", editable = "packages/lexigram-testing" },

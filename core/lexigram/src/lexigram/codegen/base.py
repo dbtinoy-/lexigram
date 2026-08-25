@@ -4,16 +4,36 @@ from __future__ import annotations
 
 import inspect
 from pathlib import Path
-import re
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-import jinja2
+from lexigram.contracts.cli.generators import (
+    GenerationResult as GenerationResult,
+)
+from lexigram.contracts.cli.generators import (
+    find_project_anchor as find_project_anchor,
+)
+from lexigram.contracts.cli.generators import (
+    pascal_case as pascal_case,
+)
+from lexigram.contracts.cli.generators import (
+    snake_case as snake_case,
+)
+from lexigram.contracts.cli.generators import (
+    validate_component_name as validate_component_name,
+)
+from lexigram.contracts.exceptions.infra import InfrastructureError
 
-from lexigram.contracts.cli.generators import GenerationResult as GenerationResult
+if TYPE_CHECKING:
+    import jinja2
 
 
 class GeneratorBase:
-    """Base for interactive code scaffolders (name-based, file-producing)."""
+    """Base for interactive code scaffolders (name-based, file-producing).
+
+    Rendering requires the optional ``codegen`` extra
+    (``uv add 'lexigram[codegen]'``); construction, name normalization,
+    and guarded file writes work without it.
+    """
 
     def __init__(
         self,
@@ -23,7 +43,28 @@ class GeneratorBase:
         self.raw_output_dir = Path(output_dir)
         self.output_dir = self._resolve_output_dir(self.raw_output_dir)
         self.template_root = self._resolve_template_root(template_root)
-        self._environment = jinja2.Environment(
+        self._environment: jinja2.Environment | None = None
+
+    def generate(self, name: str, **options: Any) -> GenerationResult:
+        raise NotImplementedError
+
+    @property
+    def env(self) -> jinja2.Environment:
+        """Public accessor for the Jinja2 environment (lazy-built)."""
+        if self._environment is None:
+            self._environment = self._build_environment()
+        return self._environment
+
+    def _build_environment(self) -> jinja2.Environment:
+        try:
+            import jinja2
+        except ImportError as exc:
+            raise InfrastructureError(
+                "jinja2 is required for template rendering but is not "
+                "installed. Install the codegen extra: "
+                "uv add 'lexigram[codegen]' (or pip install 'lexigram[codegen]')"
+            ) from exc
+        return jinja2.Environment(
             loader=jinja2.FileSystemLoader(self.template_root),
             autoescape=False,  # noqa: S701 - code generation templates are not HTML
             trim_blocks=False,
@@ -32,16 +73,8 @@ class GeneratorBase:
             undefined=jinja2.StrictUndefined,
         )
 
-    def generate(self, name: str, **options: Any) -> GenerationResult:
-        raise NotImplementedError
-
-    @property
-    def env(self) -> jinja2.Environment:
-        """Public accessor for the Jinja2 environment."""
-        return self._environment
-
     def render_template(self, template_name: str, context: dict[str, Any]) -> str:
-        template = self._environment.get_template(template_name)
+        template = self.env.get_template(template_name)
         return template.render(**context)
 
     def write_file(
@@ -75,27 +108,6 @@ class GeneratorBase:
 
         return GenerationResult(files_created=[file_path])
 
-    @staticmethod
-    def _find_project_anchor(start: Path) -> Path | None:
-        """Return the nearest ancestor directory with a real ``[project]`` table.
-
-        Virtual workspace roots (``[tool.uv.workspace]`` only, no
-        ``[project]``) are deliberately skipped: generated application code
-        must never land in the framework monorepo.
-        """
-
-        for candidate in (start, *start.parents):
-            pyproject = candidate / "pyproject.toml"
-            if not pyproject.is_file():
-                continue
-            try:
-                manifest = pyproject.read_text(encoding="utf-8", errors="ignore")
-            except OSError:
-                continue
-            if "[project]" in manifest:
-                return candidate
-        return None
-
     @classmethod
     def _resolve_output_dir(cls, output_dir: Path) -> Path:
         """Resolve ``output_dir`` to an absolute path before any fs mutation.
@@ -113,10 +125,10 @@ class GeneratorBase:
         if output_dir.is_absolute():
             return output_dir
 
-        anchor = cls._find_project_anchor(Path.cwd())
+        anchor = find_project_anchor(Path.cwd())
         if anchor is None:
             raise ValueError(
-                f"relative output_dir {output_dir.as_posix!r} cannot be "
+                f"relative output_dir {output_dir.as_posix()!r} cannot be "
                 "resolved: run inside the package that should receive the "
                 "generated code, or pass an absolute --output-dir"
             )
@@ -135,31 +147,15 @@ class GeneratorBase:
 
     @staticmethod
     def _to_pascal_case(name: str) -> str:
-        normalized = GeneratorBase._to_snake_case(name)
-        return "".join(part.capitalize() for part in normalized.split("_") if part)
+        return pascal_case(name)
 
     @staticmethod
     def _to_snake_case(name: str) -> str:
-        compact = re.sub(r"[\s-]+", "_", name)
-        separated = re.sub(r"([A-Z])", r"_\1", compact)
-        return separated.lower().strip("_")
-
-    _VALID_NAME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_-]*$")
+        return snake_case(name)
 
     @classmethod
     def _validate_component_name(cls, name: str) -> str:
-        """Reject names that could escape the output dir or poison codegen.
-
-        Raises:
-            ValueError: If *name* contains path separators, dot segments,
-                or does not start with an alphanumeric character.
-        """
-        if not cls._VALID_NAME_RE.match(name):
-            raise ValueError(
-                f"Invalid generator name {name!r}: must match "
-                f"{cls._VALID_NAME_RE.pattern!r}"
-            )
-        return name
+        return validate_component_name(name)
 
     @staticmethod
     def _get_package_name(output_dir: str | Path) -> str:
