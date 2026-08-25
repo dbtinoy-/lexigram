@@ -14,9 +14,9 @@ from __future__ import annotations
 import asyncio
 import sys
 
+from lexigram.config.main import LexigramConfig
 from lexigram.logging import get_logger
 from rates.app import create_app
-from rates.config import load_lex_config
 
 logger = get_logger(__name__)
 
@@ -27,7 +27,7 @@ async def serve() -> None:
     from lexigram.web.di.provider import WebProvider
     from lexigram.web.server.runner import run_server_async
 
-    config = load_lex_config()
+    config = LexigramConfig.from_yaml()
     web_config = config.get_section("web", WebConfig)
     app = create_app(config=config)
     try:

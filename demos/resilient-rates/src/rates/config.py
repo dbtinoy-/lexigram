@@ -1,22 +1,17 @@
-"""Demo configuration bound from ``application.yaml``.
+"""Demo configuration — ``demo:`` section of application.yaml.
 
-Framework convention (exemplar: ``lexigram-cache/config``): the config class
-declares its section and self-binds via ``from_yaml`` — no explicit
-``get_section`` calls anywhere. ``LEX_RATES__*`` overrides and
-``LEX_PROFILE`` overlays apply through the loader.
+Framework convention: run the demo from its own directory so
+``LexigramConfig``/``from_yaml`` auto-discovers ``application.yaml``.
+``LEX_RATES__*`` overrides and ``LEX_PROFILE`` overlays apply via the loader.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from pathlib import Path
 from typing import ClassVar
 
 from lexigram.config import BaseConfig
-from lexigram.config.main import LexigramConfig
 from lexigram.validation import Field
-
-APP_YAML = Path(__file__).resolve().parents[2] / "application.yaml"
 
 
 @dataclass(init=False)
@@ -31,9 +26,4 @@ class RatesConfig(BaseConfig):
     )
 
 
-def load_lex_config() -> LexigramConfig:
-    """Load the demo's full ``LexigramConfig`` (web/cache/demo sections)."""
-    return LexigramConfig.from_yaml(APP_YAML)
-
-
-__all__ = ["APP_YAML", "RatesConfig", "load_lex_config"]
+__all__ = ["RatesConfig"]

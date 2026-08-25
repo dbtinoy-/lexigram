@@ -14,3 +14,9 @@ from pathlib import Path
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
+
+# Auto-discovery of application.yaml requires the demo dir as CWD — this also
+# makes test behavior identical to `python -m rates serve`.
+import os  # noqa: E402
+
+os.chdir(Path(__file__).resolve().parent)

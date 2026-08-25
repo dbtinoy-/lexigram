@@ -14,7 +14,7 @@ from lexigram.config.main import LexigramConfig
 from lexigram.resilience.module import ResilienceModule
 from lexigram.web.config import WebConfig
 from lexigram.web.module import WebModule
-from rates.config import APP_YAML, RatesConfig
+from rates.config import RatesConfig
 from rates.controllers.api import RatesApiController
 from rates.di.provider import RatesProvider
 from rates.ui.pages import RatesPageController
@@ -22,10 +22,10 @@ from rates.ui.pages import RatesPageController
 
 def create_app(config: LexigramConfig | None = None) -> Application:
     """Create the configured (not yet started) rates application."""
-    config = config or LexigramConfig.from_yaml(APP_YAML)
-    web_config = WebConfig.from_yaml(APP_YAML)
-    cache_config = CacheConfig.from_yaml(APP_YAML)
-    demo_config = RatesConfig.from_yaml(APP_YAML)
+    config = config or LexigramConfig.from_yaml()
+    web_config = WebConfig.from_yaml()
+    cache_config = CacheConfig.from_yaml()
+    demo_config = RatesConfig.from_yaml()
 
     app = Application(name="resilient-rates", config=config)
     app.add_modules(
