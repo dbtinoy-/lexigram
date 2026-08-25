@@ -26,8 +26,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
 @pytest.fixture
 async def app() -> AsyncIterator[Starlette]:
     """Boot the real module graph and expose its ASGI app."""
+    from rbac_console.config import load_lex_config
+
     async with Application.boot(
-        name="rbac-console-test", modules=[RbacModule.configure()]
+        name="rbac-console-test",
+        modules=[RbacModule.configure()],
+        config=load_lex_config(),
     ) as application:
         web = await application.container.resolve(WebProvider)
         yield web.starlette

@@ -24,7 +24,11 @@ from lexigram.contracts.core.di import (
     ContainerRegistrarProtocol,
     ContainerResolverProtocol,
 )
-from lexigram.contracts.core.health import HealthCheckResult
+from lexigram.contracts.core.health import (
+    HealthCheckCategory,
+    HealthCheckResult,
+    HealthStatus,
+)
 from lexigram.di.provider import Provider
 
 __all__ = ["PERSONA_PASSWORD", "ROLE_DEFINITIONS", "RbacProvider"]
@@ -41,8 +45,12 @@ class RbacProvider(Provider):
     name = "rbac-console"
 
     async def health_check(self, timeout: float = 5.0) -> HealthCheckResult:
-        """Report component readiness."""
-        return HealthCheckResult(component=self.name)
+        """Report readiness of the RBAC stack."""
+        return HealthCheckResult(
+            component=self.name,
+            status=HealthStatus.HEALTHY,
+            category=HealthCheckCategory.READINESS,
+        )
 
     async def register(self, container: ContainerRegistrarProtocol) -> None:
         """Bind pure instances now; collaborators build lazily post-boot."""

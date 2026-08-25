@@ -1,0 +1,16 @@
+# RBAC Console — runtime configuration (Blueprint §3).
+web:
+  server:
+    host: 127.0.0.1
+    port: 8090
+  security:
+    csrf:
+      enabled: false # plain JSON posts over local http
+
+# lexigram-auth (config_key: "auth") — offline demo secret.
+# Users/roles are seeded at boot by RbacSeedService (AuthConfig.users/roles
+# are inert today).
+auth:
+  secret_key: "rbac-console-demo-secret-key-0123456789ab"
+  token:
+    secret_key: "rbac-console-demo-secret-key-0123456789ab"
