@@ -106,6 +106,9 @@ class TestResolveTemplateRootBehavior:
     def test_existing_stubs_dir_wins_for_lexigram_module(
         self, tmp_path: Path, monkeypatch
     ) -> None:
+        import sys
+        import types
+
         stubs = tmp_path / "stubs" / "lexigram" / "web"
         stubs.mkdir(parents=True)
 
@@ -113,6 +116,14 @@ class TestResolveTemplateRootBehavior:
             return tmp_path
 
         monkeypatch.setattr("lexigram.codegen.base.find_project_anchor", fake_anchor)
+
+        holder = tmp_path / "controller.py"
+        holder.write_text("", encoding="utf-8")
+        fake_module = types.ModuleType("lexigram.web.cli.generators.controller")
+        fake_module.__file__ = str(holder)
+        monkeypatch.setitem(
+            sys.modules, "lexigram.web.cli.generators.controller", fake_module
+        )
 
         FakeWebGenerator = type("FakeWebGenerator", (GeneratorBase,), {})
         FakeWebGenerator.__module__ = "lexigram.web.cli.generators.controller"  # type: ignore[misc]
