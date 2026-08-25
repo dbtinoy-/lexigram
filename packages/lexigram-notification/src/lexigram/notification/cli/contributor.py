@@ -12,16 +12,26 @@ from lexigram.contracts.cli.contributions import (
 )
 from lexigram.contracts.cli.types import GeneratorDefinition
 
-_GENERATOR_DEFINITIONS: tuple[GeneratorDefinition, ...] = (
-    GeneratorDefinition(
-        name="notification_template",
-        title="Generate Notification Template",
-        description="Generate a notification template",
-        contributor="notification",
-        generator_path="lexigram.notification.cli.generators.template:NotificationTemplateGenerator",
-        default_output_dir="src/notifications",
-        category="notification",
+# (name, description, generator_path, output_dir) — titles derive via make()
+_SPECS: tuple[tuple[str, str, str, str], ...] = (
+    (
+        "notification_template",
+        "Generate a notification template",
+        "lexigram.notification.cli.generators.template:NotificationTemplateGenerator",
+        "src/notifications",
     ),
+)
+
+_GENERATOR_DEFINITIONS: tuple[GeneratorDefinition, ...] = tuple(
+    GeneratorDefinition.make(
+        name,
+        description=description,
+        generator_path=generator_path,
+        output_dir=output_dir,
+        contributor="notification",
+        category="notification",
+    )
+    for name, description, generator_path, output_dir in _SPECS
 )
 
 
