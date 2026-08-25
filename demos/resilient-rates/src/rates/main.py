@@ -16,7 +16,9 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+from collections.abc import Awaitable, Callable
 import sys
+from typing import Any
 
 from lexigram.app import Application
 from lexigram.config.main import LexigramConfig
@@ -103,12 +105,12 @@ async def _run(args: argparse.Namespace, config: LexigramConfig | None = None) -
         service = await app.container.resolve(RatesService)
         faults = await app.container.resolve(FaultController)
 
-        if args.command == "fetch":
-            await _fetch_and_log(service, args.pair)
-        elif args.command == "scenario":
+        # Registry dispatch (AGENTS §4.1): no if/elif chain.
+        async def _scenario() -> None:
             faults.set(Scenario(args.name))
             logger.info("scenario.set", name=args.name)
-        elif args.command == "stats":
+
+        async def _stats() -> None:
             s = service.stats()
             logger.info(
                 "stats.reported",
@@ -118,16 +120,24 @@ async def _run(args: argparse.Namespace, config: LexigramConfig | None = None) -
                 retries=s.retries,
                 stale_served=s.stale_served,
             )
-        elif args.command == "clear-cache":
-            await service.clear_cache()
-            logger.info("cache.cleared")
-        elif args.command == "stampede":
-            await _stampede(service, args.pair, args.workers)
-        elif args.command == "demo":
-            await _demo(service, faults)
+
+        commands: dict[str, Callable[[], Awaitable[Any]]] = {
+            "fetch": lambda: _fetch_and_log(service, args.pair),
+            "scenario": _scenario,
+            "stats": _stats,
+            "clear-cache": lambda: _clear_cache(service),
+            "stampede": lambda: _stampede(service, args.pair, args.workers),
+            "demo": lambda: _demo(service, faults),
+        }
+        await commands[args.command]()
 
 
-async def _stampede(service: RatesService, pair: str, workers: int) -> None:
+async def _stampede(
+    service: RatesService,
+    pair: str,
+    workers: int,
+    note: str | None = None,
+) -> None:
     """Collapse N concurrent fetches of one pair into a single upstream call."""
     await service.clear_cache()
     results = await asyncio.gather(*(service.fetch(pair) for _ in range(workers)))
@@ -138,7 +148,14 @@ async def _stampede(service: RatesService, pair: str, workers: int) -> None:
         workers=workers,
         distinct_rates=len({q.rate for q in quotes}),
         upstream_calls=s.upstream_calls,
+        **({"note": note} if note else {}),
     )
+
+
+async def _clear_cache(service: RatesService) -> None:
+    """Drop cached quotes and report."""
+    await service.clear_cache()
+    logger.info("cache.cleared")
 
 
 def _banner(act: int, title: str) -> None:
@@ -192,15 +209,9 @@ async def _demo(service: RatesService, faults: FaultController) -> None:
     logger.info("circuit.closed_after_probe", source=healed.source)
 
     _banner(5, "stampede — single-flight collapses 10 into 1")
-    await service.clear_cache()
     service.reset_stats()
-    results = await asyncio.gather(*(service.fetch("USD/JPY") for _ in range(10)))
-    quotes = [r.unwrap() for r in results if r.is_ok()]
-    logger.info(
-        "stampede.completed",
-        distinct_rates=len({q.rate for q in quotes}),
-        upstream_calls=service.stats().upstream_calls,
-        pattern="single-flight: 10 waiters, 1 leader",
+    await _stampede(
+        service, "USD/JPY", workers=10, note="single-flight: 10 waiters, 1 leader"
     )
 
     faults.set(Scenario.HEALTHY)
