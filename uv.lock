@@ -8490,7 +8490,7 @@ test = [
 
 [[package]]
 name = "lexigram-tasks"
-version = "0.1.5001"
+version = "0.1.5002"
 source = { editable = "packages/lexigram-tasks" }
 dependencies = [
     { name = "croniter" },

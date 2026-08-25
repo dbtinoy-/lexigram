@@ -9,16 +9,26 @@ from lexigram.contracts.cli.contributions import (
 )
 from lexigram.contracts.cli.types import GeneratorDefinition
 
-_GENERATOR_DEFINITIONS: tuple[GeneratorDefinition, ...] = (
-    GeneratorDefinition(
-        name="tenant_resolver",
-        title="Generate Tenant Resolver",
-        description="Generate a custom tenant resolver strategy",
-        contributor="tenancy",
-        generator_path="lexigram.tenancy.cli.generators.resolver:TenantResolverGenerator",
-        default_output_dir="src/tenancy",
-        category="tenancy",
+# (name, description, generator_path, output_dir) — titles derive via make()
+_SPECS: tuple[tuple[str, str, str, str], ...] = (
+    (
+        "tenant_resolver",
+        "Generate a custom tenant resolver strategy",
+        "lexigram.tenancy.cli.generators.resolver:TenantResolverGenerator",
+        "src/tenancy",
     ),
+)
+
+_GENERATOR_DEFINITIONS: tuple[GeneratorDefinition, ...] = tuple(
+    GeneratorDefinition.make(
+        name,
+        description=description,
+        generator_path=generator_path,
+        output_dir=output_dir,
+        contributor="tenancy",
+        category="tenancy",
+    )
+    for name, description, generator_path, output_dir in _SPECS
 )
 
 
