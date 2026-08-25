@@ -30,4 +30,9 @@ class RatesConfig(BaseConfig):
     )
 
 
-__all__ = ["APP_YAML", "RatesConfig"]
+def load_lex_config() -> LexigramConfig:
+    """Load the demo's full ``LexigramConfig`` (web/cache/demo sections)."""
+    return LexigramConfig.from_yaml(APP_YAML)
+
+
+__all__ = ["APP_YAML", "RatesConfig", "load_lex_config"]
