@@ -16,6 +16,15 @@ class InfrastructureError(LexigramError):
         super().__init__(message, **kwargs)
 
 
+class CollidingFileError(InfrastructureError):
+    """A generated file collides with an existing file under a FAIL policy."""
+
+    _code = "LEX_ERR_CODEGEN_001"
+
+    def __init__(self, message: str = "Generated file collision", **kwargs: Any) -> None:
+        super().__init__(message, **kwargs)
+
+
 class DatabaseError(InfrastructureError):
     """Database-related error (infrastructure-level)."""
 

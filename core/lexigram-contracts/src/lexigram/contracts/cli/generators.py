@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from enum import StrEnum
 import json
 from pathlib import Path
 import re
@@ -21,6 +22,83 @@ class GenerationResult:
     files_created: list[Path] = field(default_factory=list)
     files_skipped: list[Path] = field(default_factory=list)
     files_overwritten: list[Path] = field(default_factory=list)
+
+    def to_manifest(self) -> dict[str, str]:
+        """Map each touched path to its action.
+
+        Returns:
+            A ``{path: action}`` dict where action is ``"created"``,
+            ``"skipped"``, or ``"overwritten"``. Pure data — no I/O.
+        """
+        manifest: dict[str, str] = {}
+        for path in self.files_created:
+            manifest[str(path)] = "created"
+        for path in self.files_skipped:
+            manifest[str(path)] = "skipped"
+        for path in self.files_overwritten:
+            manifest[str(path)] = "overwritten"
+        return manifest
+
+
+class CollisionPolicy(StrEnum):
+    """What to do when a generated file already exists on disk."""
+
+    SKIP = "skip"
+    OVERWRITE = "overwrite"
+    FAIL = "fail"
+
+
+@dataclass(frozen=True, slots=True)
+class GenerationOptions:
+    """Standardized options for code-generation runs.
+
+    Attributes:
+        dry_run: Compute the would-be result without touching disk.
+        force: Convenience alias; resolves to ``OVERWRITE`` unless an
+            explicit ``policy`` is given.
+        quiet: Suppress non-essential output.
+        policy: Explicit collision policy; wins over ``force`` when set.
+    """
+
+    dry_run: bool = False
+    force: bool = False
+    quiet: bool = False
+    policy: CollisionPolicy | None = None
+
+
+def resolve_options(
+    *,
+    dry_run: bool = False,
+    force: bool = False,
+    quiet: bool = False,
+    policy: CollisionPolicy | None = None,
+) -> GenerationOptions:
+    """Normalize legacy kwargs into a fully-resolved :class:`GenerationOptions`.
+
+    Resolution order: an explicit ``policy`` always wins; otherwise
+    ``force=True`` maps to :attr:`CollisionPolicy.OVERWRITE`; otherwise
+    the default SKIP applies. ``dry_run`` and ``quiet`` are orthogonal.
+
+    Args:
+        dry_run: Preview mode; never writes to disk.
+        force: Legacy overwrite flag.
+        quiet: Suppress non-essential output.
+        policy: Explicit collision policy.
+
+    Returns:
+        Options with ``policy`` guaranteed non-None.
+    """
+    resolved_policy = (
+        policy
+        if policy is not None
+        else (CollisionPolicy.OVERWRITE if force else CollisionPolicy.SKIP)
+    )
+    return GenerationOptions(
+        dry_run=dry_run,
+        force=force,
+        quiet=quiet,
+        policy=resolved_policy,
+    )
 
 
 @runtime_checkable
@@ -145,10 +223,13 @@ def find_project_anchor(start: Path) -> Path | None:
 
 
 __all__ = [
+    "CollisionPolicy",
+    "GenerationOptions",
     "GenerationResult",
     "GeneratorProtocol",
     "find_project_anchor",
     "pascal_case",
+    "resolve_options",
     "snake_case",
     "validate_component_name",
 ]
