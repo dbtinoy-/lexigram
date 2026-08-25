@@ -4275,7 +4275,7 @@ wheels = [
 
 [[package]]
 name = "lexigram"
-version = "0.1.5004"
+version = "0.1.5005"
 source = { editable = "core/lexigram" }
 dependencies = [
     { name = "lexigram-contracts" },

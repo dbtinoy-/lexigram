@@ -250,16 +250,59 @@ class GeneratorBase:
             )
         return anchor / output_dir
 
-    def _resolve_template_root(self, template_root: str | Path | None) -> Path:
-        if template_root is not None:
-            return Path(template_root)
-
+    def _resolve_template_root(self, template_root: str | Path | None = None) -> Path:
         module_path = Path(inspect.getfile(self.__class__)).resolve().parent
-        candidates = [module_path / "templates", module_path.parent / "templates"]
-        for candidate in candidates:
-            if candidate.exists():
-                return candidate
-        return candidates[-1]
+        roots = self._template_search_roots(
+            template_root,
+            project_anchor=find_project_anchor(Path.cwd()),
+            module_name=type(self).__module__,
+            package_fallbacks=[
+                module_path / "templates",
+                module_path.parent / "templates",
+            ],
+        )
+        return next((r for r in roots if r.exists()), roots[-1])
+
+    @staticmethod
+    def _template_search_roots(
+        template_root: str | Path | None,
+        *,
+        project_anchor: Path | None = None,
+        module_name: str = "",
+        package_fallbacks: list[Path] | None = None,
+    ) -> list[Path]:
+        """Build the ordered candidate roots: explicit > stubs override > package."""
+        candidates: list[Path] = []
+        if template_root is not None:
+            candidates.append(Path(template_root))
+        override = GeneratorBase._stub_override_root(module_name, project_anchor)
+        if override is not None:
+            candidates.append(override)
+        if package_fallbacks:
+            candidates.extend(package_fallbacks)
+        else:
+            candidates.extend([Path("templates"), Path("../templates")])
+        return candidates
+
+    @staticmethod
+    def _stub_override_root(
+        module_name: str, project_anchor: Path | None
+    ) -> Path | None:
+        """Return ``<anchor>/stubs/<dotted-package-as-path>`` for *module_name*.
+
+        Only ``lexigram.*`` modules get an override layer; the package path
+        stops before the ``cli`` segment (``lexigram.web.cli.generators.x``
+        → ``stubs/lexigram/web``). Returns None when there is no anchor or
+        the module lives outside the framework namespace.
+        """
+        if project_anchor is None:
+            return None
+        parts = module_name.split(".")
+        if not parts or parts[0] != "lexigram":
+            return None
+        cli_index = parts.index("cli") if "cli" in parts else -1
+        pkg_parts = parts[:cli_index] if cli_index >= 2 else parts[:2]
+        return Path(project_anchor).joinpath("stubs", *pkg_parts)
 
     @staticmethod
     def _to_pascal_case(name: str) -> str:
