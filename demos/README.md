@@ -227,6 +227,28 @@ real resilience pipeline — no mocks where it matters.
 
 ---
 
+## Demo architecture (the Blueprint)
+
+Every demo is built from one shape so the fleet reads like a single codebase:
+
+- **`application.yaml`** carries every runtime knob — server host/port and
+  security toggles under `web:`, demo-specific knobs (scenarios, seeds,
+  quotas) under `demo:`. Python contains zero literal configuration;
+  services receive a frozen `DemoConfig` through DI.
+- **`src/<pkg>/module.py`** composes framework modules (`WebModule`,
+  `ResilienceModule`, …) and registers one provider; **providers** wire
+  singletons and expose `health_check`; **controllers** are stateless HTTP
+  adapters; **services** own domain logic behind contracts and return
+  `Result[T, E]`.
+- **Errors** speak RFC-9457 `ProblemDetail`; **logging** is structured
+  (`get_logger`) — walkthroughs narrate with events, never `print`.
+- **Time, identity, hashing** come from the framework's ambient capabilities
+  (seeded randomness stays stdlib on purpose — determinism is the feature).
+- **Tests** fake only at contract boundaries; every public route has an ASGI
+  round-trip test.
+
+---
+
 ## Reviewer gates (same bar as the framework)
 
 - **Format + lint** — root `ruff format --check .` / `ruff check .`

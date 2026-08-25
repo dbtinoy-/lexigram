@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "lexigram-nosql"
-version = "0.1.4001"
+version = "0.1.5001"
 description = "NoSQL document store support for the Lexigram Framework (MongoDB, DynamoDB, Firestore)"
 readme = "README.md"
 requires-python = ">=3.11"

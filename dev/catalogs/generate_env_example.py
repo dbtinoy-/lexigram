@@ -12,7 +12,7 @@ import re
 
 ROOT = Path(__file__).resolve().parents[2]
 CATALOG = ROOT / "docs/reference/REF_ENV_VARS.md"
-OUT = ROOT / ".env.example"
+OUT = ROOT / ".env.full.example"
 
 ROW = re.compile(r"^`([A-Z][A-Z0-9_]*)`$")
 

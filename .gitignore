@@ -20,6 +20,7 @@
 !uv.lock
 !docker-compose.yml
 !.env.example
+!.env.full.example
 !.importlinter
 !Makefile
 !docker-compose.test.yml

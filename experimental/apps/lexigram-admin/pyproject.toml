@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "lexigram-admin"
-version = "0.1.4001"
+version = "0.1.5001"
 description = "Modern Python-first admin framework for Lexigram - HTMX, CRUD, dashboards, and extensions"
 readme = "README.md"
 requires-python = ">=3.11"

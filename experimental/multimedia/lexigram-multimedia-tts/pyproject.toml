@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "lexigram-multimedia-tts"
-version = "0.1.4001"
+version = "0.1.5001"
 description = "Text-to-speech generation for the Lexigram Framework — local and API-based backends"
 readme = "README.md"
 requires-python = ">=3.11"

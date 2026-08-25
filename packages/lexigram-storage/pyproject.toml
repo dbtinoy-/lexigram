@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "lexigram-storage"
-version = "0.1.4001"
+version = "0.1.5001"
 description = "Unified blob storage abstraction for Lexigram Framework - S3, GCS, Azure Blob, and local filesystem"
 readme = "README.md"
 requires-python = ">=3.11"

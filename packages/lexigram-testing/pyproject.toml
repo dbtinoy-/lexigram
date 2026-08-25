@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "lexigram-testing"
-version = "0.1.4001"
+version = "0.1.5001"
 description = "Centralized testing infrastructure for Lexigram Framework - Fixtures, factories, and utilities"
 readme = "README.md"
 requires-python = ">=3.11"

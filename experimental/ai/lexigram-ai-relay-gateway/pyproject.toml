@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "lexigram-ai-relay-gateway"
-version = "0.1.4001"
+version = "0.1.5001"
 description = "Protocol-facing relay gateway for the Lexigram AI relay — channel selection, orchestration, upstream I/O, and SSE handling"
 requires-python = ">=3.11"
 license = { text = "MIT" }
