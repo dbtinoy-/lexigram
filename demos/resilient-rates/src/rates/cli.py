@@ -131,8 +131,8 @@ async def five_act_demo(service: RatesService, faults: FaultController) -> None:
     faults.set(Scenario.HEALTHY)
 
 
-async def run(args: argparse.Namespace) -> None:
-    """Dispatch the parsed command against one booted application."""
+async def run(args: argparse.Namespace) -> int:
+    """Dispatch the parsed command; returns the process exit code."""
     app = create_app()
     try:
         await app.start()
@@ -166,7 +166,8 @@ async def run(args: argparse.Namespace) -> None:
             "stampede": lambda: stampede(service, args.pair, args.workers),
             "demo": lambda: five_act_demo(service, faults),
         }
-        await commands[args.command]()
+        outcome = await commands[args.command]()
+        return int(outcome) if isinstance(outcome, int) else 0
     finally:
         await app.stop()
 
@@ -175,10 +176,9 @@ def main(argv: list[str] | None = None) -> int:
     """CLI entry point; returns the process exit code."""
     args = build_parser().parse_args(argv)
     try:
-        asyncio.run(run(args))
+        return asyncio.run(run(args))
     except KeyboardInterrupt:
         return 130
-    return 0
 
 
 __all__ = ["build_parser", "five_act_demo", "main", "run"]
