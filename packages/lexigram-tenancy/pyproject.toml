@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "lexigram-tenancy"
-version = "0.1.5003"
+version = "0.1.5004"
 description = "Multi-tenant resolution, lifecycle, and isolation for the Lexigram Framework"
 readme = "README.md"
 requires-python = ">=3.11"
