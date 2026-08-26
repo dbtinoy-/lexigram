@@ -1,0 +1,50 @@
+"""{{ workflow_name }} workflow definition.
+
+Generated scaffold — declare steps and transitions, then submit the
+workflow to the engine.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+
+
+@dataclass(frozen=True, slots=True)
+class WorkflowStep:
+    """One step in a workflow graph."""
+
+    name: str
+    next_step: str | None = None
+
+
+@dataclass(slots=True)
+class {{ workflow_name }}Workflow:
+    """The ``{{ workflow_name_snake }}`` workflow definition."""
+
+    name = "{{ workflow_name_snake }}"
+    steps: list[WorkflowStep] = field(default_factory=list)
+
+    def define_steps(self) -> list[WorkflowStep]:
+        """Return the ordered steps of this workflow.
+
+        Returns:
+            The step chain; the last step's ``next_step`` is ``None``.
+        """
+        # TODO: model your process flow.
+        # Example:
+        #   return [
+        #       WorkflowStep("validate", next_step="charge"),
+        #       WorkflowStep("charge", next_step="notify"),
+        #       WorkflowStep("notify"),
+        #   ]
+        return self.steps
+
+    async def run_step(self, step: str, context: dict[str, object]) -> None:
+        """Execute a single workflow step.
+
+        Args:
+            step: Step name to execute.
+            context: Shared workflow state.
+        """
+        # TODO: dispatch to your business logic / handlers here.
+        _ = step, context

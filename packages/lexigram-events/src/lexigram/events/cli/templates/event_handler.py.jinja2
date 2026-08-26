@@ -1,0 +1,38 @@
+"""{{ handler_name }} event handler.
+
+Generated scaffold — subscribe this handler on the event bus and
+implement :meth:`handle`.
+"""
+
+from __future__ import annotations
+
+from typing import Any
+
+from lexigram.logging import get_logger
+
+logger = get_logger(__name__)
+
+
+class {{ handler_name }}Handler:
+    """Handle ``{{ handler_name }}`` events.
+
+    Register with the event bus at startup, e.g.::
+
+        bus.subscribe("{{ handler_name_snake }}", handler.handle)
+    """
+
+    event_name = "{{ handler_name_snake }}"
+
+    async def handle(self, event: Any) -> None:
+        """Process a single event.
+
+        Args:
+            event: The domain event payload.
+        """
+        logger.info(
+            "event_handler_invoked",
+            handler="{{ handler_name }}Handler",
+            event=self.event_name,
+        )
+
+        # TODO: implement your side effects / projections here.

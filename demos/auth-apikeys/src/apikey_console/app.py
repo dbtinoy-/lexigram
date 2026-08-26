@@ -9,7 +9,6 @@ from lexigram.app.base import Application
 from lexigram.auth.config import AuthConfig
 from lexigram.auth.module import AuthModule
 from lexigram.config.main import LexigramConfig
-from lexigram.web.config import WebConfig
 from lexigram.web.module import WebModule
 
 
@@ -27,14 +26,12 @@ def create_app(config: LexigramConfig | None = None) -> Application:
     """Create the configured (not yet started) application."""
     config = config or LexigramConfig.from_yaml()
     auth_config = _coerce_auth_config(config.get_section("auth", AuthConfig))
-    web_config = config.get_section("web", WebConfig)
 
     app = Application(name="apikeys-console", config=config)
     app.add_modules(
         [
             AuthModule.configure(config=auth_config),
             WebModule.configure(
-                web_config=web_config,
                 controllers=[KeysApiController, PagesController],
             ),
         ]

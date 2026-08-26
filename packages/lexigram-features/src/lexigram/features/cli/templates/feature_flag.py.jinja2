@@ -1,0 +1,33 @@
+"""{{ flag_name }} feature flag.
+
+Generated scaffold — declare the flag key and default rollout here so
+the rest of the application imports one canonical definition.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True, slots=True)
+class {{ flag_name }}Flag:
+    """Definition of the ``{{ flag_name_snake }}`` feature flag."""
+
+    key = "{{ flag_name_snake }}"
+    description = "Toggle for the {{ flag_name }} feature"
+    default_enabled = False
+
+    @classmethod
+    def is_enabled(cls, context: dict[str, object] | None = None) -> bool:
+        """Return whether the flag is enabled for *context*.
+
+        Args:
+            context: Optional evaluation context (user, tenant, env).
+
+        Returns:
+            ``True`` when the feature should be served.
+        """
+        # TODO: consult your FlagManager / provider here.
+        # Example:
+        #   return manager.is_enabled(cls.key, context)
+        return cls.default_enabled

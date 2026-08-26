@@ -6162,7 +6162,7 @@ test = [
 
 [[package]]
 name = "lexigram-auth"
-version = "0.1.5003"
+version = "0.1.5004"
 source = { editable = "packages/lexigram-auth" }
 dependencies = [
     { name = "argon2-cffi" },
@@ -6282,7 +6282,7 @@ test = [
 
 [[package]]
 name = "lexigram-cache"
-version = "0.1.5002"
+version = "0.1.5003"
 source = { editable = "packages/lexigram-cache" }
 dependencies = [
     { name = "jinja2" },
@@ -6552,7 +6552,7 @@ test = [
 
 [[package]]
 name = "lexigram-events"
-version = "0.1.5003"
+version = "0.1.5004"
 source = { editable = "packages/lexigram-events" }
 dependencies = [
     { name = "jinja2" },
@@ -6682,7 +6682,7 @@ test = [
 
 [[package]]
 name = "lexigram-features"
-version = "0.1.5003"
+version = "0.1.5004"
 source = { editable = "packages/lexigram-features" }
 dependencies = [
     { name = "lexigram" },
@@ -6990,7 +6990,7 @@ test = [
 
 [[package]]
 name = "lexigram-monitor"
-version = "0.1.5003"
+version = "0.1.5004"
 source = { editable = "packages/lexigram-monitor" }
 dependencies = [
     { name = "lexigram" },
@@ -7814,7 +7814,7 @@ test = [
 
 [[package]]
 name = "lexigram-notification"
-version = "0.1.5003"
+version = "0.1.5004"
 source = { editable = "packages/lexigram-notification" }
 dependencies = [
     { name = "aiofiles" },
@@ -7916,7 +7916,7 @@ test = [
 
 [[package]]
 name = "lexigram-queue"
-version = "0.1.5002"
+version = "0.1.5003"
 source = { editable = "packages/lexigram-queue" }
 dependencies = [
     { name = "jinja2" },
@@ -8490,7 +8490,7 @@ test = [
 
 [[package]]
 name = "lexigram-tasks"
-version = "0.1.5002"
+version = "0.1.5003"
 source = { editable = "packages/lexigram-tasks" }
 dependencies = [
     { name = "croniter" },
@@ -8604,7 +8604,7 @@ test = [
 
 [[package]]
 name = "lexigram-tenancy"
-version = "0.1.5003"
+version = "0.1.5004"
 source = { editable = "packages/lexigram-tenancy" }
 dependencies = [
     { name = "lexigram" },
@@ -8690,7 +8690,7 @@ test = [
 
 [[package]]
 name = "lexigram-testing"
-version = "0.1.5002"
+version = "0.1.5003"
 source = { editable = "packages/lexigram-testing" }
 dependencies = [
     { name = "lexigram" },
@@ -8920,7 +8920,7 @@ test = [
 
 [[package]]
 name = "lexigram-vector"
-version = "0.1.5003"
+version = "0.1.5004"
 source = { editable = "packages/lexigram-vector" }
 dependencies = [
     { name = "aiohttp" },
@@ -9234,7 +9234,7 @@ test = [
 
 [[package]]
 name = "lexigram-workflow"
-version = "0.1.5003"
+version = "0.1.5004"
 source = { editable = "packages/lexigram-workflow" }
 dependencies = [
     { name = "lexigram" },

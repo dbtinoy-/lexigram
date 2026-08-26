@@ -1,0 +1,31 @@
+"""{{ resolver_name }} tenant resolver.
+
+Generated scaffold — extract the tenant identifier from the incoming
+request and return it to the tenancy middleware.
+"""
+
+from __future__ import annotations
+
+from typing import Any
+
+
+class {{ resolver_name }}TenantResolver:
+    """Resolve tenants using the ``{{ resolver_name_snake }}`` strategy."""
+
+    strategy = "{{ resolver_name_snake }}"
+
+    async def resolve(self, request: Any) -> str | None:
+        """Resolve the tenant id for *request*.
+
+        Args:
+            request: The incoming request (headers, host, path, ...).
+
+        Returns:
+            The tenant identifier, or ``None`` when the request carries
+            no tenant information.
+        """
+        # TODO: implement your extraction rule.
+        # Example (header strategy):
+        #   return request.headers.get("X-Tenant-ID")
+        _ = request
+        return None

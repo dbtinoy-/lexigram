@@ -1,0 +1,37 @@
+"""{{ collection_name }} vector collection.
+
+Generated scaffold — declare the collection schema and register it with
+the vector store backend.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True, slots=True)
+class {{ collection_name }}Collection:
+    """Definition of the ``{{ collection_name_snake }}`` vector collection."""
+
+    name = "{{ collection_name_snake }}"
+    dimension = 1536
+    metric = "cosine"
+
+    async def ensure_exists(self, store: Any) -> None:
+        """Create the collection on *store* when missing.
+
+        Args:
+            store: A ``VectorStoreProtocol`` implementation resolved
+                from the container.
+        """
+        # TODO: adapt to your backend's admin API.
+        # Example:
+        #   if not await store.has_collection(self.name):
+        #       await store.create_collection(
+        #           self.name, dimension=self.dimension, metric=self.metric
+        #       )
+        _ = store
+
+    async def upsert(self, store: Any, vectors: list[list[float]]) -> None:
+        """Insert or update *vectors* in this collection."""
+        await store.upsert(self.name, vectors)

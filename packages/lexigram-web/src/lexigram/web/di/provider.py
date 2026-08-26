@@ -73,6 +73,9 @@ class WebProvider(Provider):
     name = "web"
     priority = ProviderPriority.PRESENTATION
 
+    config_key: str | None = "web"
+    config_model: type[Any] | None = WebConfig
+
     def __init__(
         self,
         middleware: list[Any] | None = None,
