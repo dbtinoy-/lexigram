@@ -4,71 +4,82 @@ from __future__ import annotations
 
 from typing import Any
 
-from lexigram.sql.repositories.base import Repository
+from lexigram.contracts import DatabaseProviderProtocol
+import uuid as _uuid
+from datetime import datetime as _datetime, timezone as _timezone
+
+from lexigram.sql.repositories.generic_repository import GenericRepository
 
 
 class {{ entity_name }}Entity:
-    """{{ entity_name }} entity."""
+    """{{ entity_name }} row entity (plain attrs; swap for a model later)."""
+
 {% for field in fields %}
-    {{ field.name }}: {{ field.type }}
+    {{ field.name }}: {{ field.py_type }}{% if not field.required %} | None = None{% endif %}
 {% endfor %}
+    def __init__(self, **kwargs: Any) -> None:
+        for key, value in kwargs.items():
+            setattr(self, key, value)
 
 
-class {{ repo_name }}Repository(Repository[{{ entity_name }}Entity, int]):
-    """Repository for {{ entity_name }} entities."""
+class _{{ repo_name }}Inner(GenericRepository[{{ entity_name }}Entity, str]):
+    """Row mapper bridge over the generic SQL repository."""
 
-    def __init__(self, db_provider: Any) -> None:
-        self.db_provider = db_provider
+    def _entity_to_dict(self, entity: {{ entity_name }}Entity) -> dict[str, Any]:
+        return dict(vars(entity))
 
-    @property
-    def model_class(self) -> type[{{ entity_name }}Entity]:
-        return {{ entity_name }}Entity
+    def _row_to_entity(self, row: dict[str, Any]) -> {{ entity_name }}Entity:
+        return self.entity_class(**dict(row))
 
-    async def get_by_id(self, id: int) -> {{ entity_name }}Entity | None:
-        return None
 
-    async def get_all(self) -> list[{{ entity_name }}Entity]:
-        return []
+class {{ repo_name }}Repository:
+    """Working CRUD repository for {{ resource_name }}.
 
-    async def create(self, entity: {{ entity_name }}Entity) -> {{ entity_name }}Entity:
-        return entity
+    Backed by ``GenericRepository`` and the injected
+    ``DatabaseProviderProtocol``; requires migrations to have created the
+    ``{{ table_name }}`` table.
+    """
 
-    async def update(self, id: int, entity: {{ entity_name }}Entity) -> {{ entity_name }}Entity:
-        return entity
+    def __init__(self, provider: DatabaseProviderProtocol) -> None:
+        self._provider = provider
+        self._inner = _{{ repo_name }}Inner(
+            provider=provider,
+            table_name="{{ table_name }}",
+            entity_class={{ entity_name }}Entity,
+            key_field="{{ key_field }}",
+        )
 
-    async def delete(self, id: int) -> None:
-        return None
+    def _prepare(self, data: dict[str, Any]) -> dict[str, Any]:
+        row = dict(data)
+        row.setdefault("{{ key_field }}", _uuid.uuid4().hex)
+        now = _datetime.now(_timezone.utc).isoformat()
+        row.setdefault("created_at", now)
+        row["updated_at"] = now
+        return row
 
-    async def find(
-        self,
-        filters: dict[str, Any] | None = None,
-        limit: int = 20,
-        offset: int = 0,
-    ) -> list[{{ entity_name }}Entity]:
-        return []
+    async def create(self, data: dict[str, Any]) -> {{ entity_name }}Entity:
+        row = self._prepare(data)
+        await self._provider.execute_insert("{{ table_name }}", row)
+        found = await self._inner.find_by_id(row["{{ key_field }}"])
+        assert found is not None
+        return found
 
-    async def count(self, filters: dict[str, Any] | None = None) -> int:
-        return 0
+    async def get(self, key: str) -> {{ entity_name }}Entity | None:
+        return await self._inner.find_by_id(key)
 
-    async def find_by_{{ fields[0].name if fields else 'id' }}(
-        self,
-        {{ fields[0].name if fields else 'id' }}: {{ fields[0].type if fields else 'int' }},
-    ) -> {{ entity_name }}Entity | None:
-        return await self.find_one({
-            "{{ fields[0].name if fields else 'id' }}": {{ fields[0].name if fields else 'id' }},
-        })
+    async def list(self, limit: int = 50) -> list[{{ entity_name }}Entity]:
+        return await self._inner.find(limit=limit)
 
-    async def exists(
-        self,
-        {{ fields[0].name if fields else 'id' }}: {{ fields[0].type if fields else 'int' }},
-    ) -> bool:
-        entity = await self.find_one({
-            "{{ fields[0].name if fields else 'id' }}": {{ fields[0].name if fields else 'id' }},
-        })
-        return entity is not None
+    async def update(self, key: str, data: dict[str, Any]) -> {{ entity_name }}Entity | None:
+        row = {
+            **data,
+            "{{ key_field }}": key,
+            "updated_at": _datetime.now(_timezone.utc).isoformat(),
+        }
+        await self._provider.execute_update(
+            "{{ table_name }}", row, '"{{ key_field }}" = ?', [key]
+        )
+        return await self._inner.find_by_id(key)
 
-    def _to_entity(self, model: Any) -> {{ entity_name }}Entity:
-        return {{ entity_name }}Entity(**model.__dict__)
-
-    def _to_model(self, entity: {{ entity_name }}Entity) -> Any:
-        return entity
+    async def delete(self, key: str) -> bool:
+        return await self._inner.delete_by_id(key)

@@ -16,6 +16,14 @@ class DatabaseRepositoryGenerator(GeneratorBase):
     description = "Generate a database repository"
     default_output_dir = "src/repositories"
 
+    @staticmethod
+    def _pluralize(value: str) -> str:
+        if value.endswith("y") and value[-2:-1] not in {"a", "e", "i", "o", "u"}:
+            return f"{value[:-1]}ies"
+        if value.endswith("s"):
+            return value
+        return f"{value}s"
+
     def get_name(self) -> str:
         return self.name
 
@@ -29,25 +37,50 @@ class DatabaseRepositoryGenerator(GeneratorBase):
         **options: Any,
     ) -> GenerationResult:
         parsed_fields = parse_fields(fields_str) if fields_str else []
+        py_types = {
+            "str": "str",
+            "string": "str",
+            "text": "str",
+            "int": "int",
+            "integer": "int",
+            "float": "float",
+            "bool": "bool",
+            "boolean": "bool",
+            "datetime": "datetime",
+            "uuid": "str",
+        }
         fields = [
             {
-                "name": field.name,
-                "type": field.type,
-                "required": field.required,
+                "name": f.name,
+                "py_type": py_types.get(f.type, "str"),
+                "required": f.required,
+                "import_datetime": f.type == "datetime",
             }
-            for field in parsed_fields
+            for f in parsed_fields
         ]
         if not fields:
-            fields = [{"name": "id", "type": "int", "required": True}]
+            fields = [
+                {
+                    "name": "id",
+                    "py_type": "str",
+                    "required": True,
+                    "import_datetime": False,
+                }
+            ]
 
         file_path = self.output_dir / f"{self._to_snake_case(name)}_repository.py"
 
         content = self.env.get_template("database_repository.py.jinja2").render(
             repo_name=self._to_pascal_case(name),
-            repo_name_snake=self._to_snake_case(name),
+            resource_name=self._pluralize(self._to_snake_case(name)),
             package_name=self._get_package_name(self.output_dir),
             fields=fields,
             entity_name=self._to_pascal_case(name),
+            table_name=str(
+                options.get("table_name") or f"{self._to_snake_case(name)}s"
+            ),
+            key_field=str(options.get("key_field") or "id"),
+            needs_datetime=any(f["import_datetime"] for f in fields),
         )
 
         self.stage(file_path, content)

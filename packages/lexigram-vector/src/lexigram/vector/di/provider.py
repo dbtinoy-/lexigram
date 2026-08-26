@@ -46,10 +46,20 @@ class VectorProvider(Provider):
     config_model: type | None = VectorConfig
 
     def __init__(self, config: VectorConfig | None = None) -> None:
-        """Initialize with optional config."""
+        """Initialize with optional config.
+
+        Args:
+            config: Optional :class:`~lexigram.vector.config.VectorConfig`.
+                When ``None``, the orchestrator injects the typed ``vector``
+                yaml section after construction (``config_key``) and before
+                :meth:`register`; framework defaults apply if no section exists.
+        """
         super().__init__()
         self._requested_config = config
-        self._config = config or VectorConfig()
+        # Keep ``None`` when constructed without a config so the orchestrator
+        # can late-inject the yaml section into provider.config; register()
+        # resolves the effective config (explicit → injected → default).
+        self._config = config
         self._store: VectorStoreProtocol | None = None
         # Multi-backend: (name, store) pairs; populated by _register_multi_backend
         # and potentially updated during boot() for pgvector entries.
@@ -155,11 +165,21 @@ class VectorProvider(Provider):
         self,
         container: ContainerRegistrarProtocol,
     ) -> None:
-        """Register the vector store config and (lazy) singleton bindings."""
-        self._config = self._requested_config or (
-            self.config
-            if isinstance(getattr(self, "config", None), VectorConfig)
-            else self._config
+        """Register the vector store config and (lazy) singleton bindings.
+
+        Late config binding: when constructed with no explicit config, the
+        orchestrator injects the typed ``vector`` yaml section before this
+        call; the effective config resolves as explicit → injected → default
+        so the automatic path behaves identically to the explicit one.
+        """
+        self._config = (
+            self._requested_config
+            or (
+                self.config
+                if isinstance(getattr(self, "config", None), VectorConfig)
+                else None
+            )
+            or VectorConfig()
         )
         container.singleton(VectorConfig, self._config)
 

@@ -78,6 +78,7 @@ class TaskProvider(
         worker_count: int = 1,
         enable_scheduler: bool = True,
         middleware_pipeline: TaskMiddlewarePipeline | None = None,
+        config: TaskConfig | None = None,
     ):
         """Initialize task provider
 
@@ -87,6 +88,10 @@ class TaskProvider(
             enable_scheduler: Whether to enable job scheduling
             middleware_pipeline: Optional middleware pipeline applied to every
                 worker in the pool.
+            config: Optional :class:`~lexigram.tasks.config.TaskConfig`. When
+                ``None``, the orchestrator injects the typed ``tasks`` yaml
+                section after construction (``config_key``) and before
+                :meth:`register`.
         """
         super().__init__()
         self.queue = queue
@@ -108,9 +113,11 @@ class TaskProvider(
         # Backend registry — manages backend type → factory mapping
         self._backend_registry = TaskBackendRegistry.with_defaults()
 
-        # Persisted TaskConfig; set by from_config() — None when the provider
-        # was constructed directly via __init__.
-        self._config: TaskConfig | None = None
+        # Persisted TaskConfig; set explicitly or by from_config(). Kept as
+        # ``None`` when absent so the orchestrator can late-inject the yaml
+        # section into provider.config (the base-class property backs onto
+        # this attribute).
+        self._config: TaskConfig | None = config
 
         # Multi-backend: list of (name, queue) 2-tuples accumulated during
         # _register_multi_backend().  Empty in single-backend mode.

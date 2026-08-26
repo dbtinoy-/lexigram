@@ -99,9 +99,11 @@ class _TaskRegistrationMixin(_TaskAttrsMixin):
             self._queue_services.append((entry.name, queue))
 
             # Named binding — resolvable via Annotated[TaskQueueProtocol, Named(entry.name)]
+            # ``*_`` absorbs the resolver argument the container passes into
+            # factories; ``q=queue`` keeps the captured instance.
             container.singleton(
                 cast("type", TaskQueueProtocol),
-                factory=lambda q=queue: q,  # default-arg capture avoids late-binding
+                factory=lambda *_, q=queue: q,
                 name=entry.name,
             )
 
@@ -110,7 +112,7 @@ class _TaskRegistrationMixin(_TaskAttrsMixin):
             if entry.primary or self._config.backends[0] is entry:
                 container.singleton(
                     cast("type", TaskQueueProtocol),
-                    factory=lambda q=queue: q,
+                    factory=lambda *_, q=queue: q,
                 )
 
         logger.info(

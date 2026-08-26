@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from lexigram.contracts.infra.tasks import TaskExecutorProtocol, TaskQueueProtocol
 from lexigram.di.module import DynamicModule, Module, module
+
+if TYPE_CHECKING:
+    from lexigram.tasks.config import TaskConfig
 
 
 @module(is_global=True)
@@ -46,6 +49,7 @@ class TasksModule(Module):
         queue: Any | None = None,
         worker_count: int = 1,
         enable_scheduler: bool = True,
+        config: TaskConfig | Any | None = None,
     ) -> DynamicModule:
         """Create a TasksModule with explicit configuration.
 
@@ -54,16 +58,25 @@ class TasksModule(Module):
                 Defaults to :class:`~lexigram.tasks.backends.memory.MemoryTaskQueue`.
             worker_count: Number of concurrent task workers.
             enable_scheduler: Whether to enable the job scheduler.
+            config: :class:`~lexigram.tasks.config.TaskConfig` or ``None`` to
+                resolve the typed ``tasks`` yaml section at boot time.
 
         Returns:
             A :class:`~lexigram.di.module.DynamicModule` descriptor.
+
+        Raises:
+            TypeError: If *config* is not a ``TaskConfig`` or ``None``.
         """
         from lexigram.tasks.admin.contributor import TasksAdminContributor
         from lexigram.tasks.admin.handlers.avg_duration import AvgDurationWidgetHandler
         from lexigram.tasks.admin.handlers.tasks_summary import (
             TasksSummaryWidgetHandler,
         )
+        from lexigram.tasks.config import TaskConfig as _TaskConfig
         from lexigram.tasks.di.provider import TaskProvider
+
+        if config is not None and not isinstance(config, _TaskConfig):
+            raise TypeError(f"config must be TaskConfig, got {type(config).__name__}")
 
         if queue is None:
             from lexigram.tasks.backends.memory import MemoryTaskQueue
@@ -77,6 +90,7 @@ class TasksModule(Module):
                     queue=queue,
                     worker_count=worker_count,
                     enable_scheduler=enable_scheduler,
+                    config=config,
                 )
             ],
             is_global=True,

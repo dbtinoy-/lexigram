@@ -48,41 +48,68 @@ class TenancyProvider(Provider):
 
         Args:
             config: Optional :class:`~lexigram.tenancy.config.TenancyConfig`.
-                Defaults to all framework defaults when ``None``.
+                When ``None``, the orchestrator injects the typed ``tenancy``
+                yaml section after construction (``config_key``) and before
+                :meth:`register`; framework defaults apply if no section exists.
         """
         from lexigram.contracts.core.provider import ProviderPriority
 
         super().__init__()
         self.priority = ProviderPriority.INFRASTRUCTURE
         self._requested_config = config
-        self._config = config or TenancyConfig()
-        self._sub_providers: list[Provider] = [
-            TenantResolutionProvider(self._config.resolution),
-            TenantLifecycleProvider(self._config.lifecycle),
-            TenantConfigProvider(self._config.overrides),
+        # Keep ``None`` when constructed without a config so the orchestrator
+        # can late-inject the yaml section into provider.config. Sub-provider
+        # composition is deferred to register() in that case.
+        self._config = config
+        self._sub_providers: list[Provider] = []
+        if config is not None:
+            self._compose_sub_providers(config)
+
+    def _compose_sub_providers(self, cfg: TenancyConfig) -> None:
+        """(Re)build sub-providers from *cfg*.
+
+        Called from ``__init__`` when an explicit config was supplied and
+        again from ``register()`` when the orchestrator injected the yaml
+        section after construction. Recomposition before any ``register()``
+        call is safe — nothing has been registered yet.
+
+        Args:
+            cfg: The effective configuration driving sub-provider wiring.
+        """
+        self._config = cfg
+        self._sub_providers = [
+            TenantResolutionProvider(cfg.resolution),
+            TenantLifecycleProvider(cfg.lifecycle),
+            TenantConfigProvider(cfg.overrides),
             TenantMigrationProvider(),
-            TenantIntegrationProvider(self._config.integration),
+            TenantIntegrationProvider(cfg.integration),
         ]
 
     async def register(self, container: ContainerRegistrarProtocol) -> None:
         """Delegate registration to all sub-providers.
 
+        Late config binding: when ``configure()`` ran with no explicit config,
+        the orchestrator injects the typed ``tenancy`` yaml section after
+        construction and before this call; sub-providers are composed now so
+        the automatic path behaves identically to the explicit one. An
+        explicit constructor config always wins over any later assignment to
+        :attr:`config`.
+
         Args:
             container: The DI container registrar.
         """
-        effective_config = self._requested_config or (
-            self.config
-            if isinstance(getattr(self, "config", None), TenancyConfig)
-            else self._config
-        )
-        if effective_config is not self._config:
-            self._config = effective_config
-            self._sub_providers = [
-                TenantResolutionProvider(self._config.resolution),
-                TenantLifecycleProvider(self._config.lifecycle),
-                TenantConfigProvider(self._config.overrides),
-                TenantIntegrationProvider(self._config.integration),
-            ]
+        if self._requested_config is not None:
+            if not self._sub_providers:
+                self._compose_sub_providers(self._requested_config)
+            else:
+                self._config = self._requested_config
+        else:
+            injected = (
+                self.config
+                if isinstance(getattr(self, "config", None), TenancyConfig)
+                else None
+            )
+            self._compose_sub_providers(injected or TenancyConfig())
         for sp in self._sub_providers:
             await sp.register(container)
 
