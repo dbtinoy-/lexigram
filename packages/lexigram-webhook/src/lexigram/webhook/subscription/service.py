@@ -7,7 +7,9 @@ from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 import uuid
 
+from lexigram.contracts.webhook.protocols import WebhookSubscriptionStoreProtocol
 from lexigram.contracts.webhook.types import WebhookSubscription
+from lexigram.di.decorators import inject
 from lexigram.logging.factory import get_logger
 from lexigram.result import Err, Ok, Result
 from lexigram.webhook.config import WebhookConfig
@@ -19,13 +21,13 @@ from lexigram.webhook.subscription.secret import generate_webhook_secret
 
 if TYPE_CHECKING:
     from lexigram.contracts.webhook.exceptions import WebhookError
-    from lexigram.contracts.webhook.protocols import WebhookSubscriptionStoreProtocol
 
 logger = get_logger(__name__)
 
 __all__ = ["WebhookSubscriptionService"]
 
 
+@inject
 class WebhookSubscriptionService:
     """Service for managing webhook subscriptions.
 

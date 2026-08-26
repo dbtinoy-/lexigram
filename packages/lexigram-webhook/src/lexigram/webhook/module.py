@@ -36,18 +36,19 @@ class WebhookModule(str, Enum):
         """Configure the webhook module with optional settings.
 
         Args:
-            config: Custom webhook configuration. Defaults to ``WebhookConfig()``.
+            config: Custom webhook configuration. When ``None``, the
+                orchestrator injects the ``webhook`` yaml section into the
+                bundle provider before registration (falling back to
+                ``WebhookConfig()`` defaults when no section exists).
 
         Returns:
             DynamicModule ready for registration with the app container.
         """
-        from lexigram.webhook.config import WebhookConfig as _WebhookConfig
         from lexigram.webhook.di.bundle_provider import WebhookBundleProvider
 
-        cfg = config or _WebhookConfig()
         return DynamicModule(
             module=cls,
-            providers=[WebhookBundleProvider(config=cfg)],
+            providers=[WebhookBundleProvider(config=config)],
             exports=[
                 WebhookSubscriptionStoreProtocol,
                 WebhookDeliveryServiceProtocol,

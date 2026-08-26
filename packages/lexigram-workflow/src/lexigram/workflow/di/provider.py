@@ -94,7 +94,15 @@ class WorkflowProvider(Provider):
                 implementation for content-addressed saga checkpoints.
         """
         super().__init__()
-        self._config = config or BulkOperationConfig()
+        # Explicit (constructor) config, kept separate from the base
+        # ``Provider._config`` slot so the orchestrator's yaml injection
+        # (config_key="workflow") can populate it after construction.
+        self._requested_config = config
+        self._bulk_config: BulkOperationConfig = config or BulkOperationConfig()
+        if config is not None:
+            # Explicit config wins: mark the base slot so the orchestrator
+            # skips yaml injection for this provider.
+            self.config = config
         self._saga_store = saga_store
         self._state_machine = state_machine
         self._db_provider = db_provider
@@ -129,7 +137,14 @@ class WorkflowProvider(Provider):
         Args:
             container: DI registrar provided by the framework.
         """
-        config = self._config
+        if self._requested_config is not None:
+            self._bulk_config = self._requested_config
+        elif isinstance(self.config, BulkOperationConfig):
+            # Late-injected yaml section (configure() ran without explicit
+            # config): adopt it so the automatic path behaves identically
+            # to the explicit one.
+            self._bulk_config = self.config
+        config = self._bulk_config
         saga_store = self._saga_store
 
         container.singleton(WorkflowProvider, lambda: self)

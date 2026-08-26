@@ -22,12 +22,12 @@ def _mock_container():
 class TestWorkflowProviderInit:
     def test_default_config_is_used_when_none_given(self):
         provider = WorkflowProvider()
-        assert isinstance(provider._config, BulkOperationConfig)
+        assert isinstance(provider._bulk_config, BulkOperationConfig)
 
     def test_custom_config_is_stored(self):
         cfg = BulkOperationConfig(batch_size=999)
         provider = WorkflowProvider(config=cfg)
-        assert provider._config.batch_size == 999
+        assert provider._bulk_config.batch_size == 999
 
     def test_saga_store_defaults_to_none(self):
         provider = WorkflowProvider()

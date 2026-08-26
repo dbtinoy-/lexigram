@@ -119,7 +119,7 @@ class TestWorkflowProviderFromConfig:
         provider = WorkflowProvider.from_config(config)
 
         assert isinstance(provider, WorkflowProvider)
-        assert provider._config.batch_size == 50
+        assert provider._bulk_config.batch_size == 50
 
 
 class TestWorkflowProviderShutdown:

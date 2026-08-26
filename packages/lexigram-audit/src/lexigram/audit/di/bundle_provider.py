@@ -17,10 +17,12 @@ class AuditBundleProvider(Provider):
     """Composite provider that wires the full Lexigram audit stack.
 
     Composes AuditCoreProvider, AuditRetentionProvider, AuditVerifierProvider,
-    and optionally AuditAdminProvider.
+    AuditSchedulingProvider, and optionally AuditAdminProvider.
 
     Args:
-        config: Audit configuration. Defaults to AuditConfig() if not provided.
+        config: Audit configuration. When ``None``, the orchestrator injects
+            the typed ``audit`` yaml section after construction and
+            sub-providers are composed in :meth:`register`.
         enable_admin: Whether to register the admin panel contributor.
     """
 
@@ -36,6 +38,23 @@ class AuditBundleProvider(Provider):
         enable_admin: bool = True,
     ) -> None:
         super().__init__(name="audit_bundle", priority=ProviderPriority.INFRASTRUCTURE)
+        self.config = config
+        self._enable_admin = enable_admin
+        self._sub_providers: list[Provider] = []
+        if config is not None:
+            # Explicit config: compose eagerly. Zero-config construction
+            # defers to register(), after the orchestrator has injected
+            # the yaml section.
+            self._compose_sub_providers()
+
+    def _compose_sub_providers(self) -> None:
+        """(Re)build sub-providers from the current ``self.config``.
+
+        Called from ``__init__`` (explicit config) and lazily from
+        ``register()`` when the orchestrator injected the yaml section
+        after construction. Recomposition before any ``register()`` call
+        is safe — nothing has been registered yet.
+        """
         from lexigram.audit.di.sub_providers.admin_provider import AuditAdminProvider
         from lexigram.audit.di.sub_providers.core_provider import AuditCoreProvider
         from lexigram.audit.di.sub_providers.retention_provider import (
@@ -48,17 +67,27 @@ class AuditBundleProvider(Provider):
             AuditVerifierProvider,
         )
 
-        self._sub_providers: list[Provider] = [
-            AuditCoreProvider(config=config),
-            AuditRetentionProvider(config=config),
-            AuditVerifierProvider(config=config),
-            AuditSchedulingProvider(config=config),
+        cfg = self.config
+        include_admin = self._enable_admin and (cfg is None or cfg.enable_admin)
+        self._sub_providers = [
+            AuditCoreProvider(config=cfg),
+            AuditRetentionProvider(config=cfg),
+            AuditVerifierProvider(config=cfg),
+            AuditSchedulingProvider(config=cfg),
         ]
-        if enable_admin:
-            self._sub_providers.append(AuditAdminProvider(config=config))
+        if include_admin:
+            self._sub_providers.append(AuditAdminProvider(config=cfg))
 
     async def register(self, container: ContainerRegistrarProtocol) -> None:
-        """Delegate registration to all sub-providers."""
+        """Delegate registration to all sub-providers.
+
+        Late config binding: the orchestrator injects the typed ``audit``
+        section (via ``config_key``) after construction and before this
+        call. If ``configure()`` ran with no explicit config, compose now so
+        the automatic path behaves identically to the explicit one.
+        """
+        if not self._sub_providers:
+            self._compose_sub_providers()
         for provider in self._sub_providers:
             await provider.register(container)
 

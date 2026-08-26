@@ -6,12 +6,17 @@ import asyncio
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
+from lexigram.contracts.webhook.protocols import (
+    WebhookDeliveryStoreProtocol,
+    WebhookSubscriptionStoreProtocol,
+)
 from lexigram.contracts.webhook.types import (
     DeliveryAttempt,
     DeliveryStatus,
     WebhookEvent,
     WebhookSubscription,
 )
+from lexigram.di.decorators import inject
 from lexigram.logging.factory import get_logger
 from lexigram.result import Err, Ok, Result
 from lexigram.webhook.config import WebhookConfig
@@ -23,16 +28,13 @@ from lexigram.webhook.exceptions import (
 
 if TYPE_CHECKING:
     from lexigram.contracts.webhook.exceptions import WebhookError
-    from lexigram.contracts.webhook.protocols import (
-        WebhookDeliveryStoreProtocol,
-        WebhookSubscriptionStoreProtocol,
-    )
 
 logger = get_logger(__name__)
 
 __all__ = ["WebhookDeliveryService"]
 
 
+@inject
 class WebhookDeliveryService:
     """Orchestrates webhook event delivery with retry and dead-letter logic.
 

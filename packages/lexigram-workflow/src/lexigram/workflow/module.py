@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from lexigram.contracts.workflow import (
     ContentCheckpointStoreProtocol,
@@ -12,6 +12,9 @@ from lexigram.contracts.workflow import (
 from lexigram.di.module import DynamicModule, Module, module
 from lexigram.workflow.config import ContentCheckpointConfig
 from lexigram.workflow.di.provider import WorkflowProvider
+
+if TYPE_CHECKING:
+    from lexigram.workflow.config import BulkOperationConfig
 
 
 @module()
@@ -40,7 +43,7 @@ class WorkflowModule(Module):
     @classmethod
     def configure(
         cls,
-        config: Any | None = None,
+        config: BulkOperationConfig | None = None,
         saga_store: SagaStoreProtocol | None = None,
         content_checkpoint_store: ContentCheckpointStoreProtocol | None = None,
         content_checkpoint_config: ContentCheckpointConfig | None = None,

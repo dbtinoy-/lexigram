@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from lexigram.contracts.infra.cache.protocols import CacheBackendProtocol
 from lexigram.di.module import DynamicModule, Module, module
+
+if TYPE_CHECKING:
+    from lexigram.cache.config import CacheConfig
 
 
 @module(is_global=True)
@@ -28,12 +31,15 @@ class CacheModule(Module):
     """
 
     @classmethod
-    def configure(cls, config: Any | None = None) -> DynamicModule:
+    def configure(
+        cls, config: CacheConfig | dict[str, Any] | None = None
+    ) -> DynamicModule:
         """Create a CacheModule with explicit configuration.
 
         Args:
-            config: :class:`~lexigram.cache.config.CacheConfig` or ``None``
-                for framework defaults.
+            config: :class:`~lexigram.cache.config.CacheConfig`, a plain
+                ``dict`` of config values, or ``None`` for framework defaults
+                (or the orchestrator-injected ``cache`` yaml section).
 
         Returns:
             A :class:`~lexigram.di.module.DynamicModule` descriptor.

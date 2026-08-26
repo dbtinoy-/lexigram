@@ -26,12 +26,12 @@ class TestGraphProviderInitialization:
     def test_provider_initializes_with_default_config(self) -> None:
         provider = GraphProvider()
         assert provider.name == "graph"
-        assert provider._config is not None
+        assert provider._effective_config is not None
 
     def test_provider_initializes_with_custom_config(self) -> None:
         config = GraphConfig(enabled=True, backend="neo4j")
         provider = GraphProvider(config=config)
-        assert provider._config is config
+        assert provider._effective_config is config
 
     def test_provider_has_correct_priority(self) -> None:
         from lexigram.contracts.core import ProviderPriority

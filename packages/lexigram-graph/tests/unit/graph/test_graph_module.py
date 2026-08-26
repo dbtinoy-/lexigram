@@ -48,4 +48,4 @@ def test_graph_module_configure_wires_provider_with_config() -> None:
     assert len(dynamic_module.providers) == 1
     provider = dynamic_module.providers[0]
     assert isinstance(provider, GraphProvider)
-    assert provider._config is config
+    assert provider._effective_config is config

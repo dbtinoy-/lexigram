@@ -33,8 +33,15 @@ class GraphProvider(Provider):
 
     def __init__(self, config: GraphConfig | None = None) -> None:
         super().__init__()
+        # Explicit (constructor) config, kept separate from the base
+        # ``Provider._config`` slot so the orchestrator's yaml injection
+        # (config_key="graph") can populate it after construction.
         self._requested_config = config
-        self._config = config or GraphConfig()
+        self._effective_config: GraphConfig = config or GraphConfig()
+        if config is not None:
+            # Explicit config wins: mark the base slot so the orchestrator
+            # skips yaml injection for this provider.
+            self.config = config
         self._store: GraphStoreProtocol | None = None
 
     async def register(
@@ -50,23 +57,25 @@ class GraphProvider(Provider):
             ValueError: If an unknown backend is specified in config.
 
         """
-        self._config = self._requested_config or (
-            self.config
-            if isinstance(getattr(self, "config", None), GraphConfig)
-            else self._config
-        )
-        container.singleton(GraphConfig, self._config)
+        if self._requested_config is not None:
+            self._effective_config = self._requested_config
+        elif isinstance(self.config, GraphConfig):
+            # Late-injected yaml section (zero-config construction):
+            # adopt it so the automatic path behaves identically to the
+            # explicit one.
+            self._effective_config = self.config
+        container.singleton(GraphConfig, self._effective_config)
 
-        if not self._config.enabled:
+        if not self._effective_config.enabled:
             logger.info("graph_disabled", reason="GraphConfig.enabled=False")
             return
 
-        backend = self._config.backend
+        backend = self._effective_config.backend
 
         if backend == BACKEND_NEO4J:
             container.singleton(
                 GraphStoreProtocol,
-                factory=lambda: self._create_neo4j_store(self._config),
+                factory=lambda: self._create_neo4j_store(self._effective_config),
             )
         elif backend == BACKEND_MEMORY:
             container.singleton(
@@ -85,7 +94,7 @@ class GraphProvider(Provider):
         container: ContainerResolverProtocol,
     ) -> GraphStoreProtocol:
         """Wrap *store* with tenant decorators when tenancy is enabled."""
-        if not self._config.tenancy.enabled:
+        if not self._effective_config.tenancy.enabled:
             return store
 
         from lexigram.contracts.data.graph.tenancy import GraphTenancyStrategy
@@ -95,13 +104,13 @@ class GraphProvider(Provider):
 
         ctx = await container.resolve(Context)
         resolver: Any = TemplatedTenantCollectionResolver(
-            template=self._config.tenancy.template,
+            template=self._effective_config.tenancy.template,
         )
         return TenantGraphStoreDecorator(
             inner=store,
             resolver=resolver,
             ctx=ctx,
-            strategy=GraphTenancyStrategy(self._config.tenancy.strategy),
+            strategy=GraphTenancyStrategy(self._effective_config.tenancy.strategy),
         )
 
     async def boot(
@@ -114,7 +123,7 @@ class GraphProvider(Provider):
             container: The DI resolver to obtain the graph store from.
 
         """
-        if not self._config.enabled:
+        if not self._effective_config.enabled:
             return
 
         store = await container.resolve(GraphStoreProtocol)
@@ -122,7 +131,7 @@ class GraphProvider(Provider):
         await store.connect()
         self._store = await self._maybe_wrap_with_tenancy(self._store, container)
         container.bind(GraphStoreProtocol, self._store)  # type: ignore[type-abstract]
-        logger.info("graph_store_connected", backend=self._config.backend)
+        logger.info("graph_store_connected", backend=self._effective_config.backend)
 
     async def shutdown(self) -> None:
         """Disconnect from the graph store during application shutdown."""
@@ -144,7 +153,7 @@ class GraphProvider(Provider):
         """
         start = time.perf_counter()
 
-        if not self._config.enabled:
+        if not self._effective_config.enabled:
             return HealthCheckResult(
                 component="graph",
                 status=HealthStatus.DEGRADED,
