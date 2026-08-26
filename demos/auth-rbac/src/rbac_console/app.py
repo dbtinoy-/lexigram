@@ -1,4 +1,19 @@
-"""Application composition root for the auth-rbac demo."""
+"""Composition root for the auth-rbac console.
+
+Every Lexigram application has exactly one place that knows how the pieces
+fit together — the **composition root** — and here it is deliberately tiny:
+
+1. **Capabilities**: framework ``Module.configure(...)`` bundles. Each
+   framework package reads its own section of ``application.yaml`` through
+   provider auto-injection (``config_key`` / ``config_model``), so you pass
+   *nothing* — just list the controllers your app contributes.
+2. **Services**: this demo's own ``Provider`` (imperative register/boot
+   lifecycle for stateful services — see ``di/provider.py``).
+
+That's the whole story: configuration never passes through your code.
+
+Run with ``uv run python -m rbac_console``.
+"""
 
 from __future__ import annotations
 
@@ -6,42 +21,49 @@ from lexigram.app.base import Application
 from lexigram.auth.config import AuthConfig
 from lexigram.auth.module import AuthModule
 from lexigram.config.main import LexigramConfig
+from lexigram.di.provider import Provider
 from lexigram.web.config import WebConfig
 from lexigram.web.module import WebModule
-from rbac_console.config import load_lex_config
 from rbac_console.controllers.api import RbacApiController
 from rbac_console.di.provider import RbacProvider
 from rbac_console.ui.pages import PagesController
 
 
-def _coerce_auth_config(auth_config: AuthConfig) -> AuthConfig:
-    """Normalize nested sections that can load as raw dicts."""
-    token = getattr(auth_config, "token", None)
-    if isinstance(token, dict):
-        from lexigram.auth.config import JWTConfig
+def build_modules(config: LexigramConfig) -> list[object]:
+    """Declarative capabilities — framework modules bound to typed sections.
 
-        return auth_config.model_copy(update={"token": JWTConfig(**token)}, deep=True)
-    return auth_config
+    ``config`` stays explicit here because demos live in subdirectories:
+    binding against this demo's own ``application.yaml`` (absolute path)
+    keeps behavior identical no matter the caller's working directory.
+    """
+    return [
+        AuthModule.configure(
+            config=config.get_section("auth", AuthConfig),
+        ),
+        WebModule.configure(
+            web_config=config.get_section("web", WebConfig),
+            controllers=[RbacApiController, PagesController],
+        ),
+    ]
+
+
+def build_providers() -> list[Provider]:
+    """Imperative services owned by this demo."""
+    return [RbacProvider()]
 
 
 def create_app(config: LexigramConfig | None = None) -> Application:
-    """Create the configured (not yet started) application."""
-    config = config or load_lex_config()
-    auth_config = _coerce_auth_config(config.get_section("auth", AuthConfig))
-    web_config = config.get_section("web", WebConfig)
+    """Create the application in ``CREATED`` state (not yet started).
 
+    Programmatic/tests entry point. For serving, prefer the idiomatic
+    ``Application.boot(...)`` context manager shown in ``main.serve`` —
+    it guarantees ``stop()`` even on exceptions or Ctrl-C.
+    """
+    config = config or load_lex_config()
     app = Application(name="rbac-console", config=config)
-    app.add_modules(
-        [
-            AuthModule.configure(config=auth_config),
-            WebModule.configure(
-                web_config=web_config,
-                controllers=[RbacApiController, PagesController],
-            ),
-        ]
-    )
-    app.add_provider(RbacProvider())
+    app.add_modules(build_modules(config))
+    app.add_providers(build_providers())
     return app
 
 
-__all__ = ["create_app"]
+__all__ = ["build_modules", "build_providers", "create_app"]
