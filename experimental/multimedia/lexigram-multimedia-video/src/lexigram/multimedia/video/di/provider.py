@@ -50,7 +50,9 @@ class VideoGenerationProvider(Provider):
     def __init__(self, config: VideoConfig | None = None) -> None:
         super().__init__(name="video")
         self._requested_config = config
-        self._config = config or VideoConfig()
+        # No default baking: the orchestrator injects the yaml section into
+        # ``provider.config`` after construction, before ``register()``.
+        self._config = config
         self._backend: VideoProvider | None = None
         self._task_handler: VideoGenerationTask | None = None
         self._processing_backend: VideoProcessor | None = None

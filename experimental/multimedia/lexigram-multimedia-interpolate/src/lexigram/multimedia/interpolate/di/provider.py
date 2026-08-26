@@ -41,7 +41,9 @@ class InterpolationGenerationProvider(Provider):
     def __init__(self, config: InterpolationConfig | None = None) -> None:
         super().__init__(name="interpolate")
         self._requested_config = config
-        self._config = config or InterpolationConfig()
+        # No default baking: the orchestrator injects the yaml section into
+        # ``provider.config`` after construction, before ``register()``.
+        self._config = config
         self._backend: InterpolationProvider | None = None
         self._task_handler: InterpolationTask | None = None
         self._retry: RetryPolicyProtocol | None = None

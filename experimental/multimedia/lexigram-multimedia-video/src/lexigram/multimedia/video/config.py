@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import ClassVar, Literal
 
 from lexigram.config import BaseConfig
 from lexigram.validation import Field
 
 
+@dataclass(init=False)
 class VideoProcessingConfig(BaseConfig):
     """Configuration for the local FFmpeg video-processing pipeline."""
 
@@ -19,6 +21,7 @@ class VideoProcessingConfig(BaseConfig):
     max_asset_bytes: int = 25 * 1024 * 1024
 
 
+@dataclass(init=False)
 class VideoConfig(BaseConfig):
     """Configuration for the video generation subsystem."""
 

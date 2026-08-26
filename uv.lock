@@ -7104,7 +7104,7 @@ test = [
 
 [[package]]
 name = "lexigram-multimedia"
-version = "0.1.5002"
+version = "0.1.5003"
 source = { editable = "experimental/multimedia/lexigram-multimedia" }
 dependencies = [
     { name = "lexigram" },
@@ -7184,7 +7184,7 @@ test = [
 
 [[package]]
 name = "lexigram-multimedia-beat"
-version = "0.1.5002"
+version = "0.1.5003"
 source = { editable = "experimental/multimedia/lexigram-multimedia-beat" }
 dependencies = [
     { name = "aiohttp" },
@@ -7274,7 +7274,7 @@ test = [
 
 [[package]]
 name = "lexigram-multimedia-image"
-version = "0.1.5002"
+version = "0.1.5003"
 source = { editable = "experimental/multimedia/lexigram-multimedia-image" }
 dependencies = [
     { name = "aiohttp" },
@@ -7340,7 +7340,7 @@ test = [
 
 [[package]]
 name = "lexigram-multimedia-interpolate"
-version = "0.1.5002"
+version = "0.1.5003"
 source = { editable = "experimental/multimedia/lexigram-multimedia-interpolate" }
 dependencies = [
     { name = "aiohttp" },
@@ -7410,7 +7410,7 @@ test = [
 
 [[package]]
 name = "lexigram-multimedia-music"
-version = "0.1.5002"
+version = "0.1.5003"
 source = { editable = "experimental/multimedia/lexigram-multimedia-music" }
 dependencies = [
     { name = "aiohttp" },
@@ -7488,7 +7488,7 @@ test = [
 
 [[package]]
 name = "lexigram-multimedia-tts"
-version = "0.1.5002"
+version = "0.1.5003"
 source = { editable = "experimental/multimedia/lexigram-multimedia-tts" }
 dependencies = [
     { name = "aiohttp" },
@@ -7581,7 +7581,7 @@ test = [
 
 [[package]]
 name = "lexigram-multimedia-upscale"
-version = "0.1.5002"
+version = "0.1.5003"
 source = { editable = "experimental/multimedia/lexigram-multimedia-upscale" }
 dependencies = [
     { name = "aiohttp" },
@@ -7647,7 +7647,7 @@ test = [
 
 [[package]]
 name = "lexigram-multimedia-video"
-version = "0.1.5002"
+version = "0.1.5003"
 source = { editable = "experimental/multimedia/lexigram-multimedia-video" }
 dependencies = [
     { name = "aiohttp" },
@@ -7970,7 +7970,7 @@ test = [
 
 [[package]]
 name = "lexigram-resilience"
-version = "0.1.5002"
+version = "0.1.5003"
 source = { editable = "packages/lexigram-resilience" }
 dependencies = [
     { name = "lexigram" },

@@ -27,7 +27,14 @@ class TestSqlCliContributor:
         generators = contributor.get_generators()
         names = [generator.name for generator in generators]
 
-        assert names == ["repository", "filter", "seeder", "health"]
+        assert names == [
+            "repository",
+            "filter",
+            "seeder",
+            "health",
+            "model",
+            "migration",
+        ]
 
     def test_generators_are_valid_definitions(self) -> None:
         contributor = SqlCliContributor()
@@ -49,6 +56,8 @@ class TestSqlCliContributor:
             "filter": "lexigram.sql.cli.generators.filter:FilterGenerator",
             "seeder": "lexigram.sql.cli.generators.seeder:SeederGenerator",
             "health": "lexigram.sql.cli.generators.health_check:HealthCheckGenerator",
+            "model": "lexigram.sql.cli.generators.entity_model:EntityModelGenerator",
+            "migration": "lexigram.sql.cli.generators.entity_migration:EntityMigrationGenerator",
         }
 
     def test_generator_classes_are_importable(self) -> None:

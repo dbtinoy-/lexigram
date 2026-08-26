@@ -39,7 +39,9 @@ class UpscaleGenerationProvider(Provider):
     def __init__(self, config: UpscaleConfig | None = None) -> None:
         super().__init__(name="upscale")
         self._requested_config = config
-        self._config = config or UpscaleConfig()
+        # No default baking: the orchestrator injects the yaml section into
+        # ``provider.config`` after construction, before ``register()``.
+        self._config = config
         self._backend: UpscaleProvider | None = None
         self._task_handler: UpscaleTask | None = None
         self._retry: RetryPolicyProtocol | None = None

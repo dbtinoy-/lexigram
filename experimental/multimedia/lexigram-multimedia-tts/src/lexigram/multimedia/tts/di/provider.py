@@ -39,7 +39,9 @@ class AudioTTSProvider(Provider):
     def __init__(self, config: TTSConfig | None = None) -> None:
         super().__init__(name="tts")
         self._requested_config = config
-        self._config = config or TTSConfig()
+        # No default baking: the orchestrator injects the yaml section into
+        # ``provider.config`` after construction, before ``register()``.
+        self._config = config
         self._backend: TTSProvider | None = None
         self._elevenlabs_api_key: str | None = None
         self._openai_api_key: str | None = None

@@ -64,13 +64,17 @@ class {{ repo_name }}Repository:
         assert found is not None
         return found
 
-    async def get(self, key: str) -> {{ entity_name }}Entity | None:
-        return await self._inner.find_by_id(key)
+    async def get(self, key: str) -> dict[str, Any] | None:
+        entity = await self._inner.find_by_id(key)
+        if entity is None:
+            return None
+        return self._inner._entity_to_dict(entity)
 
-    async def list(self, limit: int = 50) -> list[{{ entity_name }}Entity]:
-        return await self._inner.find(limit=limit)
+    async def list(self, limit: int = 50) -> list[dict[str, Any]]:
+        entities = await self._inner.find(limit=limit)
+        return [self._inner._entity_to_dict(e) for e in entities]
 
-    async def update(self, key: str, data: dict[str, Any]) -> {{ entity_name }}Entity | None:
+    async def update(self, key: str, data: dict[str, Any]) -> dict[str, Any] | None:
         row = {
             **data,
             "{{ key_field }}": key,
@@ -79,7 +83,10 @@ class {{ repo_name }}Repository:
         await self._provider.execute_update(
             "{{ table_name }}", row, '"{{ key_field }}" = ?', [key]
         )
-        return await self._inner.find_by_id(key)
+        found = await self._inner.find_by_id(key)
+        if found is None:
+            return None
+        return self._inner._entity_to_dict(found)
 
     async def delete(self, key: str) -> bool:
         return await self._inner.delete_by_id(key)

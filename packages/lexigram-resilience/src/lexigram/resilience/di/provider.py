@@ -34,8 +34,9 @@ class ResilienceProvider(Provider):
     config_key: str | None = "resilience"
     config_model: type | None = ResilienceConfig
 
-    def __init__(self) -> None:
+    def __init__(self, config: ResilienceConfig | None = None) -> None:
         super().__init__()
+        self._config = config  # populated by orchestrator in AUTO mode
         self._registry: Any | None = None
 
     async def register(self, container: ContainerRegistrarProtocol) -> None:
@@ -48,9 +49,14 @@ class ResilienceProvider(Provider):
         from lexigram.resilience.circuit.breaker import CircuitBreakerRegistry
         from lexigram.resilience.rate_limiter.token_bucket import RateLimiter
 
-        # 1. Register Configs (Transient)
-        container.transient(CircuitBreakerConfig, CircuitBreakerConfig)
-        container.transient(RetryConfig, RetryConfig)
+        cfg = self._config or ResilienceConfig()
+
+        # 1. Register Configs (Transient) — factories close over the resolved
+        #    section so pipeline construction receives yaml-driven values.
+        container.transient(CircuitBreakerConfig, lambda *, _cfg=cfg: _cfg.circuit_breaker)
+        container.transient(RetryConfig, lambda *, _cfg=cfg: _cfg.retry)
+        container.transient(TimeoutConfig, lambda *, _cfg=cfg: _cfg.timeout)
+        container.transient(BulkheadConfig, lambda *, _cfg=cfg: _cfg.bulkhead)
 
         # 2. Register Registries (Singleton)
         self._registry = CircuitBreakerRegistry()
@@ -59,13 +65,13 @@ class ResilienceProvider(Provider):
         container.singleton(CircuitBreakerRegistryProtocol, instance=self._registry)
 
         # 3. Register RateLimiter (Singleton)
-        # Default to 1000 rps to avoid blocking tests
-        rate_limiter = RateLimiter(rate=1000)
+        rate_limit_cfg = getattr(cfg, "rate_limit", None)
+        rate_limiter = RateLimiter(rate=rate_limit_cfg.rps if rate_limit_cfg else 1000)
         container.singleton(RateLimiter, instance=rate_limiter)
         container.singleton(RateLimiterProtocol, instance=rate_limiter)
 
         # 4. Register Bulkhead (Singleton)
-        bulkhead = Bulkhead(config=BulkheadConfig())
+        bulkhead = Bulkhead(config=cfg.bulkhead)
         container.singleton(Bulkhead, instance=bulkhead)
         container.singleton(BulkheadProtocol, instance=bulkhead)
 

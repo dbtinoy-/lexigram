@@ -42,6 +42,18 @@ _SPECS: tuple[tuple[str, str, str, str], ...] = (
         "lexigram.sql.cli.generators.health_check:HealthCheckGenerator",
         "src/health",
     ),
+    (
+        "model",
+        "Generate a Pydantic entity model with Create/Update DTOs",
+        "lexigram.sql.cli.generators.entity_model:EntityModelGenerator",
+        "src/models",
+    ),
+    (
+        "migration",
+        "Generate a chained alembic migration for an entity",
+        "lexigram.sql.cli.generators.entity_migration:EntityMigrationGenerator",
+        "migrations/versions",
+    ),
 )
 
 _OPTIONS: dict[str, tuple[GeneratorOption, ...]] = {
@@ -55,6 +67,8 @@ _OPTIONS: dict[str, tuple[GeneratorOption, ...]] = {
         ),
     ),
     "seeder": (_FIELDS_OPTION,),
+    "model": (_FIELDS_OPTION,),
+    "migration": (),
     "health": (
         GeneratorOption(
             name="critical",

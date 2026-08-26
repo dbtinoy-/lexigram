@@ -47,7 +47,10 @@ class MultimediaProvider(Provider):
     def __init__(self, config: MultimediaConfig | None = None) -> None:
         super().__init__(name="multimedia")
         self._requested_config = config
-        self._config = config or MultimediaConfig()
+        # No default baking here: when ``configure()`` runs with no explicit
+        # config, the orchestrator injects the yaml section into
+        # ``provider.config`` before ``register()`` consumes it.
+        self._config = config
         self._sub_providers: dict[str, Any] = {}
         self._storage: BlobStoreProtocol | None = None
         self._cache_backend: CacheBackendProtocol | None = None

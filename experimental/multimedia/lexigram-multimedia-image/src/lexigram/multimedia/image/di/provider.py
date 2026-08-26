@@ -39,7 +39,9 @@ class ImageGenerationProvider(Provider):
     def __init__(self, config: ImageConfig | None = None) -> None:
         super().__init__(name="image")
         self._requested_config = config
-        self._config = config or ImageConfig()
+        # No default baking: the orchestrator injects the yaml section into
+        # ``provider.config`` after construction, before ``register()``.
+        self._config = config
         self._backend: ImageProvider | None = None
         self._task_handler: ImageGenerationTask | None = None
         self._secret_store: AsyncSecretStoreProtocol | None = None

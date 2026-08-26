@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import ClassVar
 
 from lexigram.config import BaseConfig
@@ -15,6 +16,7 @@ from lexigram.multimedia.video.config import VideoConfig
 from lexigram.validation import Field
 
 
+@dataclass(init=False)
 class MultimediaConfig(BaseConfig):
     """Umbrella configuration for the multimedia subsystem."""
 

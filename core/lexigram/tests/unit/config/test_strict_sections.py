@@ -78,10 +78,23 @@ def test_missing_file_returns_defaults(capsys) -> None:
 # ── Mode 4: missing section ─────────────────────────────────────────────
 
 
-def test_missing_section_returns_model_defaults(tmp_path, capsys) -> None:
+def test_missing_section_returns_model_defaults(
+    tmp_path, monkeypatch, capsys
+) -> None:
+    from lexigram.config import main as cfg_main
+
+    calls: list[tuple[str, dict]] = []
+    original = cfg_main.logger.debug
+    monkeypatch.setattr(
+        cfg_main.logger.__class__,
+        "debug",
+        lambda self, event, **kw: calls.append((event, kw)),
+    )
     path = _write(tmp_path, "app_name: probe\n")
     section = LexigramConfig.from_yaml(path).get_section("web", WebCfg)
 
     assert isinstance(section, WebCfg)
     assert section.server.port == 8000  # code default
-    assert "config.section_defaults" in capsys.readouterr().out
+    # Observability must survive global logging reconfigurations from other
+    # tests — assert on the module logger directly.
+    assert any(e == "config.section_defaults" for e, _ in calls)

@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import ClassVar, Literal
 
 from lexigram.config import BaseConfig
 
 
+@dataclass(init=False)
 class TTSConfig(BaseConfig):
     """Configuration for the TTS subsystem."""
 

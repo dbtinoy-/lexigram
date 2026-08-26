@@ -39,7 +39,9 @@ class AudioMusicProvider(Provider):
     def __init__(self, config: MusicConfig | None = None) -> None:
         super().__init__(name="music")
         self._requested_config = config
-        self._config = config or MusicConfig()
+        # No default baking: the orchestrator injects the yaml section into
+        # ``provider.config`` after construction, before ``register()``.
+        self._config = config
         self._backend: MusicProvider | None = None
         self._task_handler: MusicGenerationTask | None = None
         self._secret_store: AsyncSecretStoreProtocol | None = None

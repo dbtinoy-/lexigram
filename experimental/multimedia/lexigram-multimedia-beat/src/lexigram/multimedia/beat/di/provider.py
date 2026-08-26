@@ -37,7 +37,9 @@ class BeatAnalysisGenerationProvider(Provider):
     def __init__(self, config: BeatAnalysisConfig | None = None) -> None:
         super().__init__(name="beat")
         self._requested_config = config
-        self._config = config or BeatAnalysisConfig()
+        # No default baking: the orchestrator injects the yaml section into
+        # ``provider.config`` after construction, before ``register()``.
+        self._config = config
         self._backend: BeatAnalysisProvider | None = None
         self._retry: RetryPolicyProtocol | None = None
         self._circuit_breaker: CircuitBreakerProtocol | None = None
