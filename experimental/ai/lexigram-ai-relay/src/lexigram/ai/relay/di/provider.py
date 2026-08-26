@@ -42,6 +42,12 @@ class RelayProvider(Provider):
     """
 
     name = "ai-relay"
+
+    # TODO(config): declare ``config_key = "ai_relay"`` /
+    # ``config_model = RelayConfig`` once relay-level knobs exist in
+    # application.yaml (e.g. default conversion caps, protocol defaults).
+    # The conversion engine is currently side-effect free and stateless, so
+    # there is nothing to inject yet.
     priority = ProviderPriority.DOMAIN
 
     async def register(self, container: ContainerRegistrarProtocol) -> None:
