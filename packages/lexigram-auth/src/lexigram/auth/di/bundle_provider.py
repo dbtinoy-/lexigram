@@ -74,13 +74,31 @@ class AuthBundleProvider(Provider):
     ) -> None:
         super().__init__(name="auth_bundle", priority=ProviderPriority.SECURITY)
         self.config = config
-        self._authn = AuthenticationProvider(config=config)
-        self._token = TokenProvider(config=config)
-        self._session = SessionProvider(config=config)
+        self._initial_roles: dict[str, Any] = initial_roles or {}
+        self._enable_passkeys = enable_passkeys
+        self._sub_providers: list[Provider] = []
+        if config is not None:
+            # Explicit config: compose eagerly (no ephemeral-secret noise).
+            # Zero-config construction defers to register(), after the
+            # orchestrator has injected the yaml section.
+            self._compose_sub_providers()
+
+    def _compose_sub_providers(self) -> None:
+        """(Re)build sub-providers from the current ``self.config``.
+
+        Called from ``__init__`` and again lazily in ``register()`` when the
+        orchestrator injected the yaml section after construction (i.e.
+        ``configure()`` ran with no explicit config). Recomposition before
+        any ``register()`` call is safe — nothing has been registered yet.
+        """
+        cfg = self.config
+        self._authn = AuthenticationProvider(config=cfg)
+        self._token = TokenProvider(config=cfg)
+        self._session = SessionProvider(config=cfg)
         self._authz = AuthorizationProvider(
-            config=config, initial_roles=initial_roles or {}
+            config=cfg, initial_roles=dict(self._initial_roles)
         )
-        self._admin = AuthAdminProvider(config=config)
+        self._admin = AuthAdminProvider(config=cfg)
         self._sub_providers = [
             self._authn,
             self._token,
@@ -89,21 +107,21 @@ class AuthBundleProvider(Provider):
             self._admin,
         ]
         google_oauth_config = (
-            getattr(config, "oauth2_providers", {}).get("google", {})
-            if config is not None
+            getattr(cfg, "oauth2_providers", {}).get("google", {})
+            if cfg is not None
             else {}
         )
         if google_oauth_config:
             self._sub_providers.append(
-                GoogleOAuthProvider(config=config, google_oauth=google_oauth_config),
+                GoogleOAuthProvider(config=cfg, google_oauth=google_oauth_config),
             )
-        if enable_passkeys:
+        if self._enable_passkeys:
             try:
                 from lexigram.auth.di.sub_providers.passkey_provider import (
                     PasskeyProvider,
                 )
 
-                self._sub_providers.append(PasskeyProvider(config=config))
+                self._sub_providers.append(PasskeyProvider(config=cfg))
             except ImportError:
                 logger.warning(
                     "auth.passkeys_unavailable",
@@ -122,9 +140,22 @@ class AuthBundleProvider(Provider):
     async def register(self, container: ContainerRegistrarProtocol) -> None:
         """Register all auth sub-providers with the container.
 
+        Late config binding: the orchestrator injects the typed ``auth``
+        section (via ``config_key``) after construction and before this call.
+        If ``configure()`` ran with no explicit config, recompose now so the
+        automatic path behaves identically to the explicit one.
+
         Args:
             container: The DI container registrar.
         """
+        if not self._sub_providers:
+            # Zero-config construction is a documented dev/test mode
+            # (TokenProvider generates an ephemeral secret).
+            self._compose_sub_providers()
+        elif any(sp.config is None for sp in self._sub_providers):
+            # Late-injected yaml section (configure() ran without explicit
+            # config): recompose so sub-providers hold the real values.
+            self._compose_sub_providers()
         for provider in self._sub_providers:
             await provider.register(container)
         logger.info("auth_bundle.registered")

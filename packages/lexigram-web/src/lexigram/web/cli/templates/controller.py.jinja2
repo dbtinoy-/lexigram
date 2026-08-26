@@ -3,127 +3,87 @@
 {% if doc %}
 {{ doc }}
 {% endif %}
+Scaffold: endpoints delegate to ``self.repo`` — wire a repository with
+CRUD methods (create/get/list/update/delete) in your DI provider.
 """
-from typing import Any
+from __future__ import annotations
 
-from lexigram.web import delete, get, post, put
+from lexigram.web import Controller, delete, get, post, put
 from lexigram.web.exceptions import (
     BadRequestError,
-    ForbiddenError,
-    NotFoundError,
     InternalServerError,
+    NotFoundError,
 )
 from lexigram.web.routing.controllers import Controller
 
-from .services.{{ model_name }}_service import {{ class_name }}Service
+from .repositories.{{ model_name }}_repository import {{ class_name }}Repository
 
 
 class {{ class_name }}Controller(Controller):
     """Controller for {{ class_name }} CRUD operations."""
 
-    def __init__(self, service: {{ class_name }}Service):
+    def __init__(self, repo: {{ class_name }}Repository) -> None:
         super().__init__()
-        self.service = service
+        self.repo = repo
 
-    {% if resource_path %}
     @get("/{{ resource_path }}")
-    {% else %}
-    @get("/")
-    {% endif %}
     async def list(
         self,
         limit: int = 20,
         offset: int = 0,
-        **filters: Any,
     ) -> dict[str, Any]:
-        try:
-            items = await self.service.list(limit=limit, offset=offset, **filters)
-            return {
-                "items": [item.to_dict() if hasattr(item, 'to_dict') else item for item in items],
-                "limit": limit,
-                "offset": offset,
-                "total": len(items),
-            }
-        except Exception as e:
-            raise InternalServerError(f"Failed to list {{ resource_name }}: {str(e)}")
+        items = await self.repo.list(limit=limit, offset=offset)
+        return {
+            "items": [
+                item.to_dict() if hasattr(item, "to_dict") else item
+                for item in items
+            ],
+            "limit": limit,
+            "offset": offset,
+        }
 
-    {% if resource_path %}
-    @get("/{{ resource_path }}/{id}")
-    {% else %}
-    @get("/{id}")
-    {% endif %}
-    async def get(
-        self,
-        id: int,
-    ) -> dict[str, Any]:
-        try:
-            item = await self.service.get(id)
-            if not item:
-                raise NotFoundError(f"{{ class_name }} not found with id: {id}")
-            return item.to_dict() if hasattr(item, 'to_dict') else item
-        except NotFoundError:
-            raise
-        except Exception as e:
-            raise InternalServerError(f"Failed to get {{ resource_name }}: {str(e)}")
+    @get("/{{ resource_path }}/{item_id}")
+    async def get(self, item_id: str) -> dict[str, Any]:
+        item = await self.repo.get(item_id)
+        if item is None:
+            raise NotFoundError(
+                f"{{ class_name }} not found with id: {item_id}"
+            )
+        return item.to_dict() if hasattr(item, "to_dict") else item
 
-    {% if resource_path %}
-    @post("/{{ resource_path }}")
-    {% else %}
-    @post("/")
-    {% endif %}
-    async def create(
-        self,
-        data: dict[str, Any],
-    ) -> dict[str, Any]:
+    @post("/{{ resource_path }}", status_code=201)
+    async def create(self, request: Request) -> dict[str, Any]:
+        import json as _json
+
+        data = _json.loads(await request.body() or b"{}")
         if not data:
             raise BadRequestError("Request body is required")
-        try:
-            item = await self.service.create(data)
-            return item.to_dict() if hasattr(item, 'to_dict') else item
-        except ValueError as e:
-            raise BadRequestError(str(e))
-        except Exception as e:
-            raise InternalServerError(f"Failed to create {{ resource_name }}: {str(e)}")
+        created = await self.repo.create(data)
+        return created.to_dict() if hasattr(created, "to_dict") else created
 
-    {% if resource_path %}
-    @put("/{{ resource_path }}/{id}")
-    {% else %}
-    @put("/{id}")
-    {% endif %}
+    @put("/{{ resource_path }}/{item_id}")
     async def update(
         self,
-        id: int,
-        data: dict[str, Any],
+        item_id: str,
+        request: Request,
     ) -> dict[str, Any]:
+        import json as _json
+
+        data = _json.loads(await request.body() or b"{}")
         if not data:
             raise BadRequestError("Request body is required")
-        try:
-            item = await self.service.update(id, data)
-            if not item:
-                raise NotFoundError(f"{{ class_name }} not found with id: {id}")
-            return item.to_dict() if hasattr(item, 'to_dict') else item
-        except NotFoundError:
-            raise
-        except ValueError as e:
-            raise BadRequestError(str(e))
-        except Exception as e:
-            raise InternalServerError(f"Failed to update {{ resource_name }}: {str(e)}")
+        updated = await self.repo.update(item_id, data)
+        if updated is None:
+            raise NotFoundError(
+                f"{{ class_name }} not found with id: {item_id}"
+            )
+        return updated.to_dict() if hasattr(updated, "to_dict") else updated
 
-    {% if resource_path %}
-    @delete("/{{ resource_path }}/{id}")
-    {% else %}
-    @delete("/{id}")
-    {% endif %}
-    async def delete(
-        self,
-        id: int,
-    ) -> dict[str, str]:
-        try:
-            success = await self.service.delete(id)
-            if not success:
-                raise NotFoundError(f"{{ class_name }} not found with id: {id}")
-            return {"message": "{{ class_name }} deleted successfully"}
-        except NotFoundError:
-            raise
-        except Exception as e:
-            raise InternalServerError(f"Failed to delete {{ resource_name }}: {str(e)}")
+    @delete("/{{ resource_path }}/{item_id}")
+    async def delete(self, item_id: str) -> dict[str, str]:
+        deleted = await self.repo.delete(item_id)
+        if not deleted:
+            raise NotFoundError(
+                f"{{ class_name }} not found with id: {item_id}"
+            )
+        return {"message": "{{ class_name }} deleted"}

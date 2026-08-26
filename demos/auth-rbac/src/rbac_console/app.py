@@ -3,22 +3,24 @@
 Every Lexigram application has exactly one place that knows how the pieces
 fit together — the **composition root** — and here it is deliberately tiny:
 
-1. **Capabilities**: framework ``Module.configure(...)`` bundles. Each
-   framework package reads its own section of ``application.yaml`` through
-   provider auto-injection (``config_key`` / ``config_model``), so you pass
-   *nothing* — just list the controllers your app contributes.
-2. **Services**: this demo's own ``Provider`` (imperative register/boot
+1. **Configuration**: one typed ``LexigramConfig`` loaded by the framework
+   itself (``LexigramConfig.from_yaml()`` discovers ``application.yaml`` in
+   the project root), sliced into typed sections per concern.
+2. **Capabilities**: framework ``Module.configure(...)`` bundles receive
+   the typed sections they own. Explicit is deliberate: sections passed at
+   configure-time drive the whole module wiring (controllers, middleware
+   stack), while provider auto-injection separately fills ``provider.config``
+   post-registration.
+3. **Services**: this demo's own ``Provider`` (imperative register/boot
    lifecycle for stateful services — see ``di/provider.py``).
 
-That's the whole story: configuration never passes through your code.
-
-Run with ``uv run python -m rbac_console``.
+Run with ``uv run python -m rbac_console`` (from this demo's root, so the
+framework can discover ``application.yaml``).
 """
 
 from __future__ import annotations
 
 from lexigram.app.base import Application
-from lexigram.auth.config import AuthConfig
 from lexigram.auth.module import AuthModule
 from lexigram.config.main import LexigramConfig
 from lexigram.di.provider import Provider
@@ -30,16 +32,9 @@ from rbac_console.ui.pages import PagesController
 
 
 def build_modules(config: LexigramConfig) -> list[object]:
-    """Declarative capabilities — framework modules bound to typed sections.
-
-    ``config`` stays explicit here because demos live in subdirectories:
-    binding against this demo's own ``application.yaml`` (absolute path)
-    keeps behavior identical no matter the caller's working directory.
-    """
+    """Declarative capabilities bound to their typed yaml sections."""
     return [
-        AuthModule.configure(
-            config=config.get_section("auth", AuthConfig),
-        ),
+        AuthModule.configure(),  # automatic: yaml injected via config_key
         WebModule.configure(
             web_config=config.get_section("web", WebConfig),
             controllers=[RbacApiController, PagesController],
@@ -59,7 +54,7 @@ def create_app(config: LexigramConfig | None = None) -> Application:
     ``Application.boot(...)`` context manager shown in ``main.serve`` —
     it guarantees ``stop()`` even on exceptions or Ctrl-C.
     """
-    config = config or load_lex_config()
+    config = config or LexigramConfig.from_yaml()
     app = Application(name="rbac-console", config=config)
     app.add_modules(build_modules(config))
     app.add_providers(build_providers())

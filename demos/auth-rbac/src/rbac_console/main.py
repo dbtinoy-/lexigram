@@ -25,9 +25,10 @@ from __future__ import annotations
 import asyncio
 import sys
 
+from lexigram.app.base import Application
+from lexigram.config.main import LexigramConfig
 from lexigram.logging import get_logger
 from rbac_console.app import build_modules, build_providers
-from rbac_console.config import load_lex_config
 
 logger = get_logger(__name__)
 
@@ -37,7 +38,7 @@ async def serve() -> None:
     from lexigram.web.di.provider import WebProvider
     from lexigram.web.server.runner import run_server_async
 
-    config = load_lex_config()  # cwd-proof: absolute path to this demo's yaml
+    config = LexigramConfig.from_yaml()  # discovers ./application.yaml
 
     async with Application.boot(
         name="rbac-console",

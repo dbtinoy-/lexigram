@@ -17,14 +17,14 @@
 
 | Tool | Status | Exit Code | Duration | Command |
 |------|--------|-----------|----------|---------|
-| `Ruff` | **PASS** | 0 | 240 ms | `uv run ruff check .` |
-| `Mypy` | **PASS** | 0 | 46250 ms | `uv run mypy src/ (per-package across 54 packages)` |
+| `Ruff` | **PASS** | 0 | 243 ms | `uv run ruff check .` |
+| `Mypy` | **PASS** | 0 | 49900 ms | `uv run mypy src/ (per-package across 54 packages)` |
 
 ### Ruff
 
 - Status: **PASS**
 - Exit code: `0`
-- Duration: `240 ms`
+- Duration: `243 ms`
 - Command: `uv run ruff check .`
 - Output snippet:
 
@@ -36,7 +36,7 @@ All checks passed!
 
 - Status: **PASS**
 - Exit code: `0`
-- Duration: `46250 ms`
+- Duration: `49900 ms`
 - Command: `uv run mypy src/ (per-package across 54 packages)`
 - Output snippet:
 
@@ -68,16 +68,16 @@ All per-package mypy checks passed.
 | `lexigram-ai-skills` | 53 | 38 |
 | `lexigram-ai-workers` | 35 | 34 |
 | `lexigram-audit` | 46 | 37 |
-| `lexigram-auth` | 137 | 86 |
-| `lexigram-cache` | 94 | 72 |
-| `lexigram-cli` | 112 | 77 |
+| `lexigram-auth` | 137 | 87 |
+| `lexigram-cache` | 94 | 73 |
+| `lexigram-cli` | 112 | 78 |
 | `lexigram-contracts` | 350 | 168 |
-| `lexigram-events` | 158 | 108 |
-| `lexigram-features` | 35 | 25 |
+| `lexigram-events` | 158 | 109 |
+| `lexigram-features` | 35 | 26 |
 | `lexigram-graph` | 25 | 32 |
-| `lexigram-graphql` | 82 | 62 |
-| `lexigram-http` | 33 | 31 |
-| `lexigram-monitor` | 94 | 58 |
+| `lexigram-graphql` | 82 | 63 |
+| `lexigram-http` | 33 | 32 |
+| `lexigram-monitor` | 94 | 59 |
 | `lexigram-multimedia` | 21 | 23 |
 | `lexigram-multimedia-beat` | 11 | 7 |
 | `lexigram-multimedia-image` | 13 | 9 |
@@ -86,20 +86,20 @@ All per-package mypy checks passed.
 | `lexigram-multimedia-tts` | 20 | 13 |
 | `lexigram-multimedia-upscale` | 15 | 9 |
 | `lexigram-multimedia-video` | 28 | 20 |
-| `lexigram-nosql` | 43 | 46 |
-| `lexigram-notification` | 60 | 36 |
-| `lexigram-queue` | 44 | 41 |
-| `lexigram-resilience` | 56 | 37 |
-| `lexigram-search` | 97 | 60 |
+| `lexigram-nosql` | 43 | 47 |
+| `lexigram-notification` | 60 | 37 |
+| `lexigram-queue` | 44 | 42 |
+| `lexigram-resilience` | 56 | 38 |
+| `lexigram-search` | 97 | 61 |
 | `lexigram-secrets` | 25 | 14 |
-| `lexigram-sql` | 194 | 151 |
-| `lexigram-storage` | 39 | 36 |
-| `lexigram-tasks` | 91 | 61 |
-| `lexigram-tenancy` | 64 | 43 |
-| `lexigram-testing` | 170 | 41 |
+| `lexigram-sql` | 194 | 152 |
+| `lexigram-storage` | 39 | 37 |
+| `lexigram-tasks` | 91 | 62 |
+| `lexigram-tenancy` | 64 | 44 |
+| `lexigram-testing` | 171 | 41 |
 | `lexigram-ui` | 165 | 79 |
-| `lexigram-vector` | 65 | 41 |
-| `lexigram-web` | 200 | 169 |
-| `lexigram-webhook` | 42 | 35 |
-| `lexigram-workflow` | 69 | 53 |
+| `lexigram-vector` | 65 | 42 |
+| `lexigram-web` | 200 | 170 |
+| `lexigram-webhook` | 42 | 36 |
+| `lexigram-workflow` | 69 | 54 |
 

@@ -182,6 +182,14 @@ class WebProvider(Provider):
         positions as the pre-extraction implementation.
         """
 
+        # Reconcile the orchestrator-injected yaml section with the
+        # constructor fallback: when no explicit web_config was passed to
+        # configure(), self.web_config still holds WebConfig() defaults while
+        # self.config now carries the real [web] section. Prefer the injected
+        # truth so middleware/rate-limit setup sees yaml values.
+        if self.config is not None and not self._explicit_web_config:
+            self.web_config = self.config
+
         # GuardProtocol: debug routes with no protection would expose the entire DI graph.
         # Require at least one protection mechanism: a token or an auth callback.
         if (

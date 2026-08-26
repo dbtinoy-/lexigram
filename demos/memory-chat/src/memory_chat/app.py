@@ -1,10 +1,30 @@
-"""Application composition root for the memory-chat demo."""
+"""Composition root for the memory-chat demo.
+
+Every Lexigram application has exactly one place that knows how the pieces
+fit together — the **composition root** — and here it is deliberately tiny:
+
+1. **Capabilities**: framework ``Module.configure(...)`` bundles. Each
+   framework package reads its own section of ``application.yaml`` through
+   provider auto-injection (``config_key`` / ``config_model``), so you pass
+   *nothing* — just list the controllers your app contributes.
+2. **Services**: this demo's own ``Provider`` (imperative register/boot
+   lifecycle for stateful services — see ``di/provider.py``).
+
+This demo's lesson is tiered memory: ``MemoryModule`` registers the three
+memory contracts (working / episodic / semantic), and
+``ConciergeProvider.boot`` resolves all of them to assemble a per-owner
+concierge over the stores. Consolidation (episodic → semantic promotion) is
+switched off so demo conversations stay deterministic.
+
+Run with ``uv run python -m memory_chat``.
+"""
 
 from __future__ import annotations
 
 from lexigram.ai.memory import MemoryConfig, MemoryModule
 from lexigram.app.base import Application
 from lexigram.config.main import LexigramConfig
+from lexigram.di.provider import Provider
 from lexigram.web.config import WebConfig
 from lexigram.web.module import WebModule
 from memory_chat.config import load_lex_config
@@ -13,26 +33,44 @@ from memory_chat.di.provider import ConciergeProvider
 from memory_chat.ui.pages import ChatPageController
 
 
-def create_app(config: LexigramConfig | None = None) -> Application:
-    """Create the configured (not yet started) memory-chat application."""
-    config = config or load_lex_config()
-    web_config = config.get_section("web", WebConfig)
+def build_modules(config: LexigramConfig) -> list[object]:
+    """Declarative capabilities — framework modules bound to typed sections.
 
+    ``config`` stays explicit here because demos live in subdirectories:
+    binding against this demo's own ``application.yaml`` (absolute path)
+    keeps behavior identical no matter the caller's working directory.
+    """
+    return [
+        # In-memory backend + no consolidation scheduler: every store starts
+        # empty per process, which makes the teaching flows reproducible.
+        MemoryModule.configure(
+            MemoryConfig(default_backend="in_memory"),
+            enable_consolidation=False,
+        ),
+        WebModule.configure(
+            web_config=config.get_section("web", WebConfig),
+            controllers=[ConciergeApiController, ChatPageController],
+        ),
+    ]
+
+
+def build_providers() -> list[Provider]:
+    """Imperative services owned by this demo."""
+    return [ConciergeProvider()]
+
+
+def create_app(config: LexigramConfig | None = None) -> Application:
+    """Create the application in ``CREATED`` state (not yet started).
+
+    Programmatic/tests entry point. For serving, prefer the idiomatic
+    ``Application.boot(...)`` context manager shown in ``main.serve`` —
+    it guarantees ``stop()`` even on exceptions or Ctrl-C.
+    """
+    config = config or load_lex_config()
     app = Application(name="memory-chat", config=config)
-    app.add_modules(
-        [
-            MemoryModule.configure(
-                MemoryConfig(default_backend="in_memory"),
-                enable_consolidation=False,
-            ),
-            WebModule.configure(
-                web_config=web_config,
-                controllers=[ConciergeApiController, ChatPageController],
-            ),
-        ]
-    )
-    app.add_provider(ConciergeProvider())
+    app.add_modules(build_modules(config))
+    app.add_providers(build_providers())
     return app
 
 
-__all__ = ["create_app"]
+__all__ = ["build_modules", "build_providers", "create_app"]

@@ -1,4 +1,4 @@
-"""Serve the rag-docs REST API.
+"""Entry point for the rag-docs REST API.
 
 Run::
 
@@ -7,6 +7,17 @@ Run::
 Host/port come from ``application.yaml`` (``web.server``); override without
 editing the file via ``LEX_WEB__SERVER__PORT``. Teaching commands
 (index/ask/demo) live in ``rag_docs.cli``.
+
+Lifecycle teaching notes:
+- ``Application.boot(...)`` is the idiomatic context manager: it creates the
+  app, starts every provider in dependency order, yields, and *guarantees*
+  ``stop()`` runs on exit — even on exceptions or Ctrl-C.
+- Inside the block the app is ``STARTED``: the container is frozen (no new
+  registrations) yet fully resolvable — this is where servers run. The RAG
+  index is ready too: ``DocsAskProvider.boot`` ingested and embedded the
+  corpus during start, before the first question arrives.
+- Resolving ``WebProvider`` here demonstrates post-start resolution; its
+  auto-injected ``.config`` carries the server host/port.
 """
 
 from __future__ import annotations
@@ -15,35 +26,30 @@ import asyncio
 import sys
 
 from lexigram.logging import get_logger
-from rag_docs.app import create_app
+from rag_docs.app import build_modules, build_providers
 from rag_docs.config import load_lex_config
-from rag_docs.services.docs_ask import DocsAskService
 
 logger = get_logger(__name__)
 
 
 async def serve() -> None:
     """Boot once and serve until interrupted; stop cleanly afterwards."""
-    from lexigram.web.config import WebConfig
+    from lexigram.app.base import Application
     from lexigram.web.di.provider import WebProvider
     from lexigram.web.server.runner import run_server_async
 
-    web_config = load_lex_config().get_section("web", WebConfig)
-    app = create_app()
-    try:
-        await app.start()
-        await app.container.resolve(DocsAskService)
+    config = load_lex_config()  # cwd-proof: absolute path to this demo's yaml
+
+    async with Application.boot(
+        name="rag-docs",
+        config=config,
+        modules=build_modules(config),
+        providers=build_providers(),
+    ) as app:
         web = await app.container.resolve(WebProvider)
-        logger.info(
-            "server.listening", host=web_config.server.host, port=web_config.server.port
-        )
-        await run_server_async(
-            web.starlette,
-            host=web_config.server.host,
-            port=web_config.server.port,
-        )
-    finally:
-        await app.stop()
+        server = web.config.server
+        logger.info("server.listening", host=server.host, port=server.port)
+        await run_server_async(web.starlette, host=server.host, port=server.port)
 
 
 def main() -> int:
