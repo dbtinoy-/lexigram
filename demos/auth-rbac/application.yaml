@@ -14,3 +14,20 @@ auth:
   secret_key: "rbac-console-demo-secret-key-0123456789ab"
   token:
     secret_key: "rbac-console-demo-secret-key-0123456789ab"
+  roles:
+    viewer:
+      name: viewer
+      permissions:
+        - articles.view
+    editor:
+      name: editor
+      permissions:
+        - articles.*
+      inherits:
+        - viewer
+    admin:
+      name: admin
+      permissions:
+        - "*"
+      inherits:
+        - editor

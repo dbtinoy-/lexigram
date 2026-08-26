@@ -7,8 +7,11 @@ Seeding belongs in ``boot()`` precisely because it must resolve the real,
 fully-wired services — see ``di/provider.py``, which resolves this class
 inside ``boot()``.
 
-This module lives in ``di/`` because it's initialization code, not a
+This module lives in ``data/`` because it's initialization code, not a
 runtime service.  It runs once at startup and has no runtime role.
+
+Roles are now defined in ``application.yaml`` under ``auth.roles`` and
+auto-consumed by ``AuthorizationProvider`` — no hand-seeding needed.
 
 Also demonstrated: framework services return ``Result`` values
 (``UserService.create_user`` → ``Ok``/``Err``), so seeding handles the
@@ -17,11 +20,8 @@ Also demonstrated: framework services return ``Result`` values
 
 from __future__ import annotations
 
-from typing import Any, cast
-
 from lexigram.auth.authn.user_service import UserService
 from lexigram.auth.authz.service import AuthorizationService
-from lexigram.contracts.auth.roles import RoleDefinition
 from lexigram.logging import get_logger
 from rbac_console.domain.articles import ArticleStore
 from rbac_console.domain.personas import PERSONAS, PersonaDirectory
@@ -29,21 +29,6 @@ from rbac_console.domain.personas import PERSONAS, PersonaDirectory
 logger = get_logger(__name__)
 
 PERSONA_PASSWORD = "Demo-Password-1"
-
-# Single source of truth for role seeding. AuthConfig.roles is inert today,
-# so these go into AuthorizationService.set_roles() here. The grammar is
-# `resource.action` with bidirectional `*` wildcards and `inherits` chains:
-# viewer < editor < admin.
-# TODO(framework): consume AuthConfig.roles so demos stop hand-seeding.
-ROLE_DEFINITIONS: dict[str, dict[str, Any]] = {
-    "viewer": {"name": "viewer", "permissions": ["articles.view"]},
-    "editor": {
-        "name": "editor",
-        "permissions": ["articles.*"],
-        "inherits": ["viewer"],
-    },
-    "admin": {"name": "admin", "permissions": ["*"], "inherits": ["editor"]},
-}
 
 
 class RbacSeedService:
@@ -84,14 +69,11 @@ class RbacSeedService:
             else:
                 self._personas.register(persona, created.unwrap())
 
-        # Roles use a different API: set_roles replaces the whole table, so
-        # it is idempotent across restarts without any error handling.
-        self._authz.set_roles(
-            cast("dict[str, RoleDefinition | dict[str, Any]]", ROLE_DEFINITIONS)
-        )
+        # Roles are now auto-consumed from AuthConfig.roles by
+        # AuthorizationProvider — no hand-seeding needed here.
 
         self._articles.create("Welcome", "Articles are guarded by RBAC patterns.")
         self._articles.create("Second", "Try creating one as different personas.")
 
 
-__all__ = ["PERSONA_PASSWORD", "ROLE_DEFINITIONS", "RbacSeedService"]
+__all__ = ["PERSONA_PASSWORD", "RbacSeedService"]

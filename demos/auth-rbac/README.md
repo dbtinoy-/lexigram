@@ -14,7 +14,7 @@ Fully offline against in-memory stores. No build step — vanilla JS + fetch.
 
 | Piece | Where | Lexigram API used |
 |-------|-------|-------------------|
-| Role seeding (patterns + inheritance) | `di/provider.py` | `AuthorizationService.set_roles(ROLE_DEFINITIONS)` |
+| Role definitions (patterns + inheritance) | `application.yaml` | `AuthConfig.roles` → auto-consumed by `AuthorizationProvider` |
 | Live permission matrix | `controllers/api.py` | `authorize(user, action, resource) -> Result[bool]` per persona |
 | Persona login | `controllers/api.py` | `SessionCookieBackend.login/logout`, three seeded users |
 | Guarded resources | `controllers/api.py` | deny-before-mutate guard returning 403 with the missing pattern |
@@ -22,11 +22,23 @@ Fully offline against in-memory stores. No build step — vanilla JS + fetch.
 
 ## Permission grammar
 
-Patterns are ``resource.action`` with bidirectional ``*`` wildcards:
+Roles are defined in `application.yaml` under `auth.roles`:
 
-- viewer → `articles.view`
-- editor → `articles.*` (inherits viewer)
-- admin → `*` (inherits editor; role-name "admin" also bypasses checks)
+```yaml
+auth:
+  roles:
+    viewer:
+      permissions: [articles.view]
+    editor:
+      permissions: [articles.*]
+      inherits: [viewer]
+    admin:
+      permissions: ["*"]
+      inherits: [editor]
+```
+
+Patterns are `resource.action` with bidirectional `*` wildcards.
+`AuthorizationProvider` auto-consumes these at boot — no hand-seeding.
 
 Matrix checks: `articles.view/create/update/delete` plus
 `admin_console.open` (admin-only).
@@ -51,7 +63,7 @@ Override the port without touching yaml: `LEX_WEB__SERVER__PORT=9000`.
 |---|------|--------|
 | 1 | `src/rbac_console/app.py` | ⭐ composition root: config → modules → providers |
 | 2 | `src/rbac_console/main.py` | lifecycle: `Application.boot`, graceful stop |
-| 3 | `src/rbac_console/di/provider.py` | register/bind vs boot/seed; constructor injection |
+| 3 | `src/rbac_console/di/provider.py` | register (bind) vs boot (seed); simplest DI patterns |
 | 4 | `src/rbac_console/data/seed.py` | boot-time data seeding; `Result` handling |
 | 5 | `src/rbac_console/controllers/api.py` | Result-returning handlers → auto HTTP mapping |
 | 6 | `src/rbac_console/repository/session_repository.py` | protocol binding (contracts ↔ impl) |

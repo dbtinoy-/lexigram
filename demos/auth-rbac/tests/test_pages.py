@@ -1,4 +1,13 @@
-"""Pages smoke tests for the RBAC console."""
+"""Pages smoke tests for the RBAC console.
+
+These are the *structural* half of the demo suite (behavioral tests in
+``test_rbac.py``).  They verify that the page controller serves the
+right HTML and static assets — no business logic exercised here.
+
+Teaching note: smoke tests are cheap sanity checks that run fast and
+catch wiring errors (missing routes, broken templates) before behavioral
+tests dig into the details.
+"""
 
 from __future__ import annotations
 

@@ -54,15 +54,29 @@ class AuthorizationProvider(Provider):
         )
         auth_service = AuthorizationService(permission_cache_ttl=ttl)
 
-        if self.initial_roles:
-            auth_service.set_roles(self.initial_roles)
+        # Auto-consume roles from config if no explicit initial_roles provided.
+        # This lets demos define roles in application.yaml instead of hand-seeding.
+        roles_to_load = self.initial_roles
+        if not roles_to_load and self.auth_config and self.auth_config.roles:
+            # Convert AuthRoleConfig instances to the dict format set_roles expects
+            roles_to_load = {
+                name: {
+                    "name": role.name,
+                    "permissions": role.permissions,
+                    "inherits": role.inherits,
+                }
+                for name, role in self.auth_config.roles.items()
+            }
+
+        if roles_to_load:
+            auth_service.set_roles(roles_to_load)
 
         container.singleton(AuthorizerProtocol, lambda: auth_service)
         container.singleton(AuthorizationService, lambda: auth_service)
 
         logger.info(
             "AuthorizationProvider registered with %d initial roles",
-            len(self.initial_roles),
+            len(roles_to_load),
         )
 
     async def boot(self, container: ContainerResolverProtocol) -> None:

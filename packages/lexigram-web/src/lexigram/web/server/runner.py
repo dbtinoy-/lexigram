@@ -28,8 +28,8 @@ def _to_import_string(app: Any) -> str | None:
 
 def run_server(
     app: Any,
-    host: str = "127.0.0.1",
-    port: int = 8000,
+    host: str | None = None,
+    port: int | None = None,
     **kwargs: Any,
 ) -> None:
     """Run the web application.
@@ -40,18 +40,38 @@ def run_server(
 
     Args:
         app: ASGI application instance or import string (``"module:attr"``).
-        host: Bind address (default: 127.0.0.1).
-        port: Bind port (default: 8000).
+        host: Bind address.  Reads from ``app.config.web.server.host``
+            when not provided.
+        port: Bind port.  Reads from ``app.config.web.server.port``
+            when not provided.
         **kwargs: Additional arguments (passed to Uvicorn config).
 
     Raises:
         ImportError: If neither Granian nor Uvicorn is installed.
     """
+    if host is None or port is None:
+        host, port = _resolve_web_config(app, host, port)
+
     if isinstance(app, str):
         _run_granian(app, host, port, **kwargs)
         return
 
     _run_uvicorn(app, host, port, **kwargs)
+
+
+def _resolve_web_config(
+    app: Any, host: str | None, port: str | int | None
+) -> tuple[str, int]:
+    """Read host/port from app.config when not explicitly provided."""
+    config = getattr(app, "config", None)
+    if config is None:
+        return host or "127.0.0.1", int(port or 8000)
+    try:
+        from lexigram.web.config import WebConfig
+        web = config.get_section("web", WebConfig)
+        return host or web.server.host, int(port or web.server.port)
+    except Exception:
+        return host or "127.0.0.1", int(port or 8000)
 
 
 def _run_granian(
@@ -82,8 +102,8 @@ def _run_granian(
 
 async def run_server_async(
     app: Any,
-    host: str = "127.0.0.1",
-    port: int = 8000,
+    host: str | None = None,
+    port: int | None = None,
     **kwargs: Any,
 ) -> None:
     """Run the web application asynchronously.
@@ -93,11 +113,17 @@ async def run_server_async(
 
     Args:
         app: ASGI application instance or import string.
-        host: Bind address.
-        port: Bind port.
+        host: Bind address.  Reads from ``app.config.web.server.host``
+            when not provided.
+        port: Bind port.  Reads from ``app.config.web.server.port``
+            when not provided.
         **kwargs: Additional arguments passed to Uvicorn config.
     """
     import uvicorn
+
+    # Auto-consume from application.yaml when host/port not explicit.
+    if host is None or port is None:
+        host, port = _resolve_web_config(app, host, port)
 
     logger.info("starting_uvicorn_server", host=host, port=port, kwargs=kwargs)
     config = uvicorn.Config(app, host=host, port=port, **kwargs)

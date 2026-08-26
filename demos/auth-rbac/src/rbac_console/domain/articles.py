@@ -1,16 +1,14 @@
 """The protected resource — an in-memory article store.
 
-This file teaches two ideas at once:
+Lexigram convention: ``domain/`` holds framework-agnostic models and
+services.  No framework imports here — just plain dataclasses.  The DI
+container treats them like any other service (see ``di/provider.py``),
+and swapping this in-memory implementation for Postgres later changes
+nothing outside ``di/``.
 
-1. **Stores are plain objects.**  No base class, no framework import — a
-   dataclass with methods is enough.  The DI container treats it like any
-   other service (see ``di/provider.py``, which registers it as a
-   singleton), and swapping this in-memory implementation for Postgres
-   later changes nothing outside ``di/``.
-
-2. **The RBAC demo needs something to guard.**  Articles are the resource
-   every persona tries to read/create/delete; the permission matrix in
-   ``controllers/api.py`` is exercised entirely against this store.
+The RBAC demo needs something to guard.  Articles are the resource every
+persona tries to read/create/delete; the permission matrix in
+``controllers/api.py`` is exercised entirely against this store.
 
 Deliberately *not* here: authorization checks.  Stores stay dumb —
 controllers ask ``AuthorizationService`` before touching them.

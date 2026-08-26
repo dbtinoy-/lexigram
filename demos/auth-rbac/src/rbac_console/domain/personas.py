@@ -1,9 +1,12 @@
 """Persona directory — role-keyed seeded users for the console.
 
+Lexigram convention: ``domain/`` holds framework-agnostic models and
+services.  This catalog is plain Python — no framework imports.
+
 Three personas ship with the demo — ``viewer``, ``editor``, ``admin`` —
 one per RBAC tier, so every row of the permission matrix can be exercised
-by logging in as a different user (see ``seed.py`` for how they're created
-and ``tests/test_rbac.py`` for the login helper).
+by logging in as a different user (see ``data/seed.py`` for how they're
+created and ``tests/test_rbac.py`` for the login helper).
 
 Teaching note: personas are *demo scaffolding*, not a framework concept.
 In a real app your users come from a database or an identity provider;
