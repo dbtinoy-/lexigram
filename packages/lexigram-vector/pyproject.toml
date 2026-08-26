@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "lexigram-vector"
-version = "0.1.5004"
+version = "0.1.5005"
 description = "Vector store backends for the Lexigram Framework"
 readme = "README.md"
 requires-python = ">=3.11"
