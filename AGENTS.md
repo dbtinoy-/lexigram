@@ -1184,6 +1184,9 @@ entry points (same contribution model as web contributors).
 ```
 contracts    lexigram.contracts.cli.types.GeneratorDefinition / .make()
 core         lexigram.codegen.base.GeneratorBase   (jinja env, staging, collisions)
+             jinja2 ships behind the opt-in `lexigram[codegen]` extra — the
+             engine imports lazily and stays importable without it; packages
+             authoring generators declare their own jinja2 dependency.
 packages     <pkg>/cli/generators/*.py  +  <pkg>/cli/templates/*.jinja2
              <pkg>/cli/contributor.py  →  get_generators() → [GeneratorDefinition]
 central CLI  entry-point group "lexigram.cli.contributors" → `lexigram gen …`
