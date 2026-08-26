@@ -25,6 +25,7 @@ from lexigram.di.decorators import inject
 from lexigram.logging import get_logger
 
 if TYPE_CHECKING:
+    from lexigram.auth.config import MFAConfig
     from lexigram.auth.storage.token_store import UserStoreProtocol
 
 logger = get_logger(__name__)
@@ -40,15 +41,23 @@ class MFAManager:
 
     Args:
         user_store: The user store used to read and persist user profiles.
+        config: Optional MFA configuration.  When ``None``, defaults are used.
     """
 
-    def __init__(self, user_store: UserStoreProtocol) -> None:
+    def __init__(
+        self,
+        user_store: UserStoreProtocol,
+        config: MFAConfig | None = None,
+    ) -> None:
         self.user_store = user_store
+        from lexigram.auth.config import MFAConfig as _MFAConfig
+
+        self.config = config or _MFAConfig()
 
     async def enable_totp(
         self,
         user_id: str,
-        issuer: str = "lexigram",
+        issuer: str | None = None,
     ) -> tuple[str, str, list[str]]:
         """Enable TOTP for a user and return enrollment credentials.
 
@@ -58,6 +67,7 @@ class MFAManager:
         Args:
             user_id: The user to enable TOTP for.
             issuer: The issuer label shown in authenticator apps.
+                Defaults to ``config.backup.issuer``.
 
         Returns:
             A ``(secret, provisioning_uri, plain_backup_codes)`` tuple.
@@ -71,10 +81,16 @@ class MFAManager:
         if not user:
             raise ValueError("User not found")
 
+        if issuer is None:
+            issuer = self.config.backup.issuer
+
         secret = generate_totp_secret()
         account_name = user.name or user.email or user.user_id
         provisioning_uri = get_provisioning_uri(secret, account_name, issuer)
-        backup_codes = generate_backup_codes()
+        backup_codes = generate_backup_codes(
+            count=self.config.backup.count,
+            length=self.config.backup.length,
+        )
         backup_hashes = hash_backup_codes(backup_codes)
 
         profile = dict(user.profile)
@@ -110,7 +126,9 @@ class MFAManager:
             return False
 
         secret = mfa.get("secret")
-        if secret and verify_totp(secret, code):
+        if secret and verify_totp(
+            secret, code, window=self.config.totp.valid_window
+        ):
             return True
 
         # Check backup codes (single-use).
