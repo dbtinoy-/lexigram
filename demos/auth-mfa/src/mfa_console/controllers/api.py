@@ -9,7 +9,6 @@ from __future__ import annotations
 from datetime import timedelta
 from typing import Any
 
-from mfa_console.repository.session_repository import InMemorySessionRepository
 from starlette.requests import Request
 
 from lexigram.auth.authn.services import AuthenticationService
@@ -27,6 +26,7 @@ from lexigram.primitives import clock
 from lexigram.result import Err, Ok, Result
 from lexigram.serialization import loads as json_loads
 from lexigram.web import Controller, JSONResponse, get, post
+from mfa_console.repository.session_repository import InMemorySessionRepository
 
 logger = get_logger(__name__)
 

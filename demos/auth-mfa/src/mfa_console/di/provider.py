@@ -15,11 +15,6 @@ auth bundle already owns them.
 
 from __future__ import annotations
 
-from mfa_console.controllers.api import MfaApiController
-from mfa_console.data.seed import MfaSeedService
-from mfa_console.repository.session_repository import InMemorySessionRepository
-from mfa_console.ui.pages import PagesController
-
 from lexigram.auth import AuthenticationService, SessionCookieBackend, UserService
 from lexigram.auth.config import AuthConfig
 from lexigram.auth.mfa.manager import MFAManager
@@ -30,6 +25,10 @@ from lexigram.contracts.core.di import (
 )
 from lexigram.di.provider import Provider
 from lexigram.logging import get_logger
+from mfa_console.controllers.api import MfaApiController
+from mfa_console.data.seed import MfaSeedService
+from mfa_console.repository.session_repository import InMemorySessionRepository
+from mfa_console.ui.pages import PagesController
 
 logger = get_logger(__name__)
 

@@ -126,9 +126,7 @@ class MFAManager:
             return False
 
         secret = mfa.get("secret")
-        if secret and verify_totp(
-            secret, code, window=self.config.totp.valid_window
-        ):
+        if secret and verify_totp(secret, code, window=self.config.totp.valid_window):
             return True
 
         # Check backup codes (single-use).
