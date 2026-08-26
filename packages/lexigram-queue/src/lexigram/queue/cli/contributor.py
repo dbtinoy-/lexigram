@@ -13,7 +13,7 @@ _SPECS: tuple[tuple[str, str, str, str], ...] = (
     (
         "message_consumer",
         "Generate a message consumer with queue routing",
-        "lexigram.queue.cli.generators.consumer:ConsumerGenerator",
+        "lexigram.queue.cli.generators.message_consumer:MessageConsumerGenerator",
         "src/consumers",
     ),
 )
