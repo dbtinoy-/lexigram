@@ -22,6 +22,8 @@
 !.env.example
 !.env.full.example
 !.importlinter
+!.superpowers/
+!.superpowers/**
 !Makefile
 !docker-compose.test.yml
 !lexigram.yaml.example
