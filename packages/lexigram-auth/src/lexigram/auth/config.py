@@ -276,6 +276,72 @@ class PasswordConfig(BaseConfig):
 
 
 @dataclass(init=False)
+class TOTPConfig(BaseConfig):
+    """TOTP (RFC 6238) configuration."""
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="ignore")
+
+    digits: int = Field(
+        default=const.DEFAULT_TOTP_DIGITS,
+        description="Number of digits in the TOTP code",
+    )
+    interval: int = Field(
+        default=const.DEFAULT_TOTP_INTERVAL,
+        description="Time-step period in seconds",
+    )
+    valid_window: int = Field(
+        default=const.DEFAULT_TOTP_VALID_WINDOW,
+        description="Number of time steps to check before/after current",
+    )
+
+
+@dataclass(init=False)
+class BackupCodeConfig(BaseConfig):
+    """Backup code generation configuration."""
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="ignore")
+
+    issuer: str = Field(
+        default=const.DEFAULT_MFA_ISSUER,
+        description="Issuer label shown in authenticator apps",
+    )
+    count: int = Field(
+        default=const.DEFAULT_BACKUP_CODE_COUNT,
+        description="Number of backup codes to generate",
+    )
+    length: int = Field(
+        default=const.DEFAULT_BACKUP_CODE_LENGTH,
+        description="Length of each backup code",
+    )
+
+
+@dataclass(init=False)
+class MFAConfig(BaseConfig):
+    """Multi-factor authentication configuration.
+
+    Controls TOTP settings, backup code generation, and challenge
+    attempt limits.  MFA state is stored in the user profile
+    (``user.profile['mfa']``) — no separate MFA table is required.
+    """
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="ignore")
+
+    enabled: bool = Field(
+        default=True,
+        description="Enable MFA subsystem globally",
+    )
+    totp: TOTPConfig = Field(default_factory=TOTPConfig, description="TOTP settings")
+    backup: BackupCodeConfig = Field(
+        default_factory=BackupCodeConfig,
+        description="Backup code settings",
+    )
+    max_challenge_attempts: int = Field(
+        default=const.DEFAULT_MAX_CHALLENGE_ATTEMPTS,
+        description="Max failed MFA challenge attempts before session is revoked",
+    )
+
+
+@dataclass(init=False)
 class AuthMiddlewareConfig(BaseConfig):
     """Configuration for authentication middleware."""
 
@@ -390,6 +456,10 @@ class AuthConfig(BaseConfig):
             "(default) no relay binding is registered."
         ),
     )
+    mfa: MFAConfig = Field(
+        default_factory=MFAConfig,
+        description="Multi-factor authentication configuration",
+    )
 
     @model_validator(mode="after")
     def validate_security(self) -> AuthConfig:
@@ -414,7 +484,10 @@ __all__ = [
     "AuthMiddlewareConfig",
     "AuthRoleConfig",
     "AuthUserConfig",
+    "BackupCodeConfig",
     "JWTConfig",
+    "MFAConfig",
     "PasswordConfig",
     "RBACConfig",
+    "TOTPConfig",
 ]
