@@ -75,6 +75,10 @@ def build_modules() -> list[object]:
         # Web: Starlette server + middleware stack (security headers,
         # rate limiting, CSRF).  Reads ``web:``; the controllers list is
         # the only thing you must supply — your own HTTP surface.
+        #
+        # Omit PagesController + delete ui/ if using an external frontend
+        # (React, Vue, etc.) — the JSON API in RbacApiController is all
+        # you need.
         WebModule.configure(
             controllers=[RbacApiController, PagesController],
         ),
