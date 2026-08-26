@@ -10,7 +10,7 @@ from lexigram.contracts.ai.relay import (
     RelayLedgerServiceProtocol,
     RelayTopUpRecord,
 )
-from lexigram.result import Ok
+from lexigram.contracts.core.result import Ok
 
 
 def test_topup_record_defaults() -> None:

@@ -16,11 +16,11 @@ class TestMailerProtocol:
     async def test_has_send_method(self) -> None:
         """Test protocol has send async method."""
 
+        from lexigram.contracts.core.result import Ok
         from lexigram.contracts.mailer.types import (
             MessageDeliveryReceipt,
             MessagePriority,
         )
-        from lexigram.result import Ok
 
         class Mailer:
             async def send(
@@ -59,8 +59,8 @@ class TestMailerProtocol:
     def test_is_runtime_checkable(self) -> None:
         """Test protocol is runtime checkable."""
 
+        from lexigram.contracts.core.result import Ok
         from lexigram.contracts.mailer.types import MessageDeliveryReceipt
-        from lexigram.result import Ok
 
         class Mailer:
             async def send(self, message: Any) -> Any:

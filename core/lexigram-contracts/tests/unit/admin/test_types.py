@@ -227,7 +227,7 @@ class TestWidgetViewModel:
 class TestWidgetProtocols:
     def test_widget_handler_protocol_is_runtime_checkable(self) -> None:
         # runtime_checkable means isinstance() works
-        from lexigram.result import Ok
+        from lexigram.contracts.core.result import Ok
 
         class FakeHandler:
             async def get_data(self, params: WidgetParams):

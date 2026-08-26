@@ -22,7 +22,7 @@ class TestCacheBackendProtocol:
     async def test_has_get_method(self) -> None:
         """Test protocol has get async method."""
 
-        from lexigram.result import Ok
+        from lexigram.contracts.core.result import Ok
 
         class Backend:
             async def get(self, key: str) -> Any:
@@ -36,7 +36,7 @@ class TestCacheBackendProtocol:
     async def test_has_set_method(self) -> None:
         """Test protocol has set async method."""
 
-        from lexigram.result import Ok
+        from lexigram.contracts.core.result import Ok
 
         class Backend:
             async def set(
@@ -52,7 +52,7 @@ class TestCacheBackendProtocol:
     async def test_has_delete_method(self) -> None:
         """Test protocol has delete async method."""
 
-        from lexigram.result import Ok
+        from lexigram.contracts.core.result import Ok
 
         class Backend:
             async def delete(self, key: str) -> Any:
@@ -66,7 +66,7 @@ class TestCacheBackendProtocol:
     async def test_has_delete_many_method(self) -> None:
         """Test protocol has delete_many async method."""
 
-        from lexigram.result import Ok
+        from lexigram.contracts.core.result import Ok
 
         class Backend:
             async def delete_many(self, keys: list[str]) -> Any:
@@ -80,7 +80,7 @@ class TestCacheBackendProtocol:
     async def test_has_delete_pattern_method(self) -> None:
         """Test protocol has delete_pattern async method."""
 
-        from lexigram.result import Ok
+        from lexigram.contracts.core.result import Ok
 
         class Backend:
             async def delete_pattern(self, pattern: str) -> Any:
@@ -94,7 +94,7 @@ class TestCacheBackendProtocol:
     async def test_has_exists_method(self) -> None:
         """Test protocol has exists async method."""
 
-        from lexigram.result import Ok
+        from lexigram.contracts.core.result import Ok
 
         class Backend:
             async def exists(self, key: str) -> Any:
@@ -108,7 +108,7 @@ class TestCacheBackendProtocol:
     async def test_has_clear_method(self) -> None:
         """Test protocol has clear async method."""
 
-        from lexigram.result import Ok
+        from lexigram.contracts.core.result import Ok
 
         class Backend:
             async def clear(self) -> Any:
@@ -122,7 +122,7 @@ class TestCacheBackendProtocol:
     async def test_has_get_many_method(self) -> None:
         """Test protocol has get_many async method."""
 
-        from lexigram.result import Ok
+        from lexigram.contracts.core.result import Ok
 
         class Backend:
             async def get_many(self, keys: list[str]) -> Any:
@@ -136,7 +136,7 @@ class TestCacheBackendProtocol:
     async def test_has_set_many_method(self) -> None:
         """Test protocol has set_many async method."""
 
-        from lexigram.result import Ok
+        from lexigram.contracts.core.result import Ok
 
         class Backend:
             async def set_many(
@@ -163,7 +163,7 @@ class TestCacheBackendProtocol:
     def test_is_runtime_checkable(self) -> None:
         """Test protocol is runtime checkable."""
 
-        from lexigram.result import Ok
+        from lexigram.contracts.core.result import Ok
 
         class Backend:
             async def get(self, key: str) -> Any:

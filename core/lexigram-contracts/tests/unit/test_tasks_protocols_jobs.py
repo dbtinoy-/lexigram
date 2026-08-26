@@ -7,15 +7,11 @@ from typing import Any
 import pytest
 
 from lexigram.contracts.infra.tasks.protocols import (
-    DLQProtocol,
     JobProtocol,
-    JobTemplateProtocol,
     TaskExecutorProtocol,
     TaskProviderProtocol,
     TaskQueueProtocol,
-    TaskWorkerProtocol,
 )
-
 
 
 class TestJobProtocol:
@@ -65,7 +61,7 @@ class TestTaskQueueProtocol:
     async def test_has_enqueue_method(self) -> None:
         """Test protocol has enqueue async method."""
 
-        from lexigram.result import Ok
+        from lexigram.contracts.core.result import Ok
 
         class Queue:
             async def enqueue(self, task: Any) -> Any:
@@ -146,7 +142,7 @@ class TestTaskQueueProtocol:
     def test_is_runtime_checkable(self) -> None:
         """Test protocol is runtime checkable."""
 
-        from lexigram.result import Ok
+        from lexigram.contracts.core.result import Ok
 
         class Queue:
             async def enqueue(self, task: Any) -> Any:

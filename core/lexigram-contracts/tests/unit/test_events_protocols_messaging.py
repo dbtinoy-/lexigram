@@ -7,27 +7,12 @@ from typing import Any
 import pytest
 
 from lexigram.contracts.events.protocols import (
-    AggregateFactoryProtocol,
-    CommandBusProtocol,
-    CommandHandlerProtocol,
     DomainEventPublisherProtocol,
     EventBusProtocol,
     EventHandlerProtocol,
     EventMiddlewareProtocol,
-    EventSourcedReadRepositoryProtocol,
-    EventSourcedRepositoryProtocol,
-    EventStoreProtocol,
-    IntegrationEventProtocol,
     MultiEventHandlerProtocol,
-    ProjectionProtocol,
-    PubSubProtocol,
-    QueryBusProtocol,
-    QueryHandlerProtocol,
-    SnapshotStoreProtocol,
-    WebhookSignatureVerifierProtocol,
 )
-
-
 
 
 class TestDomainEventPublisherProtocol:
@@ -61,7 +46,7 @@ class TestEventHandlerProtocol:
     async def test_has_handle_method(self) -> None:
         """Test protocol has handle async method."""
 
-        from lexigram.result import Ok
+        from lexigram.contracts.core.result import Ok
 
         class Handler:
             async def handle(self, event: Any) -> Any:
@@ -74,7 +59,7 @@ class TestEventHandlerProtocol:
     def test_is_runtime_checkable(self) -> None:
         """Test protocol is runtime checkable."""
 
-        from lexigram.result import Ok
+        from lexigram.contracts.core.result import Ok
 
         class Handler:
             async def handle(self, event: Any) -> Any:
@@ -101,7 +86,7 @@ class TestMultiEventHandlerProtocol:
     async def test_has_handle_method(self) -> None:
         """Test protocol has handle async method."""
 
-        from lexigram.result import Ok
+        from lexigram.contracts.core.result import Ok
 
         class Handler:
             def handles(self) -> list[type]:
@@ -117,7 +102,7 @@ class TestMultiEventHandlerProtocol:
     def test_is_runtime_checkable(self) -> None:
         """Test protocol is runtime checkable."""
 
-        from lexigram.result import Ok
+        from lexigram.contracts.core.result import Ok
 
         class Handler:
             def handles(self) -> list[type]:
@@ -136,7 +121,7 @@ class TestEventBusProtocol:
     async def test_has_publish_method(self) -> None:
         """Test protocol has publish async method."""
 
-        from lexigram.result import Ok
+        from lexigram.contracts.core.result import Ok
 
         class Bus:
             async def publish(self, event: Any) -> Any:
@@ -175,7 +160,7 @@ class TestEventBusProtocol:
     def test_is_runtime_checkable(self) -> None:
         """Test protocol is runtime checkable."""
 
-        from lexigram.result import Ok
+        from lexigram.contracts.core.result import Ok
 
         class Bus:
             async def publish(self, event: Any) -> Any:

@@ -52,7 +52,10 @@ def test_node_postprocessor_protocol_is_runtime_checkable():
 
 def test_node_postprocessor_protocol_returns_result():
     """NodePostprocessorProtocol.postprocess should return Result[list[RetrievedNode], RetrieverError]."""
-    from lexigram.contracts.ai.retrievers import RetrievedNode, NodePostprocessorProtocol
+    from lexigram.contracts.ai.retrievers import (
+        NodePostprocessorProtocol,
+        RetrievedNode,
+    )
 
     class FakePostprocessor:
         async def postprocess(
@@ -160,8 +163,8 @@ def test_retrieved_node_score_range():
 @pytest.mark.asyncio
 async def test_retriever_empty_results():
     """Retriever should handle empty results gracefully."""
-    from lexigram.contracts.ai.retrievers import RetrievedNode, RetrieverProtocol
-    from lexigram.result import Ok
+    from lexigram.contracts.ai.retrievers import RetrievedNode
+    from lexigram.contracts.core.result import Ok
 
     class EmptyRetriever:
         async def retrieve(self, query: str, top_k: int = 10) -> Ok[list[RetrievedNode]]:
@@ -176,8 +179,8 @@ async def test_retriever_empty_results():
 @pytest.mark.asyncio
 async def test_retriever_multiple_nodes():
     """Retriever should handle multiple nodes."""
-    from lexigram.contracts.ai.retrievers import RetrievedNode, RetrieverProtocol
-    from lexigram.result import Ok
+    from lexigram.contracts.ai.retrievers import RetrievedNode
+    from lexigram.contracts.core.result import Ok
 
     class MultiRetriever:
         async def retrieve(self, query: str, top_k: int = 10) -> Ok[list[RetrievedNode]]:
