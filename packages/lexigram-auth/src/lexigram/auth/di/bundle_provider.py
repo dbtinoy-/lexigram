@@ -15,6 +15,7 @@ from lexigram.auth.di.sub_providers.authentication_provider import (
 )
 from lexigram.auth.di.sub_providers.authorization_provider import AuthorizationProvider
 from lexigram.auth.di.sub_providers.google_oauth_provider import GoogleOAuthProvider
+from lexigram.auth.di.sub_providers.mfa_provider import MFAProvider
 from lexigram.auth.di.sub_providers.session_provider import SessionProvider
 from lexigram.auth.di.sub_providers.token_provider import TokenProvider
 from lexigram.contracts.core import HealthCheckResult, HealthStatus, ProviderPriority
@@ -73,7 +74,7 @@ class AuthBundleProvider(Provider):
         **kwargs: Any,
     ) -> None:
         super().__init__(name="auth_bundle", priority=ProviderPriority.SECURITY)
-        self.config = config
+        self._config = config
         self._initial_roles: dict[str, Any] = initial_roles or {}
         self._enable_passkeys = enable_passkeys
         self._sub_providers: list[Provider] = []
@@ -84,14 +85,14 @@ class AuthBundleProvider(Provider):
             self._compose_sub_providers()
 
     def _compose_sub_providers(self) -> None:
-        """(Re)build sub-providers from the current ``self.config``.
+        """(Re)build sub-providers from the current ``self._config``.
 
         Called from ``__init__`` and again lazily in ``register()`` when the
         orchestrator injected the yaml section after construction (i.e.
         ``configure()`` ran with no explicit config). Recomposition before
         any ``register()`` call is safe — nothing has been registered yet.
         """
-        cfg = self.config
+        cfg = self._config
         self._authn = AuthenticationProvider(config=cfg)
         self._token = TokenProvider(config=cfg)
         self._session = SessionProvider(config=cfg)
@@ -99,12 +100,14 @@ class AuthBundleProvider(Provider):
             config=cfg, initial_roles=dict(self._initial_roles)
         )
         self._admin = AuthAdminProvider(config=cfg)
+        self._mfa = MFAProvider(config=cfg)
         self._sub_providers = [
             self._authn,
             self._token,
             self._session,
             self._authz,
             self._admin,
+            self._mfa,
         ]
         google_oauth_config = (
             getattr(cfg, "oauth2_providers", {}).get("google", {})
@@ -158,6 +161,12 @@ class AuthBundleProvider(Provider):
             self._compose_sub_providers()
         for provider in self._sub_providers:
             await provider.register(container)
+
+        # Register AuthConfig so application code (e.g. seed services)
+        # can resolve it from the container without manual wiring.
+        if self._config is not None:
+            container.singleton(AuthConfig, instance=self._config)
+
         logger.info("auth_bundle.registered")
 
     async def boot(self, container: BootContainerProtocol) -> None:

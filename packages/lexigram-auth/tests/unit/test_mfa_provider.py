@@ -34,4 +34,5 @@ class TestMFAProvider:
         result = await provider.health_check()
         assert result.status == HealthStatus.HEALTHY
         assert result.component == "mfa"
-        assert "service" in result.details
+        assert "totp_digits" in result.details
+        assert "backup_count" in result.details

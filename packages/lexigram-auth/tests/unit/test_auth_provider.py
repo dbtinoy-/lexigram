@@ -41,9 +41,9 @@ class _RecordingContainer:
         self.bindings: dict[type, object] = {}
 
     def singleton(
-        self, contract: type, implementation: object, **kwargs: object
+        self, contract: type, implementation: object = None, **kwargs: object
     ) -> None:
-        self.bindings[contract] = implementation
+        self.bindings[contract] = implementation or kwargs.get("factory")
 
     def transient(self, contract: type, implementation: type, **kwargs: object) -> None:
         self.bindings[contract] = implementation
