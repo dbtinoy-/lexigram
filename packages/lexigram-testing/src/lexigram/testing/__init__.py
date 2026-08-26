@@ -74,6 +74,9 @@ from lexigram.testing.fakes import (
 # Re-export from fixtures
 from lexigram.testing.fixtures.container import ContainerTestFixture
 from lexigram.testing.fixtures.containers import ContainerFactory
+from lexigram.testing.generators_contract import (
+    assert_contributor_generators_render,
+)
 
 # Re-export from harness
 from lexigram.testing.harness.container import LexigramContainerHarness
@@ -210,6 +213,7 @@ __all__ = [
     "WebhookSubscriptionStoreCompliance",
     "__version__",
     "assert_all_ok",
+    "assert_contributor_generators_render",
     "assert_err",
     "assert_healthy",
     "assert_ok",
