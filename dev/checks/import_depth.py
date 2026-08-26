@@ -15,15 +15,15 @@ Usage:
 
 from __future__ import annotations
 
-import sys as _sys
 from pathlib import Path as _Path
+import sys as _sys
 
 _sys.path.insert(0, str(_Path(__file__).resolve().parents[2]))
 
 import argparse
 import ast
-import sys
 from pathlib import Path
+import sys
 
 # Structural exceptions that legitimately require depth 6+ imports
 ALLOWLIST: set[str] = {
@@ -72,10 +72,16 @@ def check_file(path: Path, max_depth: int) -> list[tuple[int, str]]:
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             for alias in node.names:
-                if alias.name.startswith("lexigram.") and count_depth(alias.name) > max_depth:
+                if (
+                    alias.name.startswith("lexigram.")
+                    and count_depth(alias.name) > max_depth
+                ):
                     violations.append((node.lineno, alias.name))
         elif isinstance(node, ast.ImportFrom) and node.module:
-            if node.module.startswith("lexigram.") and count_depth(node.module) > max_depth:
+            if (
+                node.module.startswith("lexigram.")
+                and count_depth(node.module) > max_depth
+            ):
                 violations.append((node.lineno, node.module))
     return violations
 
@@ -101,7 +107,9 @@ def main() -> int:
                 continue
             for lineno, module in check_file(py_file, args.max_depth):
                 rel = py_file.relative_to(root)
-                print(f"{rel}:{lineno}: depth {count_depth(module)} > {args.max_depth}: {module}")
+                print(
+                    f"{rel}:{lineno}: depth {count_depth(module)} > {args.max_depth}: {module}"
+                )
                 total += 1
 
     if total:
