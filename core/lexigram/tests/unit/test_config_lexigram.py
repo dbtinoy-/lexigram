@@ -92,7 +92,11 @@ class TestLexigramLoggingJsonFormat:
         merged = capsys.readouterr()
         out = (merged.out + merged.err).strip()
         assert out, "expected log output on stdout/stderr"
-        record = json.loads(out.splitlines()[0])
+        # Config loading may emit its own structured diagnostics before the
+        # application log line; the JSON-formatted record is the LAST line.
+        json_lines = [ln for ln in out.splitlines() if ln.startswith("{")]
+        assert json_lines, f"no JSON log line in: {out!r}"
+        record = json.loads(json_lines[-1])
         assert record["event"] == "hello_json"
         assert record["key"] == "value"
 

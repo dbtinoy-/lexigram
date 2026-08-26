@@ -29,9 +29,20 @@ class ConfigSectionNotFoundError(ConfigurationError):
     _code: str = "LEX_ERR_CFG_005"
 
 
+class UnknownConfigKeysError(ConfigurationError):
+    """Raised when a typed config section contains keys its model does not define.
+
+    Almost always a typo (``prot:`` vs ``port:``). Bypass with
+    ``LEX_CONFIG_ALLOW_UNKNOWN=true`` when a key is genuinely forward-declared.
+    """
+
+    _code: str = "LEX_ERR_CFG_006"
+
+
 __all__ = [
     "ConfigReloadError",
     "ConfigSectionNotFoundError",
     "ConfigSourceError",
     "ConfigurationError",
+    "UnknownConfigKeysError",
 ]

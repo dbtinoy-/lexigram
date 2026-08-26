@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from lexigram.logging import get_logger
+
+logger = get_logger(__name__)
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, ClassVar, Self
@@ -98,6 +101,12 @@ class BaseConfig(DomainModel):
             yaml_path = Path.cwd() / yaml_path
         if yaml_path.exists():
             loader.add_source(FileConfigSource(yaml_path))
+        else:
+            logger.info(
+                "config.defaults_only",
+                path=str(yaml_path),
+                hint="create application.yaml or set LEX_* env vars",
+            )
 
         # 2. Profile overlay
         import os
@@ -255,6 +264,127 @@ class BaseConfig(DomainModel):
             })
         """
         return cls(**data)
+
+
+# ── Strict unknown-key detection ────────────────────────────────────────────
+def _resolve_nested_model(annotation: object) -> type | None:
+    """Return the model type behind ``Optional[Model]``-style annotations."""
+    import typing
+
+    if isinstance(annotation, str):
+        return None  # forward refs are resolved by get_type_hints upstream
+    args = typing.get_args(annotation)
+    if args:
+        non_none = [a for a in args if a is not type(None)]
+        if len(args) == 2 and type(None) in args:
+            annotation = non_none[0]
+    return annotation if isinstance(annotation, type) else None
+
+
+def _unknown_config_keys(
+    data: dict[str, Any],
+    model_cls: type,
+    prefix: str = "",
+) -> list[str]:
+    """Recursively diff *data* against *model_cls* fields.
+
+    Returns dotted paths of keys that the model does not define — the
+    canonical signal for typos in ``application.yaml``.
+    """
+    import typing
+
+    fields = getattr(model_cls, "__dataclass_fields__", {})
+    try:
+        hints = typing.get_type_hints(model_cls)
+    except Exception:  # noqa: BLE001 — unresolvable refs degrade to flat check
+        hints = {}
+
+    unknown: list[str] = []
+    for key, value in data.items():
+        path = f"{prefix}{key}"
+        if key not in fields:
+            unknown.append(path)
+            continue
+        nested = _resolve_nested_model(hints.get(key))
+        if (
+            nested is not None
+            and nested is not model_cls
+            and hasattr(nested, "__dataclass_fields__")
+            and isinstance(value, dict)
+        ):
+            unknown.extend(_unknown_config_keys(value, nested, prefix=f"{path}."))
+
+    return unknown
+
+
+def _prune_unknown_config_keys(
+    data: dict[str, Any],
+    model_cls: type,
+    prefix: str = "",
+) -> dict[str, Any]:
+    """Return a copy of *data* with unknown keys removed (escape-hatch mode)."""
+    fields = getattr(model_cls, "__dataclass_fields__", {})
+    import typing
+
+    try:
+        hints = typing.get_type_hints(model_cls)
+    except Exception:  # noqa: BLE001
+        hints = {}
+
+    pruned: dict[str, Any] = {}
+    for key, value in data.items():
+        if key not in fields:
+            continue
+        nested = None
+        ann = hints.get(key)
+        if ann is not None:
+            import typing as t
+
+            args = t.get_args(ann)
+            if len(args) == 2 and type(None) in args:
+                ann = next(a for a in args if a is not type(None))
+            nested = ann if isinstance(ann, type) else None
+        if (
+            nested is not None
+            and hasattr(nested, "__dataclass_fields__")
+            and isinstance(value, dict)
+        ):
+            pruned[key] = _prune_unknown_config_keys(
+                value, nested, prefix=f"{prefix}{key}."
+            )
+        else:
+            pruned[key] = value
+    return pruned
+
+
+def _field_leaf_names(model_cls: type, prefix: str = "") -> list[str]:
+    """All dotted field paths of a config model (for did-you-mean hints)."""
+    import dataclasses
+    import typing
+
+    try:
+        hints = typing.get_type_hints(model_cls)
+    except Exception:  # noqa: BLE001
+        hints = {}
+
+    leaves: list[str] = []
+    for f in dataclasses.fields(model_cls):
+        if f.name.startswith("_") or f.name in {"model_config", "config_section"}:
+            continue
+        path = f"{prefix}{f.name}"
+        nested = _resolve_nested_model(hints.get(f.name))
+        if f.name.startswith("_") or f.name in {"model_config", "config_section"}:
+            continue
+        path = f"{prefix}{f.name}"
+        if (
+            nested is not None
+            and nested is not model_cls
+            and hasattr(nested, "__dataclass_fields__")
+        ):
+            leaves.extend(_field_leaf_names(nested, prefix=f"{path}."))
+        else:
+            leaves.append(path)
+    return leaves
 
 
 def _redact_dict(data: dict[str, Any], patterns: frozenset[str]) -> None:

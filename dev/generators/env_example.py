@@ -101,6 +101,7 @@ SUPPLEMENTAL_VARS: dict[str, tuple[str, str]] = {
     "AUDIT_HMAC_KEY": ("changeme", "audit doctor / signing key"),
     "AUTH_JWT_SECRET": ("changeme", "lexigram-auth JWT secret"),
     "AUTH_SECRET": ("changeme", "lexigram-cli environment validation"),
+    "LEX_CONFIG_ALLOW_UNKNOWN": ("false", "bypass strict unknown-key errors (true/false)"),
     "OAUTH_CLIENT_SECRET": ("change-me-oauth-client-secret", "app startup secret hook"),
     "BROKER_URL": ("amqp://guest:guest@localhost:5672//", "queue doctor broker URL"),
     "DATABASE_URL": (

@@ -3,15 +3,25 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import difflib
+import os
 from typing import Any, ClassVar, TypeVar
 
 from lexigram.app.config.discovery import ModuleDiscoveryConfig
 from lexigram.app.config.models import HealthConfig
-from lexigram.config.base import BaseConfig, _redact_dict
+from lexigram.config.base import (
+    BaseConfig,
+    _field_leaf_names,
+    _prune_unknown_config_keys,
+    _redact_dict,
+    _unknown_config_keys,
+)
 from lexigram.config.constants import SECRET_FIELD_PATTERNS
+from lexigram.config.exceptions import ConfigSourceError
 from lexigram.config.lib import ConfigRegistry
 from lexigram.config.lib.merge import deep_merge
 from lexigram.contracts.core.config import ConfigIssue, Environment
+from lexigram.logging import get_logger
 from lexigram.logging.config import LoggingConfig
 from lexigram.validation import ConfigDict, Field, model_validator
 
@@ -129,7 +139,52 @@ class LexigramConfig(BaseConfig):
         if isinstance(data, model_cls):
             return data
         if not isinstance(data, dict):
+            if data is None:
+                logger.debug(
+                    "config.section_defaults",
+                    section=name,
+                    model=model_cls.__name__,
+                    reason="section absent from yaml; code defaults apply",
+                )
             return model_cls()
+
+        unknown = _unknown_config_keys(data, model_cls)
+        if unknown:
+            leaves = [p.rsplit(".", 1)[-1] for p in _field_leaf_names(model_cls)]
+            hints = []
+            for key in unknown:
+                near = difflib.get_close_matches(
+                    key.rsplit(".", 1)[-1], leaves, n=1, cutoff=0.6
+                )
+                if near:
+                    hints.append(f"{key} — did you mean '{near[0]}'?")
+            allow = os.environ.get("LEX_CONFIG_ALLOW_UNKNOWN", "").lower() in {
+                "1",
+                "true",
+                "yes",
+            }
+            detail = ", ".join(unknown)
+            hint_text = (" Suggestions: " + "; ".join(hints)) if hints else ""
+            bypass = " Set LEX_CONFIG_ALLOW_UNKNOWN=true to bypass."
+            if allow:
+                logger.warning(
+                    "config.unknown_keys_allowed",
+                    section=name,
+                    keys=detail,
+                )
+                data = _prune_unknown_config_keys(data, model_cls)
+            else:
+                raise ConfigSourceError(
+                    f"Unknown configuration key(s) in section '{name}': "
+                    f"{detail}.{hint_text}{bypass}"
+                )
+
+        logger.debug(
+            "config.section_bound",
+            section=name,
+            model=model_cls.__name__,
+            keys=len(data),
+        )
         return model_cls(**data)
 
     def has_section(self, name: str) -> bool:
@@ -196,3 +251,5 @@ class LexigramConfig(BaseConfig):
 
 
 __all__ = ["LexigramConfig"]
+
+logger = get_logger(__name__)
