@@ -1,14 +1,198 @@
-# MFA Console — runtime configuration (Blueprint §3).
-web:
-  server:
-    host: 127.0.0.1
-    port: 8092
-  security:
-    csrf:
-      enabled: false # plain JSON posts over local http
+# ══════════════════════════════════════════════════════════════════════════════
+# Auth-MFA Demo — Complete Configuration Reference
+# ══════════════════════════════════════════════════════════════════════════════
+#
+# Every configuration key available for this demo.
+# Uncommented lines are the values we override; commented lines show
+# defaults.  Each section maps 1:1 to a typed config model — the
+# framework validates your yaml against it at boot time.
+#
+# DEMO FOCUS: Multi-factor authentication — TOTP enrollment, challenge
+# flow, backup codes, and attempt capping via session-cookie auth.
+#
+# LEARNING PATH:
+#   1. web:        HTTP server, security, rate limiting
+#   2. auth:       Users, roles, JWT, password rules
+#
+# For full reference see:
+#   - Lexigram Web:       packages/lexigram-web/src/lexigram/web/config/
+#   - Lexigram Auth:      packages/lexigram-auth/src/lexigram/auth/config.py
+# ══════════════════════════════════════════════════════════════════════════════
 
-# lexigram-auth (config_key: "auth") — offline demo secret.
+
+# ── Web ──────────────────────────────────────────────────────────────────────
+# Lexigram Web auto-configures Starlette, OpenAPI, CORS, CSRF, and
+# rate limiting from this single section.  The WebModule reads it
+# automatically via config_key="web" / config_model=WebConfig.
+# ─────────────────────────────────────────────────────────────────────────────
+web:
+  # ── Server ─────────────────────────────────────────────────────────────────
+  server:
+    host: 127.0.0.1       # bind address (0.0.0.0 for external access)
+    port: 8092             # listen port
+    # workers: 1           # uvicorn workers (1 = single process)
+    # reload: false        # auto-reload on file changes (dev only)
+    # debug: false         # enable debug mode
+
+  # ── Security ───────────────────────────────────────────────────────────────
+  security:
+    # enabled: true                    # master switch for security subsystem
+
+    # ── CSRF ───────────────────────────────────────────────────────────────
+    # Disabled here because the demo posts JSON from the browser console.
+    csrf:
+      enabled: false                    # disable for JSON-only playground
+      # cookie_name: csrf_token
+      # header_name: X-CSRF-Token
+      # cookie_secure: true
+      # cookie_httponly: true
+      # cookie_samesite: Lax
+      # token_length: 32
+      # token_ttl: 3600
+      # excluded_paths: []
+
+    # ── CORS ───────────────────────────────────────────────────────────────
+    # cors:
+    #   enabled: true
+    #   allowed_origins:
+    #     - http://localhost:8092        # this demo
+    #   allow_methods: [GET, POST, PUT, DELETE, PATCH, OPTIONS]
+    #   allow_headers: ["*"]
+    #   allow_credentials: false
+    #   max_age: 600
+
+    # ── Headers ─────────────────────────────────────────────────────────────
+    # custom_headers:
+    #   x-content-type-options: nosniff
+    #   x-frame-options: DENY
+    #   x-xss-protection: "1; mode=block"
+    # referrer_policy: strict-origin-when-cross-origin
+
+  # ── Rate Limiting ──────────────────────────────────────────────────────────
+  # rate_limit:
+  #   enabled: true
+  #   default_limit: 100
+  #   default_window: 60
+  #   whitelist_ips: []
+  #   storage_backend: memory
+
+  # ── Misc ───────────────────────────────────────────────────────────────────
+  # openapi_title: API
+  # openapi_version: "1.0.0"
+  # openapi_url: /openapi.json
+  # swagger_ui_url: /docs
+  # redoc_url: /redoc
+  # compression_enabled: true
+  # template_directory: templates
+  # enable_auth: false
+  # max_body_size: 10485760            # 10 MiB
+
+
+# ── Auth ─────────────────────────────────────────────────────────────────────
+# Lexigram Auth handles users, roles, RBAC, JWT tokens, and password
+# hashing.  The AuthModule reads this section automatically via
+# config_key="auth" / config_model=AuthConfig.
+#
+# The orchestrator calls get_section("auth", AuthConfig) and injects
+# the result into AuthorizationProvider.config before register() runs.
+# ─────────────────────────────────────────────────────────────────────────────
 auth:
+  # enabled: true                      # master switch
+
+  # ── Secret Key (required) ─────────────────────────────────────────────────
+  # Used for signing JWT tokens.  Production requires >= 32 bytes.
+  # In dev, a stable key prevents token invalidation on restart.
   secret_key: "mfa-console-demo-secret-key-0123456789abc"
+
+  # ── JWT Token (required) ──────────────────────────────────────────────────
+  # Signs and verifies access, refresh, and ID tokens.
   token:
     secret_key: "mfa-console-demo-secret-key-0123456789abc"
+    # algorithm: HS256                 # RS256 for asymmetric keys
+    # access_token_expire: 30m         # Duration: 30 minutes
+    # refresh_token_expire: 7d         # Duration: 7 days
+    # id_token_expire: 1h              # Duration: 1 hour
+    # key_rotation_grace_period: 3600s # seconds tokens survive key rotation
+    # required_audience: null          # required in production/staging
+
+  # ── Users (bootstrapping) ─────────────────────────────────────────────────
+  # Initial users created on first boot.  Supports plain passwords or
+  # pre-hashed values.  Roles reference keys from the roles section below.
+  # The second user (mfa@mfa.demo) is auto-enrolled for TOTP at boot.
+  users:
+    - name: Plain User
+      email: plain@mfa.demo
+      password: Demo-Password-1       # plain password (hashed on boot)
+      roles: []
+
+    - name: Careful User
+      email: mfa@mfa.demo
+      password: Demo-Password-1
+      roles: []
+
+  # ── Roles ──────────────────────────────────────────────────────────────────
+  # Role definitions for RBAC.  Each role lists permissions and may
+  # inherit from parent roles.
+  roles: {}
+
+  # ── RBAC ──────────────────────────────────────────────────────────────────
+  # rbac:
+  #   enabled: true                    # enforce RBAC checks
+  #   superuser_bypass: true           # admin bypasses all checks
+  #   default_role: viewer             # role assigned to new users
+  #   cache_permissions: true          # cache resolved permissions
+  #   permission_cache_ttl: 300        # cache TTL (seconds)
+
+  # ── Password Policy ────────────────────────────────────────────────────────
+  # Controls complexity requirements and hashing cost.  Production
+  # enforces minimum bcrypt rounds (12) and Argon2id memory (19456 KiB).
+  # password:
+  #   min_length: 12
+  #   max_length: 128
+  #   require_uppercase: true
+  #   require_lowercase: false
+  #   require_digits: true
+  #   require_special: false
+  #   banned_patterns: []              # substrings rejected (case-insensitive)
+  #   bcrypt_rounds: 12                # cost factor (min 12 in prod)
+  #   argon2_memory_cost: 65536        # KiB (OWASP floor: 19456)
+  #   argon2_time_cost: 3
+  #   argon2_parallelism: 4
+
+  # ── Middleware ──────────────────────────────────────────────────────────────
+  # Controls which paths require auth and the token transport.
+  # middleware:
+  #   backend: session                 # "session" or "token"
+  #   header_name: Authorization
+  #   scheme: Bearer
+  #   exclude_paths: []                # paths that skip auth
+  #   exclude_prefixes: []             # path prefixes that skip auth
+  #   roles_required: []               # global role requirements
+  #   permissions_required: []         # global permission requirements
+  #   optional_auth: false             # allow unauthenticated access
+  #   login_url: null                  # redirect URL for login
+  #   login_rate_limit: "5/minute"     # rate limit for auth endpoints
+
+  # ── Sessions ───────────────────────────────────────────────────────────────
+  # max_sessions_per_user: null        # concurrent session limit (null = unlimited)
+
+  # ── OAuth2 ─────────────────────────────────────────────────────────────────
+  # oauth2_providers: {}               # OAuth2 provider configs
+
+  # ── Relay ──────────────────────────────────────────────────────────────────
+  # relay_verification: false          # enable relay gateway auth binding
+
+  # ── MFA ──────────────────────────────────────────────────────────────────
+  # Multi-factor authentication: TOTP enrollment, backup codes, challenge
+  # attempt limits.  The MFAManager reads these values at boot.
+  mfa:
+    enabled: true
+    totp:
+      digits: 6               # number of TOTP digits
+      interval: 30            # time-step period in seconds
+      valid_window: 1         # +/- time steps to accept
+    backup:
+      issuer: auth-mfa-demo   # label shown in authenticator apps
+      count: 10               # number of backup codes
+      length: 8               # length of each code
+    max_challenge_attempts: 3 # failed attempts before session revoke

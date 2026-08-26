@@ -14,6 +14,7 @@ from starlette.requests import Request
 
 from lexigram.auth.authn.services import AuthenticationService
 from lexigram.auth.authn.user_service import UserService
+from lexigram.auth.config import AuthConfig
 from lexigram.auth.exceptions import AccountLockedError, InvalidCredentialsError
 from lexigram.auth.mfa.manager import MFAManager
 from lexigram.auth.session.cookie_backend import SessionCookieBackend
@@ -31,7 +32,6 @@ logger = get_logger(__name__)
 
 PENDING_COOKIE = "mfa_pending"
 PENDING_TTL_SECONDS = 300
-MAX_CHALLENGE_ATTEMPTS = 3
 
 
 def _mfa_enabled(user: Any) -> bool:
@@ -49,12 +49,14 @@ class MfaApiController(Controller):
         mfa: MFAManager,
         cookies: SessionCookieBackend,
         sessions: InMemorySessionRepository,
+        config: AuthConfig,
     ) -> None:
         self._authentication = authentication
         self._users = users
         self._mfa = mfa
         self._cookies = cookies
         self._sessions = sessions
+        self._max_attempts = config.mfa.max_challenge_attempts
         self._attempts: dict[str, int] = {}
 
     async def _user_from_pending(self, request: Request) -> Any | None:
@@ -127,7 +129,7 @@ class MfaApiController(Controller):
         if not await self._mfa.verify_totp(user.user_id, code):
             attempts = self._attempts.get(pending_id, 0) + 1
             self._attempts[pending_id] = attempts
-            if attempts >= MAX_CHALLENGE_ATTEMPTS:
+            if attempts >= self._max_attempts:
                 await self._sessions.revoke(pending_id)
                 response = JSONResponse(
                     {"detail": "too many attempts; log in again"}, status_code=401
@@ -178,7 +180,7 @@ class MfaApiController(Controller):
             return Err(ConflictError("MFA already enabled"))
 
         secret, provisioning_uri, backup_codes = await self._mfa.enable_totp(
-            user.user_id, issuer="auth-mfa-demo"
+            user.user_id,
         )
         logger.info("mfa_enrolled", user_id=user.user_id)
         return Ok(
