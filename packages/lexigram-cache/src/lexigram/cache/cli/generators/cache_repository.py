@@ -39,7 +39,9 @@ class CacheRepositoryGenerator(GeneratorBase):
             parse_fields(fields_str) if fields_str else list(_DEFAULT_FIELDS)
         )
 
-        output_path = Path(output_dir) if output_dir is not None else self.output_dir
+        if output_dir is not None:
+            self.output_dir = self._resolve_output_dir(Path(output_dir))
+        output_path = self.output_dir
         entity_name = self._to_pascal_case(name)
         repo_snake = self._to_snake_case(name)
         file_path = output_path / f"{repo_snake}_repository.py"
