@@ -17,6 +17,7 @@ class _MonitorAttrsMixin:
     metrics_collector: Any
     metrics_exporter: Any
     tracer: Any
+    trace_provider: Any
     _config: Any
     _hook_handlers: Any
     _hook_registry: Any
@@ -28,3 +29,4 @@ class _MonitorAttrsMixin:
     _error_tracker: Any
     _error_hook: Any
     _register_hook_subscriptions: Callable[..., Any]
+    _compose_tracing: Callable[..., Any]

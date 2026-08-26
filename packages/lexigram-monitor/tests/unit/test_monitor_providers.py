@@ -164,16 +164,34 @@ class TestMonitorProvider:
 
         assert provider.config_model == MonitorConfig
 
-    def test_tracer_initialized(self, provider: MonitorProvider) -> None:
+    def test_tracer_initialized_with_explicit_config(
+        self, mock_backend: MagicMock
+    ) -> None:
+        from lexigram.monitor.config import MonitorConfig
+
+        provider = MonitorProvider(backend=mock_backend, config=MonitorConfig())
         assert provider.tracer is not None
+
+    def test_tracer_deferred_until_register(self, provider: MonitorProvider) -> None:
+        assert provider.tracer is None
 
     def test_metrics_collector_initialized(
         self, provider: MonitorProvider
     ) -> None:
         assert provider.metrics_collector is not None
 
-    def test_trace_provider_initialized(self, provider: MonitorProvider) -> None:
+    def test_trace_provider_initialized_with_explicit_config(
+        self, mock_backend: MagicMock
+    ) -> None:
+        from lexigram.monitor.config import MonitorConfig
+
+        provider = MonitorProvider(backend=mock_backend, config=MonitorConfig())
         assert provider.trace_provider is not None
+
+    def test_trace_provider_deferred_until_register(
+        self, provider: MonitorProvider
+    ) -> None:
+        assert provider.trace_provider is None
 
     @pytest.mark.asyncio
     async def test_register_binds_provider_singleton(

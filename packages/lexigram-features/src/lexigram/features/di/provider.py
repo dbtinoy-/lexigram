@@ -52,15 +52,19 @@ class FeatureFlagsProvider(Provider):
     config_model: type | None = FeatureFlagsConfig
     priority = ProviderPriority.INFRASTRUCTURE
 
-    def __init__(self, config: FeatureFlagsConfig | None = None) -> None:
+    def __init__(
+        self, config: FeatureFlagsConfig | dict[str, Any] | None = None
+    ) -> None:
         """Create the feature-flags provider.
 
         Args:
             config: Optional feature-flag configuration.  When omitted,
-                defaults are used (all flags disabled, cache TTL 60 s).
+                defaults are used (all flags disabled, cache TTL 60 s).  The
+                value stays ``None`` until ``register()`` so the orchestrator
+                can inject the yaml section (via ``config_key``) first.
         """
         super().__init__()
-        self._config = config or FeatureFlagsConfig()
+        self._config: FeatureFlagsConfig | dict[str, Any] | None = config
         self._simple_provider: LocalProvider | None = None
         self._manager: FlagManager | None = None
 
@@ -74,16 +78,27 @@ class FeatureFlagsProvider(Provider):
 
         Registers ``FlagProviderProtocol`` (simple boolean API) and ``FlagManager``
         (rich evaluation API) as singletons, seeded from the provider config.
-        """
-        container.singleton(FeatureFlagsConfig, self._config)
 
-        if not self._config.enabled:
+        Late config binding: when ``configure()`` ran with no explicit config,
+        the orchestrator has injected the yaml section into ``self.config``
+        before this call; only fall back to defaults if it did not.
+        """
+        cfg = self._config
+        if isinstance(cfg, dict):
+            cfg = FeatureFlagsConfig(**cfg)
+        if cfg is None:
+            cfg = FeatureFlagsConfig()
+        self._config = cfg
+
+        container.singleton(FeatureFlagsConfig, cfg)
+
+        if not cfg.enabled:
             logger.info("features_disabled", reason="FeatureFlagsConfig.enabled=False")
             return
 
         # Simple boolean provider for the FlagProviderProtocol contract.
         simple = LocalProvider()
-        for flag_name, enabled in self._config.initial_flags.items():
+        for flag_name, enabled in cfg.initial_flags.items():
             simple.set_flag_sync(flag_name, enabled)
         container.singleton(FlagProviderProtocol, simple)
         self._simple_provider = simple
@@ -91,13 +106,13 @@ class FeatureFlagsProvider(Provider):
         # Rich provider + manager for full evaluation API.
         initial: dict[str, Flag] = {
             flag_name: Flag(name=flag_name, type=FlagType.BOOLEAN, enabled=enabled)
-            for flag_name, enabled in self._config.initial_flags.items()
+            for flag_name, enabled in cfg.initial_flags.items()
         }
         local = LocalProvider(initial)
         manager = FlagManager(
             local,
-            cache_ttl=self._config.cache_ttl,
-            default_enabled=self._config.default_enabled,
+            cache_ttl=cfg.cache_ttl,
+            default_enabled=cfg.default_enabled,
         )
         container.singleton(FlagManager, manager)
         from lexigram.contracts.feature_flags.protocols import FlagManagerProtocol
@@ -133,7 +148,10 @@ class FeatureFlagsProvider(Provider):
             HealthCheckResult showing healthy status.
         """
         flag_count = (
-            len(self._config.initial_flags) if self._config.initial_flags else 0
+            len(self._config.initial_flags)
+            if isinstance(self._config, FeatureFlagsConfig)
+            and self._config.initial_flags
+            else 0
         )
         return HealthCheckResult(
             component="features",

@@ -13,9 +13,9 @@ from lexigram.http.di.provider import HTTPProvider
 
 
 class TestHTTPProviderConstruction:
-    def test_default_config(self) -> None:
+    def test_zero_config_defers_defaults(self) -> None:
         provider = HTTPProvider()
-        assert provider._config == HTTPClientConfig()
+        assert provider._config is None
 
     def test_custom_config(self) -> None:
         config = HTTPClientConfig()

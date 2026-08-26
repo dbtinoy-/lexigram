@@ -168,6 +168,14 @@ class GraphQLProvider(_GraphQLDiscoveryMixin, Provider):
 
         # Register core services — fully initialised in boot() before resolution;
         # _require() raises RuntimeError if resolution is attempted before boot().
+        from lexigram.contracts.graphql.protocols import (
+            GraphQLExecutorProtocol as GraphQLExecutorContract,
+        )
+
+        container.singleton(
+            GraphQLExecutorContract,
+            lambda: _require(self._executor, "GraphQLExecutorProtocol"),
+        )
         container.singleton(
             GraphQLExecutorProtocol,
             lambda: _require(self._executor, "GraphQLExecutorProtocol"),

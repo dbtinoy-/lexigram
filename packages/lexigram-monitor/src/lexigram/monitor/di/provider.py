@@ -144,32 +144,19 @@ class MonitorProvider(
         super().__init__()
         self.backend = backend
         self.metrics_collector = _ConcreteMetricsCollector()
-        # Configure tracing provider using provided config when available
-        tracing_cfg = None
-        if config is not None:
-            tracing_cfg = getattr(config, "tracing", None) or {}
-
-        # Resolve service_name and max_spans from tracing config (if present)
-        service_name = None
-        max_spans = None
-        if tracing_cfg is not None:
-            service_name = getattr(tracing_cfg, "service_name", None)
-            max_spans = getattr(tracing_cfg, "max_spans", None)
-
-        if not service_name:
-            service_name = "lexigram-service"
-
-        self.trace_provider = InMemoryTraceProvider(
-            service_name=service_name,
-            max_spans=max_spans or DEFAULT_MAX_SPANS,
-        )
-        self.tracer = self.trace_provider.tracer
+        # Tracing sub-objects are composed from config — eagerly when explicit
+        # config is supplied, otherwise deferred to register() so the
+        # orchestrator can inject the yaml section (via ``config_key``) first.
+        self.trace_provider: Any = None
+        self.tracer: Any = None
         self.metrics_exporter = exporter
         # Exporter registries — owned by this provider, registered via DI
         self._tracing_exporter_registry = TracingExporterRegistry.with_defaults()
         self._metrics_exporter_registry = MetricsExporterRegistry.with_defaults()
         # Store config for runtime registration decisions
         self._config = config
+        if config is not None:
+            self._compose_tracing()
         self._health_checker_registry: HealthCheckerRegistry | None = None
         self._hook_registry: HookRegistryProtocol | None = None
         self._hook_handlers: list[tuple[str, Any]] = []
@@ -187,6 +174,34 @@ class MonitorProvider(
         from lexigram.monitor.di.factories import create_provider_from_config
 
         return create_provider_from_config(config)
+
+    def _compose_tracing(self) -> None:
+        """(Re)build the trace provider and tracer from ``self._config``.
+
+        Called eagerly from ``__init__`` when explicit config was supplied and
+        again from ``register()`` when injection arrived late (i.e.
+        ``configure()`` ran with no explicit config and the orchestrator
+        injected the yaml section after construction).
+        """
+        tracing_cfg = None
+        if self._config is not None:
+            tracing_cfg = getattr(self._config, "tracing", None) or {}
+
+        # Resolve service_name and max_spans from tracing config (if present)
+        service_name = None
+        max_spans = None
+        if tracing_cfg is not None:
+            service_name = getattr(tracing_cfg, "service_name", None)
+            max_spans = getattr(tracing_cfg, "max_spans", None)
+
+        if not service_name:
+            service_name = "lexigram-service"
+
+        self.trace_provider = InMemoryTraceProvider(
+            service_name=service_name,
+            max_spans=max_spans or DEFAULT_MAX_SPANS,
+        )
+        self.tracer = self.trace_provider.tracer
 
     def _register_hook_subscriptions(self, hook_registry: HookRegistryProtocol) -> None:
         self._hook_registry = hook_registry

@@ -47,9 +47,12 @@ class HTTPProvider(Provider):
     config_key: str | None = "http"
     config_model: type | None = HTTPClientConfig
 
-    def __init__(self, config: HTTPClientConfig | None = None) -> None:
+    def __init__(self, config: HTTPClientConfig | dict[str, Any] | None = None) -> None:
         super().__init__()
-        self._config = config or HTTPClientConfig()
+        # Zero-config construction keeps ``_config`` as None so the
+        # orchestrator can inject the yaml section (via ``config_key``)
+        # before boot(); explicit config is honoured as-is.
+        self._config: HTTPClientConfig | dict[str, Any] | None = config
         self._client: HTTPClient | None = None
 
     @classmethod
@@ -100,8 +103,16 @@ class HTTPProvider(Provider):
         except Exception:  # noqa: BLE001, S110 — resilience pipeline optional
             pass
 
+        cfg = self._config
+        if isinstance(cfg, dict):
+            cfg = HTTPClientConfig(**cfg)
+        if cfg is None:
+            # No yaml section was injected — use framework defaults.
+            cfg = HTTPClientConfig()
+        self._config = cfg
+
         self._client = HTTPClient(
-            config=self._config,
+            config=cfg,
             retry_policy=retry_policy,
             circuit_breaker=circuit_breaker,
             resilience=resilience,

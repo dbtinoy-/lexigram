@@ -69,10 +69,18 @@ class _MonitorRegistrationMixin(_MonitorAttrsMixin):
         Binds all monitoring singletons into the DI container. DB-backed
         exporter wiring is deferred to ``boot()`` where the full container
         graph is available.
+
+        Late config binding: when ``configure()`` ran with no explicit
+        config, the orchestrator injects the yaml section into
+        ``self.config`` before this call; compose the tracing sub-objects
+        now so they reflect the real values.
         """
         from lexigram.monitor.di.provider import (
             MonitorProvider,  # noqa: PLC0415 — breaks provider<->mixin cycle
         )
+
+        if self.tracer is None:
+            self._compose_tracing()
 
         container.singleton(MonitorProvider, lambda: self)
         container.singleton(MetricsCollectorProtocol, lambda: self.metrics_collector)

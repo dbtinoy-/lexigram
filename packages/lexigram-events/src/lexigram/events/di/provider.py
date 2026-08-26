@@ -61,15 +61,49 @@ class EventsProvider(Provider):
         if isinstance(config, dict):
             config = EventsConfig(**config)
 
-        self._config: EventsConfig = config or EventsConfig(
-            event_store_backend=EventStoreBackend.MEMORY,
-            debug=False,
-        )
+        # Explicit config composes eagerly; zero-config construction leaves
+        # ``_config`` as None so the orchestrator can inject the yaml section
+        # (via ``config_key``) after construction — sub-providers are then
+        # composed in ``_ensure_composed()`` during ``register()``.
+        self._config: EventsConfig | None = config
         self._handler_modules = handler_modules or []
 
-        self._stores = StoreSubProvider(self._config)
-        self._buses = BusSubProvider(self._config)
+        self._stores: StoreSubProvider | None = None
+        self._buses: BusSubProvider | None = None
         self._managers: ManagerSubProvider | None = None
+        if config is not None:
+            self._compose_sub_providers()
+
+    def _compose_sub_providers(self) -> None:
+        """(Re)build store and bus sub-providers from ``self._config``.
+
+        Called eagerly from ``__init__`` when explicit config was supplied and
+        again from ``_ensure_composed()`` when injection arrived late (i.e.
+        ``configure()`` ran with no explicit config).
+        """
+        cfg = self._config
+        if cfg is None:
+            cfg = EventsConfig(
+                event_store_backend=EventStoreBackend.MEMORY,
+                debug=False,
+            )
+            self._config = cfg
+        self._stores = StoreSubProvider(cfg)
+        self._buses = BusSubProvider(cfg)
+
+    def _ensure_composed(self) -> tuple[StoreSubProvider, BusSubProvider, EventsConfig]:
+        """Return the composed sub-providers, building them on first need.
+
+        Returns:
+            The ``(stores, buses, config)`` triple, composed from the current
+            ``self._config`` (yaml-injected or framework defaults).
+        """
+        if self._stores is None or self._buses is None:
+            self._compose_sub_providers()
+        stores = cast("StoreSubProvider", self._stores)
+        buses = cast("BusSubProvider", self._buses)
+        cfg = cast("EventsConfig", self._config)
+        return stores, buses, cfg
 
     @classmethod
     def from_config(cls, config: EventsConfig, **context: Any) -> EventsProvider:
@@ -77,7 +111,7 @@ class EventsProvider(Provider):
         return cls(config=config, handler_modules=context.get("handler_modules"))
 
     @property
-    def config(self) -> EventsConfig:
+    def config(self) -> EventsConfig | None:
         return self._config
 
     @config.setter
@@ -86,28 +120,32 @@ class EventsProvider(Provider):
         if isinstance(value, dict):
             value = EventsConfig(**value)
         self._config = value
-        self._stores = StoreSubProvider(self._config)
-        self._buses = BusSubProvider(self._config)
+        self._compose_sub_providers()
 
     @property
     def event_store(self) -> Any:
-        return self._stores.event_store
+        stores, _, _ = self._ensure_composed()
+        return stores.event_store
 
     @property
     def snapshot_manager(self) -> Any:
-        return self._stores.snapshot_manager
+        stores, _, _ = self._ensure_composed()
+        return stores.snapshot_manager
 
     @property
     def command_bus(self) -> Any:
-        return self._buses.command_bus
+        _, buses, _ = self._ensure_composed()
+        return buses.command_bus
 
     @property
     def query_bus(self) -> Any:
-        return self._buses.query_bus
+        _, buses, _ = self._ensure_composed()
+        return buses.query_bus
 
     @property
     def event_bus(self) -> Any:
-        return self._buses.event_bus
+        _, buses, _ = self._ensure_composed()
+        return buses.event_bus
 
     @property
     def projection_manager(self) -> Any:
@@ -119,24 +157,26 @@ class EventsProvider(Provider):
 
     async def register(self, container: ContainerRegistrarProtocol) -> None:
         """Register all events components with the DI container."""
-        await self._stores.setup(container)
-        self._stores.register(container)
+        stores, buses, cfg = self._ensure_composed()
 
-        await self._buses.setup()
-        self._buses.register(container)
+        await stores.setup(container)
+        stores.register(container)
+
+        await buses.setup()
+        buses.register(container)
 
         handlers = HandlerSubProvider(
-            config=self._config,
+            config=cfg,
             handler_modules=self._handler_modules,
-            command_bus=self._buses.command_bus,
-            query_bus=self._buses.query_bus,
-            event_bus=self._buses.event_bus,
+            command_bus=buses.command_bus,
+            query_bus=buses.query_bus,
+            event_bus=buses.event_bus,
         )
         await handlers.setup(container)  # type: ignore[arg-type]
 
         self._managers = ManagerSubProvider(
-            config=self._config,
-            event_store=self._stores.event_store,
+            config=cfg,
+            event_store=stores.event_store,
         )
         await self._managers.setup(container)
         self._managers.register(container)
@@ -148,18 +188,19 @@ class EventsProvider(Provider):
         from lexigram.contracts.core import HookRegistryProtocol
         from lexigram.contracts.observability.tracing import TracerProtocol
 
+        _, buses, _ = self._ensure_composed()
+
         tracer = await container.resolve_optional(TracerProtocol)
         hooks = await container.resolve_optional(HookRegistryProtocol)
-        self._buses.set_tracer(tracer)
-        self._buses.set_hook_registry(hooks)
+        buses.set_tracer(tracer)
+        buses.set_hook_registry(hooks)
 
-        await self._buses.boot()
+        await buses.boot()
         if self._managers:
             await self._managers.boot()
-        if self._stores.snapshot_manager and hasattr(
-            self._stores.snapshot_manager, "start"
-        ):
-            await self._stores.snapshot_manager.start()
+        stores, _, _ = self._ensure_composed()
+        if stores.snapshot_manager and hasattr(stores.snapshot_manager, "start"):
+            await stores.snapshot_manager.start()
 
         await self._wire_adapters(container)
 
@@ -177,6 +218,8 @@ class EventsProvider(Provider):
         from lexigram.contracts.events import EventBusProtocol
         from lexigram.events.adapters.registry import AdapterRegistry
 
+        _, _, cfg = self._ensure_composed()
+
         event_bus = await container.resolve(EventBusProtocol)
         if event_bus is None:
             return
@@ -185,12 +228,13 @@ class EventsProvider(Provider):
         # full boot container (the runtime object always provides it).
         registry = AdapterRegistry.with_defaults()
         await registry.wire_all(
-            self._config, event_bus, cast("BootContainerProtocol", container)
+            cfg, event_bus, cast("BootContainerProtocol", container)
         )
 
     async def shutdown(self) -> None:
         """Shutdown all components."""
-        await self._stores.teardown()
+        stores, _, _ = self._ensure_composed()
+        await stores.teardown()
         if self._managers:
             await self._managers.teardown()
 
@@ -243,7 +287,8 @@ class EventsProvider(Provider):
         self, container: ContainerRegistrarProtocol | None = None
     ) -> None:
         """Compat: delegates to StoreSubProvider.setup()."""
-        await self._stores.setup(container)
+        stores, _, _ = self._ensure_composed()
+        await stores.setup(container)
 
     async def health_check(self, timeout: float = 5.0) -> HealthCheckResult:
         """Aggregate health across stores and buses."""
@@ -252,14 +297,14 @@ class EventsProvider(Provider):
         details: dict[str, Any] = {"components": {}}
         errors: list[str] = []
 
-        bus_health = await self._buses.health_check()
+        stores, buses, _ = self._ensure_composed()
+
+        bus_health = await buses.health_check()
         details["components"].update(bus_health)
 
-        if self._stores.event_store and hasattr(
-            self._stores.event_store, "health_check"
-        ):
+        if stores.event_store and hasattr(stores.event_store, "health_check"):
             try:
-                sh = await self._stores.event_store.health_check()
+                sh = await stores.event_store.health_check()
                 details["components"]["event_store"] = (
                     sh.model_dump() if hasattr(sh, "model_dump") else sh
                 )
@@ -272,7 +317,7 @@ class EventsProvider(Provider):
                 }
                 overall = HealthStatus.DEGRADED
                 errors.append(f"EventStoreProtocol: {exc}")
-        elif self._stores.event_store:
+        elif stores.event_store:
             details["components"]["event_store"] = {"status": "unknown"}
 
         return HealthCheckResult(
