@@ -31,9 +31,9 @@ class MailerProvider(Provider):
     appropriate mailer backends, and registers them as
     :class:`~lexigram.contracts.mailer.protocols.MailerProtocol`.
 
-    Configuration is explicit-only: ``MailerConfig`` is not bound to a
-    ``LexigramConfig`` section, so this provider declares no
-    ``config_key``/``config_model`` attributes.
+    Dual-mode configuration: an explicit ``config`` wins; otherwise the
+    typed ``mailer`` yaml section injected by the orchestrator (via
+    ``config_key``) is used; otherwise defaults apply.
 
     Supports multi-backend (``MailerConfig.backends``) mode. Each entry is
     registered under its name via ``container.singleton(name=entry.name)``.
@@ -43,10 +43,15 @@ class MailerProvider(Provider):
 
     name = "mailer"
     priority = ProviderPriority.INFRASTRUCTURE
+    config_key: str | None = "mailer"
+    config_model: type | None = MailerConfig
 
     def __init__(self, config: MailerConfig | None = None) -> None:
         super().__init__()
-        self._config = config or MailerConfig()
+        self._requested_config = config
+        # Kept ``None`` for zero-config construction so the orchestrator can
+        # inject the yaml section before register() resolves it.
+        self._config: MailerConfig | None = config
         self._mailers: list[tuple[str, Any]] = []
 
     @classmethod
@@ -131,6 +136,8 @@ class MailerProvider(Provider):
         Args:
             container: DI registrar received from the framework.
         """
+        injected = self.config if isinstance(self.config, MailerConfig) else None
+        self._config = self._requested_config or injected or MailerConfig()
         container.singleton(MailerConfig, self._config)
 
         for entry in self._config.backends:

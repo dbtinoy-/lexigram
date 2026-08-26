@@ -41,31 +41,29 @@ class SearchModule(Module):
         """Create a SearchModule with explicit configuration.
 
         Args:
-            config: :class:`~lexigram.search.config.SearchConfig` or a
-                pre-built :class:`~lexigram.search.engine.SearchEngine` instance.
-                Passing ``None`` raises ``ValueError`` — a backend must be
-                specified explicitly.
+            config: :class:`~lexigram.search.config.SearchConfig`, a
+                pre-built :class:`~lexigram.search.engine.SearchEngine`
+                instance, or ``None`` to defer configuration to the yaml
+                ``search`` section injected by the orchestrator before
+                ``register()`` (framework defaults apply when no section
+                exists).
             enable_facets: Enable faceted search / filterable attributes on
                 the backing index.  Defaults to ``True``.
 
         Returns:
             A :class:`~lexigram.di.module.DynamicModule` descriptor.
-
-        Raises:
-            ValueError: If *config* is ``None``.
         """
-        if config is None:
-            raise ValueError(
-                "SearchModule.configure() requires a SearchConfig or SearchEngine instance."
-            )
-
         from lexigram.search.di.provider import SearchProvider
         from lexigram.search.engine import SearchEngine
 
         if isinstance(config, SearchEngine):
             provider = SearchProvider(backend=config)
-        else:
+        elif config is not None:
             provider = SearchProvider.configure(config)
+        else:
+            # Zero-config construction: the provider composes its backend in
+            # register() from the yaml-injected ``search`` section.
+            provider = SearchProvider()
 
         return DynamicModule(
             module=cls,

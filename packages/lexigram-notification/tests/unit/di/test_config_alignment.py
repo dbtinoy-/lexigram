@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from lexigram.notification.config import NotificationConfig
+from lexigram.notification.config import MailerConfig, NotificationConfig
 from lexigram.notification.di.mailer_provider import MailerProvider
 from lexigram.notification.di.provider import NotificationProvider
 
@@ -58,7 +58,28 @@ class TestConfigAlignment:
 
         assert isinstance(container.singletons[NotificationConfig], NotificationConfig)
 
-    def test_mailer_provider_is_explicit_only(self) -> None:
+    def test_mailer_provider_declares_config_key_and_model(self) -> None:
         provider = MailerProvider()
-        assert provider.config_key is None
-        assert provider.config_model is None
+        assert provider.config_key == "mailer"
+        assert provider.config_model is MailerConfig
+
+    @pytest.mark.asyncio
+    async def test_mailer_injected_config_used_when_no_explicit(self) -> None:
+        provider = MailerProvider()
+        provider.config = MailerConfig(console_fallback=False)
+        container = _FakeRegistrar()
+
+        await provider.register(container)
+
+        assert container.singletons[MailerConfig] is provider.config
+
+    @pytest.mark.asyncio
+    async def test_mailer_explicit_config_wins_over_injected(self) -> None:
+        explicit = MailerConfig(console_fallback=False)
+        provider = MailerProvider(config=explicit)
+        provider.config = MailerConfig()
+        container = _FakeRegistrar()
+
+        await provider.register(container)
+
+        assert container.singletons[MailerConfig] is explicit

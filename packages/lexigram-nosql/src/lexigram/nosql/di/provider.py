@@ -40,6 +40,10 @@ class NoSQLProvider(Provider):
     via ``container.singleton(name=entry.name)``.  The primary backend
     (``primary=True`` or the first entry) also receives the unnamed
     bindings for backward compatibility.
+
+    Dual-mode configuration: an explicit ``config`` wins; otherwise the
+    typed ``nosql`` yaml section injected by the orchestrator (via
+    ``config_key``) is used; otherwise defaults apply.
     """
 
     name = "nosql"
@@ -50,7 +54,9 @@ class NoSQLProvider(Provider):
     def __init__(self, config: NoSQLConfig | None = None) -> None:
         super().__init__()
         self._requested_config = config
-        self._config = config or NoSQLConfig()
+        # Kept ``None`` for zero-config construction so the orchestrator can
+        # inject the yaml section before register() resolves it.
+        self._config: NoSQLConfig | None = config
         self._store: DocumentStoreProtocol | None = None
         # Multi-backend: list of (name, store) 2-tuples
         self._store_services: list[tuple[str, Any]] = []
@@ -62,37 +68,35 @@ class NoSQLProvider(Provider):
 
     async def register(self, container: ContainerRegistrarProtocol) -> None:
         """Register the NoSQL services."""
-        self._config = self._requested_config or (
-            self.config
-            if isinstance(getattr(self, "config", None), NoSQLConfig)
-            else self._config
-        )
-        container.singleton(NoSQLConfig, self._config)
+        injected = self.config if isinstance(self.config, NoSQLConfig) else None
+        cfg = self._requested_config or injected or NoSQLConfig()
+        self._config = cfg
+        container.singleton(NoSQLConfig, cfg)
 
-        if not self._config.enabled:
+        if not cfg.enabled:
             logger.info("nosql_disabled", reason="NoSQLConfig.enabled=False")
             return
 
-        if self._config.backends:
-            await self._register_multi_backend(container)
+        if cfg.backends:
+            await self._register_multi_backend(container, cfg)
         else:
-            await self._register_single_backend(container)
+            await self._register_single_backend(container, cfg)
 
     async def _register_single_backend(
-        self, container: ContainerRegistrarProtocol
+        self, container: ContainerRegistrarProtocol, cfg: NoSQLConfig
     ) -> None:
         """Register a single NoSQL backend (existing behavior, preserved exactly)."""
-        if self._config.driver == "mongodb":
-            self._store = self._create_store(self._config)
+        if cfg.driver == "mongodb":
+            self._store = self._create_store(cfg)
             container.singleton(DocumentStoreProtocol, self._store)
             container.singleton(MongoDBDocumentStore, self._store)
         else:
-            raise ValueError(f"Unsupported NoSQL driver: {self._config.driver}")
+            raise ValueError(f"Unsupported NoSQL driver: {cfg.driver}")
 
-        logger.info("nosql_registered", driver=self._config.driver)
+        logger.info("nosql_registered", driver=cfg.driver)
 
     async def _register_multi_backend(
-        self, container: ContainerRegistrarProtocol
+        self, container: ContainerRegistrarProtocol, cfg: NoSQLConfig
     ) -> None:
         """Register multiple named NoSQL backends.
 
@@ -101,8 +105,8 @@ class NoSQLProvider(Provider):
         backend (``primary=True`` or the first entry) also receives the unnamed
         bindings for backward compatibility.
         """
-        for entry in self._config.backends:
-            backend_cfg = NoSQLConfig.from_named(entry, base=self._config)
+        for entry in cfg.backends:
+            backend_cfg = NoSQLConfig.from_named(entry, base=cfg)
             store = self._create_store(backend_cfg)
             self._store_services.append((entry.name, store))
 
@@ -119,14 +123,14 @@ class NoSQLProvider(Provider):
             )
 
             # Unnamed bindings for primary backend (backward compat)
-            if entry.primary or self._config.backends[0] is entry:
+            if entry.primary or cfg.backends[0] is entry:
                 container.singleton(DocumentStoreProtocol, factory=lambda s=store: s)
                 container.singleton(MongoDBDocumentStore, factory=lambda s=store: s)
 
         logger.info(
             "nosql_registered",
             driver="multi",
-            count=len(self._config.backends),
+            count=len(cfg.backends),
         )
 
     def _create_store(self, cfg: NoSQLConfig) -> Any:
@@ -188,7 +192,7 @@ class NoSQLProvider(Provider):
         """
         start = time.perf_counter()
 
-        if not self._config.enabled:
+        if self._config is None or not self._config.enabled:
             return HealthCheckResult(
                 component="nosql",
                 status=HealthStatus.DEGRADED,

@@ -33,6 +33,19 @@ class SearchProvider(Provider):
         Database-backed backends (POSTGRES / MYSQL) use a ``NullBackend``
         placeholder during ``register()`` and are resolved from the container
         in ``boot()``.
+    **Multi-backend** (Named DI):
+        ``SearchConfig.backends`` is non-empty. Each entry is registered as
+        ``Annotated[SearchEngineProtocol, Named(entry.name)]``. The primary
+        backend (``primary=True`` or the first entry) also receives the unnamed
+        ``SearchEngineProtocol`` binding for backward compatibility.
+        Database-backed backends (POSTGRES / MYSQL) use a ``NullBackend``
+        placeholder during ``register()`` and are resolved from the container
+        in ``boot()``.
+
+    Dual-mode configuration: constructed with an explicit ``config``, the
+    backend is composed eagerly; constructed with neither, the backend is
+    composed in ``register()`` from the typed ``search`` yaml section
+    injected by the orchestrator (via ``config_key``).
     """
 
     name = "search"
@@ -41,8 +54,19 @@ class SearchProvider(Provider):
     config_key: str | None = "search"
     config_model: type | None = SearchConfig
 
-    def __init__(self, backend: SearchEngine, config: SearchConfig | None = None):
-        """Initialize the provider with a configured backend."""
+    def __init__(
+        self,
+        backend: SearchEngine | None = None,
+        config: SearchConfig | None = None,
+    ):
+        """Initialize the provider with a configured backend.
+
+        Args:
+            backend: Pre-built search engine, or ``None`` to compose one from
+                *config* during ``register()``.
+            config: Explicit configuration; when both are ``None`` the yaml
+                ``search`` section injected by the orchestrator is used.
+        """
         super().__init__()
         self.backend = backend
         self._config: SearchConfig | None = config
@@ -73,6 +97,20 @@ class SearchProvider(Provider):
         if self._config is not None and not self._config.enabled:
             logger.info("search_disabled", reason="SearchConfig.enabled=False")
             return
+
+        if self.backend is None:
+            # Zero-config construction: compose the backend now, after the
+            # orchestrator has injected the yaml ``search`` section.
+            if self._config is None:
+                raise RuntimeError(
+                    "SearchProvider requires an explicit backend or config, "
+                    "or a LexigramConfig with a 'search' section."
+                )
+            composed = SearchProvider.configure(self._config)
+            self.backend = composed.backend
+            self._uses_db_backend = composed._uses_db_backend
+            self._db_backend_type = composed._db_backend_type
+
         if self._config is not None and self._config.backends:
             await self._register_multi_backend(container)
         else:
@@ -274,6 +312,11 @@ class SearchProvider(Provider):
 
             self.backend = db_backend
 
+        if self.backend is None:
+            raise RuntimeError(
+                "SearchProvider has no backend — register() must run before boot()."
+            )
+
         logger.info("search_backend_starting", backend=self.backend.__class__.__name__)
 
         result = await self.backend.health_check()
@@ -343,6 +386,13 @@ class SearchProvider(Provider):
             )
 
         # Single-backend path (original logic).
+        if self.backend is None:
+            return HealthCheckResult(
+                component="search",
+                status=HealthStatus.DEGRADED,
+                message="search backend not initialized",
+                duration_ms=(time.time() - start_time) * 1000,
+            )
         try:
             res = await self.backend.health_check()
             latency_ms = (time.time() - start_time) * 1000

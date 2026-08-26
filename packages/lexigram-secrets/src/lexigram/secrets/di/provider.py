@@ -30,6 +30,10 @@ class SecretsProvider(Provider):
     Registers a ``RotatableSecretStoreProtocol`` singleton (optionally
     wrapped in a ``TenantScopedSecretStore``) and a ``RotationDecorator``
     that applies the configured rotation schedule.
+
+    Dual-mode configuration: an explicit ``config`` wins; otherwise the
+    typed ``secrets`` yaml section injected by the orchestrator (via
+    ``config_key``) is used; otherwise defaults apply.
     """
 
     name = "secrets"
@@ -47,12 +51,11 @@ class SecretsProvider(Provider):
         # (ProviderState.CREATED → REGISTERED → BOOTED) work; without this
         # accessing self.state raises AttributeError at boot time.
         super().__init__()
-        # Override the default _config = None set by Provider.__init__ with the
-        # explicit SecretsConfig passed at construction time. If a
-        # LexigramConfig is registered, the framework's config-injector hook
-        # overwrites this via the ``config`` property setter just before
-        # register() runs.
-        self._config = config or SecretsConfig()
+        # Keep _config None for zero-config construction so the orchestrator
+        # can inject the yaml section via the ``config`` property before
+        # register(); register() resolves explicit > injected > default.
+        self._requested_config = config
+        self._config: SecretsConfig | None = config
         self._store_override = store
 
     @classmethod
@@ -65,6 +68,8 @@ class SecretsProvider(Provider):
         return cls(config=config, store=store)
 
     async def register(self, container: ContainerRegistrarProtocol) -> None:
+        injected = self.config if isinstance(self.config, SecretsConfig) else None
+        self._config = self._requested_config or injected or SecretsConfig()
         container.singleton(SecretsConfig, self._config)
         if not self._config.enabled:
             return
@@ -85,7 +90,7 @@ class SecretsProvider(Provider):
         container.singleton(RotationDecorator, decorator)
 
     async def boot(self, container: ContainerResolverProtocol) -> None:
-        if not self._config.enabled:
+        if self._config is None or not self._config.enabled:
             return
         _ = await container.resolve(RotatableSecretStoreProtocol)
 

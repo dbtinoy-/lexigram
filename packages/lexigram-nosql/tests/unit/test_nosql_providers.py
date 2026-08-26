@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from lexigram.contracts.core import HealthCheckResult, HealthStatus
 from lexigram.nosql.config import NoSQLConfig
@@ -14,9 +15,10 @@ class TestNoSQLProvider:
     """Unit tests for NoSQLProvider single-backend functionality."""
 
     def test_initialization_default_config(self) -> None:
-        """Provider initializes with default config when none provided."""
+        """Zero-config construction defers config resolution to register()
+        so the orchestrator can inject the yaml section first."""
         provider = NoSQLProvider()
-        assert provider._config is not None
+        assert provider._config is None
         assert provider._store is None
 
     def test_initialization_custom_config(self) -> None:
@@ -53,7 +55,9 @@ class TestNoSQLProvider:
         container.singleton = MagicMock()
 
         mock_store = MagicMock()
-        with patch("lexigram.nosql.di.provider.MongoDBDocumentStore", return_value=mock_store):
+        with patch(
+            "lexigram.nosql.di.provider.MongoDBDocumentStore", return_value=mock_store
+        ):
             await provider.register(container)
 
         # NoSQLConfig + DocumentStoreProtocol + MongoDBDocumentStore
@@ -79,7 +83,9 @@ class TestNoSQLProvider:
 
         mock_store = AsyncMock()
         mock_store.connect = AsyncMock()
-        with patch("lexigram.nosql.di.provider.MongoDBDocumentStore", return_value=mock_store):
+        with patch(
+            "lexigram.nosql.di.provider.MongoDBDocumentStore", return_value=mock_store
+        ):
             await provider.register(container)
             await provider.boot(container)
 
@@ -95,7 +101,9 @@ class TestNoSQLProvider:
 
         mock_store = AsyncMock()
         mock_store.disconnect = AsyncMock()
-        with patch("lexigram.nosql.di.provider.MongoDBDocumentStore", return_value=mock_store):
+        with patch(
+            "lexigram.nosql.di.provider.MongoDBDocumentStore", return_value=mock_store
+        ):
             await provider.register(container)
             await provider.boot(container)
             await provider.shutdown()
@@ -150,7 +158,9 @@ class TestNoSQLProvider:
         provider = NoSQLProvider(config=config)
 
         mock_store = AsyncMock()
-        mock_store.health_check = AsyncMock(side_effect=ConnectionError("db unreachable"))
+        mock_store.health_check = AsyncMock(
+            side_effect=ConnectionError("db unreachable")
+        )
         provider._store = mock_store
 
         result = await provider.health_check(timeout=1.0)
@@ -291,7 +301,9 @@ class TestNoSQLProvider:
         provider = NoSQLProvider()
 
         mock_store = MagicMock()
-        with patch("lexigram.nosql.di.provider.MongoDBDocumentStore", return_value=mock_store) as mock_cls:
+        with patch(
+            "lexigram.nosql.di.provider.MongoDBDocumentStore", return_value=mock_store
+        ) as mock_cls:
             store = provider._create_store(config)
 
         mock_cls.assert_called_once()

@@ -55,6 +55,10 @@ class QueueProvider(Provider):
     registered under its name via ``container.singleton(name=entry.name)``.
     The primary backend (``primary=True`` or the first entry) also receives
     the unnamed bindings for backward compatibility.
+
+    Dual-mode configuration: an explicit ``config`` wins; otherwise the
+    typed ``queue`` yaml section injected by the orchestrator (via
+    ``config_key``) is used; otherwise defaults apply.
     """
 
     name = "queue"
@@ -70,7 +74,9 @@ class QueueProvider(Provider):
         """
         super().__init__()
         self._requested_config = config
-        self._config = config or QueueConfig()
+        # Kept ``None`` for zero-config construction so the orchestrator can
+        # inject the yaml section before register() resolves it.
+        self._config: QueueConfig | None = config
         self._queue_services: list[tuple[str, Any]] = []
 
     @classmethod
@@ -141,11 +147,8 @@ class QueueProvider(Provider):
         Args:
             container: DI container registrar.
         """
-        self._config = self._requested_config or (
-            self.config
-            if isinstance(getattr(self, "config", None), QueueConfig)
-            else self._config
-        )
+        injected = self.config if isinstance(self.config, QueueConfig) else None
+        self._config = self._requested_config or injected or QueueConfig()
         container.singleton(QueueConfig, self._config)
 
         if not self._config.backends:

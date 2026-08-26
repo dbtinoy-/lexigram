@@ -63,6 +63,10 @@ class NotificationProvider(Provider):
     its name via ``container.singleton(name=entry.name)``. The primary backend
     (``primary=True`` or the first entry) also receives the unnamed bindings
     for backward compatibility.
+
+    Dual-mode configuration: an explicit ``config`` wins; otherwise the
+    typed ``notification`` yaml section injected by the orchestrator (via
+    ``config_key``) is used; otherwise defaults apply.
     """
 
     name = "notification"
@@ -73,7 +77,9 @@ class NotificationProvider(Provider):
     def __init__(self, config: NotificationConfig | None = None) -> None:
         super().__init__()
         self._requested_config = config
-        self._config = config or NotificationConfig()
+        # Kept ``None`` for zero-config construction so the orchestrator can
+        # inject the yaml section before register() resolves it.
+        self._config: NotificationConfig | None = config
         self._sms_services: list[tuple[str, Any]] = []
         self._push_services: list[tuple[str, Any]] = []
 
@@ -156,39 +162,37 @@ class NotificationProvider(Provider):
 
     async def register(self, container: ContainerRegistrarProtocol) -> None:
         """Bind all SMS and push backends into the container."""
-        self._config = self._requested_config or (
-            self.config
-            if isinstance(getattr(self, "config", None), NotificationConfig)
-            else self._config
-        )
-        container.singleton(NotificationConfig, self._config)
+        injected = self.config if isinstance(self.config, NotificationConfig) else None
+        cfg = self._requested_config or injected or NotificationConfig()
+        self._config = cfg
+        container.singleton(NotificationConfig, cfg)
 
-        for entry in self._config.sms_backends:
-            backend = self._create_sms(entry)
-            self._sms_services.append((entry.name, backend))
+        for sms_entry in cfg.sms_backends:
+            backend = self._create_sms(sms_entry)
+            self._sms_services.append((sms_entry.name, backend))
             container.singleton(
                 SMSChannelProtocol,
                 factory=lambda *_, b=backend: b,
-                name=entry.name,
+                name=sms_entry.name,
             )
-            is_primary = entry.primary or (
-                not any(e.primary for e in self._config.sms_backends)
-                and self._config.sms_backends[0] is entry
+            is_primary = sms_entry.primary or (
+                not any(e.primary for e in cfg.sms_backends)
+                and cfg.sms_backends[0] is sms_entry
             )
             if is_primary:
                 container.singleton(SMSChannelProtocol, factory=lambda *_, b=backend: b)
 
-        for entry in self._config.push_backends:
-            backend = self._create_push(entry)
-            self._push_services.append((entry.name, backend))
+        for push_entry in cfg.push_backends:
+            backend = self._create_push(push_entry)
+            self._push_services.append((push_entry.name, backend))
             container.singleton(
                 PushChannelProtocol,
                 factory=lambda *_, b=backend: b,
-                name=entry.name,
+                name=push_entry.name,
             )
-            is_primary = entry.primary or (
-                not any(e.primary for e in self._config.push_backends)
-                and self._config.push_backends[0] is entry
+            is_primary = push_entry.primary or (
+                not any(e.primary for e in cfg.push_backends)
+                and cfg.push_backends[0] is push_entry
             )
             if is_primary:
                 container.singleton(
