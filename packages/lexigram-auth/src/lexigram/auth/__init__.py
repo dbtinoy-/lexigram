@@ -73,6 +73,7 @@ if TYPE_CHECKING:
     from lexigram.auth.config import (
         AuthConfig,
         JWTConfig,
+        MFAConfig,
         RBACConfig,
     )
     from lexigram.auth.di import (
@@ -142,6 +143,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     # Config
     "AuthConfig": ("lexigram.auth.config", "AuthConfig"),
     "JWTConfig": ("lexigram.auth.config", "JWTConfig"),
+    "MFAConfig": ("lexigram.auth.config", "MFAConfig"),
     "RBACConfig": ("lexigram.auth.config", "RBACConfig"),
     # Providers
     "AuthBundleProvider": ("lexigram.auth.di.bundle_provider", "AuthBundleProvider"),
@@ -294,6 +296,7 @@ __all__ = [
     "JWTTokenManager",
     "LockoutConfig",
     "LoginAttemptTracker",
+    "MFAConfig",
     "MongoDBOAuthIdentityStore",
     "OAuthIdentity",
     "OAuthIdentityStore",
