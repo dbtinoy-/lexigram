@@ -23,8 +23,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from rbac_console.services.articles import ArticleStore
-from rbac_console.services.personas import PERSONAS, PersonaDirectory
+from rbac_console.domain.articles import ArticleStore
+from rbac_console.domain.personas import PERSONAS, PersonaDirectory
 from starlette.requests import Request
 
 from lexigram.auth.authn.user_service import UserService

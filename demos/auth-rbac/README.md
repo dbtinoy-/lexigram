@@ -52,10 +52,10 @@ Override the port without touching yaml: `LEX_WEB__SERVER__PORT=9000`.
 | 1 | `src/rbac_console/app.py` | ⭐ composition root: config → modules → providers |
 | 2 | `src/rbac_console/main.py` | lifecycle: `Application.boot`, graceful stop |
 | 3 | `src/rbac_console/di/provider.py` | register/bind vs boot/seed; constructor injection |
-| 4 | `src/rbac_console/services/seed.py` | boot-time seeding; `Result` handling |
+| 4 | `src/rbac_console/data/seed.py` | boot-time data seeding; `Result` handling |
 | 5 | `src/rbac_console/controllers/api.py` | Result-returning handlers → auto HTTP mapping |
 | 6 | `src/rbac_console/repository/session_repository.py` | protocol binding (contracts ↔ impl) |
-| 7 | `src/rbac_console/services/articles.py` · `personas.py` | plain-object stores registered as singletons |
+| 7 | `src/rbac_console/domain/articles.py` · `personas.py` | domain stores registered as singletons |
 | 8 | `src/rbac_console/ui/pages.py` | page controllers serve HTML/assets only |
 
 ```
@@ -63,12 +63,14 @@ demos/auth-rbac/
 ├── src/rbac_console/
 │   ├── app.py                 # ⭐ composition root (start here)
 │   ├── main.py                # entry point / lifecycle
-│   ├── di/provider.py         # app services wiring + boot seeding
+│   ├── di/
+│   │   └── provider.py        # DI wiring + boot() seeding
+│   ├── data/
+│   │   └── seed.py            # boot-time data seeding
+│   ├── domain/
+│   │   ├── articles.py        # ArticleStore (guarded resource)
+│   │   └── personas.py        # PersonaDirectory (catalog)
 │   ├── controllers/api.py     # JSON API: login/me/matrix/try/articles
-│   ├── services/              # demo-owned stores & seeding
-│   │   ├── articles.py        # guarded resource store
-│   │   ├── personas.py        # seeded persona catalog
-│   │   └── seed.py            # RbacSeedService (boot hook)
 │   ├── repository/session_repository.py  # SessionRepositoryProtocol impl
 │   └── ui/                    # pages controller + views/ + static/
 ├── application.yaml           # web/auth sections (LEX_* overrides win)

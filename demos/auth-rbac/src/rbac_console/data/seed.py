@@ -7,6 +7,9 @@ Seeding belongs in ``boot()`` precisely because it must resolve the real,
 fully-wired services — see ``di/provider.py``, which resolves this class
 inside ``boot()``.
 
+This module lives in ``di/`` because it's initialization code, not a
+runtime service.  It runs once at startup and has no runtime role.
+
 Also demonstrated: framework services return ``Result`` values
 (``UserService.create_user`` → ``Ok``/``Err``), so seeding handles the
 "already exists" case by matching on the error instead of pre-checking.
@@ -20,8 +23,8 @@ from lexigram.auth.authn.user_service import UserService
 from lexigram.auth.authz.service import AuthorizationService
 from lexigram.contracts.auth.roles import RoleDefinition
 from lexigram.logging import get_logger
-from rbac_console.services.articles import ArticleStore
-from rbac_console.services.personas import PERSONAS, PersonaDirectory
+from rbac_console.domain.articles import ArticleStore
+from rbac_console.domain.personas import PERSONAS, PersonaDirectory
 
 logger = get_logger(__name__)
 
@@ -48,6 +51,9 @@ class RbacSeedService:
 
     Constructed by ``RbacProvider._build_seed_service`` during boot; all
     collaborators arrive via constructor injection from the container.
+
+    Named ``data/seed.py`` because it's data initialization, not a runtime
+    service.  It runs once at startup and has no ongoing role.
     """
 
     def __init__(
