@@ -27,8 +27,6 @@ import sys
 
 # Structural exceptions that legitimately require depth 6+ imports
 ALLOWLIST: set[str] = {
-    # relay DTOs — internal re-export wiring per provider
-    "core/lexigram-contracts/src/lexigram/contracts/ai/relay/dto/",
     # DI compiler phases — architectural layering
     "core/lexigram/src/lexigram/di/module/compiler/",
     # contracts __init__.py re-exports from deep submodules
@@ -41,9 +39,9 @@ ALLOWLIST: set[str] = {
     "experimental/apps/lexigram-admin/src/lexigram/admin/ui/organisms/",
     # UI component re-exports
     "experimental/apps/lexigram-ui/src/lexigram/ui/atoms/",
-    # AI docs/tools demo wiring
+    # AI docs/tools demo scripts (standalone, misplaced in lexigram-ai)
     "experimental/ai/lexigram-ai/docs/gifs/tools/",
-    # relay gateway route re-exports
+    # relay gateway routes — internal cross-imports within depth-6 package
     "experimental/ai/lexigram-ai-relay-gateway/src/lexigram/ai/relay/gateway/web/routes/",
 }
 

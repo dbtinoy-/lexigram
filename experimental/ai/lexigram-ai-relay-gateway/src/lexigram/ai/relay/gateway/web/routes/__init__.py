@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Inbound relay HTTP routes for the gateway web layer.
 
 Each route owns one inbound wire format (OpenAI Chat, OpenAI Responses,
@@ -20,6 +18,8 @@ Endpoint implementations live in sibling modules grouped by concern
 ``builder``); shared machinery and route tables live in ``common`` and
 ``tables``.
 """
+
+from __future__ import annotations
 
 from lexigram.ai.relay.gateway.web.routes.builder import build_routes
 from lexigram.ai.relay.gateway.web.routes.common import (
