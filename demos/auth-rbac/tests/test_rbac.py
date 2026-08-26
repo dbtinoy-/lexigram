@@ -1,12 +1,19 @@
-"""End-to-end RBAC flow tests: login personas, matrix, guards."""
+"""End-to-end RBAC flow tests: login personas, matrix, guards.
+
+These are the *behavioral* half of the demo suite (pages smoke-test in
+``test_pages.py``).  Every test drives the real ASGI app through httpx —
+real middleware, real cookies — via fixtures from ``conftest.py``:
+
+- ``client``     — one browser session (cookie jar persists per test)
+- ``app``        — the booted Starlette app, for second-browser scenarios
+- ``login_as``   — helper: POST /api/login as a seeded persona
+"""
 
 from __future__ import annotations
 
 import httpx
 import pytest
 from starlette.applications import Starlette
-
-import httpx
 
 
 async def login_as(client: httpx.AsyncClient, persona: str) -> None:
@@ -21,11 +28,6 @@ def second_browser(app: Starlette) -> httpx.AsyncClient:
         transport=httpx.ASGITransport(app=app), base_url="http://testserver"
     )
 
-
-
-@pytest.fixture
-async def app_fixture(app: Starlette) -> Starlette:
-    return app
 
 
 async def test_login_unknown_persona_422(client: httpx.AsyncClient) -> None:

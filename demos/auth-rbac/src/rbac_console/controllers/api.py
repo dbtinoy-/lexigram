@@ -1,15 +1,30 @@
-"""JSON API for the RBAC console — no HTML lives here.
+"""JSON API for the RBAC console — the **Result-pattern showcase**.
 
-Handlers return ``Result`` values; the web pipeline renders ``Ok`` payloads
-and maps ``Err`` errors to ProblemDetail responses automatically.
+Every handler returns ``Result<Ok, Err>`` instead of raising or returning
+raw responses.  The web pipeline then does the boring work:
+
+- ``Ok(payload)``            → serialized as JSON (or rendered)
+- ``Err(ValidationError)``   → HTTP 422 ProblemDetail
+- ``Err(AuthenticationError)`` → HTTP 401
+- ``Err(PermissionDeniedError)`` → HTTP 403
+- ``Err(NotFoundError)``     → HTTP 404
+
+So handlers read like use-cases ("authenticate → authorize → act") and
+error-to-HTTP mapping lives in exactly one place.  Compare with the
+try/except-and-JSONResponse dance in traditional stacks.
+
+Auth flow across these endpoints: login binds a session cookie via
+``SessionCookieBackend``; every protected endpoint then authenticates
+through :meth:`_authenticated_user` and authorizes through
+``AuthorizationService`` before touching the article store.
 """
 
 from __future__ import annotations
 
 from typing import Any
 
-from rbac_console.articles import ArticleStore
-from rbac_console.personas import PERSONAS, PersonaDirectory
+from rbac_console.services.articles import ArticleStore
+from rbac_console.services.personas import PERSONAS, PersonaDirectory
 from starlette.requests import Request
 
 from lexigram.auth.authn.user_service import UserService
@@ -38,12 +53,23 @@ MATRIX_CHECKS: tuple[tuple[str, str], ...] = (
 
 
 def _granted(verdict: Result[bool, Any]) -> bool:
-    """Collapse an authorize() verdict to a plain boolean."""
+    """Collapse an authorize() verdict to a plain boolean.
+
+    ``AuthorizationService.authorize`` returns ``Result[bool, ...]``:
+    ``Ok(True)`` granted, ``Ok(False)`` denied by policy, ``Err`` denied by
+    failure.  All three collapse to "may proceed or not".
+    """
     return bool(verdict.unwrap()) if verdict.is_ok() else False
 
 
 class RbacApiController(Controller):
-    """RBAC API consumed by the UI's vanilla-JS client."""
+    """RBAC API consumed by the UI's vanilla-JS client.
+
+    Constructor injection: every collaborator arrives already built —
+    the DI provider resolved them during boot (see ``di/provider.py``).
+    The framework's ``Controller`` base supplies the ``@get`` / ``@post``
+    route decorators used below.
+    """
 
     def __init__(
         self,

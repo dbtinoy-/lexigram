@@ -5,11 +5,11 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable
 from typing import cast
 
-from rbac_console.articles import ArticleStore
+from rbac_console.services.articles import ArticleStore
 from rbac_console.controllers.api import RbacApiController
-from rbac_console.personas import PersonaDirectory
+from rbac_console.services.personas import PersonaDirectory
 from rbac_console.repository.session_repository import InMemorySessionRepository
-from rbac_console.seed import (
+from rbac_console.services.seed import (
     PERSONA_PASSWORD,
     ROLE_DEFINITIONS,
     RbacSeedService,

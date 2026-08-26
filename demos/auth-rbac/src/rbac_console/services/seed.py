@@ -1,4 +1,16 @@
-"""One-shot demo data seeding for the RBAC console."""
+"""Boot-time demo seeding — personas, roles, and starter articles.
+
+Teaching focus: **the provider ``boot()`` hook**.  ``register()`` (which
+runs first) only *binds* services into the container; ``boot()`` runs
+afterwards, when the container is frozen and everything is resolvable.
+Seeding belongs in ``boot()`` precisely because it must resolve the real,
+fully-wired services — see ``di/provider.py``, which resolves this class
+inside ``boot()``.
+
+Also demonstrated: framework services return ``Result`` values
+(``UserService.create_user`` → ``Ok``/``Err``), so seeding handles the
+"already exists" case by matching on the error instead of pre-checking.
+"""
 
 from __future__ import annotations
 
@@ -8,8 +20,8 @@ from lexigram.auth.authn.user_service import UserService
 from lexigram.auth.authz.service import AuthorizationService
 from lexigram.contracts.auth.roles import RoleDefinition
 from lexigram.logging import get_logger
-from rbac_console.articles import ArticleStore
-from rbac_console.personas import PERSONAS, PersonaDirectory
+from rbac_console.services.articles import ArticleStore
+from rbac_console.services.personas import PERSONAS, PersonaDirectory
 
 logger = get_logger(__name__)
 
@@ -17,7 +29,8 @@ PERSONA_PASSWORD = "Demo-Password-1"
 
 # Single source of truth for role seeding. AuthConfig.roles is inert today,
 # so these go into AuthorizationService.set_roles() here. The grammar is
-# `resource.action` with bidirectional `*` wildcards.
+# `resource.action` with bidirectional `*` wildcards and `inherits` chains:
+# viewer < editor < admin.
 # TODO(framework): consume AuthConfig.roles so demos stop hand-seeding.
 ROLE_DEFINITIONS: dict[str, dict[str, Any]] = {
     "viewer": {"name": "viewer", "permissions": ["articles.view"]},
@@ -31,7 +44,11 @@ ROLE_DEFINITIONS: dict[str, dict[str, Any]] = {
 
 
 class RbacSeedService:
-    """Seed personas, roles, and starter articles exactly once."""
+    """Seed personas, roles, and starter articles exactly once.
+
+    Constructed by ``RbacProvider._build_seed_service`` during boot; all
+    collaborators arrive via constructor injection from the container.
+    """
 
     def __init__(
         self,
@@ -48,6 +65,8 @@ class RbacSeedService:
     async def run(self) -> None:
         """Create persona accounts, install roles, and add starter articles."""
         for persona in PERSONAS:
+            # create_user returns Result[User, ...]: Ok on first run,
+            # Err(duplicate) on every later boot — both are fine here.
             created = await self._users.create_user(
                 name=f"{persona.title()} Persona",
                 email=f"{persona}@rbac.demo",
@@ -59,6 +78,8 @@ class RbacSeedService:
             else:
                 self._personas.register(persona, created.unwrap())
 
+        # Roles use a different API: set_roles replaces the whole table, so
+        # it is idempotent across restarts without any error handling.
         self._authz.set_roles(
             cast("dict[str, RoleDefinition | dict[str, Any]]", ROLE_DEFINITIONS)
         )

@@ -33,27 +33,46 @@ Matrix checks: `articles.view/create/update/delete` plus
 
 ## Run it
 
+From this demo's root (so `application.yaml` is discovered):
+
 ```bash
-PYTHONPATH=demos/auth-rbac/src uv run python -m rbac_console
+cd demos/auth-rbac
+PYTHONPATH=src uv run python -m rbac_console
 ```
 
-Open http://127.0.0.1:8082, log in as any persona (password
+Open http://127.0.0.1:8090, log in as any persona (password
 `Demo-Password-1`). The matrix recomputes live; the try-form runs one
 verdict; the articles card shows the create-guard denying viewers.
+Override the port without touching yaml: `LEX_WEB__SERVER__PORT=9000`.
 
-## Layout
+## Layout — read it in this order
+
+| # | File | Lesson |
+|---|------|--------|
+| 1 | `src/rbac_console/app.py` | ⭐ composition root: config → modules → providers |
+| 2 | `src/rbac_console/main.py` | lifecycle: `Application.boot`, graceful stop |
+| 3 | `src/rbac_console/di/provider.py` | register/bind vs boot/seed; constructor injection |
+| 4 | `src/rbac_console/services/seed.py` | boot-time seeding; `Result` handling |
+| 5 | `src/rbac_console/controllers/api.py` | Result-returning handlers → auto HTTP mapping |
+| 6 | `src/rbac_console/repository/session_repository.py` | protocol binding (contracts ↔ impl) |
+| 7 | `src/rbac_console/services/articles.py` · `personas.py` | plain-object stores registered as singletons |
+| 8 | `src/rbac_console/ui/pages.py` | page controllers serve HTML/assets only |
 
 ```
 demos/auth-rbac/
 ├── src/rbac_console/
+│   ├── app.py                 # ⭐ composition root (start here)
+│   ├── main.py                # entry point / lifecycle
+│   ├── di/provider.py         # app services wiring + boot seeding
 │   ├── controllers/api.py     # JSON API: login/me/matrix/try/articles
-│   ├── ui/                    # pages.py (file routes), views/, static/
-│   ├── articles.py            # in-memory fixture store (guarded resource)
-│   ├── session_repository.py  # dict-backed SessionRepositoryProtocol
-│   ├── di/provider.py         # seeds roles/personas/articles at boot
-│   ├── module.py              # RbacModule (imports AuthModule + WebModule)
-│   └── main.py                # uvicorn boot (:8082, RBAC_PORT)
-└── tests/                     # end-to-end API flow tests
+│   ├── services/              # demo-owned stores & seeding
+│   │   ├── articles.py        # guarded resource store
+│   │   ├── personas.py        # seeded persona catalog
+│   │   └── seed.py            # RbacSeedService (boot hook)
+│   ├── repository/session_repository.py  # SessionRepositoryProtocol impl
+│   └── ui/                    # pages controller + views/ + static/
+├── application.yaml           # web/auth sections (LEX_* overrides win)
+└── tests/                     # e2e flow via ASGITransport
 ```
 
 ## Tests

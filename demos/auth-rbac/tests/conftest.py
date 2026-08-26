@@ -36,7 +36,11 @@ from rbac_console.app import create_app  # noqa: E402 — after sys.path setup
 
 @pytest.fixture
 async def app() -> AsyncIterator[Starlette]:
-    """Boot the real composition root and expose its ASGI app."""
+    """Boot the real composition root; yield the Starlette ASGI app.
+
+    Manual start/stop (instead of ``Application.boot``) because tests want
+    to inspect the container *while* the server is running.
+    """
     application = create_app()
     await application.start()
     try:
@@ -49,7 +53,11 @@ async def app() -> AsyncIterator[Starlette]:
 
 @pytest.fixture
 async def client(app: Starlette) -> AsyncIterator[httpx.AsyncClient]:
-    """A browser session (own cookie jar) over the running app."""
+    """HTTP client bound to the app with a cookie jar per test.
+
+    The jar persists across requests within one test — exactly like a
+    browser session — so login → call-protected-route flows work.
+    """
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(
         transport=transport, base_url="http://testserver"

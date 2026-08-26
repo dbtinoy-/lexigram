@@ -117,6 +117,13 @@ rag_config = config.get_section("ai_rag", RAGConfig)
 config.has_section("web")   # True
 ```
 
+:::note[Strict typed sections]
+Binding with a model enables unknown-key detection: any key the model
+does not define raises `UnknownConfigKeysError` at load time (with a
+did-you-mean suggestion). Set `LEX_CONFIG_ALLOW_UNKNOWN=true` to warn
+and prune instead. Untyped sections stay permissive.
+:::
+
 Providers rarely call `get_section()` themselves — declaring `config_key` and `config_model` makes the framework inject the typed section automatically. See [Configuration → auto-injection](/getting-started/configuration/#provider-config-auto-injection).
 
 ---

@@ -219,6 +219,39 @@ Before calling `register()`, the framework reads the matching section via `Lexig
 
 ---
 
+## Unknown-Key Protection (Strict Sections)
+
+When a section is bound to a model via `get_section(name, ModelClass)`,
+keys the model does not define raise `UnknownConfigKeysError` at load
+time — with the dotted path and a did-you-mean suggestion:
+
+```python title="application.yaml"
+web:
+  server:
+    prot: 9999        # typo: should be port
+```
+
+```python
+config.get_section("web", WebConfig)
+# UnknownConfigKeysError: Unknown configuration key(s) in section
+# 'web': server.prot — did you mean 'port'?  [LEX_ERR_CFG_006]
+```
+
+Typos die at startup with the exact key name instead of silently falling
+back to defaults. Nested keys report their full dotted path
+(`server.prot`).
+
+**Escape hatch** (legacy files, forward-declared keys):
+
+```bash
+LEX_CONFIG_ALLOW_UNKNOWN=true   # warn + prune instead of raising
+```
+
+Untyped access (`get_section("web")` without a model) stays permissive —
+strictness applies only where a model defines the contract.
+
+---
+
 ## Config API
 
 ```python

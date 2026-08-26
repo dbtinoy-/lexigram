@@ -1,4 +1,11 @@
-"""Static UI file-serving routes for the RBAC console (assets only)."""
+"""Server-rendered pages + static assets for the RBAC console.
+
+Demonstrates the *page controller* half of a Lexigram web app: HTML lives
+in ``ui/views/``, assets in ``ui/static/``, and this controller serves
+them with zero business logic — every dynamic interaction goes through
+the JSON API in ``controllers/api.py`` instead.  HTMX/vanilla-JS in the
+views calls those endpoints directly.
+"""
 
 from __future__ import annotations
 
