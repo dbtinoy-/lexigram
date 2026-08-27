@@ -1,7 +1,16 @@
-"""Entry point: ``python -m ragdocs``."""
+"""Module entry point.
+
+``python -m ragdocs`` boots the REST API and serves the RAG pipeline.
+"""
 
 from __future__ import annotations
 
-from ragdocs.main import serve
 
-serve()
+def main() -> None:
+    from ragdocs.main import main as serve_main
+
+    serve_main()
+
+
+if __name__ == "__main__":
+    main()

@@ -1,19 +1,64 @@
-"""Application entry point — boots the app and starts the web server."""
+"""Serve the monitor-stack REST API.
+
+Convention followed: **Application boot** — ``create_app()`` builds the
+composition root, this file boots it and runs the web server.  Host/port
+are read automatically from ``application.yaml`` — no manual config wiring
+needed.
+
+Run::
+
+    uv run python -m monitorstack
+
+The server exposes:
+
+- ``GET /api/monitor/health``           — run health checks
+- ``GET /api/monitor/health/self``      — self health check
+- ``GET /api/monitor/metrics``          — get all metrics
+- ``POST /api/monitor/metrics/increment`` — increment a counter
+- ``POST /api/monitor/metrics/gauge``   — set a gauge
+- ``GET /api/monitor/traces``           — get trace spans
+- ``POST /api/monitor/trace``           — create a trace span
+"""
 
 from __future__ import annotations
 
 import asyncio
+import sys
 
+from lexigram.logging import get_logger
 from monitorstack.app import create_app
 
-
-def serve() -> None:
-    """Start the web server (blocking)."""
-    asyncio.run(_async_serve())
+logger = get_logger(__name__)
 
 
-async def _async_serve() -> None:
+async def serve() -> None:
+    """Boot and serve until interrupted.
+
+    ``app.start()`` triggers the full lifecycle:
+    register → freeze → boot (seeding happens here) → server start.
+    The ``finally`` block ensures ``stop()`` runs even on errors.
+    """
+    from lexigram.web.server.runner import run_server
+
     app = create_app()
-    from lexigram.web.server import run_server
+    await app.start()
+    try:
+        run_server(app)
+    finally:
+        await app.stop()
 
-    run_server(app)
+
+def main() -> int:
+    """Sync entry point: translate asyncio interrupts into exit codes."""
+    try:
+        asyncio.run(serve())
+    except KeyboardInterrupt:
+        return 130
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
+
+
+__all__ = ["main", "serve"]
