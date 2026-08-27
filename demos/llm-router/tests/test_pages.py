@@ -1,4 +1,4 @@
-"""Page controller tests for the llm-router demo."""
+"""Page controller tests."""
 
 from __future__ import annotations
 
@@ -8,12 +8,13 @@ import httpx
 async def test_console_renders(client: httpx.AsyncClient) -> None:
     r = await client.get("/")
     assert r.status_code == 200
-    assert "Content Generator" in r.text
+    assert "Lexigram" in r.text
 
 
-async def test_console_has_logo(client: httpx.AsyncClient) -> None:
+async def test_console_has_nav(client: httpx.AsyncClient) -> None:
     r = await client.get("/")
-    assert "/static/logo.png" in r.text
+    assert "demo-nav" in r.text
+    assert "nav-brand" in r.text
 
 
 async def test_console_has_light_theme(client: httpx.AsyncClient) -> None:
@@ -31,12 +32,6 @@ async def test_console_has_footer(client: httpx.AsyncClient) -> None:
 async def test_css_returns(client: httpx.AsyncClient) -> None:
     r = await client.get("/static/style.css")
     assert r.status_code == 200
-
-
-async def test_logo_returns_png(client: httpx.AsyncClient) -> None:
-    r = await client.get("/static/logo.png")
-    assert r.status_code == 200
-    assert "image/png" in r.headers["content-type"]
 
 
 async def test_js_returns(client: httpx.AsyncClient) -> None:

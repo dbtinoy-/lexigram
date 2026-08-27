@@ -8,7 +8,7 @@
 </head>
 <body>
 <nav class="demo-nav">
-  <a href="/" class="nav-brand"><img src="/static/logo.png" alt="" class="nav-logo"> Lexigram</a>
+  <a href="/" class="nav-brand">Lexigram</a>
   <span class="nav-demo">RAG Pipeline</span>
   <div class="nav-links">
     <a href="https://lexigram.dev">Docs</a>
@@ -17,14 +17,14 @@
 </nav>
 
   <header>
-    <div class="logo-header"><img src="/static/logo.png" alt="Lexigram"><h1>RAG Pipeline</h1></div>
+    <h1>RAG Pipeline</h1>
     <p class="muted">RAG Pipeline Demo — Demonstrates Lexigram RAG pipeline pattern</p>
   </header>
   <main>
     <section id="query-panel">
       <h2>Query Documents</h2>
       <div>
-        <input id="query-input" type="text" placeholder="Ask a question..." style="border:1px solid var(--border); border-radius:6px; padding:.4rem .75rem; width:70%;">
+        <input id="query-input" type="text" placeholder="Ask a question..." style="width:70%;">
         <button id="btn-query" class="accent">Search</button>
       </div>
       <div id="results" style="margin-top:.75rem;"></div>
@@ -33,7 +33,7 @@
     <section id="ingest-panel">
       <h2>Ingest Document</h2>
       <div>
-        <textarea id="doc-input" rows="3" style="width:100%; border:1px solid var(--border); border-radius:6px; padding:.5rem;" placeholder="Paste document text to ingest..."></textarea>
+        <textarea id="doc-input" rows="3" placeholder="Paste document text to ingest..."></textarea>
         <button id="btn-ingest" style="margin-top:.5rem;">Ingest</button>
       </div>
     </section>

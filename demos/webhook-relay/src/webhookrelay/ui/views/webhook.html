@@ -8,7 +8,7 @@
 </head>
 <body>
 <nav class="demo-nav">
-  <a href="/" class="nav-brand"><img src="/static/logo.png" alt="" class="nav-logo"> Lexigram</a>
+  <a href="/" class="nav-brand">Lexigram</a>
   <span class="nav-demo">Webhook Relay</span>
   <div class="nav-links">
     <a href="https://lexigram.dev">Docs</a>
@@ -17,14 +17,14 @@
 </nav>
 
   <header>
-    <div class="logo-header"><img src="/static/logo.png" alt="Lexigram"><h1>Webhook Relay</h1></div>
+    <h1>Webhook Relay</h1>
     <p class="muted">Webhook Relay Demo — Demonstrates Lexigram webhook pattern</p>
   </header>
   <main>
     <section id="send-panel">
       <h2>Send Webhook</h2>
       <div>
-        <select id="event-type" style="border:1px solid var(--border); border-radius:6px; padding:.4rem;">
+        <select id="event-type">
           <option value="order.created">order.created</option>
           <option value="payment.received">payment.received</option>
           <option value="user.registered">user.registered</option>

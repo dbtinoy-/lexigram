@@ -8,7 +8,7 @@
 </head>
 <body>
 <nav class="demo-nav">
-  <a href="/" class="nav-brand"><img src="/static/logo.png" alt="" class="nav-logo"> Lexigram</a>
+  <a href="/" class="nav-brand">Lexigram</a>
   <span class="nav-demo">LLM Router</span>
   <div class="nav-links">
     <a href="https://lexigram.dev">Docs</a>
@@ -17,7 +17,7 @@
 </nav>
 
   <header>
-    <div class="logo-header"><img src="/static/logo.png" alt="Lexigram"><h1>Content Generator</h1></div>
+    <h1>Content Generator</h1>
     <p class="muted">LLM Router Demo — Demonstrates Lexigram LLM client pattern</p>
   </header>
   <main>
@@ -32,16 +32,16 @@
         </select>
         <button id="btn-generate" class="accent">Generate</button>
       </div>
-      <pre id="output" style="margin-top:.75rem; min-height:60px;"></pre>
+      <pre id="output"></pre>
     </section>
 
     <section id="extract-panel">
       <h2>Extract Product</h2>
       <div>
-        <textarea id="extract-input" rows="3" style="width:100%; border:1px solid var(--border); border-radius:6px; padding:.5rem;" placeholder="Paste LLM output to extract product info..."></textarea>
+        <textarea id="extract-input" rows="3" placeholder="Paste LLM output to extract product info..."></textarea>
         <button id="btn-extract" style="margin-top:.5rem;">Extract</button>
       </div>
-      <pre id="extract-output" style="margin-top:.75rem; min-height:40px;"></pre>
+      <pre id="extract-output"></pre>
     </section>
 
     <section id="log-panel">
