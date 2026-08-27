@@ -16,6 +16,7 @@ from dataclasses import dataclass
 from typing import ClassVar
 
 from lexigram.config import BaseConfig
+from lexigram.contracts.core.config import Environment
 from lexigram.validation import ConfigDict, Field
 
 
@@ -32,6 +33,7 @@ class MonitorStackConfig(BaseConfig):
     config_section: ClassVar[str] = "monitorstack"
     name: str = "monitorstack"
     enabled: bool = True
+    env: Environment | None = Field(None, description="Deployment environment")
 
     service_name: str = Field(
         default="demo-service",

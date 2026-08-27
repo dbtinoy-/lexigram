@@ -16,6 +16,7 @@ from dataclasses import dataclass
 from typing import ClassVar
 
 from lexigram.config import BaseConfig
+from lexigram.contracts.core.config import Environment
 from lexigram.validation import ConfigDict, Field
 
 
@@ -32,6 +33,7 @@ class ContentGenConfig(BaseConfig):
     config_section: ClassVar[str] = "content_gen"
     name: str = "content_gen"
     enabled: bool = True
+    env: Environment | None = Field(None, description="Deployment environment")
 
     default_style: str = Field(
         default="professional",

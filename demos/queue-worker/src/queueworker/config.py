@@ -16,6 +16,7 @@ from dataclasses import dataclass
 from typing import ClassVar
 
 from lexigram.config import BaseConfig
+from lexigram.contracts.core.config import Environment
 from lexigram.validation import ConfigDict, Field
 
 
@@ -32,6 +33,7 @@ class QueueWorkerConfig(BaseConfig):
     config_section: ClassVar[str] = "queueworker"
     name: str = "queueworker"
     enabled: bool = True
+    env: Environment | None = Field(None, description="Deployment environment")
 
     queue_name: str = Field(
         default="tasks",

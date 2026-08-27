@@ -57,4 +57,12 @@ class PlaygroundPageController(Controller):
 
 
 
+    @get("/static/logo.png")
+    async def logo(self, request: Request) -> FileResponse:
+        return _static("logo.png", "image/png")
+
+    @get("/static/icon.png")
+    async def icon(self, request: Request) -> FileResponse:
+        return _static("icon.png", "image/png")
+
 __all__ = ["PlaygroundPageController"]

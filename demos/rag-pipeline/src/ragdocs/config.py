@@ -16,6 +16,7 @@ from dataclasses import dataclass
 from typing import ClassVar
 
 from lexigram.config import BaseConfig
+from lexigram.contracts.core.config import Environment
 from lexigram.validation import ConfigDict, Field
 
 
@@ -32,6 +33,7 @@ class RagDocsConfig(BaseConfig):
     config_section: ClassVar[str] = "ragdocs"
     name: str = "ragdocs"
     enabled: bool = True
+    env: Environment | None = Field(None, description="Deployment environment")
 
     collection_name: str = Field(
         default="documents",

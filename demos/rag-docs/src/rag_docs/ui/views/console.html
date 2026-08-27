@@ -9,7 +9,7 @@
 </head>
 <body>
 <nav class="demo-nav">
-  <a href="/" class="nav-brand"><img src="/static/logo.png" alt="" class="nav-logo"> Lexigram</a>
+  <a href="/" class="nav-brand">Lexigram</a>
   <span class="nav-demo">RAG Docs</span>
   <div class="nav-links">
     <a href="https://lexigram.dev">Docs</a>
@@ -17,16 +17,13 @@
   </div>
 </nav>
 
-  <div class="app">
+<header>
+  <h1>RAG Docs</h1>
+  <p class="muted">No LLM — BLAKE2b hashing embedder + extractive synthesis. Byte-stable.</p>
+</header>
+<div class="app">
     <!-- Left panel: input + controls + stats -->
     <aside class="sidebar">
-      <div class="sidebar-header">
-        <header>
-          <h1>RAG Docs</h1>
-          <p class="muted">No LLM — BLAKE2b hashing embedder + extractive synthesis. Byte-stable.</p>
-        </header>
-      </div>
-
       <form id="ask-form" class="ask-form">
         <div class="input-wrap">
           <textarea id="question" rows="2" placeholder="e.g. how do providers boot?"></textarea>
