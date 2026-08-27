@@ -1,0 +1,31 @@
+# ╔═══════════════════════════════════════════════════════════════════════════╗
+# ║                    RAG Pipeline Demo — Full Reference                   ║
+# ║                                                                         ║
+# ║  Teaches: Lexigram RAG pipeline pattern with in-memory vector store,    ║
+# ║           document ingestion, retrieval, and synthesis.                 ║
+# ║                                                                         ║
+# ║  LEARNING PATH:                                                         ║
+# ║    1. application.yaml   — you are here (configuration)                 ║
+# ║    2. src/ragdocs/app.py — composition root (wiring)                    ║
+# ║    3. src/ragdocs/di/provider.py — provider lifecycle                   ║
+# ║    4. src/ragdocs/services/ — RAG pipeline patterns                     ║
+# ║    5. tests/ — real composition root, no mocks                          ║
+# ╚═══════════════════════════════════════════════════════════════════════════╝
+
+
+# ── Web ──────────────────────────────────────────────────────────────────────
+web:
+  server:
+    host: 127.0.0.1
+    port: 8000
+  security:
+    csrf:
+      enabled: false
+
+
+# ── Demo ────────────────────────────────────────────────────────────────────
+ragdocs:
+  collection_name: "documents"
+  embedding_dimension: 128
+  chunk_size: 500
+  top_k: 5
