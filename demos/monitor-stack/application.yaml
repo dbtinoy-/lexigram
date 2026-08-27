@@ -1,0 +1,30 @@
+# ╔═══════════════════════════════════════════════════════════════════════════╗
+# ║                    Monitor Stack Demo — Full Reference                  ║
+# ║                                                                         ║
+# ║  Teaches: Lexigram monitoring pattern with in-memory backend,           ║
+# ║           health checks, metrics, and observability decorators.         ║
+# ║                                                                         ║
+# ║  LEARNING PATH:                                                         ║
+# ║    1. application.yaml   — you are here (configuration)                 ║
+# ║    2. src/monitorstack/app.py — composition root (wiring)               ║
+# ║    3. src/monitorstack/di/provider.py — provider lifecycle              ║
+# ║    4. src/monitorstack/services/ — metrics and health patterns          ║
+# ║    5. tests/ — real composition root, no mocks                          ║
+# ╚═══════════════════════════════════════════════════════════════════════════╝
+
+
+# ── Web ──────────────────────────────────────────────────────────────────────
+web:
+  server:
+    host: 127.0.0.1
+    port: 8000
+  security:
+    csrf:
+      enabled: false
+
+
+# ── Demo ────────────────────────────────────────────────────────────────────
+monitorstack:
+  service_name: "demo-service"
+  health_check_interval: 30
+  metrics_enabled: true
