@@ -12,3 +12,11 @@ async function api(path, options = {}) {
   }
   return { status: response.status, ok: response.ok, body };
 }
+
+function showError(msg) {
+  const el = document.getElementById("error");
+  if (el) {
+    el.textContent = msg;
+    el.style.display = msg ? "block" : "none";
+  }
+}
