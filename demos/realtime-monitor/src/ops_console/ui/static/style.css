@@ -6,9 +6,10 @@
   --error: #dc2626; --ok: #16a34a; --radius: 8px;
 }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-body { min-height: 100vh; background: var(--bg); color: var(--ink);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
-.wrap { max-width: 960px; margin: 0 auto; padding: 1rem 1.25rem 2rem; }
+body { height: 100vh; overflow: hidden; background: var(--bg); color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  display: flex; flex-direction: column; }
+.wrap { flex: 1; min-height: 0; overflow-y: auto; padding: 1rem 1.25rem 2rem; }
 .topbar { display: flex; align-items: center; gap: 1rem; padding: .75rem 0; margin-bottom: .75rem; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
 .conn { display: flex; flex-direction: column; gap: .3rem; }
 .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--ok); }
@@ -25,7 +26,7 @@ th { color: var(--ink-dim); font-size: .75rem; text-transform: uppercase; font-w
 .publish input:focus { outline: none; border-color: var(--accent); }
 .publish select { background: var(--surface); color: var(--ink); border: 1px solid var(--border); border-radius: 6px; padding: .4rem .5rem; font-family: inherit; }
 .accent { color: var(--accent); }
-.container { max-width: 720px; margin: 0 auto; padding: 1.5rem 1rem; }
+.container { padding: 1.5rem 1rem; }
 h1 { color: var(--accent); margin-bottom: 1.2rem; font-size: 1.4rem; }
 .muted { color: var(--ink-dim); font-size: .85rem; margin-bottom: 1rem; }
 .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; margin-bottom: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,.04); }
@@ -47,7 +48,6 @@ button.secondary { background: var(--surface2); color: var(--ink); border: 1px s
   align-items: center; gap: .4rem; font-size: .75rem; color: var(--ink-dim); z-index: 50; }
 .demo-footer a { color: var(--accent); text-decoration: none; }
 .demo-footer a:hover { text-decoration: underline; }
-body { padding-bottom: 2rem; }
 
 /* Demo navigation bar */
 .demo-nav { display: flex; align-items: center; gap: .75rem; padding: .5rem 1.25rem;

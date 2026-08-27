@@ -2,11 +2,102 @@
 
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
 from lexigram.logging import get_logger
 
 logger = get_logger(__name__)
+
+# Granian kwargs accepted by the Python API (address/port/interface handled separately).
+_GRANIAN_ACCEPTED: frozenset[str] = frozenset({
+    "workers",
+    "threads",
+    "blocking_threads",
+    "runtime_threads",
+    "runtime_blocking_threads",
+    "backlog",
+    "backpressure",
+    "loop",
+    "task_impl",
+    "log_level",
+    "log_config",
+    "access_log",
+    "access_log_fmt",
+    "ssl_certificate",
+    "ssl_keyfile",
+    "ssl_keyfile_password",
+    "ssl_ca",
+    "ssl_crl",
+    "ssl_client_verify",
+    "url_path_prefix",
+    "factory",
+    "reload",
+    "reload_paths",
+    "reload_ignore_dirs",
+    "reload_ignore_patterns",
+    "respawn_failed_workers",
+    "respawn_interval",
+    "pid_file",
+    "path_prefix",
+})
+
+# Auto-preference order when no backend is configured.
+_PREFERRED_BACKENDS: tuple[str, ...] = ("granian", "uvicorn")
+
+
+def _resolve_backend(app: Any) -> str:
+    """Resolve the ASGI server backend.
+
+    Reads ``web.server.backend`` from ``application.yaml`` via the app
+    config.  Falls back to auto-preference (granian → uvicorn) when the
+    config is absent or the requested backend is not installed.
+    """
+    config = getattr(app, "config", None)
+    if config is not None:
+        try:
+            from lexigram.web.config import WebConfig
+            web = config.get_section("web", WebConfig)
+            requested = web.server.backend
+            if _is_available(requested):
+                return requested
+        except Exception:
+            pass
+
+    for name in _PREFERRED_BACKENDS:
+        if _is_available(name):
+            return name
+
+    return "uvicorn"
+
+
+def _is_available(name: str) -> bool:
+    """Check if a server backend is importable."""
+    if name == "granian":
+        try:
+            import granian  # noqa: F401
+            return True
+        except ImportError:
+            return False
+    if name == "uvicorn":
+        try:
+            import uvicorn  # noqa: F401
+            return True
+        except ImportError:
+            return False
+    if name == "hypercorn":
+        try:
+            import hypercorn  # noqa: F401
+            return True
+        except ImportError:
+            return False
+    if name == "gunicorn":
+        try:
+            import gunicorn  # noqa: F401
+            return True
+        except ImportError:
+            return False
+    return False
 
 
 def _to_import_string(app: Any) -> str | None:
@@ -34,9 +125,16 @@ def run_server(
 ) -> None:
     """Run the web application.
 
-    Uses Granian when ``app`` is a string import path (multiprocess-safe).
-    Falls back to Uvicorn when ``app`` is an instance (Granian cannot accept
-    instances directly).
+    Detects whether a running event loop exists and dispatches accordingly:
+
+    - **Async context** (loop running): uses ``await server.serve()`` for
+      Uvicorn; runs Granian/Gunicorn in an executor thread.
+    - **Sync context** (no loop): runs the server directly.
+
+    The backend is resolved in this order:
+
+    1. ``web.server.backend`` in ``application.yaml`` (config-driven)
+    2. Auto-preference: Granian → Uvicorn (when config is absent)
 
     Args:
         app: ASGI application instance or import string (``"module:attr"``).
@@ -44,19 +142,116 @@ def run_server(
             when not provided.
         port: Bind port.  Reads from ``app.config.web.server.port``
             when not provided.
-        **kwargs: Additional arguments (passed to Uvicorn config).
+        **kwargs: Additional server arguments. For Granian, only accepted
+            kwargs are forwarded; unknown keys are silently dropped.
 
     Raises:
-        ImportError: If neither Granian nor Uvicorn is installed.
+        ImportError: If the resolved server backend is not installed.
     """
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+
+    if loop is not None:
+        # Sync function called from async context — run the async dispatcher
+        # in a new thread with its own event loop so it actually blocks.
+        import concurrent.futures
+
+        def _thread_target() -> None:
+            new_loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(new_loop)
+            try:
+                new_loop.run_until_complete(
+                    _run_in_loop(new_loop, app, host, port, **kwargs)
+                )
+            finally:
+                new_loop.close()
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+            future = pool.submit(_thread_target)
+            # Block the calling coroutine until the server thread finishes
+            # (i.e. until the server is stopped by a signal).
+            future.result()
+    else:
+        _run_sync(app, host, port, **kwargs)
+
+
+async def _run_in_loop(
+    loop: asyncio.AbstractEventLoop,
+    app: Any,
+    host: str | None,
+    port: str | int | None,
+    **kwargs: Any,
+) -> None:
+    """Dispatch from within a running event loop."""
+    backend = _resolve_backend(app)
+
+    if backend == "uvicorn":
+        if host is None or port is None:
+            host, port = _resolve_web_config(app, host, port)
+        await _run_uvicorn_async(app, host, port, **kwargs)
+        return
+
+    if backend == "granian":
+        import_str = _to_import_string(app) if not isinstance(app, str) else app
+        if import_str is None:
+            logger.warning(
+                "granian_fallback_uvicorn",
+                reason="could not derive import string from app instance",
+            )
+            if host is None or port is None:
+                host, port = _resolve_web_config(app, host, port)
+            await _run_uvicorn_async(app, host, port, **kwargs)
+        else:
+            filtered = {k: v for k, v in kwargs.items() if k in _GRANIAN_ACCEPTED}
+            await loop.run_in_executor(
+                None, lambda: _run_granian(import_str, host, port, **filtered)
+            )
+        return
+
+    if backend == "gunicorn":
+        if host is None or port is None:
+            host, port = _resolve_web_config(app, host, port)
+        await loop.run_in_executor(
+            None, lambda: _run_gunicorn(app, host, port, **kwargs)
+        )
+        return
+
+    logger.warning("unknown_backend_fallback_uvicorn", backend=backend)
+    if host is None or port is None:
+        host, port = _resolve_web_config(app, host, port)
+    await _run_uvicorn_async(app, host, port, **kwargs)
+
+
+def _run_sync(
+    app: Any,
+    host: str | None,
+    port: str | int | None,
+    **kwargs: Any,
+) -> None:
+    """Dispatch from sync context (no event loop running)."""
     if host is None or port is None:
         host, port = _resolve_web_config(app, host, port)
 
-    if isinstance(app, str):
-        _run_granian(app, host, port, **kwargs)
-        return
+    backend = _resolve_backend(app)
+    logger.info("server_backend_resolved", backend=backend, host=host, port=port)
 
-    _run_uvicorn(app, host, port, **kwargs)
+    if backend == "granian":
+        import_str = _to_import_string(app) if not isinstance(app, str) else app
+        if import_str is None:
+            logger.warning(
+                "granian_fallback_uvicorn",
+                reason="could not derive import string from app instance",
+            )
+            _run_uvicorn(app, host, port, **kwargs)
+        else:
+            filtered = {k: v for k, v in kwargs.items() if k in _GRANIAN_ACCEPTED}
+            _run_granian(import_str, host, port, **filtered)
+    elif backend == "gunicorn":
+        _run_gunicorn(app, host, port, **kwargs)
+    else:
+        _run_uvicorn(app, host, port, **kwargs)
 
 
 def _resolve_web_config(
@@ -86,7 +281,7 @@ def _run_granian(
         from granian.constants import Interfaces
     except ImportError as e:
         raise ImportError(
-            "Granian is not installed. Install 'granian' to use run_server() with string apps.",
+            "Granian is not installed. Install 'granian' to use this backend.",
         ) from e
 
     logger.info("starting_granian_server", host=host, port=port, kwargs=kwargs)
@@ -100,46 +295,13 @@ def _run_granian(
     server.serve()
 
 
-async def run_server_async(
-    app: Any,
-    host: str | None = None,
-    port: int | None = None,
-    **kwargs: Any,
-) -> None:
-    """Run the web application asynchronously.
-
-    Uses Uvicorn (supports both string paths and app instances). Prefer
-    :func:`run_server` for production deployments with Granian.
-
-    Args:
-        app: ASGI application instance or import string.
-        host: Bind address.  Reads from ``app.config.web.server.host``
-            when not provided.
-        port: Bind port.  Reads from ``app.config.web.server.port``
-            when not provided.
-        **kwargs: Additional arguments passed to Uvicorn config.
-    """
-    import uvicorn
-
-    # Auto-consume from application.yaml when host/port not explicit.
-    if host is None or port is None:
-        host, port = _resolve_web_config(app, host, port)
-
-    logger.info("starting_uvicorn_server", host=host, port=port, kwargs=kwargs)
-    config = uvicorn.Config(app, host=host, port=port, **kwargs)
-    server = uvicorn.Server(config)
-    await server.serve()
-
-
 def _run_uvicorn(
     app: Any,
     host: str,
     port: int,
     **kwargs: Any,
 ) -> None:
-    """Run via Uvicorn (supports app instances)."""
-    import asyncio
-
+    """Run via Uvicorn (sync context — creates its own event loop)."""
     import uvicorn
 
     logger.info("starting_uvicorn_server", host=host, port=port, kwargs=kwargs)
@@ -150,4 +312,53 @@ def _run_uvicorn(
     loop.run_until_complete(server.serve())
 
 
-__all__ = ["run_server", "run_server_async"]
+async def _run_uvicorn_async(
+    app: Any,
+    host: str,
+    port: int,
+    **kwargs: Any,
+) -> None:
+    """Run via Uvicorn (async context — reuses the running loop)."""
+    import uvicorn
+
+    logger.info("starting_uvicorn_server", host=host, port=port, kwargs=kwargs)
+    config = uvicorn.Config(app, host=host, port=port, **kwargs)
+    server = uvicorn.Server(config)
+    await server.serve()
+
+
+def _run_gunicorn(
+    app: Any,
+    host: str,
+    port: int,
+    **kwargs: Any,
+) -> None:
+    """Run via Gunicorn with Uvicorn workers."""
+    import subprocess  # noqa: S404 — registry-built argv list
+
+    workers = kwargs.get("workers", 1)
+    cmd = [
+        "gunicorn",
+        "-w",
+        str(workers),
+        "-b",
+        f"{host}:{port}",
+        "-k",
+        "uvicorn_worker.UvicornWorker",
+    ]
+    if isinstance(app, str):
+        cmd.append(app)
+    else:
+        import_str = _to_import_string(app)
+        if import_str:
+            cmd.append(import_str)
+        else:
+            logger.warning("gunicorn_fallback_uvicorn", reason="could not derive import string")
+            _run_uvicorn(app, host, port, **kwargs)
+            return
+
+    logger.info("starting_gunicorn_server", host=host, port=port, kwargs=kwargs)
+    subprocess.run(cmd, check=False)  # noqa: S603
+
+
+__all__ = ["run_server"]
