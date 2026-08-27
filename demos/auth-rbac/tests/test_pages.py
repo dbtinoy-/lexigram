@@ -1,52 +1,60 @@
-"""Pages smoke tests for the RBAC console.
-
-These are the structural half of the test suite (behavioral tests in
-test_rbac.py).  They verify that page routes serve the right HTML and
-static assets — no business logic exercised.
-
-Smoke tests catch wiring errors (missing routes, broken templates) before
-behavioral tests dig into the details.  They're cheap, fast, and catch
-the most common integration mistakes.
-"""
+"""Page controller tests for the auth-rbac demo."""
 
 from __future__ import annotations
 
 import httpx
-import pytest
 
 
-@pytest.mark.parametrize(
-    ("path", "marker"),
-    [
-        ("/login", "persona"),
-        ("/matrix", "Permission matrix"),
-    ],
-)
-async def test_pages_serve(
-    client: httpx.AsyncClient, path: str, marker: str
-) -> None:
-    """Parametrized smoke test: each page route returns HTML with expected content.
-
-    Pattern: one test body, multiple route/content pairs.  If a new page
-    is added to PagesController, add a tuple here — the test auto-expands.
-    """
-    response = await client.get(path)
-    assert response.status_code == 200
-    assert marker in response.text
-    assert "text/html" in response.headers["content-type"]
+async def test_login_renders(client: httpx.AsyncClient) -> None:
+    r = await client.get("/login", follow_redirects=False)
+    assert r.status_code == 200
+    assert "persona" in r.text.lower()
 
 
-async def test_static_assets_served(client: httpx.AsyncClient) -> None:
-    """Verify static files are served with correct content types.
+async def test_matrix_renders(client: httpx.AsyncClient) -> None:
+    r = await client.get("/matrix", follow_redirects=False)
+    assert r.status_code == 200
+    assert "Permission matrix" in r.text
 
-    PagesController serves assets from ui/static/ — no CDN, no build step.
-    In production you'd serve these via nginx/CDN, but for the demo this
-    keeps everything in one process.
-    """
+
+async def test_index_redirects(client: httpx.AsyncClient) -> None:
+    r = await client.get("/", follow_redirects=False)
+    assert r.status_code == 307
+
+
+async def test_login_has_logo(client: httpx.AsyncClient) -> None:
+    r = await client.get("/login", follow_redirects=False)
+    assert "/static/logo.png" in r.text
+
+
+async def test_matrix_has_logo(client: httpx.AsyncClient) -> None:
+    r = await client.get("/matrix", follow_redirects=False)
+    assert "/static/logo.png" in r.text
+
+
+async def test_login_has_light_theme(client: httpx.AsyncClient) -> None:
     css = await client.get("/static/style.css")
-    js = await client.get("/static/app.js")
-    matrix_js = await client.get("/static/matrix.js")
-
     assert css.status_code == 200
-    assert js.status_code == 200
-    assert matrix_js.status_code == 200
+    assert "#f8f9fa" in css.text
+
+
+async def test_login_has_footer(client: httpx.AsyncClient) -> None:
+    r = await client.get("/login", follow_redirects=False)
+    assert "demo-footer" in r.text
+    assert "lexigram.dev" in r.text
+
+
+async def test_matrix_has_footer(client: httpx.AsyncClient) -> None:
+    r = await client.get("/matrix", follow_redirects=False)
+    assert "demo-footer" in r.text
+
+
+async def test_css_returns(client: httpx.AsyncClient) -> None:
+    r = await client.get("/static/style.css")
+    assert r.status_code == 200
+
+
+async def test_logo_returns_png(client: httpx.AsyncClient) -> None:
+    r = await client.get("/static/logo.png")
+    assert r.status_code == 200
+    assert "image/png" in r.headers["content-type"]

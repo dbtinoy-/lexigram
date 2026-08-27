@@ -1,5 +1,7 @@
 """Configuration models for auth-web demo services."""
 
+from __future__ import annotations
+
 from dataclasses import dataclass
 from typing import ClassVar, cast
 
@@ -110,3 +112,11 @@ class AuthWebConfig(BaseConfig):
         default_factory=RegistrationConfig,
         description="Registration flow configuration",
     )
+
+
+__all__ = [
+    "AccountVerificationConfig",
+    "AuthWebConfig",
+    "PasswordResetConfig",
+    "RegistrationConfig",
+]

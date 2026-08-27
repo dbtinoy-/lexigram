@@ -55,5 +55,9 @@ class PagesController(Controller):
     async def mfa_js(self, request: Request) -> FileResponse:
         return _static("mfa.js", "text/javascript")
 
+    @get("/static/logo.png")
+    async def logo(self, request: Request) -> FileResponse:
+        return _static("logo.png", "image/png")
+
 
 __all__ = ["PagesController"]

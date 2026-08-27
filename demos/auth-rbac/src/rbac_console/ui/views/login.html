@@ -6,13 +6,14 @@
   <link rel="stylesheet" href="/static/style.css" />
 </head>
 <body data-page="login">
-  <h1 class="accent">Pick a persona</h1>
+  <div class="logo-header"><img src="/static/logo.png" alt="Lexigram"><h1 class="accent">Pick a persona</h1></div>
   <div class="card">
     <p id="error" class="error"></p>
     <div id="personas"></div>
     <p class="muted">All personas share the password <code>Demo-Password-1</code></p>
   </div>
   <script src="/static/app.js"></script>
+  <div class="demo-footer"><img src="/static/logo.png" class="footer-logo" alt=""> Powered by <a href="https://lexigram.dev">Lexigram</a></div>
   <script>
     async function loadPersonas() {
       const me = await api("/api/me");

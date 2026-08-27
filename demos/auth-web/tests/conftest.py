@@ -1,4 +1,4 @@
-"""Pytest bootstrap for the auth-rbac demo."""
+"""Pytest bootstrap for the auth-web demo."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ _DEMO_ROOT = Path(__file__).resolve().parent.parent
 os.chdir(_DEMO_ROOT)
 sys.path.insert(0, str(_DEMO_ROOT / "src"))
 
-from rbac_console.app import create_app  # noqa: E402
+from auth_web.app import create_app  # noqa: E402
 from lexigram.web import WebProvider  # noqa: E402
 
 

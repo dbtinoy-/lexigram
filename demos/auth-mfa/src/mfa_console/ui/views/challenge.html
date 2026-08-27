@@ -6,7 +6,7 @@
   <link rel="stylesheet" href="/static/style.css" />
 </head>
 <body data-page="challenge">
-  <h1 class="accent">Two-factor verification</h1>
+  <div class="logo-header"><img src="/static/logo.png" alt="Lexigram"><h1 class="accent">Two-factor verification</h1></div>
   <div class="card">
     <p id="error" class="error"></p>
     <p class="muted">Enter the 6-digit code from your authenticator (or a backup code).</p>
@@ -16,6 +16,7 @@
     </form>
   </div>
   <script src="/static/app.js"></script>
+  <div class="demo-footer"><img src="/static/logo.png" class="footer-logo" alt=""> Powered by <a href="https://lexigram.dev">Lexigram</a></div>
   <script>
     document.getElementById("challenge-form").addEventListener("submit", async (event) => {
       event.preventDefault();
