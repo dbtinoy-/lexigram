@@ -21,26 +21,33 @@ def validate_all_configs(
     """Validate a list of config objects against *env*.
 
     Iterates over each item in *configs*, calls
-    ``validate_for_environment(env)`` when the method is available, and
+    ``validate_for_environment`` when the method is available, and
     collects all returned issues.
 
     Args:
         configs: Iterable of config objects.  Items that do not implement
             ``validate_for_environment`` are silently skipped.
-        env: Target environment.  Defaults to ``Environment.from_env()``.
+        env: Target environment override.  When ``None`` (the default)
+            each config resolves its **own** active environment (its
+            ``env``/``environment`` field, falling back to
+            ``LEX_ENV``/``APP_ENV``).  Passing an explicit value forces
+            every config to validate against that environment.
 
     Returns:
         A flat list of all :class:`~lexigram.contracts.core.config.ConfigIssue`
         instances produced by the registered configs.
     """
-    resolved = env or Environment.from_env()
     all_issues: list[ConfigIssue] = []
 
     for config in configs:
         validate_fn = getattr(config, "validate_for_environment", None)
         if callable(validate_fn):
             try:
-                issues = validate_fn(resolved)
+                # Pass ``env`` through verbatim (including ``None``) so
+                # each config falls back to its own environment field —
+                # overriding it here with Environment.from_env() would
+                # ignore ``env: production`` declared in application.yaml.
+                issues = validate_fn(env)
                 all_issues.extend(issues)
             except (TypeError, AttributeError, ValueError) as e:
                 logger.debug(

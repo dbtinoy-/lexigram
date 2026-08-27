@@ -275,6 +275,7 @@ class Application(SecretsMixin):
         """Boot all providers and start the application.
 
         Phases:
+            0. Validate configuration against the active environment
             1. Emit ``ApplicationStarting`` event
             2. Register all providers with the container
             3. Boot all providers (dependency order, parallel where possible)
@@ -286,6 +287,9 @@ class Application(SecretsMixin):
 
         Raises:
             RuntimeError: If application is not in CREATED state.
+            ConfigurationError: If the configuration violates
+                environment-specific constraints (e.g. ``debug=True``
+                in production).
         """
         if self._state != AppState.CREATED:
             raise RuntimeError(f"Cannot start: state is {self._state.value}")
@@ -293,6 +297,10 @@ class Application(SecretsMixin):
         self._state = AppState.STARTING
 
         try:
+            # Phase 0: fail fast on configuration that violates hard
+            # constraints for the active environment (e.g. debug=True in
+            # production) before any provider boots.
+            self._validate_config()
 
             def _auto_discover_and_compile() -> None:
                 if self._config.discovery.auto_discover:
@@ -389,6 +397,43 @@ class Application(SecretsMixin):
             raise AppShutdownError(f"Application shutdown failed: {self.name}") from err
         finally:
             self._state = AppState.STOPPED
+
+    def _validate_config(self) -> None:
+        """Validate configuration against the active environment.
+
+        Runs :meth:`validate_for_environment
+        <lexigram.contracts.core.config.ConfigProtocol.validate_for_environment>`
+        on the root config and collects all returned
+        :class:`~lexigram.contracts.core.config.ConfigIssue` entries.
+
+        - ``severity="warning"`` issues are logged.
+        - ``severity="error"`` issues (e.g. ``debug=True`` in production)
+          abort the boot with :class:`ConfigurationError`.
+
+        Raises:
+            ConfigurationError: When hard validation constraints are violated.
+        """
+        from lexigram.config.lib.validation import validate_all_configs
+        from lexigram.contracts.exceptions.config import ConfigurationError
+
+        issues = validate_all_configs([self._config])
+        for issue in issues:
+            if issue.severity != "error":
+                self._logger.warning(
+                    "config.validation.issue",
+                    field=issue.field,
+                    message=issue.message,
+                    suggestion=issue.suggestion,
+                )
+        errors = [issue for issue in issues if issue.severity == "error"]
+        if errors:
+            details = "; ".join(f"{i.field}: {i.message}" for i in errors)
+            hints = "; ".join(i.suggestion for i in errors if i.suggestion)
+            raise ConfigurationError(
+                f"Configuration validation failed — refusing to start: {details}"
+                + (f" ({hints})" if hints else ""),
+                issues=list(issues),
+            )
 
     async def health_check(self, timeout: float = 5.0) -> AggregateHealthResult:
         """Aggregate health check from all providers.

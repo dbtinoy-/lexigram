@@ -195,6 +195,16 @@ class TestRateLimitConfig:
 
         assert rule is None
 
+    def test_rate_limit_get_rule_honours_path_boundary(self):
+        """A '/api' rule must not match '/apifoo' (segment boundary)."""
+        config = RateLimitConfig(
+            rules={"/api": RateLimitRuleConfig(requests=100)}
+        )
+        assert config.get_rule("/api") is not None
+        assert config.get_rule("/api/users") is not None
+        assert config.get_rule("/apifoo") is None
+        assert config.get_rule("/api/v2") is not None
+
 
 class TestWebConfig:
     """Test main web configuration"""

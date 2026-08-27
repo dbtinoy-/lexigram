@@ -1,3 +1,4 @@
+import inspect
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -19,13 +20,19 @@ class TestRequestPipeline:
 
     @pytest.fixture
     def mock_handler(self):
+        # Give the mock a real signature: inspect.signature() on a bare
+        # AsyncMock is unreliable (its auto-generated __call__ confuses
+        # inspect internals).
+        async def _impl(*args, **kwargs):
+            return {"status": "ok"}
+
         handler = AsyncMock(return_value={"status": "ok"})
+        handler.__signature__ = inspect.signature(_impl)
         handler.__globals__ = {}
         return handler
 
     @pytest.fixture
     def context(self, mock_request, mock_handler):
-        import inspect
         sig = inspect.signature(mock_handler)
         return WebExecutionContext(
             request=mock_request,
@@ -96,9 +103,11 @@ class TestRequestPipeline:
         self,
         mock_request,
     ):
-        handler = AsyncMock(return_value={"ok": True})
+        async def _impl(*args, **kwargs):
+            return {"ok": True}
 
-        import inspect
+        handler = AsyncMock(return_value={"ok": True})
+        handler.__signature__ = inspect.signature(_impl)
 
         sig = inspect.signature(handler)
 

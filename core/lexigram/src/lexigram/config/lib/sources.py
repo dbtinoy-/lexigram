@@ -369,7 +369,16 @@ class ConfigLoader:
         for source in self._get_sources(sources):
             try:
                 data = source.load_sync()
-            except (OSError, json.JSONDecodeError, ConfigurationError):
+            except (json.JSONDecodeError, ConfigurationError):
+                # Malformed config content is a hard error.  Swallowing it
+                # would silently boot the app on partial defaults, so fail
+                # fast (consistent with ${VAR} interpolation, LEX_ERR_CFG_001).
+                raise
+            except OSError:
+                # Genuinely optional sources (e.g. a network-backed source
+                # that is momentarily unreachable) may be skipped.  Note
+                # FileConfigSource wraps its own read errors in
+                # ConfigurationError, so file problems still fail fast.
                 self._logger.exception(
                     "Failed to load config from %s",
                     source.get_name(),
@@ -390,7 +399,11 @@ class ConfigLoader:
         for source in self._get_sources(sources):
             try:
                 data = await source.load()
-            except (OSError, json.JSONDecodeError, ConfigurationError):
+            except (json.JSONDecodeError, ConfigurationError):
+                # Malformed config content is a hard error — fail fast
+                # instead of booting on partial defaults (see _collect_sync).
+                raise
+            except OSError:
                 self._logger.exception(
                     "Failed to load config from %s",
                     source.get_name(),

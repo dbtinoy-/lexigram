@@ -121,10 +121,44 @@ class MiddlewareSetup:
         if hasattr(self._config, "security") and self._config.security:
             if not getattr(self._config.security, "enabled", True):
                 return
+            self._warn_on_weak_csp(self._config.security)
             app.add_middleware(
                 SecurityHeadersMiddleware,
                 config=self._config.security,
                 enabled=True,
+            )
+
+    @staticmethod
+    def _warn_on_weak_csp(security_config: Any) -> None:
+        """Warn when an enabled CSP still allows inline/eval scripts.
+
+        The framework's default CSP directives include ``'unsafe-inline'``
+        and ``'unsafe-eval'`` (required by the bundled API docs).  Those
+        directives neutralise most of CSP's XSS protection, so operators
+        who explicitly enable CSP deserve a loud nudge to tighten them.
+        """
+        csp = getattr(security_config, "csp", None)
+        if csp is None or not getattr(csp, "enabled", False):
+            return
+        directives = getattr(csp, "directives", None) or {}
+        weak: list[str] = []
+        for name in ("script-src", "script-src-elem"):
+            value = directives.get(name)
+            if isinstance(value, (set, list)):
+                text = " ".join(str(v) for v in value)
+            else:
+                text = str(value or "")
+            if "'unsafe-inline'" in text or "'unsafe-eval'" in text:
+                weak.append(name)
+        if weak:
+            logger.warning(
+                "csp_weak_directives",
+                directives=weak,
+                hint=(
+                    "CSP is enabled but still allows 'unsafe-inline'/"
+                    "'unsafe-eval'; tighten directives to gain real XSS "
+                    "protection"
+                ),
             )
 
     def _add_host_validation(self, app: Starlette) -> None:

@@ -75,7 +75,12 @@ class RateLimitConfig(BaseConfig):
         return self
 
     def get_rule(self, path: str) -> RateLimitRuleConfig | None:
-        """Get rate limit rule for a path (longest prefix match)."""
+        """Get rate limit rule for a path (longest prefix match).
+
+        Prefix matching honours path-segment boundaries: a rule for
+        ``/api`` matches ``/api`` and ``/api/users`` but **not**
+        ``/apifoo``.
+        """
         # Exact match first
         if path in self.rules:
             return self.rules[path]
@@ -84,9 +89,19 @@ class RateLimitConfig(BaseConfig):
         best_match = None
         best_length = 0
         for pattern, rule in self.rules.items():
-            if path.startswith(pattern) and len(pattern) > best_length:
-                best_match = rule
-                best_length = len(pattern)
+            if not path.startswith(pattern) or len(pattern) <= best_length:
+                continue
+            # Enforce a "/" boundary at the end of the matched prefix so
+            # "/api" does not match "/apifoo" (patterns ending in "/"
+            # already carry their own boundary).
+            if (
+                len(path) > len(pattern)
+                and not pattern.endswith("/")
+                and path[len(pattern)] != "/"
+            ):
+                continue
+            best_match = rule
+            best_length = len(pattern)
 
         return best_match
 

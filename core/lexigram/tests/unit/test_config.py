@@ -129,10 +129,10 @@ class TestLexigramConfig:
         assert config.is_testing is False
         assert config.is_debug is True
 
-    def test_get_section_returns_none_for_missing(self) -> None:
-        """Test get_section returns None for missing section."""
+    def test_get_section_returns_empty_dict_for_missing(self) -> None:
+        """Test get_section returns an empty dict for a missing section."""
         config = LexigramConfig.from_dict({})
-        assert config.get_section("nonexistent") is None
+        assert config.get_section("nonexistent") == {}
 
     def test_has_section_false_for_missing(self) -> None:
         """Test has_section returns False for missing section."""

@@ -2,6 +2,7 @@
 from unittest.mock import AsyncMock, Mock
 
 import pytest
+from starlette.requests import Request
 
 from lexigram.web.security.context import SecurityContext, get_security_context
 from lexigram.web.security.guards import (
@@ -26,8 +27,14 @@ class TestAuthGuard:
 
     @pytest.mark.asyncio
     async def test_auth_guard_can_activate(self, auth_guard):
-        """Test auth guard can activate"""
-        request = Mock()
+        """Test auth guard can activate.
+
+        Uses ``Mock(spec=Request)``: an unspecced Mock satisfies the
+        runtime-checkable ``ExecutionContextProtocol`` via attribute
+        auto-creation, which would divert the guard down the
+        ``context.request`` branch and mask the assertion.
+        """
+        request = Mock(spec=Request)
         request.state.user = Mock()
         request.state.user.is_authenticated = True
 
@@ -37,7 +44,7 @@ class TestAuthGuard:
     @pytest.mark.asyncio
     async def test_auth_guard_can_activate_unauthenticated(self, auth_guard):
         """Test auth guard blocks unauthenticated users"""
-        request = Mock()
+        request = Mock(spec=Request)
         request.state.user = None
 
         can_activate = await auth_guard.can_activate(request)

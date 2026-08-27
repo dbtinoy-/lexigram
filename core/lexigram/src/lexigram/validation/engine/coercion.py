@@ -126,6 +126,8 @@ def coerce_field_value(fname: str, val: Any, type_hints: dict[str, Any], f: Any)
     """
     if val is None:
         return val
+
+    # Phase 1: resolve the effective field type (best effort).
     try:
         ftype = type_hints.get(fname, getattr(f, "type", None))
         if ftype is None:
@@ -193,7 +195,24 @@ def coerce_field_value(fname: str, val: Any, type_hints: dict[str, Any], f: Any)
         # From here, ftype should be a plain type
         if not isinstance(ftype, type):
             return val
+    except (ValueError, TypeError, ImportError, StopIteration):
+        return val
 
+    # Phase 2: strict bool coercion — intentionally OUTSIDE the blanket try.
+    # A bool field receiving an uncoercible value (e.g. ``LEX_DEBUG=garbage``)
+    # is a configuration error and must fail loudly instead of silently
+    # becoming a truthy string.  Must come before the int check.
+    if ftype is bool:
+        if isinstance(val, bool):
+            return val
+        if isinstance(val, str):
+            return coerce_str_to_bool(val)  # raises ValueError
+        if isinstance(val, int):
+            return bool(val)
+        return val
+
+    # Phase 3: lenient scalar/model coercion.
+    try:
         # Nested model from dict — duck-typed: any class with model_validate works
         if (
             hasattr(ftype, "model_validate")
@@ -222,10 +241,6 @@ def coerce_field_value(fname: str, val: Any, type_hints: dict[str, Any], f: Any)
         # Enum coercion
         if issubclass(ftype, Enum) and isinstance(val, str | int):
             return ftype(val)
-
-        # bool coercion from str (must come before int check)
-        if ftype is bool and isinstance(val, str):
-            return coerce_str_to_bool(val)
 
         # int coercion from str
         if ftype is int and isinstance(val, str):
