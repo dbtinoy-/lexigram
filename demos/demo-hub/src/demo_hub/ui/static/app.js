@@ -26,7 +26,7 @@ function card(s) {
     ? `<button class="info-btn" data-slug="${s.slug}" data-name="${s.name.replace(/"/g, "&quot;")}" title="About this demo">&#9432;</button>`
     : "";
   return `<div class="card-wrap ${filter !== "all" && !matchFilter(s) ? "hidden" : ""}">
-    <a class="card" href="${href}" target="_blank" rel="noopener"${err}>
+    <a class="card" href="${href}"${err}>
       ${dot(s)}<h3>${s.name}</h3><p>${s.blurb}</p>
       ${port}</a>
     ${infoBtn}</div>`;
@@ -141,7 +141,7 @@ function inlineMd(text) {
     .replace(/`([^`]+)`/g, "<code>$1</code>")
     .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
     .replace(/\*(.+?)\*/g, "<em>$1</em>")
-    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
 }
 
 function esc(s) {
