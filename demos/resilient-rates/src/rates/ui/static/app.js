@@ -5,8 +5,8 @@ const PAIRS = ["EUR/USD", "GBP/USD", "USD/JPY"];
 let scenario = "healthy";
 
 const $ = (id) => document.getElementById(id);
-const show = (id) => $(id).classList.remove("hidden");
-const hide = (id) => $(id).classList.add("hidden");
+const show = (el) => el.classList.remove("hidden");
+const hide = (el) => el.classList.add("hidden");
 
 function ts() {
   return new Date().toLocaleTimeString();
