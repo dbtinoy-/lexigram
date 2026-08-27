@@ -1,58 +1,118 @@
-"""Provider lifecycle — wires repositories and services into DI.
+"""Provider wiring for the task management demo.
 
-The provider is the bridge between the framework's DI container and
-your application code.  ``register()`` binds services, ``boot()``
-performs post-registration setup, ``shutdown()`` cleans up.
+Convention followed: **Provider pattern** — ``TaskProvider`` is the
+canonical shape (mirrors ``lexigram-auth`` + the boot-phase ``bind()``
+contract in ``lexigram.contracts.core.di``):
 
-Simplest patterns for new users:
-  - register() creates instances and binds them into the container
-  - boot() runs after all providers are registered (for cross-cutting setup)
-  - shutdown() cleans up resources (close connections, flush buffers)
+- ``register()`` only *declares* bindings.  Zero-arg factories cover
+  purely config-derived services; dependency-full services are declared
+  as class bindings and instantiated in :meth:`boot`.
+- ``boot()`` resolves cross-module dependencies after every provider
+  has registered and rebinds the concrete instances via
+  ``container.bind()``.
+- Controllers are constructed by the router from the container; ``boot``
+  binds their prebuilt instances so per-request resolution reuses them.
 """
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+from lexigram.contracts.core.health import (
+    HealthCheckCategory,
+    HealthCheckResult,
+    HealthStatus,
+)
 from lexigram.di.provider import Provider
+from taskapp.config import TaskAppConfig
+from taskapp.controllers.api import TasksApiController
+
+if TYPE_CHECKING:
+    from lexigram.contracts.core.di import (
+        ContainerRegistrarProtocol,
+        ContainerResolverProtocol,
+    )
+
+__all__ = ["TaskProvider"]
 
 
 class TaskProvider(Provider):
-    """Registers repositories, services, and seed data.
+    """Bind the task management services as container-managed singletons."""
 
-    The provider reads the ``task_app:`` section from yaml and
-    registers all task management services into the DI container.
-    """
+    name = "task_app"
 
-    def register(self) -> None:
-        """Bind repositories and services.
+    config_key: str | None = "task_app"
+    config_model: type | None = TaskAppConfig
 
-        The DI container resolves dependencies lazily — a service
-        requesting ``UserRepository`` gets the singleton instance
-        that was bound here.
-        """
-        from taskapp.domain import User, UserRole, Project, ProjectStatus, Task, TaskStatus
+    async def register(self, container: ContainerRegistrarProtocol) -> None:
+        """Declare bindings; concrete wiring happens in :meth:`boot`."""
+        cfg = self.config or TaskAppConfig()
 
-        # Seed data for the demo
-        self._users: dict[int, User] = {
-            1: User(id=1, name="Alice", email="alice@example.com", role=UserRole.ADMIN),
-            2: User(id=2, name="Bob", email="bob@example.com", role=UserRole.MEMBER),
+        container.singleton(TaskAppConfig, instance=cfg)
+
+        # Class bindings so the keys exist; boot() replaces them with
+        # fully-wired instances via container.bind().
+        container.singleton(TasksApiController, TasksApiController)
+
+    async def boot(self, container: ContainerResolverProtocol) -> None:
+        """Resolve cross-module dependencies and bind concrete instances."""
+        cfg = await container.resolve(TaskAppConfig)
+
+        # In-memory stores for the demo
+        users_store: dict[int, dict] = {
+            1: {
+                "id": 1,
+                "name": "Alice",
+                "email": "alice@example.com",
+                "role": "admin",
+            },
+            2: {"id": 2, "name": "Bob", "email": "bob@example.com", "role": "member"},
+        }
+        projects_store: dict[int, dict] = {
+            1: {"id": 1, "name": "Website Redesign", "owner_id": 1, "status": "active"},
+            2: {"id": 2, "name": "Mobile App", "owner_id": 2, "status": "active"},
+        }
+        tasks_store: dict[int, dict] = {
+            1: {
+                "id": 1,
+                "title": "Design homepage",
+                "project_id": 1,
+                "assignee_id": 1,
+                "status": "todo",
+                "priority": 0,
+            },
+            2: {
+                "id": 2,
+                "title": "Implement auth",
+                "project_id": 1,
+                "assignee_id": 2,
+                "status": "in_progress",
+                "priority": 1,
+            },
+            3: {
+                "id": 3,
+                "title": "Build UI components",
+                "project_id": 2,
+                "assignee_id": 1,
+                "status": "todo",
+                "priority": 0,
+            },
         }
 
-        self._projects: dict[int, Project] = {
-            1: Project(id=1, name="Website Redesign", owner_id=1),
-            2: Project(id=2, name="Mobile App", owner_id=2),
-        }
+        # Bind the wired controller
+        container.bind(
+            TasksApiController,
+            TasksApiController(
+                users_store=users_store,
+                projects_store=projects_store,
+                tasks_store=tasks_store,
+            ),
+        )
 
-        self._tasks: dict[int, Task] = {
-            1: Task(id=1, title="Design homepage", project_id=1, assignee_id=1),
-            2: Task(id=2, title="Implement auth", project_id=1, assignee_id=2),
-            3: Task(id=3, title="Build UI components", project_id=2, assignee_id=1),
-        }
-
-    def boot(self) -> None:
-        """Post-registration setup — seed data is already in memory."""
-
-    def shutdown(self) -> None:
-        """Clean up resources — nothing to do for in-memory demo."""
-
-
-__all__ = ["TaskProvider"]
+    async def health_check(self, timeout: float = 5.0) -> HealthCheckResult:
+        """Report readiness of the task manager."""
+        return HealthCheckResult(
+            component=self.name,
+            status=HealthStatus.HEALTHY,
+            category=HealthCheckCategory.READINESS,
+        )

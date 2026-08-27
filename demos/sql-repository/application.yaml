@@ -1,36 +1,35 @@
 # ╔═══════════════════════════════════════════════════════════════════════════╗
 # ║                     SQL Repository Demo — Full Reference                 ║
 # ║                                                                         ║
-# ║  Teaches: lexigram-sql with SQLite, repository CRUD, unit-of-work,     ║
-# ║           domain events, and the DI lifecycle.                          ║
+# ║  Teaches: Lexigram provider pattern with in-memory stores,              ║
+# ║           CRUD operations, and the DI lifecycle.                        ║
 # ║                                                                         ║
 # ║  LEARNING PATH:                                                         ║
 # ║    1. application.yaml   — you are here (configuration)                 ║
 # ║    2. src/taskapp/app.py — composition root (wiring)                    ║
 # ║    3. src/taskapp/di/provider.py — provider lifecycle                   ║
-# ║    4. src/taskapp/repository/ — repository pattern                      ║
-# ║    5. src/taskapp/services/ — business logic with Result[T, E]          ║
-# ║    6. src/taskapp/controllers/api.py — HTTP surface                     ║
-# ║    7. tests/ — real composition root, no mocks                          ║
+# ║    4. src/taskapp/controllers/api.py — HTTP surface                     ║
+# ║    5. tests/ — real composition root, no mocks                          ║
 # ╚═══════════════════════════════════════════════════════════════════════════╝
 
-── Framework ──────────────────────────────────────────────────────────────
 
+# ── Web ──────────────────────────────────────────────────────────────────────
+# Lexigram Web auto-configures Starlette, OpenAPI, CORS, CSRF, and
+# rate limiting from this single section.
+# ─────────────────────────────────────────────────────────────────────────────
 web:
   server:
-    host: "0.0.0.0"
+    host: 127.0.0.1
     port: 8000
+  security:
+    csrf:
+      enabled: false
 
-── Database ───────────────────────────────────────────────────────────────
 
-sql:
-  backend:
-    url: "sqlite+aiosqlite:///data/taskapp.db"
-  pool:
-    min_size: 1
-    max_size: 5
-
-── Demo ───────────────────────────────────────────────────────────────────
-
+# ── Demo ────────────────────────────────────────────────────────────────────
+# Demo-specific settings for the task management demo.  The
+# TaskProvider reads this section automatically via config_key="task_app" /
+# config_model=TaskAppConfig.
+# ─────────────────────────────────────────────────────────────────────────────
 task_app:
   project_name: "Task Manager"

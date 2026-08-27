@@ -2,6 +2,6 @@
 
 from __future__ import annotations
 
-from taskapp.controllers.api import TasksApiController
+from taskapp.ui.pages import TasksPageController
 
-__all__ = ["TasksApiController"]
+__all__ = ["TasksPageController"]

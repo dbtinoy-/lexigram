@@ -1,4 +1,4 @@
-"""Task management demo — teaches lexigram-sql repository pattern."""
+"""Task management demo — teaches Lexigram provider pattern with in-memory stores."""
 
 from __future__ import annotations
 
