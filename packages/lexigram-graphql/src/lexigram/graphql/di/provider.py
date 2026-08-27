@@ -390,7 +390,7 @@ class GraphQLProvider(_GraphQLDiscoveryMixin, Provider):
         )
 
         # Schema diff — compare current schema against baseline file when configured
-        await self._run_schema_diff(schema)
+        run_schema_diff(self.config, schema)
 
     def executor(self) -> GraphQLExecutorProtocol | None:
         """Get the GraphQL executor instance."""
