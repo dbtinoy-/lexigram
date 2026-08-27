@@ -23,7 +23,7 @@ from pathlib import Path
 import subprocess
 import sys
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
+REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 TARGET = REPO_ROOT / "docs" / "reference" / "DEPENDENCY_TREE.md"
 
 HEADER = """\

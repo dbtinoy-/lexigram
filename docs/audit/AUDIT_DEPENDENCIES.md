@@ -1,13 +1,13 @@
 # AUDIT_DEPENDENCIES.md — Lexigram Framework Dependency Freshness Snapshot
 
 > **Source**: Live command evidence from `uv pip list --outdated` and workspace
-> manifest scans against `dev/check_dep_pins.py`.
+> manifest scans against `dev/checks/dep_pins.py`.
 
 ---
 
 ## Summary
 
-- Outdated packages detected: 11
+- Outdated packages detected: 12
 - Workspace members with own pyproject.toml: 54
 - Unbounded third-party pins (baseline debt): 807
 
@@ -15,24 +15,25 @@
 
 | Tool | Status | Exit Code | Duration | Command |
 |------|--------|-----------|----------|---------|
-| `uv pip list --outdated` | **PASS** | 0 | 1152 ms | `uv pip list --outdated` |
-| `check_dep_pins.py` | **PASS** | 0 | 291 ms | `uv run python dev/check_dep_pins.py` |
+| `uv pip list --outdated` | **PASS** | 0 | 1927 ms | `uv pip list --outdated` |
+| `check_dep_pins.py` | **PASS** | 0 | 411 ms | `uv run python dev/check_dep_pins.py` |
 
 ## Outdated Packages
 
 | Package | Installed | Latest | Type |
 |---------|-----------|--------|------|
 | `argon2-cffi-bindings` | 25.1.0 | 26.1.0 | wheel |
-| `botocore` | 1.40.61 | 1.43.75 | wheel |
-| `grimp` | 3.13 | 3.15 | wheel |
-| `import-linter` | 2.6 | 2.13 | wheel |
-| `jiter` | 0.14.0 | 0.16.0 | wheel |
-| `lexigram-contracts` | 0.1.3007 | 0.1.3010 | workspace (editable) |
-| `openai` | 2.54.0 | 3.3.1 | wheel |
+| `botocore` | 1.40.61 | 1.43.81 | wheel |
+| `click` | 8.4.2 | 8.5.0 | wheel |
+| `cryptography` | 50.0.0 | 50.0.1 | wheel |
+| `filelock` | 3.32.3 | 3.32.4 | wheel |
+| `platformdirs` | 4.11.3 | 4.11.4 | wheel |
 | `pydantic-core` | 2.46.4 | 2.48.0 | wheel |
-| `pyee` | 13.0.1 | 14.0.0 | wheel |
+| `python-discovery` | 1.5.2 | 1.5.3 | wheel |
 | `rich` | 13.9.4 | 15.0.0 | wheel |
-| `tqdm` | 4.67.1 | 4.70.0 | wheel |
+| `ruff` | 0.16.3 | 0.16.4 | wheel |
+| `types-webencodings` | 0.5.0.20260408 | 0.6.0.20260826 | wheel |
+| `virtualenv` | 21.7.4 | 21.7.5 | wheel |
 
 ## Direct Dependency Manifest
 
@@ -93,4 +94,4 @@
 | `lexigram-webhook` | yes | 2 |
 | `lexigram-workflow` | yes | 8 |
 
-Baseline guard: `dev/check_dep_pins.py` fails CI on unbounded third-party pins not covered by `dev/dep_pins_baseline.json`; regenerate deliberately with `--write-baseline`.
+Baseline guard: `dev/checks/dep_pins.py` fails CI on unbounded third-party pins not covered by `dev/dep_pins_baseline.json`; regenerate deliberately with `--write-baseline`.

@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "lexigram-ai-mcp"
-version = "0.1.5003"
+version = "0.1.5004"
 description = "MCP Server for Lexigram Framework - Model Context Protocol server for AI agents"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -37,7 +37,7 @@ dependencies = [
     "lexigram-contracts>=0.1.4",
     "typing-extensions>=4.0.0",
     "typer>=0.9.0",
-    "jinja2>=3.1.0",
+    "jinja2>=3.1.0,<4",
 ]
 authors = [
     { name = "Lexigram Framework Team", email = "team@lexigram.dev" },
