@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from typing import ClassVar, Literal
 
 from lexigram.config import BaseConfig
+from lexigram.contracts.core.config import Environment
+from lexigram.validation import Field
 
 
 @dataclass(init=False)
@@ -13,6 +15,10 @@ class UpscaleConfig(BaseConfig):
     """Configuration for the upscale generation subsystem."""
 
     config_section: ClassVar[str] = "multimedia_upscale"
+    name: str = "multimedia_upscale"
+    enabled: bool = True
+
+    env: Environment | None = Field(None, description="Deployment environment")
     backend: Literal["real-esrgan", "hat"] = "real-esrgan"
     real_esrgan_base_url: str = "http://localhost:5400"
     hat_base_url: str = "http://localhost:5401"

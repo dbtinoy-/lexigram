@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from typing import ClassVar, Literal
 
 from lexigram.config import BaseConfig
+from lexigram.contracts.core.config import Environment
+from lexigram.validation import Field
 
 
 @dataclass(init=False)
@@ -13,6 +15,10 @@ class MusicConfig(BaseConfig):
     """Configuration for the music generation subsystem."""
 
     config_section: ClassVar[str] = "multimedia_music"
+    name: str = "multimedia_music"
+    enabled: bool = True
+
+    env: Environment | None = Field(None, description="Deployment environment")
     backend: Literal[
         "local-http", "stability-audio", "ace-step", "stable-audio-open"
     ] = "local-http"

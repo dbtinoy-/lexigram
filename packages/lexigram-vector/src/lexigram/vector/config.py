@@ -278,6 +278,8 @@ class VectorConfig(BaseConfig):
 
     config_section: ClassVar[str] = "vector"
 
+    name: str = "vector"
+
     model_config: ClassVar[ConfigDict] = cast(
         "ConfigDict",
         {
@@ -288,6 +290,7 @@ class VectorConfig(BaseConfig):
     )
 
     enabled: bool = Field(default=True, description="Enable the vector store subsystem")
+    env: Environment | None = Field(None, description="Deployment environment")
 
     backend: str = Field(
         default=const.BACKEND_MEMORY, description="Vector store backend to use"

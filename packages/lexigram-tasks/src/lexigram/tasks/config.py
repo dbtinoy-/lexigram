@@ -257,24 +257,7 @@ class TaskConfig(BaseConfig):
             "the unnamed TaskQueueProtocol binding for backward compatibility."
         ),
     )
-    env: str | None = Field(
-        None, description="Environment (development/staging/production)"
-    )
-
-    @property
-    def is_production(self) -> bool:
-        """Check if running in production environment."""
-        return self.env == "production"
-
-    @property
-    def is_development(self) -> bool:
-        """Check if running in development environment."""
-        return self.env in ("development", "dev")
-
-    @property
-    def is_test(self) -> bool:
-        """Check if running in test environment."""
-        return self.env in ("test", "testing")
+    env: Environment | None = Field(default=None, description="Deployment environment")
 
     def validate_for_environment(
         self, env: Environment | None = None
@@ -282,12 +265,12 @@ class TaskConfig(BaseConfig):
         """Validate task configuration for the given environment.
 
         Args:
-            env: Target environment; resolved from ``LEX_ENV`` when ``None``.
+            env: Target environment; resolved from ``self.env`` when ``None``.
 
         Returns:
             List of :class:`~lexigram.contracts.core.config.ConfigIssue` instances.
         """
-        resolved = env or Environment.from_env()
+        resolved = env or self.env
         issues: list[ConfigIssue] = []
         if resolved == Environment.PRODUCTION:
             placeholder_redis = tasks_const.DEFAULT_REDIS_URL

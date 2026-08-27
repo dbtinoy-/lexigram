@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from typing import ClassVar, cast
 
 from lexigram.config import BaseConfig
+from lexigram.contracts.core.config import Environment
 from lexigram.tenancy.constants import (
     DEFAULT_CONFIG_CACHE_TTL,
     DEFAULT_HEADER_NAME,
@@ -115,6 +116,10 @@ class TenancyConfig(BaseConfig):
     """
 
     config_section: ClassVar[str] = "tenancy"
+
+    name: str = "tenancy"
+    enabled: bool = True
+    env: Environment | None = Field(None, description="Deployment environment")
 
     model_config: ClassVar[ConfigDict] = cast(
         "ConfigDict",

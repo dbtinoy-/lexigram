@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
 from typing import ClassVar
 
@@ -10,14 +11,19 @@ except ImportError:
 
 from lexigram.cli import constants as cli_const
 from lexigram.config import BaseConfig
+from lexigram.contracts.core.config import Environment
 from lexigram.validation import ConfigDict, Field
 
 
+@dataclass(init=False)
 class CLIConfig(BaseConfig):
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="ignore")
 
     config_section: ClassVar[str] = "cli"
+    name: str = "cli"
+    enabled: bool = True
 
+    env: Environment | None = Field(None, description="Deployment environment")
     default_template: str = Field(default="web-api")
     default_database: str = Field(default="postgres")
     color: bool = Field(default=True)

@@ -35,6 +35,8 @@ class ObservabilityConfig(BaseConfig):
     enabled: bool = Field(
         default=True, description="Master on/off switch for all observability"
     )
+    name: str = "ai_observability"
+    env: Environment | None = Field(None, description="Deployment environment")
     metrics_enabled: bool = Field(default=True, description="Enable metrics collection")
     tracing_enabled: bool = Field(
         default=True, description="Enable distributed tracing"

@@ -42,18 +42,20 @@ class TestCacheConfig:
 
     def test_custom_values(self):
         """Test CacheConfig accepts custom values."""
+        from lexigram.contracts.core.config import Environment
+
         config = CacheConfig(
             name="test_cache",
             version="1.0",
             enabled=True,
-            environment="test",
+            env=Environment.TEST,
             debug=True,
         )
 
         assert config.name == "test_cache"
         assert config.version == "1.0"
         assert config.enabled is True
-        assert config.environment == "test"
+        assert config.environment == Environment.TEST
         assert config.debug is True
 
     def test_with_backends(self):

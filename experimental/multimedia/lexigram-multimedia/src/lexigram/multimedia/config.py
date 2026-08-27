@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import ClassVar
 
 from lexigram.config import BaseConfig
+from lexigram.contracts.core.config import Environment
 from lexigram.multimedia.beat.config import BeatAnalysisConfig
 from lexigram.multimedia.image.config import ImageConfig
 from lexigram.multimedia.interpolate.config import InterpolationConfig
@@ -21,6 +22,9 @@ class MultimediaConfig(BaseConfig):
     """Umbrella configuration for the multimedia subsystem."""
 
     config_section: ClassVar[str] = "multimedia"
+    name: str = "multimedia"
+    enabled: bool = True
+    env: Environment | None = Field(None, description="Deployment environment")
     tts: TTSConfig = Field(default_factory=TTSConfig)
     music: MusicConfig = Field(default_factory=MusicConfig)
     video: VideoConfig = Field(default_factory=VideoConfig)

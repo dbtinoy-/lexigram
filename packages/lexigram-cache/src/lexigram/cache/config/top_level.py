@@ -3,14 +3,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-import os
 from typing import Any, ClassVar, cast
 
 from lexigram.cache import constants as const
-from lexigram.cache.config.backends import CacheBackendConfig
+from lexigram.cache.config.backends import CacheBackendConfig, RedisBackendConfig
 from lexigram.cache.config.service import CacheServiceConfig
 from lexigram.cache.types import BackendType
 from lexigram.config import BaseConfig
+from lexigram.contracts.core.config import Environment
 from lexigram.validation import (
     ConfigDict,
     Field,
@@ -57,39 +57,18 @@ class CacheConfig(BaseConfig):
         default_factory=CacheServiceConfig,
         description="Service config",
     )
-    environment: str = Field(const.DEFAULT_CACHE_ENVIRONMENT, description="Environment")  # type: ignore[assignment]
-    env: str | None = Field(
-        None, description="Environment (development/staging/production)"
-    )
+    env: Environment | None = Field(default=None, description="Deployment environment")
     debug: bool = Field(const.DEFAULT_CACHE_DEBUG, description="Debug mode")
-
-    @property
-    def is_production(self) -> bool:
-        """Check if running in production environment."""
-        return (self.env or self.environment) == "production"
-
-    @property
-    def is_development(self) -> bool:
-        """Check if running in development environment."""
-        env_val = self.env or self.environment
-        return env_val in ("development", "dev")
-
-    @property
-    def is_test(self) -> bool:
-        """Check if running in test environment."""
-        env_val = self.env or self.environment
-        return env_val in ("test", "testing")
 
     @model_validator(mode="after")
     def validate_production_security(self) -> CacheConfig:
         """Block insecure cache configurations in production."""
-        env = os.getenv(const.ENV_VAR_LEX_ENV, const.DEFAULT_CACHE_ENVIRONMENT).lower()
-        if env == "production":
+        if self.environment == Environment.PRODUCTION:
             for backend in self.backends:
-                if backend.type == BackendType.REDIS:
+                if isinstance(backend, RedisBackendConfig):
                     if (
-                        backend.redis_password
-                        and backend.redis_password.lower() in const.INSECURE_PASSWORDS
+                        backend.password
+                        and backend.password.lower() in const.INSECURE_PASSWORDS
                     ):
                         raise ValueError(
                             const.ERROR_MSG_INSECURE_PASSWORD.format(
@@ -98,8 +77,8 @@ class CacheConfig(BaseConfig):
                                 env_var=f"{const.ENV_PREFIX}BACKENDS__<idx>__REDIS_PASSWORD",
                             ),
                         )
-                    if backend.redis_url and any(
-                        f":{d}@" in backend.redis_url.lower()
+                    if backend.url and any(
+                        f":{d}@" in backend.url.lower()
                         for d in const.INSECURE_PASSWORDS
                     ):
                         raise ValueError(

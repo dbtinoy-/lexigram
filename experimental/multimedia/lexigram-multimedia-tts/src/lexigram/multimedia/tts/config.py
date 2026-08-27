@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from typing import ClassVar, Literal
 
 from lexigram.config import BaseConfig
+from lexigram.contracts.core.config import Environment
+from lexigram.validation import Field
 
 
 @dataclass(init=False)
@@ -13,6 +15,10 @@ class TTSConfig(BaseConfig):
     """Configuration for the TTS subsystem."""
 
     config_section: ClassVar[str] = "multimedia_tts"
+    name: str = "multimedia_tts"
+    enabled: bool = True
+
+    env: Environment | None = Field(None, description="Deployment environment")
     backend: Literal[
         "local-http", "elevenlabs", "openai", "chatterbox", "kokoro", "f5-tts", "piper"
     ] = "local-http"

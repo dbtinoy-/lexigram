@@ -35,6 +35,7 @@ class SessionConfig(BaseConfig):
     name: str = Field(
         default="ai-session", description="Logical name used for DI registration keys"
     )
+    env: Environment | None = Field(None, description="Deployment environment")
 
     # Lifecycle
     default_system_prompt: str | None = Field(

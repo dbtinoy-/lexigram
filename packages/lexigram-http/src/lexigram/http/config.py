@@ -7,6 +7,7 @@ from typing import ClassVar
 from urllib.parse import urlparse
 
 from lexigram.config.base import BaseConfig
+from lexigram.contracts.core.config import Environment
 from lexigram.http.constants import (
     DEFAULT_MAX_CONNECTIONS,
     DEFAULT_MAX_CONNECTIONS_PER_HOST,
@@ -16,7 +17,7 @@ from lexigram.http.constants import (
 )
 from lexigram.http.exceptions import HTTPClientError
 from lexigram.http.validation import validate_url
-from lexigram.validation import ConfigDict
+from lexigram.validation import ConfigDict, Field
 
 
 @dataclass(init=False)
@@ -63,6 +64,10 @@ class HTTPClientConfig(BaseConfig):
     """
 
     config_section: ClassVar[str] = "http"
+
+    name: str = "http"
+    enabled: bool = True
+    env: Environment | None = Field(None, description="Deployment environment")
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="ignore")
 

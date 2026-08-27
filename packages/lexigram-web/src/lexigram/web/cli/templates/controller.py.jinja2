@@ -8,15 +8,28 @@ CRUD methods (create/get/list/update/delete) in your DI provider.
 """
 from __future__ import annotations
 
+from typing import Any
+
+from starlette.requests import Request
+
 from lexigram.web import Controller, delete, get, post, put
 from lexigram.web.exceptions import (
     BadRequestError,
-    InternalServerError,
     NotFoundError,
 )
-from lexigram.web.routing.controllers import Controller
 
 from .repositories.{{ model_name }}_repository import {{ class_name }}Repository
+
+
+def _to_dict(item: Any) -> dict[str, Any]:
+    """Serialize a repo result to a JSON-safe dict."""
+    if isinstance(item, dict):
+        return item
+    if hasattr(item, "to_dict"):
+        return item.to_dict()
+    if hasattr(item, "__dict__"):
+        return dict(vars(item))
+    return {"value": item}
 
 
 class {{ class_name }}Controller(Controller):
@@ -30,16 +43,11 @@ class {{ class_name }}Controller(Controller):
     async def list(
         self,
         limit: int = 20,
-        offset: int = 0,
     ) -> dict[str, Any]:
-        items = await self.repo.list(limit=limit, offset=offset)
+        items = await self.repo.list(limit=limit)
         return {
-            "items": [
-                item.to_dict() if hasattr(item, "to_dict") else item
-                for item in items
-            ],
+            "items": [_to_dict(item) for item in items],
             "limit": limit,
-            "offset": offset,
         }
 
     @get("/{{ resource_path }}/{item_id}")
@@ -49,17 +57,18 @@ class {{ class_name }}Controller(Controller):
             raise NotFoundError(
                 f"{{ class_name }} not found with id: {item_id}"
             )
-        return item.to_dict() if hasattr(item, "to_dict") else item
+        return _to_dict(item)
 
     @post("/{{ resource_path }}", status_code=201)
     async def create(self, request: Request) -> dict[str, Any]:
-        import json as _json
-
-        data = _json.loads(await request.body() or b"{}")
-        if not data:
-            raise BadRequestError("Request body is required")
+        try:
+            data: Any = await request.json()
+        except Exception as exc:
+            raise BadRequestError("Invalid JSON body") from exc
+        if not isinstance(data, dict) or not data:
+            raise BadRequestError("Request body must be a non-empty JSON object")
         created = await self.repo.create(data)
-        return created.to_dict() if hasattr(created, "to_dict") else created
+        return _to_dict(created)
 
     @put("/{{ resource_path }}/{item_id}")
     async def update(
@@ -67,17 +76,18 @@ class {{ class_name }}Controller(Controller):
         item_id: str,
         request: Request,
     ) -> dict[str, Any]:
-        import json as _json
-
-        data = _json.loads(await request.body() or b"{}")
-        if not data:
-            raise BadRequestError("Request body is required")
+        try:
+            data: Any = await request.json()
+        except Exception as exc:
+            raise BadRequestError("Invalid JSON body") from exc
+        if not isinstance(data, dict) or not data:
+            raise BadRequestError("Request body must be a non-empty JSON object")
         updated = await self.repo.update(item_id, data)
         if updated is None:
             raise NotFoundError(
                 f"{{ class_name }} not found with id: {item_id}"
             )
-        return updated.to_dict() if hasattr(updated, "to_dict") else updated
+        return _to_dict(updated)
 
     @delete("/{{ resource_path }}/{item_id}")
     async def delete(self, item_id: str) -> dict[str, str]:

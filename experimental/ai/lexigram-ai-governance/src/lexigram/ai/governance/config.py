@@ -33,6 +33,8 @@ class GovernanceConfig(BaseConfig):
     )
 
     enabled: bool = Field(default=True, description="Enable AI governance")
+    name: str = "ai_governance"
+    env: Environment | None = Field(None, description="Deployment environment")
     monthly_budget: float | None = Field(
         default=None,
         description="Monthly budget in dollars",

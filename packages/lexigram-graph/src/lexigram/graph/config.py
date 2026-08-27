@@ -112,6 +112,8 @@ class GraphConfig(BaseConfig):
 
     config_section: ClassVar[str] = "graph"
 
+    name: str = "graph"
+
     model_config: ClassVar[ConfigDict] = cast(
         "ConfigDict",
         {
@@ -122,6 +124,7 @@ class GraphConfig(BaseConfig):
     )
 
     enabled: bool = Field(default=True, description="Enable the graph store subsystem")
+    env: Environment | None = Field(None, description="Deployment environment")
 
     backend: str = Field(
         default=const.BACKEND_MEMORY,

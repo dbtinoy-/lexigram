@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from typing import ClassVar, Literal
 
 from lexigram.config import BaseConfig
+from lexigram.contracts.core.config import Environment
+from lexigram.validation import Field
 
 
 @dataclass(init=False)
@@ -13,6 +15,10 @@ class ImageConfig(BaseConfig):
     """Configuration for the image generation subsystem."""
 
     config_section: ClassVar[str] = "multimedia_image"
+    name: str = "multimedia_image"
+    enabled: bool = True
+
+    env: Environment | None = Field(None, description="Deployment environment")
     backend: Literal["local-http", "stability", "openai", "comfyui"] = "local-http"
     local_http_base_url: str = "http://localhost:5005"
     openai_api_key_secret_name: str = "openai_api_key"  # noqa: S105  # secret NAME, not a value

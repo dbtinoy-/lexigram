@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import ClassVar
 
 from lexigram.config.base import BaseConfig
+from lexigram.contracts.core.config import Environment
 from lexigram.validation import ConfigDict, Field
 from lexigram.webhook import constants as const
 
@@ -35,6 +36,10 @@ class WebhookConfig(BaseConfig):
     """
 
     config_section: ClassVar[str] = "webhook"
+
+    name: str = "webhook"
+    enabled: bool = True
+    env: Environment | None = Field(None, description="Deployment environment")
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="ignore")
 

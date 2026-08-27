@@ -15,9 +15,10 @@ Example:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import cast
+from typing import ClassVar, cast
 
 from lexigram.config import BaseConfig
+from lexigram.contracts.core.config import Environment
 from lexigram.testing import constants as test_const
 from lexigram.validation import ConfigDict, Field
 
@@ -33,6 +34,8 @@ class TestingConfig(BaseConfig):
         cleanup_temp_files: Clean up temporary files after tests
     """
 
+    config_section: ClassVar[str] = "testing"
+
     model_config = cast(
         "ConfigDict",
         {
@@ -42,7 +45,9 @@ class TestingConfig(BaseConfig):
         },
     )
 
+    name: str = "testing"
     enabled: bool = True
+    env: Environment | None = Field(None, description="Deployment environment")
     db_reuse: bool = Field(
         default=True,
         description="Reuse test databases between tests",

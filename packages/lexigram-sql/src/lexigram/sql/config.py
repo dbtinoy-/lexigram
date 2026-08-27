@@ -19,10 +19,11 @@ Example:
 from __future__ import annotations
 
 from dataclasses import dataclass
-import os
 from typing import ClassVar, cast
 
 from lexigram.config import BaseConfig
+from lexigram.contracts.core import Duration
+from lexigram.contracts.core.config import Environment
 from lexigram.contracts.exceptions import ConfigurationError
 from lexigram.domain import DomainModel
 from lexigram.sql import constants as const
@@ -64,8 +65,6 @@ class DatabaseBackendConfig(DomainModel):
 class DatabasePoolConfig(DomainModel):
     """Connection pool configuration."""
 
-    from lexigram.contracts.core import Duration
-
     min_size: int = Field(default=const.DEFAULT_POOL_MIN_SIZE, ge=0)
     max_size: int = Field(default=const.DEFAULT_POOL_MAX_SIZE, ge=1)
     max_overflow: int = Field(default=5, ge=0)
@@ -85,8 +84,6 @@ class DatabasePoolConfig(DomainModel):
 @dataclass(init=False)
 class DatabaseOperationConfig(DomainModel):
     """Database operation configuration."""
-
-    from lexigram.contracts.core import Duration
 
     echo: bool = Field(default=False)
     statement_timeout: Duration = Field(default=Duration.seconds(60))
@@ -130,8 +127,6 @@ class NamedDatabaseConfig(DomainModel):
 class DatabaseOutboxConfig(DomainModel):
     """Outbox pattern configuration."""
 
-    from lexigram.contracts.core import Duration
-
     enabled: bool = Field(default=True)
     poll_interval: Duration = Field(default=Duration.seconds(5))
     batch_max_age: Duration = Field(default=Duration.seconds(30))
@@ -140,8 +135,6 @@ class DatabaseOutboxConfig(DomainModel):
 @dataclass(init=False)
 class DatabaseMigrationConfig(DomainModel):
     """Migration configuration."""
-
-    from lexigram.contracts.core import Duration
 
     lock_timeout: Duration = Field(default=Duration.seconds(30))
 
@@ -176,6 +169,7 @@ class DatabaseConfig(BaseConfig):
 
     name: str = "database"
     enabled: bool = True
+    env: Environment | None = Field(None, description="Deployment environment")
     backend: DatabaseBackendConfig = Field(
         default_factory=lambda: DatabaseBackendConfig(url="sqlite:///data.db"),
     )
@@ -196,18 +190,10 @@ class DatabaseConfig(BaseConfig):
         ),
     )
 
-    @property
-    def is_production(self) -> bool:
-        """Return True if running in production environment."""
-        from lexigram.contracts.core import Environment
-
-        return Environment.from_env() == Environment.PRODUCTION
-
     @model_validator(mode="after")
     def validate_production_security(self) -> DatabaseConfig:
         """Block insecure database configurations in production."""
-        env = os.getenv("LEX_ENV", "development").lower()
-        if env == "production":
+        if self.environment == Environment.PRODUCTION:
             url = self.backend.url.get_secret_value().lower()
             insecure_patterns = [
                 ":password@",

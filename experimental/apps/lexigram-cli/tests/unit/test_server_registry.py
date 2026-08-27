@@ -124,13 +124,13 @@ class TestHypercornBackend:
 class TestGranianBackend:
     """build_start_command and build_dev_command for Granian."""
 
-    def test_start_command_uses_asgi3_interface(self) -> None:
+    def test_start_command_uses_asgi_interface(self) -> None:
         backend = GranianBackend()
         cfg = ServerConfig(entry_point="app:app", host="127.0.0.1", port=8000)
         cmd = backend.build_start_command(cfg)
         assert cmd[0] == "granian"
         assert "--interface" in cmd
-        assert "asgi3" in cmd
+        assert "asgi" in cmd
         assert "app:app" in cmd
 
     def test_start_command_host_and_port_present(self) -> None:

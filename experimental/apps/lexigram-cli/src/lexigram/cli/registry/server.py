@@ -142,7 +142,7 @@ class GranianBackend(ServerBackend):
         cmd = [
             "granian",
             "--interface",
-            "asgi3",
+            "asgi",
             "--host",
             config.host,
             "--port",
@@ -157,7 +157,7 @@ class GranianBackend(ServerBackend):
         return [
             "granian",
             "--interface",
-            "asgi3",
+            "asgi",
             "--host",
             config.host,
             "--port",
@@ -187,7 +187,7 @@ class GunicornBackend(ServerBackend):
             "-b",
             f"{config.host}:{config.port}",
             "-k",
-            "uvicorn.workers.UvicornWorker",
+            "uvicorn_worker.UvicornWorker",
             config.entry_point,
         ]
 
@@ -199,7 +199,7 @@ class GunicornBackend(ServerBackend):
             "-b",
             f"{config.host}:{config.port}",
             "-k",
-            "uvicorn.workers.UvicornWorker",
+            "uvicorn_worker.UvicornWorker",
             "--reload",
             config.entry_point,
         ]
@@ -242,7 +242,11 @@ class ServerRegistry:
 
     @classmethod
     def get_default(cls) -> ServerBackend:
-        """Get the default backend (first available)."""
+        """Get the default backend (prefer granian, then uvicorn, then first available)."""
+        for preferred in ("granian", "uvicorn"):
+            b = cls._backends.get(preferred)
+            if b and b.is_available():
+                return b
         available = cls.get_available()
         if available:
             return available[0]

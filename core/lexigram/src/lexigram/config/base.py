@@ -48,10 +48,10 @@ class BaseConfig(DomainModel):
     #: Subclasses declare this once (e.g. ``config_section = "cache"``) so
     #: callers never need to pass ``section=`` explicitly.  Matches the key
     #: after the ``LEX_`` prefix in env vars (``LEX_CACHE__`` → ``"cache"``).
-    #: When ``None`` (the default on ``BaseConfig``), the entire merged dict
+    #: When empty (the default on ``BaseConfig``), the entire merged dict
     #: is validated as-is — suitable when the YAML file is dedicated to a
     #: single package.
-    config_section: ClassVar[str | None] = None
+    config_section: ClassVar[str] = ""
 
     @classmethod
     def from_yaml(
@@ -123,14 +123,47 @@ class BaseConfig(DomainModel):
 
         raw = loader._collect_sync(None)
         resolved_section = section if section is not None else cls.config_section
-        if resolved_section is not None:
+        if resolved_section:
             raw = raw.get(resolved_section, {})
         return loader._validate(cls, raw)
 
     @property
     def environment(self) -> Environment:
-        """The active deployment environment (read from ``LEX_ENV``)."""
+        """The active deployment environment.
+
+        Reads from the ``env`` field first; falls back to ``LEX_ENV``.
+        """
+        env_val = getattr(self, "env", None)
+        if env_val is not None:
+            if isinstance(env_val, Environment):
+                return env_val
+            return Environment(env_val)
         return Environment.from_env()
+
+    @property
+    def is_production(self) -> bool:
+        """Return ``True`` when the active environment is production."""
+        return self.environment == Environment.PRODUCTION
+
+    @property
+    def is_development(self) -> bool:
+        """Return ``True`` when the active environment is development."""
+        return self.environment == Environment.DEVELOPMENT
+
+    @property
+    def is_testing(self) -> bool:
+        """Return ``True`` when the active environment is testing."""
+        return self.environment == Environment.TEST
+
+    @property
+    def is_staging(self) -> bool:
+        """Return ``True`` when the active environment is staging."""
+        return self.environment == Environment.STAGING
+
+    @property
+    def is_debug(self) -> bool:
+        """Return ``True`` when debug mode is enabled."""
+        return getattr(self, "debug", False)
 
     def get(self, key: str, default: Any = None) -> Any:
         """Get configuration value by dot-notation key or attribute.

@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import ClassVar, Literal
 
 from lexigram.config import BaseConfig
+from lexigram.contracts.core.config import Environment
 from lexigram.validation import Field
 
 
@@ -14,6 +15,10 @@ class VideoProcessingConfig(BaseConfig):
     """Configuration for the local FFmpeg video-processing pipeline."""
 
     config_section: ClassVar[str] = "multimedia_video_processing"
+    name: str = "multimedia_video_processing"
+    enabled: bool = True
+
+    env: Environment | None = Field(None, description="Deployment environment")
     ffmpeg_binary: str = "ffmpeg"
     max_concurrent_jobs: int = 2
     temp_dir: str | None = None
@@ -26,6 +31,10 @@ class VideoConfig(BaseConfig):
     """Configuration for the video generation subsystem."""
 
     config_section: ClassVar[str] = "multimedia_video"
+    name: str = "multimedia_video"
+    enabled: bool = True
+
+    env: Environment | None = Field(None, description="Deployment environment")
     backend: Literal[
         "local-http", "runway", "openai", "wan22", "cogvideox", "svd", "comfyui"
     ] = "local-http"

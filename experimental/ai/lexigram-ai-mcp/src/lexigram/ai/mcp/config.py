@@ -7,6 +7,7 @@ from typing import ClassVar, cast
 
 from lexigram.ai.mcp.constants import ENV_NESTED_DELIMITER, ENV_PREFIX
 from lexigram.config.base import BaseConfig
+from lexigram.contracts.core.config import Environment
 from lexigram.validation import ConfigDict, Field
 
 
@@ -142,6 +143,8 @@ class MCPConfig(BaseConfig):
     )
 
     enabled: bool = Field(default=True, description="Enable the MCP server subsystem")
+    name: str = "ai_mcp"
+    env: Environment | None = Field(None, description="Deployment environment")
 
     host: str = Field(default="0.0.0.0")  # noqa: S104 — config default, operator overridable
     """Host to bind to (for HTTP transport)."""

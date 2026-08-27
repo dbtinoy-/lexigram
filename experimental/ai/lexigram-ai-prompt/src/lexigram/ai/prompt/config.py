@@ -12,6 +12,7 @@ from lexigram.ai.prompt.constants import (
 )
 from lexigram.ai.prompt.rendering.engine import RenderFormat
 from lexigram.config.base import BaseConfig
+from lexigram.contracts.core.config import Environment
 from lexigram.validation import ConfigDict, Field
 
 
@@ -45,6 +46,8 @@ class PromptConfig(BaseConfig):
     )
 
     enabled: bool = Field(default=True, description="Enable the AI prompt subsystem")
+    name: str = "ai_prompt"
+    env: Environment | None = Field(None, description="Deployment environment")
 
     default_format: RenderFormat = Field(default=DEFAULT_RENDER_FORMAT)
     """Rendering format applied to templates that don't specify their own."""

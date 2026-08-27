@@ -6,6 +6,7 @@ from typing import ClassVar, cast
 
 from lexigram.ai.agents import constants as const
 from lexigram.config.base import BaseConfig
+from lexigram.contracts.core.config import Environment
 from lexigram.validation import ConfigDict, Field
 
 ENV_PREFIX: str = const.ENV_PREFIX
@@ -42,6 +43,8 @@ class AgentConfig(BaseConfig):
     )
 
     enabled: bool = Field(default=True, description="Enable the AI agents subsystem")
+    name: str = "ai_agents"
+    env: Environment | None = Field(None, description="Deployment environment")
 
     max_iterations: int = Field(
         default=10,

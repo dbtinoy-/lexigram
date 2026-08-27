@@ -2,15 +2,18 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import ClassVar, cast
 
 from lexigram.ai.skills import constants as const
 from lexigram.config.base import BaseConfig
+from lexigram.contracts.core.config import Environment
 from lexigram.validation import ConfigDict, Field
 
 ENV_PREFIX: str = const.ENV_PREFIX
 
 
+@dataclass(init=False)
 class SkillsConfig(BaseConfig):
     """Configuration for the skills subsystem.
 
@@ -46,6 +49,8 @@ class SkillsConfig(BaseConfig):
     name: str = Field(
         default="ai-skills", description="Logical name used for DI registration keys"
     )
+    enabled: bool = Field(default=True, description="Enable the AI skills subsystem")
+    env: Environment | None = Field(None, description="Deployment environment")
 
     # Execution
     default_timeout_seconds: float = Field(

@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import ClassVar
 
 from lexigram.config.base import BaseConfig
+from lexigram.contracts.core.config import Environment
 from lexigram.features.constants import (
     DEFAULT_CACHE_TTL,
     DEFAULT_ENABLED,
@@ -27,6 +28,8 @@ class FeatureFlagsConfig(BaseConfig):
 
     config_section: ClassVar[str] = "features"
 
+    name: str = "features"
+
     model_config: ClassVar[ConfigDict] = ConfigDict(  # type: ignore[typeddict-unknown-key]
         env_prefix="LEX_FEATURES__",
         env_nested_delimiter=ENV_NESTED_DELIMITER,
@@ -36,6 +39,7 @@ class FeatureFlagsConfig(BaseConfig):
     enabled: bool = Field(
         default=True, description="Enable the feature flags subsystem"
     )
+    env: Environment | None = Field(None, description="Deployment environment")
 
     cache_ttl: int = Field(
         default=DEFAULT_CACHE_TTL,

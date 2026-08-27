@@ -16,6 +16,7 @@ from lexigram.cache.config import (
     MemoryBackendConfig,
     RedisBackendConfig,
 )
+from lexigram.contracts.core.config import Environment
 
 
 class TestCacheConfig:
@@ -28,16 +29,18 @@ class TestCacheConfig:
         assert config.name == "cache"
         assert config.version == "1.0.0"
         assert config.enabled is True
-        assert config.environment == "development"
+        assert config.environment == Environment.DEVELOPMENT
         assert config.debug is False
         assert config.backends == []
         assert isinstance(config.service, CacheServiceConfig)
 
     def test_cache_config_with_backends(self):
         """Test CacheConfig with backend configurations."""
+        from lexigram.contracts.core.config import Environment
+
         config = CacheConfig(
             name="test_config",
-            environment="production",
+            env=Environment.PRODUCTION,
             debug=True,
             backends=[
                 MemoryBackendConfig(name="memory_backend", default=True),
@@ -55,7 +58,7 @@ class TestCacheConfig:
         )
 
         assert config.name == "test_config"
-        assert config.environment == "production"
+        assert config.environment == Environment.PRODUCTION
         assert config.debug is True
         assert len(config.backends) == 2
         assert config.backends[0].name == "memory_backend"
@@ -71,9 +74,11 @@ class TestEnvironmentConfigLoader:
 
     def test_from_dict_basic(self):
         """Test loading configuration from a dictionary."""
+        from lexigram.contracts.core.config import Environment
+
         config_dict = {
             "name": "dict_config",
-            "environment": "test",
+            "env": Environment.TEST,
             "debug": True,
             "backends": [
                 {
@@ -93,7 +98,7 @@ class TestEnvironmentConfigLoader:
 
         assert isinstance(config, CacheConfig)
         assert config.name == "dict_config"
-        assert config.environment == "test"
+        assert config.environment == Environment.TEST
         assert config.debug is True
         assert len(config.backends) == 1
         assert config.backends[0].name == "test_backend"
@@ -180,7 +185,7 @@ class TestEnvironmentConfigLoader:
         """Test loading configuration from JSON file."""
         json_content = {
             "name": "json_config",
-            "environment": "production",
+            "env": "production",
             "debug": False,
             "backends": [
                 {
@@ -232,7 +237,7 @@ service:
             with patch("yaml.safe_load") as mock_yaml:
                 mock_yaml.return_value = {
                     "name": "yaml_config",
-                    "environment": "staging",
+                    "env": "staging",
                     "debug": False,
                     "backends": [
                         {
@@ -301,7 +306,7 @@ service:
         """Test loading configuration without backends key."""
         config_dict = {
             "name": "no_backends_config",
-            "environment": "test",
+            "env": "test",
         }
 
         config = EnvironmentConfigLoader.from_dict(config_dict)

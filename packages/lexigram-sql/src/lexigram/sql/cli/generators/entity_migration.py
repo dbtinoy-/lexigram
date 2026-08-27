@@ -17,11 +17,14 @@ class EntityMigrationGenerator(GeneratorBase):
     description = "Generate a chained alembic migration for an entity"
 
     _SA_TYPES = {
-        "str": "String(length=255)", "string": "String(length=255)",
+        "str": "String(length=255)",
+        "string": "String(length=255)",
         "text": "Text",
-        "int": "Integer", "integer": "Integer",
+        "int": "Integer",
+        "integer": "Integer",
         "float": "Float",
-        "bool": "Boolean", "boolean": "Boolean",
+        "bool": "Boolean",
+        "boolean": "Boolean",
         "datetime": "DateTime(timezone=True)",
         "uuid": "String(length=32)",
     }
@@ -59,8 +62,6 @@ class EntityMigrationGenerator(GeneratorBase):
             },
         )
 
-        file_path = (
-            self.output_dir / f"{rev_id}_create_{table}.py"
-        )
+        file_path = self.output_dir / f"{rev_id}_create_{table}.py"
         self.stage(file_path, content)
         return self.finalize(self.commit(resolve_options(**options)))

@@ -133,29 +133,37 @@ class TestRunServer:
         assert call_args[1]["reload"] is True
         assert call_args[1]["workers"] == 4
 
-    def test_raises_import_error_when_granian_unavailable(self) -> None:
-        """String app: run_server raises ImportError when Granian is unavailable."""
+    def test_falls_back_to_uvicorn_when_granian_unavailable(self) -> None:
+        """String app: run_server falls back to Uvicorn when Granian is unavailable."""
         granian_modules = [k for k in sys.modules if k.startswith("granian")]
         removed = {k: sys.modules.pop(k) for k in granian_modules}
 
-        try:
-            from lexigram.web.server.runner import run_server
+        fake_uvicorn = _FakeUvicorn()
 
-            with (
-                patch.dict("sys.modules", {"granian": None, "granian.constants": None}),
-                pytest.raises(ImportError, match="Granian is not installed"),
-            ):
-                run_server("module:app")
+        try:
+            with patch.dict("sys.modules", {"granian": None, "granian.constants": None, "uvicorn": fake_uvicorn.make_module()}):
+                from lexigram.web.server.runner import run_server
+
+                run_server("module:app", host="127.0.0.1", port=9000)
         finally:
             sys.modules.update(removed)
 
+        assert len(fake_uvicorn.configs) == 1
+        config = fake_uvicorn.configs[0]
+        assert config.app == "module:app"
+        assert config.host == "127.0.0.1"
+        assert config.port == 9000
+
     def test_instance_uses_uvicorn(self) -> None:
-        """App instance: run_server delegates to Uvicorn, never Granian."""
+        """App instance: run_server delegates to Uvicorn when Granian unavailable."""
         mock_app = MagicMock()
         fake_uvicorn = _FakeUvicorn()
 
         def _run() -> None:
-            with patch.dict("sys.modules", {"uvicorn": fake_uvicorn.make_module()}):
+            with patch.dict(
+                "sys.modules",
+                {"uvicorn": fake_uvicorn.make_module(), "granian": None, "granian.constants": None},
+            ):
                 from lexigram.web.server.runner import run_server
 
                 run_server(mock_app, host="0.0.0.0", port=8080, workers=2)
@@ -178,7 +186,10 @@ class TestRunServer:
         fake_uvicorn = _FakeUvicorn()
 
         def _run() -> None:
-            with patch.dict("sys.modules", {"uvicorn": fake_uvicorn.make_module()}):
+            with patch.dict(
+                "sys.modules",
+                {"uvicorn": fake_uvicorn.make_module(), "granian": None, "granian.constants": None},
+            ):
                 from lexigram.web.server.runner import run_server
 
                 run_server(mock_app)

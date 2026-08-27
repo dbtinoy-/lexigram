@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-import os
 from typing import ClassVar, cast
 
 from lexigram.config import BaseConfig
+from lexigram.contracts.core.config import Environment
 from lexigram.validation import (
     ConfigDict,
     Field,
@@ -58,10 +58,7 @@ class WebConfig(BaseConfig):
 
     name: str = "web"
     enabled: bool = True
-    env: str | None = Field(
-        default=None,
-        description="Environment (development/staging/production)",
-    )
+    env: Environment | None = Field(default=None, description="Deployment environment")
     server: ServerConfig = Field(default_factory=ServerConfig)
     security: SecurityConfig = Field(
         default_factory=lambda: SecurityConfig(
@@ -159,9 +156,6 @@ class WebConfig(BaseConfig):
     @model_validator(mode="after")
     def validate_production_security(self) -> WebConfig:
         """Block insecure configurations in production."""
-        # Use explicit env field if set, otherwise fall back to os.getenv
-        env_raw = self.env or os.getenv("LEX_ENV", "development") or "development"
-        env = str(env_raw).lower()
         if (
             self.cors.allowed_origins
             and "*" in self.cors.allowed_origins
@@ -172,7 +166,7 @@ class WebConfig(BaseConfig):
                 "allow_credentials=True is not permitted in any environment — "
                 "set specific origins via LEX_WEB__CORS__ALLOWED_ORIGINS.",
             )
-        if env == "production":
+        if self.environment == Environment.PRODUCTION:
             if self.cors.allowed_origins and "*" in self.cors.allowed_origins:
                 raise ValueError(
                     "CRITICAL SECURITY ERROR: Wildcard CORS origin '*' not allowed in PRODUCTION.\n"

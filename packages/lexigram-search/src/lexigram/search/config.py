@@ -20,6 +20,7 @@ from enum import StrEnum
 from typing import ClassVar
 
 from lexigram.config import BaseConfig
+from lexigram.contracts.core.config import Environment
 from lexigram.domain import DomainModel
 from lexigram.search import constants as search_const
 from lexigram.validation import ConfigDict, Field, SecretStr, field_validator
@@ -329,6 +330,8 @@ class SearchConfig(BaseConfig):
 
     config_section: ClassVar[str] = "search"
 
+    name: str = "search"
+
     model_config: ClassVar[ConfigDict] = ConfigDict(  # type: ignore[typeddict-unknown-key]
         env_prefix="LEX_SEARCH__",
         env_nested_delimiter="__",
@@ -337,6 +340,7 @@ class SearchConfig(BaseConfig):
     )
 
     enabled: bool = Field(default=True, description="Enable the search subsystem")
+    env: Environment | None = Field(None, description="Deployment environment")
 
     backend_type: BackendType = Field(
         BackendType.MEMORY,

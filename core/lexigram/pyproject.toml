@@ -113,9 +113,8 @@ docs = [
 ]
 
 # Security extras — opt-in deps for lexigram.security.* implementations
-# HTML sanitization requires nh3 (Rust-based); encryption requires cryptography.
+# Encryption requires cryptography.
 security = [
-    "nh3>=0.3.4",
     "cryptography>=41.0.0",
 ]
 
@@ -126,7 +125,7 @@ security = [
 # ── Web & API ─────────────────────────────────────────────────────────
 
 web = [
-    "lexigram-web[uvicorn]>=0.1.2",
+    "lexigram-web[granian]>=0.1.2",
 ]
 # ── Data & Storage ────────────────────────────────────────────────────
 
@@ -261,12 +260,9 @@ module = "lexigram.serialization.msgpack_serializer"
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
-module = "yaml"
+ module = "yaml"
 ignore_missing_imports = true
 
-[[tool.mypy.overrides]]
-module = "nh3"
-ignore_missing_imports = true
 # =============================================================================
 # Pytest — Test Configuration
 # =============================================================================

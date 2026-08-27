@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import ClassVar
 
 from lexigram.config.base import BaseConfig
+from lexigram.contracts.core.config import Environment
 from lexigram.notification.config.push import NamedPushConfig
 from lexigram.notification.config.sms import NamedSMSConfig
 from lexigram.notification.constants import (
@@ -24,6 +25,10 @@ class NotificationConfig(BaseConfig):
     """
 
     config_section: ClassVar[str] = "notification"
+
+    name: str = "notification"
+    enabled: bool = True
+    env: Environment | None = Field(None, description="Deployment environment")
 
     model_config: ClassVar[ConfigDict] = ConfigDict(  # type: ignore[typeddict-unknown-key]
         env_prefix=ENV_PREFIX,

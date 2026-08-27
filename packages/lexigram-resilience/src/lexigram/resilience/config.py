@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 from typing import ClassVar
 
 from lexigram.config.base import BaseConfig
+from lexigram.contracts.core.config import Environment
 from lexigram.contracts.infra.resilience.models import (
     CircuitBreakerConfig,
     RetryConfig,
@@ -35,6 +36,10 @@ class ResilienceConfig(BaseConfig):
     """Circuit breakers, retries, rate limiting, and bulkhead patterns configuration."""
 
     config_section: ClassVar[str] = "resilience"
+
+    name: str = "resilience"
+    enabled: bool = True
+    env: Environment | None = Field(None, description="Deployment environment")
 
     model_config: ClassVar[ConfigDict] = ConfigDict(
         env_prefix=const.ENV_PREFIX,

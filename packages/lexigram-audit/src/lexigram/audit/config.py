@@ -7,6 +7,7 @@ from typing import ClassVar, cast
 
 from lexigram.audit import constants as const
 from lexigram.config.base import BaseConfig
+from lexigram.contracts.core.config import Environment
 from lexigram.contracts.audit import RetentionPolicy
 from lexigram.validation import ConfigDict, Field
 
@@ -37,6 +38,10 @@ class AuditConfig(BaseConfig):
     )
 
     config_section: ClassVar[str] = "audit"
+
+    name: str = "audit"
+    enabled: bool = True
+    env: Environment | None = Field(None, description="Deployment environment")
 
     store_backend: str = Field(
         const.DEFAULT_STORE_BACKEND,

@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import ClassVar
 
 from lexigram.config.base import BaseConfig
+from lexigram.contracts.core.config import Environment
 from lexigram.domain import DomainModel
 from lexigram.queue.constants import (
     DEFAULT_MAX_RETRIES,
@@ -231,6 +232,10 @@ class QueueConfig(BaseConfig):
     model_config: ClassVar[ConfigDict] = ConfigDict(
         extra="ignore",
     )
+
+    name: str = "queue"
+    enabled: bool = True
+    env: Environment | None = Field(None, description="Deployment environment")
 
     backends: list[NamedQueueConfig] = Field(
         default_factory=list,

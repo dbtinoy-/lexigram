@@ -84,6 +84,9 @@ export = [
     "openpyxl>=3.0.0",
     "reportlab>=4.0.0",
 ]
+rich-text = [
+    "nh3>=0.3.4",
+]
 cache = [
     "lexigram-cache>=0.1.4",
 ]

@@ -36,7 +36,7 @@ class RateLimitConfig(BaseConfig):
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="ignore")
 
     enabled: bool = Field(
-        default=True,
+        default=False,
         description=(
             "Enable rate limiting. When true, RateLimitMiddleware enforces "
             "the matched per-path rule or the default_limit/default_window "

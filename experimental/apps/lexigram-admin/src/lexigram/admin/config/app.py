@@ -34,6 +34,7 @@ from lexigram.admin.config.ui import (
 )
 from lexigram.admin.constants import ENV_NESTED_DELIMITER, ENV_PREFIX
 from lexigram.config import BaseConfig
+from lexigram.contracts.core.config import Environment
 from lexigram.validation import ConfigDict, Field
 
 
@@ -78,6 +79,7 @@ class AdminConfig(BaseConfig):
     # Section identifier (used by config discovery)
     name: str = "admin"
     enabled: bool = True
+    env: Environment | None = Field(None, description="Deployment environment")
 
     # Core Settings
     title: str = Field(default="Lexigram Admin")

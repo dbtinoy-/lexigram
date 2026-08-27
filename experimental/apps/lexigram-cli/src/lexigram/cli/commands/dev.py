@@ -71,7 +71,14 @@ def main(
             raise typer.Exit(1)
 
     if not server_backend:
-        server_backend = ServerRegistry.get_default()
+        # Prefer granian → uvicorn
+        for preferred in ("granian", "uvicorn"):
+            b = ServerRegistry.get(preferred)
+            if b and b.is_available():
+                server_backend = b
+                break
+        if not server_backend:
+            server_backend = ServerRegistry.get_default()
 
     out.print(f"[info]Starting dev server with [bold]{server_backend.name}[/bold]")
     out.print(
@@ -142,7 +149,14 @@ def start(
             raise typer.Exit(1)
 
     if not server_backend:
-        server_backend = ServerRegistry.get_default()
+        # Prefer granian → uvicorn
+        for preferred in ("granian", "uvicorn"):
+            b = ServerRegistry.get(preferred)
+            if b and b.is_available():
+                server_backend = b
+                break
+        if not server_backend:
+            server_backend = ServerRegistry.get_default()
 
     out.print(
         f"[info]Starting production server with [bold]{server_backend.name}[/bold]",

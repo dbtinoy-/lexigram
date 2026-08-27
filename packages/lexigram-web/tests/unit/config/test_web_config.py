@@ -163,7 +163,7 @@ class TestRateLimitConfig:
         """Test rate limit config default values"""
         config = RateLimitConfig()
 
-        assert config.enabled is True
+        assert config.enabled is False
         assert config.default_limit == 100
         assert config.default_window == 60
 
@@ -266,7 +266,7 @@ class TestConfigValidation:
     def test_rate_limit_validation(self):
         """Test rate limit config validation"""
         with pytest.raises(ValueError, match="default_limit"):
-            RateLimitConfig(default_limit=0)
+            RateLimitConfig(enabled=True, default_limit=0)
 
         with pytest.raises(ValueError, match="default_window"):
-            RateLimitConfig(default_window=0)
+            RateLimitConfig(enabled=True, default_window=0)

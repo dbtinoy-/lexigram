@@ -19,16 +19,15 @@ from dataclasses import dataclass
 from typing import Any, ClassVar, Literal, cast
 
 from lexigram.config import BaseConfig
+from lexigram.contracts.core.config import Environment
 from lexigram.domain import DomainModel
 from lexigram.storage import constants as storage_const
-from lexigram.validation import ConfigDict, Field, SecretStr
+from lexigram.validation import ConfigDict, Field, SecretStr, model_validator
 
 
 @dataclass(init=False)
 class EncryptionConfig(BaseConfig):
     """Server-side encryption configuration for cloud storage backends.
-
-    model_config: ClassVar[ConfigDict] = ConfigDict(extra="ignore")
 
     Supported types:
     - ``"AES256"``: Amazon S3 / GCS default managed encryption (SSE-S3).
@@ -317,24 +316,7 @@ class StorageConfig(BaseConfig):
             "the unnamed BlobStoreProtocol binding for backward compatibility."
         ),
     )
-    env: str | None = Field(
-        None, description="Environment (development/staging/production)"
-    )
-
-    @property
-    def is_production(self) -> bool:
-        """Check if running in production environment."""
-        return self.env == "production"
-
-    @property
-    def is_development(self) -> bool:
-        """Check if running in development environment."""
-        return self.env in ("development", "dev")
-
-    @property
-    def is_test(self) -> bool:
-        """Check if running in test environment."""
-        return self.env in ("test", "testing")
+    env: Environment | None = Field(default=None, description="Deployment environment")
 
     @classmethod
     def from_named(cls, entry: NamedStorageConfig) -> StorageConfig:
@@ -364,24 +346,17 @@ class StorageConfig(BaseConfig):
             service=StorageOperationConfig(),
         )
 
+    @model_validator(mode="after")
     def validate_production_security(self) -> StorageConfig:
         """Block insecure storage configurations in production.
 
-        This validator fires when the ``LEX_ENV`` environment variable is
-        set to ``"production"`` (case-insensitive).  It rejects known-weak
-        placeholder credentials (``"change-me"``, ``"password"``, etc.) in S3
-        and Azure driver configs, raising ``ValueError`` immediately so the
-        application fails fast at startup rather than leaking credentials at
-        request time.
-
-        The environment variable checked is ``LEX_ENV`` (default:
-        ``"development"``).  Set ``LEX_ENV=production`` in your deployment
-        environment to activate production-grade security checks.
+        This validator fires when the environment is set to ``production``.
+        It rejects known-weak placeholder credentials (``"change-me"``,
+        ``"password"``, etc.) in S3 and Azure driver configs, raising
+        ``ValueError`` immediately so the application fails fast at startup
+        rather than leaking credentials at request time.
         """
-        import os
-
-        env = os.getenv("LEX_ENV", "development").lower()
-        if env == "production":
+        if Environment.from_env() == Environment.PRODUCTION:
             insecure_defaults = storage_const.INSECURE_SECRET_VALUES
 
             for name, driver in self.drivers.items():

@@ -6,6 +6,7 @@ from typing import ClassVar
 
 from lexigram.ai.memory import constants as const
 from lexigram.config.base import BaseConfig
+from lexigram.contracts.core.config import Environment
 from lexigram.validation import ConfigDict, Field
 
 
@@ -188,6 +189,8 @@ class MemoryConfig(BaseConfig):
     )
 
     enabled: bool = Field(default=True, description="Enable the AI memory subsystem")
+    name: str = "ai_memory"
+    env: Environment | None = Field(None, description="Deployment environment")
 
     working: WorkingMemoryConfig = Field(
         default_factory=WorkingMemoryConfig,

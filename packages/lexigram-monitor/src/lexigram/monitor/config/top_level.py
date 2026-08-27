@@ -132,30 +132,8 @@ class MonitorConfig(BaseConfig):
         default_factory=PrometheusConfig,
         description="Prometheus configuration",
     )
-    environment: Environment = Field(
-        Environment.DEVELOPMENT, description="Deployment environment"
-    )
-    env: str | None = Field(
-        None, description="Environment (development/staging/production)"
-    )
+    env: Environment | None = Field(default=None, description="Deployment environment")
     debug: bool = Field(False, description="Enable debug mode")
-
-    @property
-    def is_production(self) -> bool:
-        """Check if running in production environment."""
-        return (self.env or self.environment) == "production"
-
-    @property
-    def is_development(self) -> bool:
-        """Check if running in development environment."""
-        env_val = self.env or self.environment
-        return env_val in ("development", "dev")
-
-    @property
-    def is_test(self) -> bool:
-        """Check if running in test environment."""
-        env_val = self.env or self.environment
-        return env_val in ("test", "testing")
 
     def validate_for_environment(
         self, env: Environment | None = None
@@ -163,12 +141,12 @@ class MonitorConfig(BaseConfig):
         """Validate monitoring configuration for the given environment.
 
         Args:
-            env: Target environment; resolved from ``LEX_ENV`` when ``None``.
+            env: Target environment; resolved from ``self.env`` when ``None``.
 
         Returns:
             List of :class:`~lexigram.contracts.core.config.ConfigIssue` instances.
         """
-        resolved = env or Environment.from_env()
+        resolved = env or self.env
         issues: list[ConfigIssue] = []
         if resolved == Environment.PRODUCTION and not self.tracing.enabled:
             issues.append(
@@ -194,24 +172,6 @@ class MonitorConfig(BaseConfig):
             return self.opentelemetry
         if self.backend_type == BackendType.PROMETHEUS:
             return self.prometheus
-        return None
-
-    def make_exporter(self) -> Any | None:
-        """Construct an optional metrics exporter appropriate for the backend.
-
-        Returns:
-            MetricsExporter instance or None if no exporter is available.
-        """
-        if self.backend_type == BackendType.PROMETHEUS:
-            try:
-                from lexigram.monitor.backends.exporters import (
-                    PrometheusMetricsExporter,
-                )
-
-                return PrometheusMetricsExporter()
-            except (ImportError, RuntimeError, TypeError):
-                return None
-        # OTLP and memory backends do not provide a dedicated MetricsExporter
         return None
 
 

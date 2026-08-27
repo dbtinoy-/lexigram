@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, ClassVar, cast
 
 from lexigram.ai.workers.constants import ENV_NESTED_DELIMITER, ENV_PREFIX
 from lexigram.config.base import BaseConfig
+from lexigram.contracts.core.config import Environment
 from lexigram.validation import ConfigDict, Field
 
 if TYPE_CHECKING:
@@ -35,6 +36,8 @@ class WorkersConfig(BaseConfig):
     enabled: bool = Field(
         default=True, description="Master on/off switch for all background workers"
     )
+    name: str = "ai_workers"
+    env: Environment | None = Field(None, description="Deployment environment")
     batch_embedding_concurrency: int = Field(
         default=3,
         ge=1,

@@ -216,17 +216,16 @@ class TestStorageConfig:
         original_env = os.environ.get("LEX_ENV")
         try:
             os.environ["LEX_ENV"] = "production"
-            config = StorageConfig(
-                drivers={
-                    "s3": StorageS3Config(
-                        bucket="test-bucket",
-                        region="us-east-1",
-                        secret_key=insecure_value,
-                    ),
-                },
-            )
             with pytest.raises(ValueError, match="CRITICAL SECURITY ERROR.*Insecure AWS S3 secret_key"):
-                config.validate_production_security()
+                StorageConfig(
+                    drivers={
+                        "s3": StorageS3Config(
+                            bucket="test-bucket",
+                            region="us-east-1",
+                            secret_key=insecure_value,
+                        ),
+                    },
+                )
         finally:
             if original_env is not None:
                 os.environ["LEX_ENV"] = original_env

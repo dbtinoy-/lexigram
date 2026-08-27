@@ -17,10 +17,16 @@ class EntityModelGenerator(GeneratorBase):
     description = "Generate a Pydantic entity model with DTOs"
 
     _PY_TYPES = {
-        "str": "str", "string": "str", "text": "str",
-        "int": "int", "integer": "int",
-        "float": "float", "bool": "bool", "boolean": "bool",
-        "datetime": "datetime", "uuid": "str",
+        "str": "str",
+        "string": "str",
+        "text": "str",
+        "int": "int",
+        "integer": "int",
+        "float": "float",
+        "bool": "bool",
+        "boolean": "bool",
+        "datetime": "datetime",
+        "uuid": "str",
     }
 
     def generate(
@@ -35,21 +41,23 @@ class EntityModelGenerator(GeneratorBase):
         parsed = parse_fields(fields_str) if fields_str else []
         py_types = self._PY_TYPES
 
-        needs_datetime = any(
-            py_types.get(f.type) == "datetime" for f in parsed
-        )
+        # Filter out reserved fields that are always generated
+        _RESERVED = {"id", "created_at", "updated_at"}
+        parsed = [f for f in parsed if f.name not in _RESERVED]
+
         model_lines: list[str] = [
-            "    id: str = Field(default_factory=lambda: str(uuid.uuid4()))",
+            "    id: str = Field(default_factory=lambda: uuid.uuid4().hex)",
         ]
-        if needs_datetime:
-            model_lines += [
-                "    created_at: datetime = Field(",
-                "        default_factory=lambda: datetime.now(timezone.utc)",
-                "    )",
-                "    updated_at: datetime = Field(",
-                "        default_factory=lambda: datetime.now(timezone.utc)",
-                "    )",
-            ]
+        # Always include created_at/updated_at — the repository template
+        # always generates these audit columns.
+        model_lines += [
+            "    created_at: datetime = Field(",
+            "        default_factory=lambda: datetime.now(timezone.utc)",
+            "    )",
+            "    updated_at: datetime = Field(",
+            "        default_factory=lambda: datetime.now(timezone.utc)",
+            "    )",
+        ]
         create_lines: list[str] = []
         update_lines: list[str] = []
 
@@ -57,8 +65,8 @@ class EntityModelGenerator(GeneratorBase):
             py = py_types.get(f.type, "str")
             opt = "" if f.required else " | None = None"
             if py == "datetime":
-                model_lines.append(f"    {f.name}: datetime")
-                create_lines.append(f"    {f.name}: str")
+                model_lines.append(f"    {f.name}: datetime{opt}")
+                create_lines.append(f"    {f.name}: str" + opt)
                 update_lines.append(f"    {f.name}: str | None = None")
                 continue
             model_lines.append(f"    {f.name}: {py}{opt}")
@@ -71,12 +79,13 @@ class EntityModelGenerator(GeneratorBase):
                 "entity_name": self._to_pascal_case(name),
                 "model_name": self._to_snake_case(name),
                 "fields": [
-                    {"name": f.name,
-                     "py_type": py_types.get(f.type, "str"),
-                     "required": f.required}
+                    {
+                        "name": f.name,
+                        "py_type": py_types.get(f.type, "str"),
+                        "required": f.required,
+                    }
                     for f in parsed
                 ],
-                "needs_datetime": needs_datetime,
                 "create_fields": create_lines or ["    pass"],
                 "update_fields": update_lines or ["    pass"],
             },

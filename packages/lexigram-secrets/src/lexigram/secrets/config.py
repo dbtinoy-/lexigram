@@ -41,6 +41,7 @@ class SecretsConfig(BaseConfig):
 
     name: str = Field("secrets", description="Configuration name")
     enabled: bool = Field(True, description="Whether secrets subsystem is enabled")
+    env: Environment | None = Field(None, description="Deployment environment")
     backend_type: str = Field(
         const.DEFAULT_BACKEND_TYPE,
         description="Backend store type (memory, vault, ...)",
@@ -62,21 +63,6 @@ class SecretsConfig(BaseConfig):
         const.DEFAULT_AUDIT_ACTOR_ID,
         description="Actor identifier for audit log entries",
     )
-
-    @property
-    def is_production(self) -> bool:
-        """Whether the active environment is production."""
-        return self.environment == Environment.PRODUCTION
-
-    @property
-    def is_development(self) -> bool:
-        """Whether the active environment is development."""
-        return self.environment == Environment.DEVELOPMENT
-
-    @property
-    def is_test(self) -> bool:
-        """Whether the active environment is test."""
-        return self.environment == Environment.TEST
 
     @model_validator(mode="after")
     def validate_backend_environment(self) -> SecretsConfig:

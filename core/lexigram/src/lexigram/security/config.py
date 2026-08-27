@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from typing import ClassVar
 
 from lexigram.config.base import BaseConfig
+from lexigram.contracts.core.config import Environment
 from lexigram.validation import ConfigDict, Field
 
 
@@ -52,7 +53,10 @@ class SecurityConfig(BaseConfig):
     """Configuration for the core security subsystem."""
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="ignore")
-    config_section: ClassVar[str | None] = "security"
+    config_section: ClassVar[str] = "security"
+    name: str = "security"
+    enabled: bool = True
+    env: Environment | None = Field(None, description="Deployment environment")
 
     sanitization: InputSanitizerConfig = Field(default_factory=InputSanitizerConfig)
     hashing: HashingConfig = Field(default_factory=HashingConfig)

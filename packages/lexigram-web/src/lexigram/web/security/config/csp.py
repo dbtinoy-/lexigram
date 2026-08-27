@@ -58,7 +58,7 @@ class CSPConfig(BaseConfig):
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="ignore")
 
     enabled: bool = Field(
-        default=True, description="Emit the Content-Security-Policy header"
+        default=False, description="Emit the Content-Security-Policy header"
     )
     directives: dict[str, Any] = Field(
         default_factory=lambda: dict(_DEFAULT_DIRECTIVES),

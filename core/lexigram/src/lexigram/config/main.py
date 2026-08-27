@@ -113,7 +113,9 @@ class LexigramConfig(BaseConfig):
         """Return ``True`` when debug mode is enabled."""
         return self.debug
 
-    def get_section(self, name: str, model_cls: type[T] | None = None) -> T:
+    def get_section(
+        self, name: str, model_cls: type[T] | None = None
+    ) -> T | dict[str, Any]:
         """Get a configuration section coerced into a specific model."""
         # Support dotted path traversal (e.g. "ai.rag" → config["ai"]["rag"])
         if "." in name:
@@ -133,7 +135,9 @@ class LexigramConfig(BaseConfig):
             model_cls = self._config_registry.get(name)
 
         if model_cls is None:
-            # Fallback for generic types if no model provided or found
+            # Return dict or attribute value; empty dict for missing sections
+            if data is None:
+                return {}
             return data  # type: ignore[return-value]
 
         if isinstance(data, model_cls):

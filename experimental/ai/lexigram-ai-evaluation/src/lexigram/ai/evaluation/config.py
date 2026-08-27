@@ -6,6 +6,7 @@ from typing import ClassVar, cast
 
 from lexigram.ai.evaluation import constants as const
 from lexigram.config.base import BaseConfig
+from lexigram.contracts.core.config import Environment
 from lexigram.validation import ConfigDict, Field
 
 ENV_PREFIX: str = const.ENV_PREFIX
@@ -46,6 +47,8 @@ class EvaluationConfig(BaseConfig):
     enabled: bool = Field(
         default=True, description="Enable the AI evaluation subsystem"
     )
+    name: str = "ai_evaluation"
+    env: Environment | None = Field(None, description="Deployment environment")
 
     experiment_dir: str | None = Field(
         default=None,

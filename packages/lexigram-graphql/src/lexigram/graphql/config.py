@@ -16,10 +16,10 @@ Example:
 from __future__ import annotations
 
 from dataclasses import dataclass
-import os
 from typing import ClassVar, cast
 
 from lexigram.config import BaseConfig
+from lexigram.contracts.core.config import Environment
 from lexigram.graphql import constants as const
 from lexigram.graphql.security.rate_limit import RateLimitConfig
 from lexigram.graphql.types import CacheScope, SubscriptionProtocol
@@ -344,8 +344,8 @@ class GraphQLConfig(BaseConfig):
 
     # Environment - used for environment-specific behavior
     # Set via GRAPHQL__ENV or LEX_ENV env var
-    env: str | None = Field(
-        default=None, description="Environment (development/staging/production)"
+    env: Environment | None = Field(
+        default=None, description="Deployment environment"
     )
 
     # OAuth Identity Resolution - resolve external OAuth IDs to internal UUIDs
@@ -395,48 +395,17 @@ class GraphQLConfig(BaseConfig):
 
     @model_validator(mode="after")
     def _auto_disable_playground_in_production(self) -> GraphQLConfig:
-        """Auto-disable GraphQL Playground when running in a production environment.
-
-        Checks the ``LEX_ENV`` environment variable; when set to
-        ``"production"`` (case-insensitive), the playground is forcibly
-        disabled regardless of the value supplied in configuration.
-        """
-        env_raw = self.env or os.getenv("LEX_ENV", "development") or "development"
-        if env_raw.lower() == "production":
+        """Auto-disable GraphQL Playground when running in production."""
+        if self.environment == Environment.PRODUCTION:
             self.playground.enabled = False
         return self
 
     @model_validator(mode="after")
     def _auto_disable_introspection_in_production(self) -> GraphQLConfig:
-        """Force introspection off when running in a production environment.
-
-        Mirrors :meth:`_auto_disable_playground_in_production`: when
-        ``LEX_ENV`` (or ``env``) is production, introspection is disabled
-        regardless of the value supplied in configuration — fail-closed at
-        boot, not at request-documentation level.
-        """
-        env_raw = self.env or os.getenv("LEX_ENV", "development") or "development"
-        if env_raw.lower() == "production":
+        """Force introspection off when running in production."""
+        if self.environment == Environment.PRODUCTION:
             self.introspection.enabled = False
         return self
-
-    @property
-    def is_production(self) -> bool:
-        """Returns True if running in production environment."""
-        env_raw = self.env or os.getenv("LEX_ENV", "development") or "development"
-        return env_raw.lower() == "production"
-
-    @property
-    def is_development(self) -> bool:
-        """Returns True if running in development environment."""
-        env_raw = self.env or os.getenv("LEX_ENV", "development") or "development"
-        return env_raw.lower() == "development"
-
-    @property
-    def is_test(self) -> bool:
-        """Returns True if running in test environment."""
-        env_raw = self.env or os.getenv("LEX_ENV", "development") or "development"
-        return env_raw.lower() == "test"
 
     @classmethod
     def development(cls) -> GraphQLConfig:

@@ -14,6 +14,7 @@ from lexigram.ai.llm.pinning import ModelPinPolicy
 from lexigram.config.base import BaseConfig
 from lexigram.contracts.ai.thinking import ThinkingConfig
 from lexigram.contracts.ai.types import ModelProvider
+from lexigram.contracts.core.config import Environment
 from lexigram.domain import DomainModel
 from lexigram.validation import ConfigDict, Field, SecretStr
 
@@ -218,6 +219,8 @@ class ClientConfig(BaseConfig):
     )
 
     enabled: bool = Field(default=True, description="Enable the LLM subsystem")
+    name: str = "ai_llm"
+    env: Environment | None = Field(None, description="Deployment environment")
 
     provider: ModelProvider = Field(
         default=ModelProvider.OPENAI,

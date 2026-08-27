@@ -7,6 +7,7 @@ from typing import ClassVar
 
 from lexigram.ai.guard.constants import ENV_NESTED_DELIMITER, ENV_PREFIX
 from lexigram.config.base import BaseConfig
+from lexigram.contracts.core.config import Environment
 from lexigram.validation import ConfigDict, Field
 
 
@@ -45,6 +46,9 @@ class GuardConfig(BaseConfig):
 
     enabled: bool = Field(default=True)
     """Master on/off switch for the guard pipeline."""
+
+    name: str = "ai_guard"
+    env: Environment | None = Field(None, description="Deployment environment")
 
     injection_detection: bool = Field(default=True)
     """Enable prompt injection detector on all inputs."""

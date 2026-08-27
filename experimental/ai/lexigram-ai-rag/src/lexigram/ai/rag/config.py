@@ -7,6 +7,7 @@ from typing import Any, ClassVar, cast
 from lexigram.ai.rag.constants import ENV_NESTED_DELIMITER, ENV_PREFIX
 from lexigram.ai.rag.synthesis.types import SynthesisConfig
 from lexigram.config.base import BaseConfig
+from lexigram.contracts.core.config import Environment
 from lexigram.domain.models import DomainModel
 from lexigram.validation import ConfigDict, Field
 
@@ -68,6 +69,8 @@ class RAGConfig(BaseConfig):
         default=True,
         description="Enable the RAG pipeline",
     )
+    name: str = "ai_rag"
+    env: Environment | None = Field(None, description="Deployment environment")
 
     # Local persistence (for Chroma and similar file-based stores)
     persist_directory: str | None = Field(

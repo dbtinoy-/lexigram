@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 from typing import Any
-
-from lexigram.contracts import DatabaseProviderProtocol
 import uuid as _uuid
 from datetime import datetime as _datetime, timezone as _timezone
+
+from lexigram.contracts import DatabaseProviderProtocol
 
 from lexigram.sql.repositories.generic_repository import GenericRepository
 
@@ -16,6 +16,7 @@ class {{ entity_name }}Entity:
 
 {% for field in fields %}
     {{ field.name }}: {{ field.py_type }}{% if not field.required %} | None = None{% endif %}
+
 {% endfor %}
     def __init__(self, **kwargs: Any) -> None:
         for key, value in kwargs.items():
@@ -61,7 +62,11 @@ class {{ repo_name }}Repository:
         row = self._prepare(data)
         await self._provider.execute_insert("{{ table_name }}", row)
         found = await self._inner.find_by_id(row["{{ key_field }}"])
-        assert found is not None
+        if found is None:
+            raise RuntimeError(
+                "Insert succeeded but fetch failed for {{ table_name }}:"
+                + str(row["{{ key_field }}"])
+            )
         return found
 
     async def get(self, key: str) -> dict[str, Any] | None:
@@ -76,24 +81,15 @@ class {{ repo_name }}Repository:
 
     async def update(self, key: str, data: dict[str, Any]) -> dict[str, Any] | None:
         async with self._provider.transaction():
-            await self._apply_update(key, data)
+            row = {
+                **data,
+                "{{ key_field }}": key,
+                "updated_at": _datetime.now(_timezone.utc).isoformat(),
+            }
+            await self._provider.execute_update(
+                "{{ table_name }}", row, '"{{ key_field }}" = ?', [key]
+            )
             return await self.get(key)
-
-    async def _apply_update(
-        self, key: str, data: dict[str, Any]
-    ) -> None:
-        row = {
-            **data,
-            "{{ key_field }}": key,
-            "updated_at": _datetime.now(_timezone.utc).isoformat(),
-        }
-        await self._provider.execute_update(
-            "{{ table_name }}", row, '"{{ key_field }}" = ?', [key]
-        )
-        found = await self._inner.find_by_id(key)
-        if found is None:
-            return None
-        return self._inner._entity_to_dict(found)
 
     async def delete(self, key: str) -> bool:
         return await self._inner.delete_by_id(key)

@@ -3,16 +3,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, ClassVar, cast
+from typing import ClassVar, cast
 
 from lexigram.ai.feedback import constants as const
 from lexigram.config import (
     BaseConfig,
 )
+from lexigram.contracts.core.config import ConfigIssue, Environment
 from lexigram.validation import ConfigDict, Field
-
-if TYPE_CHECKING:
-    from lexigram.contracts.core.config import ConfigIssue, Environment
 
 
 @dataclass(init=False)
@@ -37,6 +35,8 @@ class FeedbackConfig(BaseConfig):
     enabled: bool = Field(
         default=True, description="Master on/off switch for all feedback collection"
     )
+    name: str = "ai_feedback"
+    env: Environment | None = Field(None, description="Deployment environment")
     async_processing: bool = Field(
         default=True,
         description="Process feedback handlers asynchronously in the background",

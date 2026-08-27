@@ -19,6 +19,7 @@ from typing import Any, ClassVar
 
 from lexigram.ai import constants as const
 from lexigram.config import BaseConfig
+from lexigram.contracts.core.config import Environment
 from lexigram.contracts.core.provider import ProviderProtocol
 from lexigram.validation import ConfigDict, Field, model_validator
 
@@ -85,12 +86,13 @@ class AIConfig(BaseConfig):
     model_config: ClassVar[ConfigDict] = ConfigDict(  # type: ignore[typeddict-unknown-key]
         env_prefix=ENV_PREFIX,
         env_nested_delimiter=ENV_NESTED_DELIMITER,
-        extra="forbid",
+        extra="ignore",
         arbitrary_types_allowed=True,
     )
 
     name: str = Field(default="ai", description="Configuration name")
     enabled: bool = Field(default=True, description="Enable AI features")
+    env: Environment | None = Field(None, description="Deployment environment")
     llm: Any | None = Field(
         default=None,
         description="LLM configuration (optional)",
@@ -138,10 +140,7 @@ class AIConfig(BaseConfig):
     @model_validator(mode="after")
     def validate_production_security(self) -> AIConfig:
         """Block insecure AI configurations in production."""
-        import os
-
-        env = os.getenv("LEX_ENV", "development").lower()
-        if env == "production":
+        if self.environment == Environment.PRODUCTION:
             if self.llm and self.llm.api_key:
                 key_value = self.llm.api_key.get_secret_value()
                 insecure_defaults = ("sk-...", "sk-test", "change-me")

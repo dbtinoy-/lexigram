@@ -412,6 +412,7 @@ class AuthConfig(BaseConfig):
 
     name: str = "auth"
     enabled: bool = True
+    env: Environment | None = Field(None, description="Deployment environment")
     users: list[AuthUserConfig] = Field(
         default_factory=list,
         description="Initial users",
@@ -467,7 +468,7 @@ class AuthConfig(BaseConfig):
         env = self.environment
         insecure_defaults = ("change-me", "your-secret-key", "secret", "password")
 
-        if env.value == "production":
+        if env == Environment.PRODUCTION:
             if self.secret_key.lower() in insecure_defaults:
                 raise ValueError(
                     "CRITICAL SECURITY ERROR: Default auth secret_key in PRODUCTION.",

@@ -172,7 +172,9 @@ class NoSQLConfig(BaseConfig):
         extra="ignore",
     )
 
+    name: str = "nosql"
     enabled: bool = Field(default=True, description="Enable NoSQL support")
+    env: Environment | None = Field(None, description="Deployment environment")
     driver: str = Field(default="mongodb", description="NoSQL driver name")
     mongodb: MongoDBConfig = Field(
         default_factory=MongoDBConfig,

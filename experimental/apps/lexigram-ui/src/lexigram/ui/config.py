@@ -36,6 +36,7 @@ class UIConfig(BaseConfig):
     """
 
     config_section: ClassVar[str] = "ui"
+    env: Environment | None = Field(None, description="Deployment environment")
 
     model_config: ClassVar[ConfigDict] = ConfigDict(
         env_prefix=ENV_PREFIX,  # type: ignore[typeddict-unknown-key]

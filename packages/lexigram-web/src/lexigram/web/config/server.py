@@ -16,6 +16,10 @@ class ServerConfig(BaseConfig):
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="ignore")
 
+    backend: str = Field(
+        default=const.DEFAULT_BACKEND,
+        description="ASGI server backend (granian | uvicorn | hypercorn | gunicorn)",
+    )
     host: str = Field(default=const.DEFAULT_HOST, description="Bind host")
     port: int = Field(default=const.DEFAULT_PORT, description="Bind port")
     workers: int = Field(default=const.DEFAULT_WORKERS, description="Number of workers")

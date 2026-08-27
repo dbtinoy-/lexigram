@@ -292,8 +292,8 @@ app = create_app()
 
 
 if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    from lexigram.web.server.runner import run_server
+    run_server(app, host="0.0.0.0", port=8000)
 '''
 
 _APP_WITH_AUTH_TEMPLATE = '''"""Application entry point with authentication."""
@@ -312,8 +312,8 @@ app = create_app()
 
 
 if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    from lexigram.web.server.runner import run_server
+    run_server(app, host="0.0.0.0", port=8000)
 '''
 
 _PYPROJECT_TEMPLATE = """[project]

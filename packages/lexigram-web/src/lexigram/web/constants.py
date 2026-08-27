@@ -22,6 +22,7 @@ DEFAULT_HOST: str = "0.0.0.0"  # noqa: S104 — config default; runner binds 127
 DEFAULT_PORT: int = 8000
 DEFAULT_WORKERS: int = 1
 DEFAULT_RELOAD: bool = False
+DEFAULT_BACKEND: str = "granian"  # granian | uvicorn | hypercorn | gunicorn
 
 # -- Route Paths -------------------------------------------------------------
 
@@ -42,6 +43,7 @@ DEFAULT_PAGE_SIZE: int = 20
 DEFAULT_MAX_PAGE_SIZE: int = 100
 
 __all__ = [
+    "DEFAULT_BACKEND",
     "DEFAULT_CORS_ALLOW_ORIGINS",
     "DEFAULT_DEBUG_ROUTES_PATH",
     "DEFAULT_DOCS_PATH",

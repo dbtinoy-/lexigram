@@ -78,6 +78,8 @@ class GraphConfig(BaseConfig):
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="ignore")
 
+    config_section: ClassVar[str] = "workflow"
+    name: str = "workflow"
     enabled: bool = Field(
         default=True, description="Enable the graph workflow subsystem"
     )

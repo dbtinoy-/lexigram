@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from typing import ClassVar
 
 from lexigram.config.base import BaseConfig
+from lexigram.contracts.core.config import Environment
 from lexigram.events import constants as const
 from lexigram.events.stores.postgres.config import PostgresEventStoreConfig
 from lexigram.events.types import EventStoreBackend, SnapshotStrategy
@@ -376,9 +377,7 @@ class EventsConfig(BaseConfig):
 
     # Debug/Development
     debug: bool = Field(False)
-    env: str | None = Field(
-        None, description="Environment (development/staging/production)"
-    )
+    env: Environment | None = Field(default=None, description="Deployment environment")
 
     # SQLite (optional)
     sqlite: SqliteConfig | None = None
@@ -386,21 +385,6 @@ class EventsConfig(BaseConfig):
     # Adapters (optional)
     rabbitmq: RabbitMQConfig | None = None
     kafka: KafkaConfig | None = None
-
-    @property
-    def is_production(self) -> bool:
-        """Check if running in production environment."""
-        return self.env == "production"
-
-    @property
-    def is_development(self) -> bool:
-        """Check if running in development environment."""
-        return self.env in ("development", "dev")
-
-    @property
-    def is_test(self) -> bool:
-        """Check if running in test environment."""
-        return self.env in ("test", "testing")
 
     def validate_backend_config(self) -> list[str]:
         """Validate that the selected backend has a matching config.
