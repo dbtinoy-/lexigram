@@ -1,0 +1,31 @@
+# ╔═══════════════════════════════════════════════════════════════════════════╗
+# ║                   Webhook Relay Demo — Full Reference                   ║
+# ║                                                                         ║
+# ║  Teaches: Lexigram webhook pattern with HMAC signing, payload           ║
+# ║           validation, and relay routing.                                ║
+# ║                                                                         ║
+# ║  LEARNING PATH:                                                         ║
+# ║    1. application.yaml   — you are here (configuration)                 ║
+# ║    2. src/webhookrelay/app.py — composition root (wiring)               ║
+# ║    3. src/webhookrelay/di/provider.py — provider lifecycle              ║
+# ║    4. src/webhookrelay/services/ — webhook processing patterns          ║
+# ║    5. tests/ — real composition root, no mocks                          ║
+# ╚═══════════════════════════════════════════════════════════════════════════╝
+
+
+# ── Web ──────────────────────────────────────────────────────────────────────
+web:
+  server:
+    host: 127.0.0.1
+    port: 8000
+  security:
+    csrf:
+      enabled: false
+
+
+# ── Demo ────────────────────────────────────────────────────────────────────
+webhookrelay:
+  secret_key: "demo-secret-key-for-hmac-signing"
+  signature_header: "X-Hub-Signature-256"
+  max_payload_size: 1048576
+  retry_count: 3
