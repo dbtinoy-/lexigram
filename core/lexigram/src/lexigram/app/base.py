@@ -9,6 +9,7 @@ import sys
 from typing import TYPE_CHECKING, Any, TypeVar, cast
 
 from lexigram.app.exceptions import AppShutdownError
+from lexigram.app.health_probes import HealthProbeMixin
 from lexigram.app.invoker import Invoker
 from lexigram.app.lifecycle import ApplicationLifecycle
 from lexigram.app.pipeline import MiddlewarePipeline
@@ -16,12 +17,7 @@ from lexigram.app.secrets import SecretsMixin
 from lexigram.config import LexigramConfig
 from lexigram.contracts.core import MiddlewarePipelineProtocol, MiddlewareProtocol
 from lexigram.contracts.core.config import ConfigProtocol
-from lexigram.contracts.core.health import (
-    AggregateHealthResult,
-    HealthCheckCategory,
-    HealthCheckResult,
-    HealthStatus,
-)
+from lexigram.contracts.core.health import AggregateHealthResult, HealthCheckCategory
 from lexigram.di.container import Container
 from lexigram.di.orchestrator import ProviderOrchestrator
 from lexigram.logging import get_logger
@@ -47,7 +43,7 @@ class AppState(StrEnum):
     STOPPED = "stopped"
 
 
-class Application(SecretsMixin):
+class Application(SecretsMixin, HealthProbeMixin):
     """The composition root.
 
     Usage::
@@ -434,55 +430,6 @@ class Application(SecretsMixin):
                 + (f" ({hints})" if hints else ""),
                 issues=list(issues),
             )
-
-    async def health_check(self, timeout: float = 5.0) -> AggregateHealthResult:
-        """Aggregate health check from all providers.
-
-        Returns an :class:`~lexigram.contracts.core.health.AggregateHealthResult`
-        whose ``status`` follows worst-case aggregation across all registered
-        provider health checks.
-        """
-        if self._state != AppState.RUNNING:
-            return AggregateHealthResult(
-                components=[
-                    HealthCheckResult(
-                        component=self.name,
-                        status=HealthStatus.UNHEALTHY,
-                        message=f"Application is {self._state.value}",
-                    )
-                ]
-            )
-
-        raw: dict[str, Any] = await self._orchestrator.health_check(timeout)
-        return AggregateHealthResult(components=list(raw.values()))
-
-    def _probe_unavailable_result(
-        self,
-        category: HealthCheckCategory,
-    ) -> AggregateHealthResult:
-        """Build a probe result when the application is not running."""
-        return AggregateHealthResult(
-            components=[
-                HealthCheckResult(
-                    component=self.name,
-                    status=HealthStatus.UNHEALTHY,
-                    message=f"Application is {self._state.value}",
-                    category=category,
-                ),
-            ],
-        )
-
-    async def liveness(self, timeout: float = 5.0) -> AggregateHealthResult:
-        """Run liveness checks for the application."""
-        if self._state != AppState.RUNNING:
-            return self._probe_unavailable_result(HealthCheckCategory.LIVENESS)
-        return await self._orchestrator.run_liveness(timeout)
-
-    async def readiness(self, timeout: float = 5.0) -> AggregateHealthResult:
-        """Run readiness checks for the application."""
-        if self._state != AppState.RUNNING:
-            return self._probe_unavailable_result(HealthCheckCategory.READINESS)
-        return await self._orchestrator.run_readiness(timeout)
 
     async def startup_check(self, timeout: float = 5.0) -> AggregateHealthResult:
         """Run startup checks for the application."""

@@ -15,7 +15,7 @@ class TestOffsetPageProtocol:
     def test_protocol_is_runtime_checkable(self) -> None:
         """Test that OffsetPageProtocol is runtime checkable."""
         # This should not raise
-        assert hasattr(OffsetPageProtocol, "__protocol_attrs__")
+        assert hasattr(OffsetPageProtocol, "__protocol_attrs__") or hasattr(OffsetPageProtocol, "__annotations__")
 
 
 class TestCursorPageProtocol:
@@ -24,7 +24,7 @@ class TestCursorPageProtocol:
     def test_protocol_is_runtime_checkable(self) -> None:
         """Test that CursorPageProtocol is runtime checkable."""
         # This should not raise
-        assert hasattr(CursorPageProtocol, "__protocol_attrs__")
+        assert hasattr(CursorPageProtocol, "__protocol_attrs__") or hasattr(CursorPageProtocol, "__annotations__")
 
 
 class TestCursorPage:

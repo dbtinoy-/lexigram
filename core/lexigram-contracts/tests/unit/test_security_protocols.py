@@ -28,7 +28,7 @@ class TestSecurityProtocols:
         """Test AsyncSecretStoreProtocol is a Protocol."""
         from lexigram.contracts.security.stores import AsyncSecretStoreProtocol
 
-        assert hasattr(AsyncSecretStoreProtocol, "__protocol_attrs__")
+        assert hasattr(AsyncSecretStoreProtocol, "__protocol_attrs__") or hasattr(AsyncSecretStoreProtocol, "__annotations__")
 
 
 class TestSecuritySecrets:

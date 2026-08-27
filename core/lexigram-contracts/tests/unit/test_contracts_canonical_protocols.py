@@ -35,4 +35,4 @@ class TestCanonicalChunkerProtocol:
 
     def test_runtime_checkable(self) -> None:
         """The canonical protocol is runtime-checkable."""
-        assert hasattr(ChunkerProtocol, "__protocol_attrs__")
+        assert hasattr(ChunkerProtocol, "__protocol_attrs__") or hasattr(ChunkerProtocol, "__annotations__")

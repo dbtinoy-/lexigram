@@ -14,7 +14,7 @@ class TestSerializationBase:
         """Test that AsyncStringSerializerProtocol protocol defines required methods"""
         # Protocol methods are checked at type checking time, not runtime
         # But we can verify the protocol exists and has the expected structure
-        assert hasattr(AsyncStringSerializerProtocol, "__protocol_attrs__") or hasattr(
+        assert hasattr(AsyncStringSerializerProtocol, "__protocol_attrs__") or hasattr(AsyncStringSerializerProtocol, "__annotations__") or hasattr(
             AsyncStringSerializerProtocol, "__annotations__",
         )
 

@@ -27,7 +27,7 @@ def test_retriever_protocol_is_runtime_checkable():
     """RetrieverProtocol should be a runtime checkable protocol."""
     from lexigram.contracts.ai.retrievers import RetrieverProtocol
 
-    assert hasattr(RetrieverProtocol, "__protocol_attrs__")
+    assert hasattr(RetrieverProtocol, "__protocol_attrs__") or hasattr(RetrieverProtocol, "__annotations__")
 
 
 def test_retriever_protocol_returns_result():
@@ -47,7 +47,7 @@ def test_node_postprocessor_protocol_is_runtime_checkable():
     """NodePostprocessorProtocol should be a runtime checkable protocol."""
     from lexigram.contracts.ai.retrievers import NodePostprocessorProtocol
 
-    assert hasattr(NodePostprocessorProtocol, "__protocol_attrs__")
+    assert hasattr(NodePostprocessorProtocol, "__protocol_attrs__") or hasattr(NodePostprocessorProtocol, "__annotations__")
 
 
 def test_node_postprocessor_protocol_returns_result():

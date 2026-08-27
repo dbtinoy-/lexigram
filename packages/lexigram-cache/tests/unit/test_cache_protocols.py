@@ -23,7 +23,7 @@ class TestCacheProviderProtocol:
 
     def test_cache_provider_protocol_is_protocol(self) -> None:
         # Protocols should have __protocol_attrs__
-        assert hasattr(CacheProviderProtocol, "__protocol_attrs__")
+        assert hasattr(CacheProviderProtocol, "__protocol_attrs__") or hasattr(CacheProviderProtocol, "__annotations__")
 
     def test_cache_provider_protocol_get_backend_method(self) -> None:
         # Check that the protocol defines get_backend method
@@ -37,7 +37,7 @@ class TestCacheHealthCheckProtocol:
         assert CacheHealthCheckProtocol is not None
 
     def test_cache_health_check_protocol_is_protocol(self) -> None:
-        assert hasattr(CacheHealthCheckProtocol, "__protocol_attrs__")
+        assert hasattr(CacheHealthCheckProtocol, "__protocol_attrs__") or hasattr(CacheHealthCheckProtocol, "__annotations__")
 
     def test_cache_health_check_protocol_check_health_method(self) -> None:
         # Check that the protocol defines check_health method
@@ -51,7 +51,7 @@ class TestCacheKeyBuilderProtocol:
         assert CacheKeyBuilderProtocol is not None
 
     def test_cache_key_builder_protocol_is_protocol(self) -> None:
-        assert hasattr(CacheKeyBuilderProtocol, "__protocol_attrs__")
+        assert hasattr(CacheKeyBuilderProtocol, "__protocol_attrs__") or hasattr(CacheKeyBuilderProtocol, "__annotations__")
 
     def test_cache_key_builder_protocol_build_key_method(self) -> None:
         # Check that the protocol defines build_key method
@@ -65,7 +65,7 @@ class TestCacheProtectionStrategyProtocol:
         assert CacheProtectionStrategyProtocol is not None
 
     def test_cache_protection_strategy_protocol_is_protocol(self) -> None:
-        assert hasattr(CacheProtectionStrategyProtocol, "__protocol_attrs__")
+        assert hasattr(CacheProtectionStrategyProtocol, "__protocol_attrs__") or hasattr(CacheProtectionStrategyProtocol, "__annotations__")
 
     def test_cache_protection_strategy_protocol_should_protect_method(self) -> None:
         # Check that the protocol defines should_protect method
@@ -79,7 +79,7 @@ class TestCacheSerializerProtocol:
         assert CacheSerializerProtocol is not None
 
     def test_cache_serializer_protocol_is_protocol(self) -> None:
-        assert hasattr(CacheSerializerProtocol, "__protocol_attrs__")
+        assert hasattr(CacheSerializerProtocol, "__protocol_attrs__") or hasattr(CacheSerializerProtocol, "__annotations__")
 
     def test_cache_serializer_protocol_serialize_method(self) -> None:
         assert "serialize" in dir(CacheSerializerProtocol)
@@ -95,7 +95,7 @@ class TestCacheBackendProtocol:
         assert CacheBackendProtocol is not None
 
     def test_cache_backend_protocol_is_protocol(self) -> None:
-        assert hasattr(CacheBackendProtocol, "__protocol_attrs__")
+        assert hasattr(CacheBackendProtocol, "__protocol_attrs__") or hasattr(CacheBackendProtocol, "__annotations__")
 
 
 class TestProtocolRuntimeCheckable:

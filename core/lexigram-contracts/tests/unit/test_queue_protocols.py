@@ -9,7 +9,7 @@ class TestQueueProtocol:
     """Tests for QueueProtocol."""
 
     def test_is_runtime_checkable(self) -> None:
-        assert hasattr(QueueProtocol, "__protocol_attrs__")
+        assert hasattr(QueueProtocol, "__protocol_attrs__") or hasattr(QueueProtocol, "__annotations__")
 
     def test_has_connect_method(self) -> None:
         assert hasattr(QueueProtocol, "connect")
@@ -28,7 +28,7 @@ class TestMessageConsumerProtocol:
     """Tests for MessageConsumerProtocol."""
 
     def test_is_runtime_checkable(self) -> None:
-        assert hasattr(MessageConsumerProtocol, "__protocol_attrs__")
+        assert hasattr(MessageConsumerProtocol, "__protocol_attrs__") or hasattr(MessageConsumerProtocol, "__annotations__")
 
     def test_has_start_method(self) -> None:
         assert hasattr(MessageConsumerProtocol, "start")

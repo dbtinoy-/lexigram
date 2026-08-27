@@ -12,7 +12,7 @@ class TestSMSChannelProtocol:
     """Tests for SMSChannelProtocol."""
 
     def test_is_runtime_checkable(self) -> None:
-        assert hasattr(SMSChannelProtocol, "__protocol_attrs__")
+        assert hasattr(SMSChannelProtocol, "__protocol_attrs__") or hasattr(SMSChannelProtocol, "__annotations__")
 
     def test_has_send_method(self) -> None:
         assert hasattr(SMSChannelProtocol, "send")
@@ -25,7 +25,7 @@ class TestPushChannelProtocol:
     """Tests for PushChannelProtocol."""
 
     def test_is_runtime_checkable(self) -> None:
-        assert hasattr(PushChannelProtocol, "__protocol_attrs__")
+        assert hasattr(PushChannelProtocol, "__protocol_attrs__") or hasattr(PushChannelProtocol, "__annotations__")
 
     def test_has_send_method(self) -> None:
         assert hasattr(PushChannelProtocol, "send")

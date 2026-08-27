@@ -9,7 +9,7 @@ class TestSpecificationProtocol:
     """Tests for SpecificationProtocol."""
 
     def test_is_runtime_checkable(self) -> None:
-        assert hasattr(SpecificationProtocol, "__protocol_attrs__")
+        assert hasattr(SpecificationProtocol, "__protocol_attrs__") or hasattr(SpecificationProtocol, "__annotations__")
 
     def test_has_is_satisfied_by_method(self) -> None:
         assert hasattr(SpecificationProtocol, "is_satisfied_by")

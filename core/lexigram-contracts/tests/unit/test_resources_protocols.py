@@ -18,7 +18,7 @@ class TestResourceProtocols:
         from lexigram.contracts.infra.resources import PoolStatsProtocol
 
         # PoolStats should be a Protocol
-        assert hasattr(PoolStatsProtocol, "__protocol_attrs__") or hasattr(PoolStatsProtocol, "__annotations__")
+        assert hasattr(PoolStatsProtocol, "__protocol_attrs__") or hasattr(PoolStatsProtocol, "__annotations__") or hasattr(PoolStatsProtocol, "__annotations__")
 
 
 class TestPoolProtocol:

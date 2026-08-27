@@ -59,6 +59,10 @@ class Scope:
         self._parent = parent  # K-02: Parent scope for nested scoping
         self._cache: dict[type, Any] = {}
         self._disposables: list[Any] = []
+        # Concurrent-creation dedup: service_type -> in-flight future, so
+        # parallel resolve() calls for the same scoped service await one
+        # instance instead of racing the cache check-then-create.
+        self._inflight: dict[type, asyncio.Future[Any]] = {}
 
     async def resolve(self, service_type: type[T]) -> T:
         """Resolve a service from this scope.
@@ -86,8 +90,31 @@ class Scope:
         if service_type in self._cache:
             return cast("T", self._cache[service_type])
 
-        instance = await self._create_instance(descriptor)
+        # Dedup concurrent creation: while one task awaits an async
+        # factory, other concurrent resolve() calls must wait for the same
+        # instance (the "same instance within this scope" guarantee).
+        pending = self._inflight.get(service_type)
+        if pending is not None:
+            return cast("T", await pending)
+        future: asyncio.Future[Any] = asyncio.get_running_loop().create_future()
+        self._inflight[service_type] = future
+
+        try:
+            instance = await self._create_instance(descriptor)
+        except BaseException as err:
+            del self._inflight[service_type]
+            if not future.cancelled():
+                future.set_exception(err)
+                # Mark the stored exception as retrieved: concurrent waiters
+                # still receive it, but the creating task re-raises it itself,
+                # so an otherwise-unobserved future would otherwise be logged
+                # as "Future exception was never retrieved" at GC time.
+                future.exception()
+            raise
         self._cache[service_type] = instance
+        self._inflight.pop(service_type, None)
+        if not future.cancelled():
+            future.set_result(instance)
 
         if (
             hasattr(instance, "aclose")

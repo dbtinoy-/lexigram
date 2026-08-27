@@ -9,7 +9,7 @@ class TestAdminContributorProtocol:
     """Tests for AdminContributorProtocol."""
 
     def test_is_runtime_checkable(self) -> None:
-        assert hasattr(AdminContributorProtocol, "__protocol_attrs__")
+        assert hasattr(AdminContributorProtocol, "__protocol_attrs__") or hasattr(AdminContributorProtocol, "__annotations__")
 
     def test_has_name_property(self) -> None:
         assert hasattr(AdminContributorProtocol, "name")

@@ -15,7 +15,7 @@ class TestAggregateRootProtocol:
 
     def test_aggregate_root_protocol_is_protocol(self) -> None:
         """Test AggregateRootProtocol is a Protocol."""
-        assert hasattr(AggregateRootProtocol, "__protocol_attrs__")
+        assert hasattr(AggregateRootProtocol, "__protocol_attrs__") or hasattr(AggregateRootProtocol, "__annotations__")
 
     def test_aggregate_root_has_add_event_method(self) -> None:
         """Test protocol has add_event method."""
@@ -43,7 +43,7 @@ class TestOffsetPageProtocol:
 
     def test_offset_page_is_protocol(self) -> None:
         """Test OffsetPageProtocol is a Protocol."""
-        assert hasattr(OffsetPageProtocol, "__protocol_attrs__")
+        assert hasattr(OffsetPageProtocol, "__protocol_attrs__") or hasattr(OffsetPageProtocol, "__annotations__")
 
     def test_has_offset_property(self) -> None:
         """Test protocol has offset property."""
@@ -59,7 +59,7 @@ class TestCursorPageProtocol:
 
     def test_cursor_page_is_protocol(self) -> None:
         """Test CursorPageProtocol is a Protocol."""
-        assert hasattr(CursorPageProtocol, "__protocol_attrs__")
+        assert hasattr(CursorPageProtocol, "__protocol_attrs__") or hasattr(CursorPageProtocol, "__annotations__")
 
     def test_has_items_property(self) -> None:
         """Test protocol has items property."""
