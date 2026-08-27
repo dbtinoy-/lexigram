@@ -12,79 +12,102 @@ staged into a minimal transactional **outbox** so nothing is lost between
 No database, broker, or external service is required — everything runs on the
 framework's in-memory buses.
 
+## Concepts
+
+| Piece | Where | Lexigram API used |
+|-------|-------|-------------------|
+| Write side: commands + handlers | `commands.py`, `handlers.py` | `Command`, `CommandBusImpl`, `command bus.register()` |
+| Domain events with aggregate context | `domain.py` | `DomainEvent` (contracts) |
+| Read side: projection + notifications | `events.py` | `EventBusImpl.subscribe()` / `EventBusProtocol` |
+| Outbox pattern (stage + flush) | `repository/outbox.py` | `Result[Ok, Err]` delivery results |
+| IO wiring | `di/provider.py` | `Provider`, `EventsModule.configure()`, `@module` |
+| REST surface | `controllers/api.py` | `Controller`, `@get`, `@post`, `@error_status` |
+| Static UI | `ui/pages.py` | `Controller`, `FileResponse` |
+
 ## REST API
 
 ```bash
-PYTHONPATH=demos/event-driven-orders/src uv run python -m orders serve           # :7074 (ORDERS_PORT)
+cd demos/event-driven-orders
+PYTHONPATH=src uv run python -m orders                # start server
 curl -X POST localhost:7074/orders -H 'content-type: application/json' \
      -d '{"customer":"Alice","items":[{"sku":"SKU-1","qty":2,"unit_price":"9.99"}]}'
 curl -X POST localhost:7074/orders/<id>/pay -H 'content-type: application/json' \
      -d '{"amount":"19.98"}'
-curl localhost:7074/orders              # read-model projection
-curl -X POST localhost:7074/outbox/flush
+curl -X POST localhost:7074/orders/<id>/ship
+curl localhost:7074/orders                            # read-model projection
+curl localhost:7074/outbox                            # staged events
+curl -X POST localhost:7074/outbox/flush              # flush + deliver
+curl -X POST localhost:7074/api/demo                  # run full lifecycle
 ```
-
-
-## What it shows
-
-| Piece | Where | Lexigram API used |
-|-------|-------|-------------------|
-| Write side: commands + handlers | `src/orders/commands.py`, `src/orders/handlers.py` | `Command`, `CommandBusImpl`, `command bus.register()` |
-| Domain events with aggregate context | `src/orders/domain.py` | `DomainEvent` (contracts) |
-| Read side: projection + notifications | `src/orders/events.py` | `EventBusImpl.subscribe()` / `EventBusProtocol` |
-| Outbox pattern (stage + flush) | `src/orders/outbox.py` | `Result[Ok, Err]` delivery results |
-| IO wiring | `src/orders/di/provider.py`, `src/orders/module.py` | `Provider`, `EventsModule.configure()`, `@module` |
-| CLI | `src/orders/main.py` | `Application.boot()` + container resolution |
 
 ## Run it
 
 ```bash
-PYTHONPATH=demos/event-driven-orders/src uv run python -m orders demo
+cd demos/event-driven-orders
+PYTHONPATH=src uv run python -m orders
 ```
 
-`demo` runs the whole lifecycle in one process: place → pay → ship, the staged
-outbox records, delivery through the outbox relay (projection + notification
-handlers fire), and the final read-model row.
+Open `http://localhost:7074` in your browser for the interactive console.
+The **Run Demo** button executes the full lifecycle: place -> pay -> ship ->
+flush, then shows the final read-model row.
 
-You can also drive each step yourself:
+## Layout — read it in this order
 
-```bash
-PYTHONPATH=demos/event-driven-orders/src uv run python -m orders place "Alice Wonder" --item "SKU-1,2,9.99" --item "SKU-2,1,149.00"
-PYTHONPATH=demos/event-driven-orders/src uv run python -m orders list
-PYTHONPATH=demos/event-driven-orders/src uv run python -m orders pay <order-id> 19.98
-PYTHONPATH=demos/event-driven-orders/src uv run python -m orders ship <order-id>
-PYTHONPATH=demos/event-driven-orders/src uv run python -m orders outbox
-```
+Start at the composition root and follow the wiring outward.
+Each file has teaching comments explaining the Lexigram convention it follows.
 
-Note that all state is in-memory and per-process: each invocation boots a
-fresh application, so an order placed in one command is invisible to the next.
-Use `demo` to see the full flow in a single process, or the test suite below.
-
-Watch the flow: `place` writes the order and stages `OrderPlaced` in the
-outbox; the relay then delivers it, and a notification handler "emails" the
-customer. `pay` / `ship` project new status into the read model, and `outbox`
-shows every staged event and flushes the ones still pending.
-
-Big picture: the read model is *only ever built from events* — a command that
-fails validation (e.g. shipping before paying) is rejected by the write side
-and never reaches the read model.
-
-## Layout
+| # | File | Lesson |
+|---|------|--------|
+| 1 | `src/orders/app.py` | ⭐ Composition root: config → modules → providers |
+| 2 | `src/orders/main.py` | Lifecycle: thin `serve()` function |
+| 3 | `src/orders/di/provider.py` | Provider wiring: command bus + event bus + handlers |
+| 4 | `src/orders/domain.py` | Domain aggregate, events, errors — no framework imports |
+| 5 | `src/orders/commands.py` | Command definitions: `PlaceOrder`, `PayOrder`, `ShipOrder` |
+| 6 | `src/orders/handlers.py` | Command handlers (write side); bus subscription pattern |
+| 7 | `src/orders/events.py` | Read-side projection + notification handler; event subscription |
+| 8 | `src/orders/repository/outbox.py` | Transactional outbox: stage + flush pattern |
+| 9 | `src/orders/controllers/api.py` | REST surface: Result-returning handlers → auto HTTP status |
+| 10 | `src/orders/ui/pages.py` | Page controllers: serve HTML/assets only, no logic |
 
 ```
 demos/event-driven-orders/
+├── application.yaml         # Complete configuration reference
+├── README.md                # This file
 ├── src/orders/
-│   ├── domain.py        # Order aggregate state, OrderError, OrderPlaced/Paid/Shipped
-│   ├── commands.py      # PlaceOrder / PayOrder / ShipOrder
-│   ├── handlers.py      # command handlers (write side)
-│   ├── events.py        # OrdersView projection + NotificationHandler (read side)
-│   ├── outbox.py        # InMemoryOutbox + OutboxRecord
-│   ├── repositories.py  # write-side OrderRepository
-│   ├── services.py      # OrdersApi facade for the CLI
-│   ├── di/provider.py   # OrdersProvider (wires buses + handlers)
-│   ├── module.py        # OrdersModule (imports EventsModule)
-│   └── main.py          # CLI
-└── tests/               # pytest suite (boots the module, runs full flows)
+│   ├── __init__.py          # Public exports
+│   ├── __main__.py          # python -m orders entry point
+│   ├── app.py               # Composition root (start here)
+│   ├── main.py              # Thin serve() lifecycle
+│   ├── domain.py            # Order aggregate, OrderItem, events, errors
+│   ├── commands.py          # PlaceOrder / PayOrder / ShipOrder
+│   ├── handlers.py          # Command handlers (write side)
+│   ├── events.py            # OrdersView projection + NotificationHandler
+│   ├── identifier.py        # Ambient identity generation
+│   ├── controllers/
+│   │   ├── __init__.py
+│   │   └── api.py           # REST surface (OrdersApiController)
+│   ├── di/
+│   │   ├── __init__.py
+│   │   └── provider.py      # OrdersProvider (wires buses + handlers)
+│   ├── repository/
+│   │   ├── __init__.py
+│   │   ├── order_repository.py   # Write-side store
+│   │   └── outbox.py             # Transactional outbox
+│   ├── services/
+│   │   ├── __init__.py
+│   │   └── orders_api.py         # Facade for API + UI
+│   └── ui/
+│       ├── __init__.py
+│       ├── pages.py              # Static-serving page controller
+│       ├── static/
+│       │   ├── app.js            # Browser client (vanilla JS)
+│       │   └── style.css         # Console theme
+│       └── views/
+│           └── console.html      # Single-page console
+└── tests/
+    ├── conftest.py          # Pytest bootstrap + shared fixtures
+    ├── test_api.py          # REST endpoint tests
+    └── test_orders.py       # CQRS lifecycle + outbox tests
 ```
 
 ## Tests

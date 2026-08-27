@@ -1,50 +1,64 @@
 """Application composition root for the auth web demo.
 
-``create_app`` is the only place that knows how the modules fit together;
-the auth section is coerced eagerly (nested token dicts can load shallow)
-and passed explicitly to :class:`AuthModule`.
+Every Lexigram application has exactly one place that knows how the pieces
+fit together: the composition root.  Everything else (controllers,
+services, views) is inert until this file wires it.
+
+``application.yaml`` lives next to this demo's root; the framework
+auto-discovers it from the working directory.  No explicit config loading
+is needed — ``AuthModule.configure()`` and ``WebModule.configure()``
+read their typed sections from the loaded config via ``config_key`` /
+``config_model``.
 """
 
 from __future__ import annotations
 
-from auth_web.config import load_lex_config
 from auth_web.controllers.api import AuthApiController
 from auth_web.di.provider import AuthWebProvider
 from auth_web.ui.pages import PagesController
 from lexigram.app.base import Application
-from lexigram.auth.config import AuthConfig, JWTConfig
 from lexigram.auth.module import AuthModule
 from lexigram.config.main import LexigramConfig
-from lexigram.web.config import WebConfig
+from lexigram.di.provider import Provider
 from lexigram.web.module import WebModule
 
 
-def _coerce_auth_config(auth_config: AuthConfig) -> AuthConfig:
-    """Normalize nested sections that can load as raw dicts."""
-    token = getattr(auth_config, "token", None)
-    if isinstance(token, dict):
-        return auth_config.model_copy(update={"token": JWTConfig(**token)}, deep=True)
-    return auth_config
+def build_modules() -> list[object]:
+    """Declarative capabilities — zero configuration arguments needed.
+
+    Each ``Module.configure(...)`` returns a DynamicModule: a recipe the
+    framework expands into providers at boot.  Because every provider in
+    the bundle declares ``config_key`` / ``config_model``, the orchestrator
+    injects the matching typed section of ``LexigramConfig`` into
+    ``provider.config`` right before ``register()`` runs.
+    """
+    return [
+        AuthModule.configure(),
+        WebModule.configure(
+            controllers=[AuthApiController, PagesController],
+        ),
+    ]
+
+
+def build_providers() -> list[Provider]:
+    """Imperative services owned by this demo."""
+    return [AuthWebProvider()]
 
 
 def create_app(config: LexigramConfig | None = None) -> Application:
-    """Create the configured (not yet started) application."""
-    config = config or load_lex_config()
-    auth_config = _coerce_auth_config(config.get_section("auth", AuthConfig))
-    web_config = config.get_section("web", WebConfig)
+    """Create the application in CREATED state (not yet started).
 
+    Modules declare capabilities; providers fill services.
+    The dependency graph resolves lazily at boot.
+
+    Args:
+        config: Optional pre-loaded config. When ``None`` the framework
+            auto-discovers ``application.yaml`` from the working directory.
+    """
     app = Application(name="auth-web", config=config)
-    app.add_modules(
-        [
-            AuthModule.configure(config=auth_config),
-            WebModule.configure(
-                web_config=web_config,
-                controllers=[AuthApiController, PagesController],
-            ),
-        ]
-    )
-    app.add_provider(AuthWebProvider())
+    app.add_modules(build_modules())
+    app.add_providers(build_providers())
     return app
 
 
-__all__ = ["create_app"]
+__all__ = ["build_modules", "build_providers", "create_app"]

@@ -614,7 +614,7 @@ max-complexity = 15
 # namespace packages):
 #
 #   make lint-boundaries                       ← preferred Makefile target
-#   uv run python tools/lint_imports.py
+#   uv run python dev/checks/lint_imports.py
 #
 # Do NOT use `uv run lint-imports` directly — it will fail to discover
 # extension packages (lexigram.contracts, lexigram.cache, etc.).

@@ -5,7 +5,7 @@ from pathlib import Path
 import re
 
 from dev.audit.generators.base import AuditRunResult, MarkdownAuditGenerator
-from dev.core.package_inventory import discover_package_paths
+from dev._lib.package_inventory import discover_package_paths
 
 # Internal link forms: ](/section/name/) or ](/section/name/#anchor)
 _LINK_RE = re.compile(r"\]\((/[^)\s]+?)\)")

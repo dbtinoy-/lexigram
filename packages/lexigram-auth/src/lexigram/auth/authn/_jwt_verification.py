@@ -11,6 +11,7 @@ import hashlib
 from typing import TYPE_CHECKING, Any
 
 import jwt
+from jwt.types import Options
 
 from lexigram.auth.authn._binding import TokenBindingConfig, verify_binding
 from lexigram.contracts.auth.exceptions import TokenError as ContractsTokenError
@@ -151,10 +152,10 @@ class _JWTVerificationMixin:
             #   3. When allow_missing_audience=True, skip the check entirely.
             if allow_missing_audience:
                 effective_audience: str | None = None
-                decode_options: dict = {"verify_aud": False}
+                decode_options: Options = Options({"verify_aud": False})
             else:
                 effective_audience = expected_audience or self._required_audience
-                decode_options = {"verify_aud": effective_audience is not None}
+                decode_options = Options({"verify_aud": effective_audience is not None})
                 if effective_audience is None:
                     import os
 
@@ -169,7 +170,7 @@ class _JWTVerificationMixin:
                 verification_key,
                 algorithms=[self.algorithm],
                 audience=effective_audience,
-                options=decode_options,  # type: ignore[arg-type]
+                options=decode_options,
             )
 
             # Record which key_id successfully verified this kid and this token.

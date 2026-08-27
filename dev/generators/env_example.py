@@ -35,9 +35,51 @@ def _split_cells(line: str) -> list[str]:
     return [c.replace("\\|", "|") for c in cells]
 
 
-def parse(catalog: Path) -> list[tuple[str, list[tuple[str, str, str]]]]:
-    sections: list[tuple[str, list[tuple[str, str, str]]]] = []
-    current: tuple[str, list[tuple[str, str, str]]] | None = None
+# Patterns indicating the raw default is not a simple resolvable literal.
+_UNRESOLVABLE = re.compile(r"[()\[\]{}]|const\.|tasks_const\.")
+_DURATION = re.compile(r"^Duration\.(seconds|minutes|hours|days)\((\d+(?:\.\d+)?)\)$")
+_UNIT_ABBREV = {"seconds": "s", "minutes": "m", "hours": "h", "days": "d"}
+
+
+def _resolve_default(raw: str) -> str:
+    """Convert a catalog default value to an env-file string.
+
+    Returns an empty string when the default cannot be statically resolved
+    (complex expressions, framework types with constant arguments,
+    constant references, or ``None``).
+    """
+    if not raw or raw in {"—", "(complex)"}:
+        return ""
+    # Duration.seconds(30) → 30s, Duration.hours(1) → 1h, etc.
+    if m := _DURATION.match(raw):
+        unit = _UNIT_ABBREV[m.group(1)]
+        return f"{m.group(2)}{unit}"
+    # SecretStr('') → empty string; SecretStr('x') → x
+    if raw.startswith("SecretStr(") and raw.endswith(")"):
+        inner = raw[len("SecretStr(") : -1]
+        if len(inner) >= 2 and inner[0] in ("'", '"') and inner[-1] == inner[0]:
+            return inner[1:-1]
+        return ""
+    # Reject anything that looks like a Python expression or constant reference.
+    if _UNRESOLVABLE.search(raw):
+        return ""
+    # Boolean normalization.
+    if raw == "True":
+        return "true"
+    if raw == "False":
+        return "false"
+    # None means no default.
+    if raw == "None":
+        return ""
+    # Strip surrounding quotes.
+    if len(raw) >= 2 and raw[0] in ("'", '"') and raw[-1] == raw[0]:
+        return raw[1:-1]
+    return raw
+
+
+def parse(catalog: Path) -> list[tuple[str, list[tuple[str, str, str, str]]]]:
+    sections: list[tuple[str, list[tuple[str, str, str, str]]]] = []
+    current: tuple[str, list[tuple[str, str, str, str]]] | None = None
     for line in catalog.read_text().splitlines():
         if m := PKG_HEADER.match(line):
             if current:
@@ -52,8 +94,9 @@ def parse(catalog: Path) -> list[tuple[str, list[tuple[str, str, str]]]]:
                 continue
             name = name_match.group(1)
             typ = cells[1].strip()
+            default = cells[2].strip()
             desc = cells[3].strip()
-            current[1].append((name, typ, desc))
+            current[1].append((name, typ, default, desc))
     if current:
         sections.append(current)
     return sections
@@ -101,7 +144,10 @@ SUPPLEMENTAL_VARS: dict[str, tuple[str, str]] = {
     "AUDIT_HMAC_KEY": ("changeme", "audit doctor / signing key"),
     "AUTH_JWT_SECRET": ("changeme", "lexigram-auth JWT secret"),
     "AUTH_SECRET": ("changeme", "lexigram-cli environment validation"),
-    "LEX_CONFIG_ALLOW_UNKNOWN": ("false", "bypass strict unknown-key errors (true/false)"),
+    "LEX_CONFIG_ALLOW_UNKNOWN": (
+        "false",
+        "bypass strict unknown-key errors (true/false)",
+    ),
     "OAUTH_CLIENT_SECRET": ("change-me-oauth-client-secret", "app startup secret hook"),
     "BROKER_URL": ("amqp://guest:guest@localhost:5672//", "queue doctor broker URL"),
     "DATABASE_URL": (
@@ -139,8 +185,6 @@ SUPPLEMENTAL_VARS: dict[str, tuple[str, str]] = {
         "postgresql://lexigram:lexigram@localhost:5432/lexigram_test",
         "events/tasks postgres integration tests",
     ),
-    "UV": ("uv", "uv binary used by publish tooling"),
-    "UV_PUBLISH_TOKEN": ("changeme", "PyPI publish token"),
     "VECTOR_BACKEND": ("memory", "vector doctor backend name"),
     "VECTOR_STORE_BACKEND": ("memory", "vector doctor backend name"),
 }
@@ -160,7 +204,7 @@ SUPPLEMENTAL_HEADER = [
     "#   RABBITMQ_URL, REDIS_URL, SMTP_HOST, VECTOR_BACKEND, VECTOR_STORE_BACKEND",
     "# Test/tooling only:",
     "#   ADMIN_BASE, ADMIN_SETUP_TOKEN, AUTH_SECRET, ENVIRONMENT, LEXI_SECRET,",
-    "#   LOG_LEVEL, PLAYWRIGHT_SNAPSHOT, TEST_POSTGRES_DSN, UV, UV_PUBLISH_TOKEN",
+    "#   LOG_LEVEL, PLAYWRIGHT_SNAPSHOT, TEST_POSTGRES_DSN",
     "# ---------------------------------------------------------------------------",
 ]
 
@@ -188,14 +232,14 @@ def generate() -> None:
     for pkg, rows in sections:
         lines.append("")
         lines.append(f"# ── {pkg} ──")
-        for name, typ, desc in rows:
+        for name, typ, catalog_default, desc in rows:
             default = SERVICE_DEFAULTS.get(name)
             if default:
                 val = default
             elif name.endswith(SECRET_SUFFIX) or "SECRET" in name or "API_KEY" in name:
                 val = "<change-me-in-production>"
             else:
-                val = ""
+                val = _resolve_default(catalog_default)
             comment = f"  # {typ}" if typ else ""
             if desc:
                 comment = f"  # {desc} ({typ})" if typ else f"  # {desc}"

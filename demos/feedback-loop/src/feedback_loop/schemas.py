@@ -1,9 +1,13 @@
 """Declarative request DTOs for the feedback-loop JSON API.
 
-Annotating a handler parameter with one of these ``DomainModel`` subclasses
+Convention: annotating a handler parameter with a ``DomainModel`` subclass
 tells the framework to deserialize + validate the JSON body before the
 handler runs — a malformed payload never reaches demo code; the pipeline
 answers with a 422 validation ProblemDetail on its own.
+
+Each DTO maps to exactly one endpoint: ``AskRequest`` → ``POST /api/ask``,
+``RateRequest`` → ``POST /api/rate``, ``RegressRequest`` →
+``POST /api/regress``.
 """
 
 from __future__ import annotations

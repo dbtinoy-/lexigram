@@ -3,8 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 
 from dev.audit.generators.base import MarkdownAuditGenerator
-from dev.core.rule_engine import RuleSeverity, run_rules
-from dev.core.rules_catalog import build_rules_catalog
+from dev._lib.rule_engine import RuleSeverity, run_rules
+from dev._lib.rules_catalog import build_rules_catalog
 
 RULE_RESOLUTION_GUIDE: dict[str, str] = {
     "no-cross-extension-import": (

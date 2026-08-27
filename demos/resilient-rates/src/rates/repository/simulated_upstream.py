@@ -1,4 +1,20 @@
-"""Simulated FX rates provider with scriptable fault scenarios."""
+"""Simulated FX rates provider with scriptable fault scenarios.
+
+Convention followed: **Repository pattern** — ``SimulatedRatesProvider``
+is the sole implementation of the upstream.  It lives behind
+``FaultController`` which allows live flipping of fault scenarios.
+
+The provider is **deterministic-by-design**: ``random.Random(seed)`` is
+the reproducibility feature; ambient identity/clock do not apply to
+seeded draws.  Identical seeds produce identical rate sequences.
+
+Scenario behavior:
+
+- ``HEALTHY`` — always answers with a fresh random-walk quote
+- ``FLAKY`` — ~70% of calls raise ``UpstreamTimeoutError``
+- ``DOWN`` — hard failure on every call (``UpstreamUnavailableError``)
+- ``SLOW`` — adds 50ms latency to every call
+"""
 
 from __future__ import annotations
 
@@ -22,7 +38,11 @@ _SLOW_DELAY_SECONDS = 0.05
 
 
 class Scenario(str, Enum):
-    """Upstream health scenarios driven by the FaultController."""
+    """Upstream health scenarios driven by the FaultController.
+
+    Each scenario produces a different failure mode in the simulated
+    upstream, allowing the resilience pipeline to be exercised live.
+    """
 
     HEALTHY = "healthy"
     FLAKY = "flaky"
@@ -31,7 +51,14 @@ class Scenario(str, Enum):
 
 
 class FaultController:
-    """Container-managed holder of the active upstream scenario."""
+    """Container-managed holder of the active upstream scenario.
+
+    Registered as a singleton in ``RatesProvider.register()`` so the same
+    instance is shared across the service and API controller layers.
+
+    Attributes:
+        current: The active scenario (read-only property).
+    """
 
     def __init__(self, initial: Scenario = Scenario.HEALTHY) -> None:
         self._scenario = initial

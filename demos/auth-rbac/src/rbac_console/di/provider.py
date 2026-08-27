@@ -21,10 +21,10 @@ from rbac_console.domain.articles import ArticleStore
 from rbac_console.domain.personas import PersonaDirectory
 from rbac_console.repository.session_repository import InMemorySessionRepository
 
-from lexigram.auth.authn.user_service import UserService
-from lexigram.auth.authz.service import AuthorizationService
-from lexigram.auth.session.cookie_backend import SessionCookieBackend
-from lexigram.contracts.auth.repositories import SessionRepositoryProtocol
+from lexigram.auth import SessionCookieBackend, UserService
+from lexigram.auth.authz import AuthorizationService
+from lexigram.auth.config import AuthConfig
+from lexigram.contracts.auth import SessionRepositoryProtocol
 from lexigram.contracts.core.di import (
     BootContainerProtocol,
     ContainerRegistrarProtocol,
@@ -38,23 +38,40 @@ __all__ = ["RbacProvider"]
 
 
 class RbacProvider(Provider):
-    """Wire the demo services; seeding runs once at boot."""
+    """Demo-specific DI registrations — your app replaces this.
+
+    Provider lifecycle: register() → boot() → shutdown().
+    register() binds services (no I/O); boot() initializes after freeze.
+    """
 
     name = "rbac-console"
 
     async def register(self, container: ContainerRegistrarProtocol) -> None:
-        """Bind demo services — no I/O here."""
+        """Bind demo services — no I/O here.
+
+        ``container.singleton(Thing, instance=Thing())`` for already-built objects.
+        ``container.singleton(Thing, factory=async_fn)`` for services that need
+        other services resolved first (async factories run during resolve).
+        """
 
         # --- Stores: trivial objects, bind as instances ---
+        # InMemorySessionRepository is bound as both its concrete type AND
+        # the protocol — framework code resolves SessionRepositoryProtocol,
+        # tests can import InMemorySessionRepository directly.
         repository = InMemorySessionRepository()
         container.singleton(InMemorySessionRepository, instance=repository)
         container.singleton(SessionRepositoryProtocol, instance=repository)
+        # ArticleStore and PersonaDirectory are plain dataclasses with no
+        # framework dependencies — register as instances for simplicity.
         container.singleton(ArticleStore, instance=ArticleStore())
         container.singleton(PersonaDirectory, instance=PersonaDirectory())
 
         # --- Services that need auth dependencies: async factories ---
+        # These factories resolve framework services (AuthenticationService,
+        # AuthorizationService) that the auth module owns.  Your app never
+        # creates these directly — they come from AuthModule.configure().
         async def build_users(resolver):
-            from lexigram.auth.authn.services import AuthenticationService
+            from lexigram.auth import AuthenticationService
 
             authn = await resolver.resolve(AuthenticationService)
             return UserService(
@@ -73,6 +90,8 @@ class RbacProvider(Provider):
         container.singleton(SessionCookieBackend, factory=build_cookies)
 
         # --- Demo-specific: controller and seeder ---
+        # Controllers receive all collaborators via constructor injection.
+        # The framework resolves the controller when a request matches its routes.
         async def build_api(resolver):
             return RbacApiController(
                 users=await resolver.resolve(UserService),
@@ -85,7 +104,7 @@ class RbacProvider(Provider):
         async def build_seed(resolver):
             return RbacSeedService(
                 users=await resolver.resolve(UserService),
-                authz=await resolver.resolve(AuthorizationService),
+                config=await resolver.resolve(AuthConfig),
                 personas=await resolver.resolve(PersonaDirectory),
                 articles=await resolver.resolve(ArticleStore),
             )
@@ -94,6 +113,11 @@ class RbacProvider(Provider):
         container.singleton(RbacSeedService, factory=build_seed)
 
     async def boot(self, container: BootContainerProtocol) -> None:
-        """Seed personas and articles — I/O is allowed here."""
+        """Seed personas and articles — I/O is allowed here.
+
+        boot() runs AFTER register() completes and the container is frozen.
+        This is where you resolve services and do initialization work
+        (seeding data, warming caches, connecting to external services).
+        """
         seeder = await container.resolve(RbacSeedService)
         await seeder.run()

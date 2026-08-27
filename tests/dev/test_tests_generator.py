@@ -4,7 +4,7 @@ from pathlib import Path
 
 from dev.audit.generators import tests as tests_generator_module
 from dev.audit.generators.tests import TestsAuditGenerator
-from dev.core.evidence import CommandEvidence
+from dev._lib.evidence import CommandEvidence
 
 SCRIPTS_COMMAND = ("uv", "run", "pytest", "tests/scripts", "-q", "-m", "not integration", "--cov=scripts")
 FRAMEWORK_COMMAND = ("uv", "run", "pytest", "lexigram/tests", "-q", "-m", "not integration", "--cov=lexigram")

@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import ClassVar
 
 from lexigram.config.base import BaseConfig
 from lexigram.validation import ConfigDict, Field
 
 
+@dataclass(init=False)
 class ManagerConfig(BaseConfig):
     """Configuration for :class:`~lexigram.features.manager.FlagManager` instances."""
 

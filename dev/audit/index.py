@@ -6,8 +6,8 @@ from pathlib import Path
 
 from lexigram.serialization.backends import json as json_backend
 from dev.audit.generators.base import AuditGeneratorProtocol
-from dev.core.registry import GeneratorRegistry
-from dev.core.validation import (
+from dev._lib.registry import GeneratorRegistry
+from dev._lib.validation import (
     RulesReportSummary,
     ToolHealthResult,
     parse_quality_tool_health,

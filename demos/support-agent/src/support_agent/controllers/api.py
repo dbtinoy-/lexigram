@@ -2,6 +2,14 @@
 
 Handlers return ``Result`` values; the web pipeline renders ``Ok`` payloads
 and maps ``Err`` errors to ProblemDetail responses via ``ResultResponseMapper``.
+
+Routes:
+
+- ``GET  /api/tools``   — list registered tools for the console sidebar
+- ``POST /api/ask``     — run one scenario-scripted ReAct turn
+
+The ask endpoint accepts ``{"question": "...", "scenario": "happy"}`` and
+returns a traced response with steps, tool calls, token counts, and timing.
 """
 
 from __future__ import annotations
@@ -36,6 +44,7 @@ async def _body(request: Request) -> dict[str, Any]:
 
 
 def _payload(response: Any) -> dict[str, Any]:
+    """Flatten an AgentResponse into a JSON-safe dict for the console."""
     return {
         "answer": response.message,
         "steps": [
@@ -60,7 +69,11 @@ def _payload(response: Any) -> dict[str, Any]:
 
 
 class AgentApiController(Controller):
-    """Endpoints consumed by the ui/static/app.js fetch client."""
+    """Endpoints consumed by the ui/static/app.js fetch client.
+
+    The framework resolves this controller when a request matches its routes.
+    All collaborators come via constructor injection — no service locator.
+    """
 
     def __init__(self, scripted: ScriptedLLM, support: SupportAgent) -> None:
         self._scripted = scripted
@@ -77,7 +90,11 @@ class AgentApiController(Controller):
         self,
         request: Request,
     ) -> Result[dict[str, Any], AgentError | NotFoundError | ValidationError]:
-        """Run one scenario-scripted ReAct turn."""
+        """Run one scenario-scripted ReAct turn.
+
+        Returns ``Ok(payload)`` on success, or ``Err`` mapped to 404/422/500
+        by the framework's result bridge.
+        """
         data = await _body(request)
         scenario_key = str(data.get("scenario", ""))
         scenario = SCENARIOS.get(scenario_key)
@@ -88,6 +105,8 @@ class AgentApiController(Controller):
         if not question:
             return Err(ValidationError("question is required"))
 
+        # Load the scripted completions for this scenario into the FIFO
+        # queue — the ReAct strategy pops them one per reasoning step.
         self._scripted.load(scenario.script)
         inner = await self._support.ask(question)
         if inner.is_err():

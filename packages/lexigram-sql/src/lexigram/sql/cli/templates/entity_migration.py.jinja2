@@ -27,7 +27,7 @@ def upgrade() -> None:
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
 {%- for column in column_lines %}
-        {{ column }},
+        {{ column }}
 {%- endfor %}
     )
 

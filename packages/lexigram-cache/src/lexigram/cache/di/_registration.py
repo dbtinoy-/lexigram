@@ -38,6 +38,12 @@ class _CacheRegistrationMixin:
         """
         logger.info("Registering Lexigram Cache services with container")
 
+        # Register config so downstream providers (e.g. RatesProvider) can
+        # resolve CacheConfig from the container.
+        from lexigram.cache.config import CacheConfig  # noqa: PLC0415
+
+        container.singleton(CacheConfig, self.config)
+
         # Register backend registry
         self._backend_registry = BackendRegistry()
         container.singleton(BackendRegistry, self._backend_registry)

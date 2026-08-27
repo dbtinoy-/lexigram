@@ -62,7 +62,7 @@ class GovernanceProvider(Provider):
                 f"config must be GovernanceConfig or dict, got {type(config).__name__}"
             )
         self._requested_config = config
-        self._config = config or GovernanceConfig()
+        self._config = config if config is not None else GovernanceConfig()
 
     @classmethod
     def from_config(

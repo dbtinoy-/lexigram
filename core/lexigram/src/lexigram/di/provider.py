@@ -122,6 +122,7 @@ class Provider:
 
         self._state = ProviderState.CREATED
         self._config: Any = None
+        self._config_from_factory: bool = False
 
     @property
     def state(self) -> ProviderState:
@@ -165,7 +166,10 @@ class Provider:
         Returns:
             A new provider instance configured from *config*.
         """
-        return cls()
+        instance = cls()
+        instance._config = config
+        instance._config_from_factory = True
+        return instance
 
     # -- Lifecycle hooks (override these) ----------------------------------
 

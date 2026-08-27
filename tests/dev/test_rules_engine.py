@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from dev.core.rule_engine import RuleSeverity, run_rules
+from dev._lib.rule_engine import RuleSeverity, run_rules
 
 
 def _write_package(root: Path, name: str) -> Path:

@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import httpx
-import pytest
-from starlette.applications import Starlette
 
-from auth_web.di.provider import DEMO_EMAIL, DEMO_PASSWORD
+
+# Test credentials — must match application.yaml users section.
+DEMO_EMAIL = "admin@auth.demo"
+DEMO_PASSWORD = "Admin-Pass-123!"
 
 
 async def login(client: httpx.AsyncClient) -> httpx.Response:

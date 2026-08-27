@@ -174,6 +174,7 @@ class TestRunServer:
     def test_instance_uses_default_host_and_port(self) -> None:
         """App instance: run_server defaults to 127.0.0.1:8000."""
         mock_app = MagicMock()
+        mock_app.config = None
         fake_uvicorn = _FakeUvicorn()
 
         def _run() -> None:

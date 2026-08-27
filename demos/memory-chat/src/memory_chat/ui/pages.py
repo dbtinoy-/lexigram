@@ -1,4 +1,11 @@
-"""Chat page — static serving only (logic lives in the API controller)."""
+"""Server-rendered pages + static assets for the memory-chat demo.
+
+Demonstrates the *page controller* half of a Lexigram web app: HTML lives
+in ``ui/views/``, assets in ``ui/static/``, and this controller serves
+them with zero business logic — every dynamic interaction goes through
+the JSON API in ``controllers/api.py`` instead.  HTMX/vanilla-JS in the
+views calls those endpoints directly.
+"""
 
 from __future__ import annotations
 
@@ -24,10 +31,19 @@ def _static(name: str, media_type: str) -> FileResponse:
 
 
 class ChatPageController(Controller):
-    """Serve the memory-chat console; every handler reads from ui/."""
+    """Serve the console's HTML/JS/CSS; logic lives in the API controller.
+
+    Lexigram convention: page controllers are stateless — they serve
+    files and redirect, nothing more.  All dynamic behavior goes through
+    the JSON API (ConciergeApiController).  HTMX/vanilla-JS in the views
+    calls those endpoints directly.
+
+    If you use an external frontend (React, Vue), omit this controller
+    entirely — ConciergeApiController is all you need.
+    """
 
     def __init__(self) -> None:
-        """Stateless."""
+        """Stateless: no constructor dependencies needed."""
 
     @get("/")
     async def chat(self, request: Request) -> FileResponse:

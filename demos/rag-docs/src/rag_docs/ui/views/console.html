@@ -2,28 +2,63 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>RAG Docs</title>
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-  <header><h1>RAG Docs — ask our own documentation</h1></header>
-  <main>
-    <section id="console">
-      <form id="ask-form">
-        <input id="question" type="text" autocomplete="off"
-               placeholder="e.g. how do providers boot?">
-        <select id="strategy">
-          <option value="vector">vector</option>
-          <option value="mmr">mmr</option>
-        </select>
-        <button type="submit">Ask</button>
+  <div class="app">
+    <!-- Left panel: input + controls + stats -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <h1>RAG Docs</h1>
+        <p class="subtitle">Ask our documentation</p>
+      </div>
+
+      <form id="ask-form" class="ask-form">
+        <div class="input-wrap">
+          <textarea id="question" rows="2" placeholder="e.g. how do providers boot?"></textarea>
+        </div>
+        <div class="controls">
+          <select id="strategy">
+            <option value="vector">vector</option>
+            <option value="mmr">mmr</option>
+          </select>
+          <button type="submit" id="ask-btn">Ask</button>
+        </div>
       </form>
-      <p id="answer"></p>
-      <ul id="citations"></ul>
-      <p id="error" class="hidden"></p>
-    </section>
-    <aside><h2>Index stats</h2><pre id="stats" class="muted">loading…</pre></aside>
-  </main>
+
+      <button id="demo-btn" class="demo-btn" type="button">Run demo</button>
+
+      <div class="section">
+        <h2>Corpus</h2>
+        <div id="stats" class="stats-grid">
+          <span class="stat-label">Files</span><span id="stat-files" class="stat-value">&mdash;</span>
+          <span class="stat-label">Chunks</span><span id="stat-chunks" class="stat-value">&mdash;</span>
+        </div>
+      </div>
+
+      <div class="section">
+        <h2>Recent</h2>
+        <ul id="history" class="history-list"></ul>
+      </div>
+    </aside>
+
+    <!-- Right panel: answer + citations -->
+    <main class="content">
+      <div id="answer-area" class="answer-area empty-state">
+        <p class="placeholder">Ask a question to get started</p>
+      </div>
+
+      <div id="citations-area" class="citations-area hidden">
+        <h3>Citations</h3>
+        <ol id="citations" class="citations-list"></ol>
+      </div>
+
+      <div id="error-toast" class="error-toast hidden"></div>
+    </main>
+  </div>
+
   <script src="/static/app.js"></script>
 </body>
 </html>

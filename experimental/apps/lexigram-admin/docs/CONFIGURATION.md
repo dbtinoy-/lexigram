@@ -38,8 +38,6 @@ module = AdminModule.configure(config)
 | `ui.theme` | `str` | `system` | `LEX_ADMIN__UI__THEME` | UI colour scheme (`light`, `dark`, or `system`) |
 | `tenancy.enabled` | `bool` | `False` | `LEX_ADMIN__TENANCY__ENABLED` | Enable multi-tenant resource scoping |
 | `audit.read_audit_enabled` | `bool` | `False` | `LEX_ADMIN__AUDIT__READ_AUDIT_ENABLED` | Log GET requests for compliance (off by default) |
-| `audit.redaction_field_denylist` | `tuple[str]` | `("email", "phone", "password_hash", "ssn")` | `LEX_ADMIN__AUDIT__REDACTION_FIELD_DENYLIST` | Field names redacted from audit payloads |
-| `audit.redaction_patterns` | `tuple[str]` | `("email", "phone")` | `LEX_ADMIN__AUDIT__REDACTION_PATTERNS` | Named patterns for value-level redaction |
 
 ## Environment Variables
 
@@ -57,8 +55,6 @@ module = AdminModule.configure(config)
 | `LEX_ADMIN__UI__THEME` | `light`, `dark`, or `system` |
 | `LEX_ADMIN__TENANCY__ENABLED` | Enable tenancy |
 | `LEX_ADMIN__AUDIT__READ_AUDIT_ENABLED` | Enable read-operation audit logging |
-| `LEX_ADMIN__AUDIT__REDACTION_FIELD_DENYLIST` | Comma-separated field names to redact |
-| `LEX_ADMIN__AUDIT__REDACTION_PATTERNS` | Comma-separated pattern names (email, phone) |
 
 ## Best Practices
 

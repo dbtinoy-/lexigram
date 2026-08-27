@@ -31,7 +31,7 @@ import tomllib
 from packaging.requirements import Requirement
 
 
-from dev.core.package_inventory import discover_package_paths
+from dev._lib.package_inventory import discover_package_paths
 
 BOUNDED_OPERATORS = frozenset(("<", "<=", "==", "===", "~="))
 

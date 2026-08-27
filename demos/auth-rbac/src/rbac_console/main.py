@@ -21,21 +21,31 @@ logger = get_logger(__name__)
 
 
 async def serve() -> None:
-    """Boot and serve until interrupted."""
+    """Boot and serve until interrupted.
+
+    ``app.start()`` triggers the full lifecycle:
+    register → freeze → boot (seeding happens here) → server start.
+    The ``finally`` block ensures ``stop()`` runs even on errors.
+    """
     from lexigram.web.server.runner import run_server_async
 
     app = create_app()
     await app.start()
     try:
-        # host/port auto-consumed from application.yaml by run_server_async
-        # await run_server_async(app, host="0.0.0.0", port=9000)  # manual override
+        # run_server_async reads host/port from application.yaml by default;
+        # pass explicit kwargs to override (e.g. during tests).
         await run_server_async(app)
     finally:
         await app.stop()
 
 
 def main() -> int:
-    """Sync wrapper: translate interrupts into a shell-friendly exit code."""
+    """Sync entry point: translate asyncio interrupts into exit codes.
+
+    Convention: ``python -m <package>`` calls ``main()``.  Return 0 for
+    success, 130 for keyboard interrupt — the shell will see this as the
+    process exit code.
+    """
     try:
         asyncio.run(serve())
     except KeyboardInterrupt:

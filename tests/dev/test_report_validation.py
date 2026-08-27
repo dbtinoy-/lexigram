@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from dev.core.validation import (
+from dev._lib.validation import (
     ReferenceStatus,
     validate_package_coverage,
     validate_reference,

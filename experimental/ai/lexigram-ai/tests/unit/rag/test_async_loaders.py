@@ -59,7 +59,10 @@ class TestAsyncLoaders:
     @pytest.mark.asyncio
     async def test_image_loader_parallel_batch(self):
         """Verify ImageLoader.load_batch runs concurrently."""
-        loader = ImageLoader()
+        import lexigram.ai.rag.multimodal.loaders.image as image_mod
+
+        with patch.object(image_mod, "PIL_AVAILABLE", True):
+            loader = ImageLoader()
         # Mock load to avoid actual I/O
         loader.load = AsyncMock(return_value=Mock(spec=str)) 
         

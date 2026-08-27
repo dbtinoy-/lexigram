@@ -1,14 +1,108 @@
-# Realtime Monitor — every runtime knob lives here (Blueprint §3).
-# Profiles: application.<LEX_PROFILE>.yaml overlays on top of this file.
-web:
-  server:
-    host: 127.0.0.1
-    port: 7071
-  security:
-    csrf:
-      enabled: false # publish endpoint accepts curl / operator scripts
+# ══════════════════════════════════════════════════════════════════════════════
+# Realtime Monitor — Complete Configuration Reference
+# ══════════════════════════════════════════════════════════════════════════════
+#
+# Every configuration key available for this demo.
+# Uncommented lines are the values we override; commented lines show
+# defaults.  Each section maps 1:1 to a typed config model — the
+# framework validates your yaml against it at boot time.
+#
+# DEMO FOCUS: Server-Sent Events (SSE) for real-time log streaming,
+# synthetic heartbeat events, and an operator publish endpoint.
+#
+# LEARNING PATH:
+#   1. web:        HTTP server, security, CSRF
+#   2. demo:       Heartbeat, history, queue settings
+#
+# For full reference see:
+#   - Lexigram Web:       packages/lexigram-web/src/lexigram/web/config/
+#   - Demo config:        demos/realtime-monitor/src/ops_console/config.py
+# ══════════════════════════════════════════════════════════════════════════════
 
+
+# ── Web ──────────────────────────────────────────────────────────────────────
+# Lexigram Web auto-configures Starlette, OpenAPI, CORS, CSRF, and
+# rate limiting from this single section.  The WebModule reads it
+# automatically via config_key="web" / config_model=WebConfig.
+#
+# The orchestrator calls get_section("web", WebConfig) and injects
+# the result into WebProvider.config before register() runs.
+# ─────────────────────────────────────────────────────────────────────────────
+web:
+  # ── Server ─────────────────────────────────────────────────────────────────
+  server:
+    host: 127.0.0.1       # bind address (0.0.0.0 for external access)
+    port: 7071             # listen port
+    # workers: 1           # uvicorn workers (1 = single process)
+    # reload: false        # auto-reload on file changes (dev only)
+    # debug: false         # enable debug mode
+
+  # ── Security ───────────────────────────────────────────────────────────────
+  security:
+    # enabled: true                    # master switch for security subsystem
+
+    # ── CSRF ───────────────────────────────────────────────────────────────
+    # Disabled here because the publish endpoint accepts curl / operator
+    # scripts that don't carry cookies.
+    csrf:
+      enabled: false                    # disable for API-only ops console
+      # cookie_name: csrf_token
+      # header_name: X-CSRF-Token
+      # cookie_secure: true
+      # cookie_httponly: true
+      # cookie_samesite: Lax
+      # token_length: 32
+      # token_ttl: 3600
+      # excluded_paths: []
+
+    # ── CORS ───────────────────────────────────────────────────────────────
+    # cors:
+    #   enabled: true
+    #   allowed_origins:
+    #     - http://localhost:7071        # this demo
+    #   allow_methods: [GET, POST, PUT, DELETE, PATCH, OPTIONS]
+    #   allow_headers: ["*"]
+    #   allow_credentials: false
+    #   max_age: 600
+
+    # ── Headers ─────────────────────────────────────────────────────────────
+    # custom_headers:
+    #   x-content-type-options: nosniff
+    #   x-frame-options: DENY
+    #   x-xss-protection: "1; mode=block"
+    # referrer_policy: strict-origin-when-cross-origin
+
+  # ── Rate Limiting ──────────────────────────────────────────────────────────
+  # rate_limit:
+  #   enabled: true
+  #   default_limit: 100
+  #   default_window: 60
+  #   whitelist_ips: []
+  #   storage_backend: memory
+
+  # ── Misc ───────────────────────────────────────────────────────────────────
+  # openapi_title: API
+  # openapi_version: "1.0.0"
+  # openapi_url: /openapi.json
+  # swagger_ui_url: /docs
+  # redoc_url: /redoc
+  # compression_enabled: true
+  # template_directory: templates
+  # enable_auth: false
+  # max_body_size: 10485760            # 10 MiB
+
+
+# ── Demo ────────────────────────────────────────────────────────────────────
+# Demo-specific settings for the realtime monitor.  The
+# RealtimeProvider reads this section automatically via
+# config_key="demo" / config_model=RealtimeConfig.
+#
+# The heartbeat producer emits synthetic events at the configured
+# interval.  SSE subscribers receive events from an in-memory ring
+# buffer (history_size).  Queue capacity controls per-subscriber
+# backpressure before oldest events are dropped.
+# ─────────────────────────────────────────────────────────────────────────────
 demo:
-  heartbeat_interval_seconds: 15
-  history_size: 100
-  queue_capacity: 100
+  heartbeat_interval_seconds: 15        # seconds between heartbeat events
+  history_size: 100                     # events retained for SSE replay
+  queue_capacity: 100                   # per-subscriber buffer size

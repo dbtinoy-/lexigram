@@ -7,7 +7,7 @@ import re
 
 from dev.audit.generators.base import MarkdownAuditGenerator
 from dev.checks.dep_pins import iter_member_pyprojects, scan_unbounded_pins
-from dev.core.command_runner import run_command
+from dev._lib.command_runner import run_command
 
 FRESHNESS_COMMAND = ("uv", "pip", "list", "--outdated")
 FRESHNESS_TIMEOUT_SECONDS = 180.0

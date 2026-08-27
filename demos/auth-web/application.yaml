@@ -1,14 +1,283 @@
-# Auth Web — runtime configuration (Blueprint §3).
-web:
-  server:
-    host: 127.0.0.1
-    port: 8081
-  security:
-    csrf:
-      enabled: false # plain JSON posts over local http
+# ══════════════════════════════════════════════════════════════════════════════
+# Auth Web Demo — Complete Configuration Reference
+# ══════════════════════════════════════════════════════════════════════════════
+#
+# Every configuration key available for this demo.
+# Uncommented lines are the values we override; commented lines show
+# defaults.  Each section maps 1:1 to a typed config model — the
+# framework validates your yaml against it at boot time.
+#
+# DEMO FOCUS: Browser-based authentication — registration, login, cookie
+# sessions, JWT claims, session management, and password changes.
+#
+# LEARNING PATH:
+#   1. web:        HTTP server, security, rate limiting
+#   2. auth:       Users, roles, RBAC, JWT, password rules
+#
+# For full reference see:
+#   - Lexigram Web:       packages/lexigram-web/src/lexigram/web/config/
+#   - Lexigram Auth:      packages/lexigram-auth/src/lexigram/auth/config.py
+#
+# ENVIRONMENT VARIABLE OVERRIDE:
+#   Every key can be overridden via LEX_* env vars with __ as delimiter.
+#   Examples:
+#     LEX_WEB__SERVER__PORT=9000
+#     LEX_AUTH__SECRET_KEY=my-production-key
+# ══════════════════════════════════════════════════════════════════════════════
 
-# lexigram-auth (config_key: "auth") — offline demo secret.
+
+# ── Web ──────────────────────────────────────────────────────────────────────
+# Lexigram Web auto-configures Starlette, OpenAPI, CORS, CSRF, and
+# rate limiting from this single section.  The WebModule reads it
+# automatically via config_key="web" / config_model=WebConfig.
+#
+# The orchestrator calls get_section("web", WebConfig) and injects
+# the result into WebProvider.config before register() runs.
+# ─────────────────────────────────────────────────────────────────────────────
+web:
+  # ── Server ─────────────────────────────────────────────────────────────────
+  # Binds the uvicorn / gunicorn process.
+  server:
+    host: 127.0.0.1       # bind address (0.0.0.0 for external access)
+    port: 8081             # listen port
+    # workers: 1           # uvicorn workers (1 = single process)
+    # reload: false        # auto-reload on file changes (dev only)
+    # debug: false         # enable debug mode
+
+  # ── Security ───────────────────────────────────────────────────────────────
+  # HSTS, CSP, CORS, CSRF, and security headers — all aggregated here.
+  security:
+    # enabled: true                    # master switch for security subsystem
+
+    # ── CSRF ───────────────────────────────────────────────────────────────
+    # Protects against cross-site request forgery.  Disabled here because
+    # the demo posts JSON from the browser console (no cookies).
+    csrf:
+      enabled: false                    # disable for JSON-only playground
+      # cookie_name: csrf_token         # CSRF cookie name
+      # header_name: X-CSRF-Token       # client sends token in this header
+      # cookie_secure: true             # HTTPS only
+      # cookie_httponly: true            # no JS access
+      # cookie_samesite: Lax            # SameSite policy
+      # token_length: 32                # token bytes
+      # token_ttl: 3600                 # synchronizer-mode TTL (seconds)
+      # excluded_paths: []              # paths exempt from CSRF validation
+      # exclude_content_types: []       # Content-Types that bypass CSRF
+      # exclude_auth_schemes: []        # Auth schemes that bypass CSRF
+      # secret_key: null                # HMAC key (LEX_WEB__SECURITY__CSRF__SECRET_KEY)
+
+    # ── CORS ───────────────────────────────────────────────────────────────
+    # cors:
+    #   enabled: true
+    #   allowed_origins:                # browser origins allowed to call API
+    #     - http://localhost:3000       #   (dev frontend)
+    #     - http://localhost:8081       #   (this demo)
+    #   allow_methods: [GET, POST, PUT, DELETE, PATCH, OPTIONS]
+    #   allow_headers: ["*"]
+    #   expose_headers: []
+    #   allow_credentials: false        # true requires explicit origins
+    #   max_age: 600                    # preflight cache (seconds)
+
+    # ── Hosts ──────────────────────────────────────────────────────────────
+    # allowed_hosts: []                # hostnames permitted to reach app
+                                      # empty = reject all in production
+
+    # ── HSTS ───────────────────────────────────────────────────────────────
+    # hsts:
+    #   enabled: false                 # true in production
+    #   max_age: 31536000              # 1 year
+    #   include_subdomains: true
+    #   preload: true
+
+    # ── Headers ─────────────────────────────────────────────────────────────
+    # custom_headers:
+    #   x-content-type-options: nosniff
+    #   x-frame-options: DENY
+    #   x-xss-protection: "1; mode=block"
+    # referrer_policy: strict-origin-when-cross-origin
+
+  # ── Rate Limiting ──────────────────────────────────────────────────────────
+  # Prevents brute-force and DoS attacks.  Longest-prefix-match selects
+  # the rule for each request path.
+  # rate_limit:
+  #   enabled: true
+  #   default_limit: 100               # max requests per window
+  #   default_window: 60               # window size (seconds)
+  #   whitelist_ips: []                # exempt IPs
+  #   storage_backend: memory          # "memory" or "redis"
+  #   rules:                           # per-path overrides
+  #     /api/auth/login:
+  #       requests: 5
+  #       window: 60
+
+  # ── Static Files ───────────────────────────────────────────────────────────
+  # static:
+  #   enabled: false                   # serve static files
+  #   directory: static
+  #   prefix: /static
+  #   html: false                      # SPA mode
+
+  # ── OpenAPI / Docs ─────────────────────────────────────────────────────────
+  # openapi_title: API
+  # openapi_version: "1.0.0"
+  # openapi_url: /openapi.json
+  # swagger_ui_url: /docs
+  # redoc_url: /redoc
+
+  # ── Misc ───────────────────────────────────────────────────────────────────
+  # compression_enabled: true          # gzip / brotli
+  # template_directory: templates      # Jinja2 templates
+  # enable_identity_resolution: false  # resolve OAuth external IDs
+  # enable_auth: false                 # built-in auth middleware
+  # max_body_size: 10485760            # 10 MiB — protects against OOM DoS
+
+
+# ── Auth ─────────────────────────────────────────────────────────────────────
+# Lexigram Auth handles users, roles, RBAC, JWT tokens, and password
+# hashing.  The AuthModule reads this section automatically via
+# config_key="auth" / config_model=AuthConfig.
+#
+# The orchestrator calls get_section("auth", AuthConfig) and injects
+# the result into AuthorizationProvider.config before register() runs.
+# ─────────────────────────────────────────────────────────────────────────────
 auth:
-  secret_key: "auth-web-demo-secret-key-0123456789abcdef"
+  # enabled: true                      # master switch
+
+  # ── Secret Key (required) ─────────────────────────────────────────────────
+  # Used for signing JWT tokens.  Production requires >= 32 bytes.
+  # In dev, a stable key prevents token invalidation on restart.
+  secret_key: auth-web-demo-secret-key-0123456789abcdef
+
+  # ── JWT Token (required) ──────────────────────────────────────────────────
+  # Signs and verifies access, refresh, and ID tokens.
   token:
-    secret_key: "auth-web-demo-secret-key-0123456789abcdef"
+    secret_key: auth-web-demo-secret-key-0123456789abcdef
+    # algorithm: HS256                 # RS256 for asymmetric keys
+    # access_token_expire: 30m         # Duration: 30 minutes
+    # refresh_token_expire: 7d         # Duration: 7 days
+    # id_token_expire: 1h              # Duration: 1 hour
+    # key_rotation_grace_period: 3600s # seconds tokens survive key rotation
+    # required_audience: null          # required in production/staging
+
+  # ── Users (bootstrapping) ─────────────────────────────────────────────────
+  # Initial users created on first boot.  Supports plain passwords or
+  # pre-hashed values.  Roles reference keys from the roles section below.
+  users:
+    - name: Admin
+      email: admin@auth.demo
+      password: Admin-Pass-123!       # plain password (hashed on boot)
+      roles: [admin]
+
+  # ── Roles ──────────────────────────────────────────────────────────────────
+  # Role definitions for RBAC.  Each role lists permissions and may
+  # inherit from parent roles.  The AuthorizationProvider auto-consumes
+  # this map when no initial_roles are provided.
+  roles:
+    admin:
+      description: Full system access
+      permissions:
+        - "*"
+        - profile:read
+        - profile:write
+        - articles:*
+        - users.manage
+
+    editor:
+      description: Can manage articles
+      permissions:
+        - profile:read
+        - profile:write
+        - articles:*
+      inherits: [viewer]
+
+    viewer:
+      description: Read-only access
+      permissions:
+        - profile:read
+
+  # ── RBAC ──────────────────────────────────────────────────────────────────
+  rbac:
+    enabled: true                      # enforce RBAC checks
+    superuser_bypass: true             # admin bypasses all checks
+    default_role: viewer               # role assigned to new users
+    cache_permissions: true            # cache resolved permissions
+    permission_cache_ttl: 300          # cache TTL (seconds)
+
+  # ── Password Policy ────────────────────────────────────────────────────────
+  # Controls complexity requirements and hashing cost.  Production
+  # enforces minimum bcrypt rounds (12) and Argon2id memory (19456 KiB).
+  # password:
+  #   min_length: 12
+  #   max_length: 128
+  #   require_uppercase: true
+  #   require_lowercase: false
+  #   require_digits: true
+  #   require_special: false
+  #   banned_patterns: []              # substrings rejected (case-insensitive)
+  #   bcrypt_rounds: 12                # cost factor (min 12 in prod)
+  #   argon2_memory_cost: 65536        # KiB (OWASP floor: 19456)
+  #   argon2_time_cost: 3
+  #   argon2_parallelism: 4
+
+  # ── Middleware ──────────────────────────────────────────────────────────────
+  # Controls which paths require auth and the token transport.
+  # middleware:
+  #   backend: session                 # "session" or "token"
+  #   header_name: Authorization
+  #   scheme: Bearer
+  #   exclude_paths: []                # paths that skip auth
+  #   exclude_prefixes: []             # path prefixes that skip auth
+  #   roles_required: []               # global role requirements
+  #   permissions_required: []         # global permission requirements
+  #   optional_auth: false             # allow unauthenticated access
+  #   login_url: null                  # redirect URL for login
+  #   login_rate_limit: "5/minute"     # rate limit for auth endpoints
+
+  # ── Admin Bootstrap ────────────────────────────────────────────────────────
+  # admin_email: null                  # admin email (alternative to users list)
+  # admin_password: null               # admin password
+
+  # ── Sessions ───────────────────────────────────────────────────────────────
+  # max_sessions_per_user: null        # concurrent session limit (null = unlimited)
+
+  # ── OAuth2 ─────────────────────────────────────────────────────────────────
+  # oauth2_providers: {}               # OAuth2 provider configs
+
+  # ── Relay ──────────────────────────────────────────────────────────────────
+  # relay_verification: false          # enable relay gateway auth binding
+
+
+# ── Auth Web ────────────────────────────────────────────────────────────────
+# Demo-specific service configuration for password reset, account
+# verification, and registration.  These settings control the demo's
+# wrapper services, not the framework's core auth layer.
+#
+# ENVIRONMENT VARIABLE OVERRIDE:
+#   LEX_AUTH_WEB__PASSWORD_RESET__TOKEN_EXPIRY_HOURS=48
+#   LEX_AUTH_WEB__REGISTRATION__DEFAULT_ROLE=editor
+# ─────────────────────────────────────────────────────────────────────────────
+auth_web:
+  # ── Password Reset ───────────────────────────────────────────────────────
+  # Controls token generation and expiry for password reset flows.
+  # In production, tokens would be emailed; here they are returned
+  # in the API response for testing convenience.
+  password_reset:
+    token_length: 32                  # token bytes before URL encoding
+    token_expiry_hours: 24            # hours before a reset token expires
+    # rate_limit_per_hour: 5           # max reset requests per email per hour
+
+  # ── Account Verification ─────────────────────────────────────────────────
+  # Controls email verification token generation and expiry.
+  # In production, tokens would be emailed; here they are returned
+  # in the API response for testing convenience.
+  account_verification:
+    token_length: 32                  # token bytes before URL encoding
+    token_expiry_days: 7              # days before a verification token expires
+    # required_for_login: false        # require verification before allowing login
+
+  # ── Registration ─────────────────────────────────────────────────────────
+  # Controls the registration flow behavior.
+  registration:
+    auto_send_verification: true      # send verification token after registration
+    # default_role: viewer             # role assigned to new users
+    # require_admin_approval: false    # require admin approval for new accounts

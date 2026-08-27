@@ -35,7 +35,6 @@ def test_snapshot_reports_mounted_and_failed() -> None:
     by_slug = {s["slug"]: s["status"] for s in snap}
     assert by_slug["resilient-rates"] == "up"
     assert by_slug["memory-chat"] == "down"
-    assert by_slug["llm-reproducibility"] == "cli"
 
 
 def test_rewrite_html_prefixes_assets_and_injects_shim() -> None:

@@ -1,4 +1,9 @@
-"""End-to-end tests over the JSON API."""
+"""End-to-end tests over the JSON API.
+
+Convention: API tests exercise the full stack — HTTP request → controller
+→ service → storage.  No mocking; the ``client`` fixture boots the real
+application and provides an ``httpx.AsyncClient`` bound to it.
+"""
 
 from __future__ import annotations
 

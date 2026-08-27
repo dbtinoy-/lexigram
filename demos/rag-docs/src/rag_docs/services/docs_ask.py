@@ -1,4 +1,23 @@
-"""Ask pipeline: embed, search, strategy rerank, cited synthesis."""
+"""Ask pipeline: embed, search, strategy rerank, cited synthesis — the **domain service** lesson.
+
+This is the **domain service** — it owns the use-case logic ("embed →
+search → rerank → synthesize") and delegates storage to the vector
+collection.  No framework imports except ``Result``, ``Registry``, and
+logging — the service is framework-agnostic by design.
+
+The ask flow per question:
+
+1. **Embed** — ``HashingEmbedder.embed([query])`` produces a fixed-dimension
+   vector using the same IDF weights fitted on the corpus at boot
+2. **Search** — ``collection.search(SearchQuery(...))`` retrieves the top-k
+   nearest vectors by cosine similarity
+3. **Rerank** — the selected ``RetrievalStrategy`` (vector or MMR) re-scores
+   and prunes to top-k candidates
+4. **Synthesize** — ``ExtractiveSynthesizer`` selects sentences from the
+   candidates that answer the question, citing chunk IDs
+
+Citation format: ``<source>#<chunk_index>`` (e.g. ``modules.md#0``).
+"""
 
 from __future__ import annotations
 
@@ -33,15 +52,21 @@ from rag_docs.repository.index_builder import IndexStats
 
 logger = get_logger(__name__)
 
+# Citation regex: matches ``source#chunk_index`` format produced by synthesis.
 CITATION_PATTERN = re.compile(r"^(?P<source>.+)#(?P<index>\d+)$")
 
-_TOP_K_SEARCH = 6
-_TOP_K_CANDIDATES = 4
-_MIN_SCORE = 0.01
+# Search/synthesis tuning constants — deliberately conservative for a demo.
+_TOP_K_SEARCH = 6  # candidates retrieved from the vector store
+_TOP_K_CANDIDATES = 4  # candidates passed to the synthesizer after rerank
+_MIN_SCORE = 0.01  # cosine similarity floor (filters noise)
 
 
 def _to_rag_result(result: SearchResult) -> RAGSearchResult:
     """Adapt a storage-layer hit into the protocol shape synthesizers expect.
+
+    ``MemoryVectorCollection.search()`` returns ``SearchResult`` objects;
+    ``SynthesizerProtocol.synthesize()`` expects ``SearchResultProtocol``.
+    This adapter bridges the two.
 
     Args:
         result: Flat ``SearchResult`` returned by the vector collection.
@@ -63,18 +88,28 @@ def _to_rag_result(result: SearchResult) -> RAGSearchResult:
 
 
 def _build_strategies() -> Registry[str, RetrievalStrategyProtocol]:
-    """Framework Registry keyed by strategy id."""
+    """Framework Registry keyed by strategy id — no if/elif dispatch.
+
+    ``Registry`` is Lexigram's extensible dispatch map.  Adding a new
+    strategy means one ``register()`` call — no conditionals to update.
+    """
     registry: Registry[str, RetrievalStrategyProtocol] = Registry()
     registry.register("vector", VectorRetrievalStrategy())
     registry.register("mmr", MMRRetrievalStrategy(lambda_param=0.7))
     return registry
 
 
+# Module-level registry — built at import time.  The provider calls
+# ``strategies_snapshot()`` to get a plain dict for the service.
 STRATEGIES: Registry[str, RetrievalStrategyProtocol] = _build_strategies()
 
 
 def strategies_snapshot() -> dict[str, RetrievalStrategyProtocol]:
-    """Plain-mapping view of the strategy registry."""
+    """Plain-mapping view of the strategy registry.
+
+    Returns a ``dict`` snapshot so the service doesn't depend on
+    ``Registry`` internals — just name → strategy lookup.
+    """
     return {key: STRATEGIES.get(key) for key in STRATEGIES}
 
 
@@ -93,6 +128,10 @@ class AskAnswer:
 
 class DocsAskService:
     """Result-typed question answering over the indexed docs corpus.
+
+    Constructed by ``DocsAskProvider.boot`` during application startup;
+    all collaborators arrive via constructor injection.  The service is
+    stateless per request — each ``ask()`` call is independent.
 
     Args:
         collection: The populated vector collection.
@@ -121,15 +160,12 @@ class DocsAskService:
     ) -> Result[AskAnswer, DocsAskError]:
         """Answer a question with citations from the indexed corpus.
 
-        Args:
-            query: The natural-language question.
-            strategy: Registered retrieval strategy name.
-
-        Returns:
-            Ok(AskAnswer) with cited chunk ids, or Err:
-            ``UnknownStrategyError`` (unregistered name),
-            ``NoResultsError`` (nothing retrieved),
-            ``SynthesisFailedError`` (synthesizer failed).
+        Flow: embed → search → rerank → synthesize → return.
+        Returns ``Ok(AskAnswer)`` on success with cited chunk ids, or
+        ``Err``:
+        - ``UnknownStrategyError`` — unregistered strategy name
+        - ``NoResultsError`` — nothing retrieved above the score floor
+        - ``SynthesisFailedError`` — synthesizer returned an error
         """
         if strategy not in self._strategies:
             return Err(UnknownStrategyError(f"unknown strategy {strategy!r}"))

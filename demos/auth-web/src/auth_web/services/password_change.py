@@ -2,14 +2,16 @@
 
 from __future__ import annotations
 
-from lexigram.auth.authn.security import PasswordHasher
 from lexigram.auth.exceptions import (
     InvalidCredentialsError,
     PasswordPolicyError,
 )
-from lexigram.auth.models.user import UserCredentials
-from lexigram.auth.storage.token_store import UserStoreProtocol
-from lexigram.contracts.auth.protocols import PasswordPolicyProtocol
+from lexigram.auth.models import UserCredentials
+from lexigram.auth.storage import UserStoreProtocol
+from lexigram.contracts.auth import (
+    PasswordHasherProtocol,
+    PasswordPolicyProtocol,
+)
 from lexigram.logging import get_logger
 from lexigram.result import Err, Ok, Result
 
@@ -32,7 +34,7 @@ class PasswordChangeService:
 
     def __init__(
         self,
-        password_hasher: PasswordHasher,
+        password_hasher: PasswordHasherProtocol,
         policy: PasswordPolicyProtocol,
         user_store: UserStoreProtocol,
     ) -> None:

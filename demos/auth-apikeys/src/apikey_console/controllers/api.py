@@ -3,6 +3,9 @@
 Handlers return ``Result`` values; the web pipeline renders ``Ok`` payloads
 and maps ``Err`` errors to ProblemDetail responses automatically.
 """
+# Controller pattern — each handler returns Result[T, E].
+# The web pipeline renders Ok payloads as JSON and maps Err to
+# ProblemDetail responses. Error types determine HTTP status codes.
 
 from __future__ import annotations
 
@@ -10,11 +13,13 @@ from typing import Any
 
 from starlette.requests import Request
 
+from lexigram.auth import (
+    AuthenticationService,
+    SessionCookieBackend,
+)
 from lexigram.auth.authn.apikeys import APIKeyManager
-from lexigram.auth.authn.services import AuthenticationService
 from lexigram.auth.exceptions import AccountLockedError, InvalidCredentialsError
-from lexigram.auth.session.cookie_backend import SessionCookieBackend
-from lexigram.contracts.exceptions.domain import (
+from lexigram.contracts.exceptions import (
     AuthenticationError,
     NotFoundError,
 )
@@ -35,6 +40,8 @@ class KeysApiController(Controller):
         cookies: SessionCookieBackend,
         manager: APIKeyManager,
     ) -> None:
+        # Constructor injection — all dependencies are
+        # explicit typed parameters. The provider wires these in boot().
         self._authentication = authentication
         self._cookies = cookies
         self._manager = manager
@@ -47,6 +54,8 @@ class KeysApiController(Controller):
         self,
         request: Request,
     ) -> Result[JSONResponse, InvalidCredentialsError | AccountLockedError]:
+        # Result return type — error variants are unioned
+        # so the web pipeline can map each to the right HTTP status.
         data = json_loads(await request.body())
         user = await self._authentication.authenticate_user(
             email=str(data.get("email", "")),
@@ -126,6 +135,8 @@ class KeysApiController(Controller):
     @get("/api/me")
     async def me(self, request: Request) -> Result[dict, AuthenticationError]:
         """Machine authentication via ``X-API-Key`` header."""
+        # Machine auth via X-API-Key header — validates
+        # the raw key against the repository. No session cookies needed.
         raw_key = request.headers.get("X-API-Key", "")
         if not raw_key:
             return Err(AuthenticationError("missing X-API-Key header"))

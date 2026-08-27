@@ -1,8 +1,14 @@
 """Demo configuration — ``demo:`` section of application.yaml.
 
-Framework convention: run the demo from its own directory so
-``LexigramConfig``/``from_yaml`` auto-discovers ``application.yaml``.
-``LEX_RATES__*`` overrides and ``LEX_PROFILE`` overlays apply via the loader.
+Convention followed: **Yaml-first config** — ``LexigramConfig`` /
+``from_yaml`` auto-discovers ``application.yaml`` from the working
+directory.  ``LEX_DEMO__*`` overrides and ``LEX_PROFILE`` overlays apply
+via the loader.
+
+The ``RatesConfig`` dataclass declares the typed ``demo:`` section with
+field-level defaults.  Environment variable overrides use the double-
+underscore convention: ``LEX_DEMO__UPSTREAM_SCENARIO=down`` sets
+``upstream_scenario = "down"``.
 """
 
 from __future__ import annotations

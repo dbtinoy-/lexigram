@@ -153,6 +153,9 @@ class GraphQLProvider(_GraphQLDiscoveryMixin, Provider):
         Args:
             container: The dependency injection container registrar.
         """
+        # Resolve config: orchestrator-injected yaml section, explicit config, or defaults.
+        self.config = self._requested_config or self.config or GraphQLConfig()
+
         # Import here to avoid circular imports
         from lexigram.graphql.controllers import GraphQLController
         from lexigram.graphql.core.caching import ResponseCache
@@ -250,7 +253,11 @@ class GraphQLProvider(_GraphQLDiscoveryMixin, Provider):
                 self._identity = await container.resolve(IdGeneratorProtocol)
 
         # Get or create configuration
-        self.config = self._requested_config or self.config or GraphQLConfig()
+        # Explicit constructor config always wins over framework-injected values.
+        if self._requested_config is not None:
+            self.config = self._requested_config
+        elif self.config is None:
+            self.config = GraphQLConfig()
 
         # Initialize schema builder
         self._schema_builder = SchemaBuilderProtocol(self.config)

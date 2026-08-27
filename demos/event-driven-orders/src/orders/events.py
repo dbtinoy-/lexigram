@@ -3,6 +3,20 @@
 These live on the **read side**: they consume published domain events and
 project them into a query-friendly view. They never dispatch commands — the
 write side stays authoritative.
+
+Two handler types:
+
+1. ``OrdersView`` — projection that builds the query-side order view.
+   Each event handler updates the read model in place.  The view is
+   what the REST API returns for ``GET /orders``.
+
+2. ``NotificationHandler`` — side-effect handler that logs customer
+   notifications (emails, webhooks).  In production, this would call
+   an email service or message queue.
+
+Convention: event handlers are named ``on_<event_type>`` and receive the
+event as their sole argument.  The event bus dispatches events to all
+subscribers by event type.
 """
 
 from __future__ import annotations
@@ -20,6 +34,9 @@ logger = get_logger(__name__)
 @dataclass
 class OrderView:
     """One row of the query-side order view.
+
+    Convention: the read model is a plain dataclass, not an aggregate.
+    It carries only what the UI needs — no domain logic, no validation.
 
     Attributes:
         order_id: Order identifier.
@@ -47,7 +64,13 @@ class OrderView:
 
 
 class OrdersView:
-    """Read-side projection of order state, fed exclusively by events."""
+    """Read-side projection of order state, fed exclusively by events.
+
+    Convention: one projection class per bounded context.  The projection
+    subscribes to domain events and updates its in-memory store.  The
+    REST API reads from this projection — never from the write-side
+    repository directly.
+    """
 
     def __init__(self) -> None:
         self._rows: dict[str, OrderView] = {}
@@ -91,7 +114,13 @@ class OrdersView:
 
 
 class NotificationHandler:
-    """Side-effect handler: notify the customer about order events."""
+    """Side-effect handler: notify the customer about order events.
+
+    Convention: side-effect handlers are separate from projections.
+    Projections build the read model; side-effects do external work
+    (emails, webhooks, analytics).  Both subscribe to the same events
+    but serve different purposes.
+    """
 
     def __init__(self) -> None:
         self.notifications: list[str] = []

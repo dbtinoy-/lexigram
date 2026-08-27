@@ -9,8 +9,8 @@ import pytest
 from lexigram.app import Application
 
 from rates.app import create_app
-from rates.repository.simulated_upstream import FaultController, Scenario
-from rates.services.rates_service import RatesService
+from rates.repository import FaultController, Scenario
+from rates.services import RatesService
 
 
 @pytest.fixture

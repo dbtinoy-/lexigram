@@ -1,4 +1,21 @@
-"""Exceptions for the resilient rates demo."""
+"""Exceptions for the resilient rates demo.
+
+Convention followed: **Exception hierarchy** — base domain exceptions live
+in ``lexigram-contracts``, leaf exceptions live in the demo package.
+The hierarchy is:
+
+```
+InfrastructureError (lexigram-contracts)
+  └── RateProviderError
+        ├── UpstreamTimeoutError
+        ├── UpstreamUnavailableError
+        └── RateUnavailableError
+```
+
+``RateUnavailableError`` is mapped to HTTP 503 via
+``ResultResponseMapper.register()`` in the API controller — the only place
+that knows the HTTP semantics.
+"""
 
 from __future__ import annotations
 

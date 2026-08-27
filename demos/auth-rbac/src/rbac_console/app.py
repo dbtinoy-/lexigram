@@ -48,13 +48,18 @@ Run with::
 
 from __future__ import annotations
 
-from lexigram.app.base import Application
-from lexigram.auth.module import AuthModule
-from lexigram.di.provider import Provider
-from lexigram.web.module import WebModule
-from rbac_console.controllers.api import RbacApiController
-from rbac_console.di.provider import RbacProvider
-from rbac_console.ui.pages import PagesController
+from lexigram.app.base import Application  # Application = the bootable object
+from lexigram.auth.module import AuthModule  # framework module — owns auth providers
+from lexigram.config.main import LexigramConfig
+from lexigram.di.provider import Provider  # base class for your DI registrations
+from lexigram.web.module import WebModule  # framework module — owns web server
+from rbac_console.controllers.api import RbacApiController  # your HTTP surface
+from rbac_console.di.provider import RbacProvider  # your service registrations
+from rbac_console.ui.pages import PagesController  # page controller (optional)
+
+# Lexigram follows a strict dependency direction: application code imports
+# framework packages, never the reverse.  This file is the only place
+# that references both framework modules AND your controllers/providers.
 
 
 def build_modules() -> list[object]:
@@ -68,17 +73,13 @@ def build_modules() -> list[object]:
     ``LEX_*`` environment overrides already merged.
     """
     return [
-        # Auth: sessions, JWT tokens, RBAC roles.  Reads ``auth:`` from
-        # application.yaml; users/roles for this demo are seeded by
-        # RbacSeedService at boot (see di/provider.py).
-        AuthModule.configure(),
-        # Web: Starlette server + middleware stack (security headers,
-        # rate limiting, CSRF).  Reads ``web:``; the controllers list is
-        # the only thing you must supply — your own HTTP surface.
-        #
-        # Omit PagesController + delete ui/ if using an external frontend
-        # (React, Vue, etc.) — the JSON API in RbacApiController is all
-        # you need.
+        # Each Module.configure() returns a DynamicModule recipe.
+        # The orchestrator expands recipes into providers, injects their
+        # typed config sections from LexigramConfig, then calls register().
+        AuthModule.configure(),  # sessions, tokens, RBAC roles
+        # WebModule is the only module that needs your controllers list —
+        # this is the explicit wiring style.  Omit PagesController if you
+        # use an external frontend (React, Vue, etc.).
         WebModule.configure(
             controllers=[RbacApiController, PagesController],
         ),
@@ -95,17 +96,22 @@ def build_providers() -> list[Provider]:
     return [RbacProvider()]
 
 
-def create_app() -> Application:
+def create_app(config: LexigramConfig | None = None) -> Application:
     """Create the application in ``CREATED`` state (not yet started).
 
     Use this directly in tests (boot it yourself so you control the
     lifecycle) or hand the pieces to :meth:`Application.boot` as
     ``main.serve`` does — the context manager guarantees ``stop()`` even
     when something raises.
+
+    Args:
+        config: Optional pre-loaded config. When ``None`` the framework
+            auto-discovers ``application.yaml`` from the working directory.
     """
-    app = Application(name="rbac-console")
-    # Order matters only conceptually here: modules declare what they need;
-    # providers fill it.  The dependency graph resolves at boot.
+    # Application is created in CREATED state — not yet started.
+    # Modules declare capabilities; providers fill services.
+    # The dependency graph resolves lazily at boot.
+    app = Application(name="rbac-console", config=config)
     app.add_modules(build_modules())
     app.add_providers(build_providers())
     return app

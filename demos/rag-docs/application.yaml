@@ -1,8 +1,114 @@
-# RAG Docs — runtime configuration (Blueprint §3).
+# ══════════════════════════════════════════════════════════════════════════════
+# RAG Docs Demo — Complete Configuration Reference
+# ══════════════════════════════════════════════════════════════════════════════
+#
+# Every configuration key available for this demo.
+# Uncommented lines are the values we override; commented lines show
+# defaults.  Each section maps 1:1 to a typed config model — the
+# framework validates your yaml against it at boot time.
+#
+# LEARNING PATH:
+#   1. web:        HTTP server, security, rate limiting
+#   2. ai_memory:  (not used — this demo has no memory subsystem)
+#
+# For full reference see:
+#   - Lexigram Web:       packages/lexigram-web/src/lexigram/web/config/
+#   - Lexigram RAG:       packages/lexigram-ai-rag/
+# ══════════════════════════════════════════════════════════════════════════════
+
+
+# ── Web ──────────────────────────────────────────────────────────────────────
+# Lexigram Web auto-configures Starlette, OpenAPI, CORS, CSRF, and
+# rate limiting from this single section.  The WebModule reads it
+# automatically via config_key="web" / config_model=WebConfig.
+#
+# The orchestrator calls get_section("web", WebConfig) and injects
+# the result into WebProvider.config before register() runs.
+# ─────────────────────────────────────────────────────────────────────────────
 web:
+  # ── Server ─────────────────────────────────────────────────────────────────
+  # Binds the uvicorn / gunicorn process.
   server:
     host: 127.0.0.1
     port: 7075
+    # workers: 1                    # uvicorn worker count (auto = cpu_count)
+    # log_level: info               # uvicorn log level
+
+  # ── Security ───────────────────────────────────────────────────────────────
+  # HSTS, CSP, CORS, CSRF, and security headers — all aggregated here.
   security:
+    # enabled: true                # master switch for security subsystem
+
+    # ── CSRF ─────────────────────────────────────────────────────────────────
+    # Disabled here because this demo posts JSON from the browser console
+    # (no cookies).  Enable for browser-session apps with cookie auth.
     csrf:
-      enabled: false # ask endpoint targets curl/scripts
+      enabled: false              # disable for JSON-only playground
+      # cookie_name: csrf_token   # CSRF cookie name
+      # header_name: X-CSRF-Token # client sends token in this header
+      # cookie_secure: true       # HTTPS only
+      # cookie_httponly: true      # no JS access
+      # cookie_samesite: Lax      # SameSite policy
+      # token_length: 32          # token bytes
+      # token_ttl: 3600           # synchronizer-mode TTL (seconds)
+      # excluded_paths: []        # paths exempt from CSRF validation
+      # exclude_content_types: [] # Content-Types that bypass CSRF
+      # exclude_auth_schemes: []  # Auth schemes that bypass CSRF
+      # secret_key: null          # HMAC key (LEX_WEB__SECURITY__CSRF__SECRET_KEY)
+
+    # ── CORS ─────────────────────────────────────────────────────────────────
+    # cors:
+    #   enabled: true
+    #   allowed_origins:            # browser origins allowed to call API
+    #     - http://localhost:3000   #   (dev frontend)
+    #     - http://localhost:7075   #   (this demo)
+    #   allow_methods: [GET, POST, PUT, DELETE, PATCH, OPTIONS]
+    #   allow_headers: ["*"]
+    #   expose_headers: []
+    #   allow_credentials: false    # true requires explicit origins
+    #   max_age: 600                # preflight cache (seconds)
+
+    # ── Hosts ────────────────────────────────────────────────────────────────
+    # allowed_hosts: []            # hostnames permitted to reach app
+                                  # empty = reject all in production
+
+    # ── HSTS ─────────────────────────────────────────────────────────────────
+    # hsts:
+    #   enabled: false             # true in production
+    #   max_age: 31536000          # 1 year
+    #   include_subdomains: true
+    #   preload: true
+
+    # ── Headers ──────────────────────────────────────────────────────────────
+    # custom_headers:
+    #   x-content-type-options: nosniff
+    #   x-frame-options: DENY
+    #   x-xss-protection: "1; mode=block"
+    # referrer_policy: strict-origin-when-cross-origin
+
+  # ── Rate Limiting ──────────────────────────────────────────────────────────
+  # Prevents brute-force and DoS attacks.  Longest-prefix-match selects
+  # the rule for each request path.
+  # rate_limit:
+  #   enabled: true
+  #   default_limit: 100           # max requests per window
+  #   default_window: 60           # window size (seconds)
+  #   whitelist_ips: []            # exempt IPs
+
+  # ── Static Files ───────────────────────────────────────────────────────────
+  # static:
+  #   enabled: true
+  #   path: static                 # relative to the package's ui/ directory
+  #   max_age: 3600                # browser cache TTL (seconds)
+
+  # ── OpenAPI ────────────────────────────────────────────────────────────────
+  # openapi_title: API
+  # openapi_version: 1.0.0
+  # openapi_url: /openapi.json
+  # swagger_ui_url: /docs
+  # redoc_url: /redoc
+
+  # ── Misc ───────────────────────────────────────────────────────────────────
+  # compression_enabled: true      # gzip responses
+  # debug_routes: false            # /debug/* endpoints
+  # max_body_size: 10485760        # 10 MiB request body limit

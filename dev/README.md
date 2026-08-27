@@ -10,9 +10,7 @@ dev/
 │   └── _data/             #   baselines/snapshots owned by specific gates
 ├── generators/            # deterministic artifact emitters (catalogs, examples)
 │   └── env_vars_catalog/  #   support package for env_example
-├── ops/                   # operational scripts (publishing)
-│   └── publish_pypi.py
-├── core/                  # shared infrastructure used by checks/generators/audit
+├── _lib/                  # shared infrastructure used by checks/generators/audit
 │   ├── bootstrap.py       #   REPO_ROOT + import shim for standalone runs
 │   ├── package_inventory.py  #   workspace member discovery (single source of truth)
 │   ├── command_runner.py, context.py, evidence.py, models.py, registry.py
@@ -21,6 +19,22 @@ dev/
     ├── base.py, index.py, registry.py, non_config_env_sources.py
     └── generators/        #   overview, tests, security, quality, docs_*, …
 ```
+
+## Generators (`generators/`)
+
+Run from repo root: `uv run python dev/generators/<name>.py`
+
+| Generator | Input | Output |
+|-----------|-------|--------|
+| `env_example.py` | `docs/reference/REF_ENV_VARS.md` | `.env.full.example` |
+| `yaml_config_example.py` | `docs/reference/REF_ENV_VARS.md` | `application.full.example.yaml` |
+| `vscode_settings.py` | workspace `pyproject.toml` files | `.vscode/settings.json` |
+| `cli_commands_catalog.py` | CLI entry points | `docs/reference/REF_CLI_COMMANDS.md` |
+| `dep_tree.py` | workspace dependencies | dependency tree report |
+| `error_catalog.py` | exception classes | `docs/reference/REF_ERROR_CODES.md` |
+
+Both `env_example.py` and `yaml_config_example.py` share the same source catalog
+and reuse `_resolve_default()` from `env_example.py` for consistent default handling.
 
 ## CI quality gates (`checks/`)
 
@@ -36,13 +50,14 @@ dev/
 | `checks/version.py` | Per-package version scheme (§3.6): within an active series only the build segment moves (`0.1.5001 → 0.1.5002`) |
 | `checks/config_fields.py` | Config field catalog consistency |
 | `checks/tree_guard.py` | Workspace tree hygiene |
+| `checks/lint_imports.py` | Namespace-aware import boundary linter (wraps import-linter + grimp) |
 
 ## Conventions
 
 - **Standalone runnable:** every `checks/*` module has `main()` and works both as
   `uv run python dev/checks/<name>.py` and as `from dev.checks.<name> import …`.
 - **Import bootstrap:** standalone execution inserts the repo root on `sys.path`
-  before any `dev.*` import — use `dev.core.bootstrap` for the canonical root.
+  before any `dev.*` import — use `dev._lib.bootstrap` for the canonical root.
 - **Adding a workspace package:** add its `src/` to `[tool.mypy] mypy_path`,
   then run `uv run python dev/generators/vscode_settings.py`.
 - **Data lives with its gate:** baselines/snapshots belong in `checks/_data/`,

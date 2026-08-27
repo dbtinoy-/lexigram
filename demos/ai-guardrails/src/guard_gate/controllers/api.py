@@ -2,6 +2,15 @@
 
 Handlers return ``Result`` values; the web pipeline renders ``Ok`` payloads
 and maps ``Err`` errors to ProblemDetail responses automatically.
+
+Controllers are the HTTP surface in Lexigram.  They:
+- Accept Request objects (Starlette)
+- Return Result[dict, DomainError] for automatic error mapping
+- Are registered in app.py via WebModule.configure(controllers=[...])
+- Get their dependencies injected by the container (see __init__)
+
+For a real app, add more controllers (e.g. AuthController, AdminController)
+and register them in app.py.
 """
 
 from __future__ import annotations
@@ -10,10 +19,10 @@ from typing import Any
 
 from starlette.requests import Request
 
+from guard_gate.domain.guarded_assistant import GuardedAssistant
+from guard_gate.domain.policy import PolicyToggle
 from guard_gate.repository.acts import ACTS
-from guard_gate.services.guarded_assistant import GuardedAssistant
-from guard_gate.services.policy import PolicyToggle
-from lexigram.contracts.exceptions.domain import NotFoundError, ValidationError
+from lexigram.contracts.exceptions import NotFoundError, ValidationError
 from lexigram.result import Err, Ok, Result
 from lexigram.serialization import loads as json_loads
 from lexigram.web import Controller, JSONResponse, get, post
@@ -42,7 +51,13 @@ def _serialize(outcome: Any) -> JSONResponse:
 
 
 class GuardApiController(Controller):
-    """Endpoints consumed by ui/static/app.js."""
+    """Endpoints consumed by ui/static/app.js.
+
+    The Controller base class from lexigram.web provides
+    route decorators (@get, @post, etc.) and integrates with the
+    DI container.  Dependencies (assistant, toggle) are injected —
+    the controller never instantiates them directly.
+    """
 
     def __init__(
         self,
@@ -57,7 +72,13 @@ class GuardApiController(Controller):
         self,
         request: Request,
     ) -> Result[dict, NotFoundError | ValidationError]:
-        """Handle an act-keyed or raw-text request."""
+        """Handle an act-keyed or raw-text request.
+
+        Return type is Result[dict, DomainError].  The web
+        framework automatically serializes Ok(dict) as 200 JSON and
+        maps Err(DomainError) to ProblemDetail (RFC 9457) responses.
+        You never write try/except for HTTP error handling.
+        """
         data = await _body(request)
         act_key = str(data.get("act", ""))
         act = ACTS.get(act_key) if act_key in ACTS else None

@@ -1,4 +1,15 @@
-"""Seeded offline fixtures for the support desk tools."""
+"""Seeded offline fixtures for the support desk tools.
+
+These are plain data structures — no framework imports, no I/O.
+They represent the "database" that the three tools query:
+
+- ``ORDERS`` — three sample orders in various states
+- ``KB``     — six FAQ snippets covering refunds, shipping, tracking, etc.
+
+In a real application these would come from a database or external API.
+For the demo, hardcoded dicts keep the focus on agent behavior rather
+than data access.
+"""
 
 from __future__ import annotations
 

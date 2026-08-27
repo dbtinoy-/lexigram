@@ -1,5 +1,7 @@
 # Demo Hub
 
+> Module name: `demo_hub` — run with `PYTHONPATH=src uv run python -m demo_hub`
+
 One port for the whole fleet. The hub boots every web demo's real Lexigram
 `Application` **in-process** and mounts it under `/demos/<slug>/`, then serves
 a status console that links to all of them.
@@ -7,16 +9,40 @@ a status console that links to all of them.
 No other ports are needed in embedded mode — and every demo still runs
 standalone on its documented port (nothing about the demos was changed).
 
+## Lexigram concepts used
+
+| Concept | Where in this demo | Your app |
+|---------|-------------------|----------|
+| Composition root | `app.py` | Replace controllers/providers list |
+| Provider lifecycle | `di/provider.py` | register() binds, boot() initializes |
+| Fleet mounting | `fleet.py` | Mount child apps under /demos/ |
+| Subsite rewriting | `subsite.py` | Rewrite HTML/JS for nested mounts |
+| Web module | `app.py` → `WebModule.configure()` | Add your controllers |
+| Status API | `controllers/api.py` | Expose health/status endpoints |
+
+## What it shows
+
+| Piece | Where | Lexigram API used |
+|-------|-------|-------------------|
+| Hub composition | `app.py` | `build_modules()`, `build_providers()`, `create_app()` |
+| Child mounting | `fleet.py` | `Fleet.mount_all()` → `SubsiteMiddleware` |
+| HTML/JS rewriting | `subsite.py` | `rewrite_html()`, `rewrite_js()` |
+| Service registry | `services/registry.py` | `ServiceRegistry.web_services()` |
+| Status endpoint | `controllers/api.py` | `@get("/api/status")` → `JSONResponse` |
+
 ## Run it
 
 ```bash
-# from the repository root
+cd demos/demo-hub
+PYTHONPATH=src uv run python -m demo_hub
+```
+
+Or from the repository root:
+
+```bash
 make demos-up        # start the hub (:7000), wait, then list demo states
 make demos-status    # re-probe any time
 make demos-down      # stop everything
-
-# or directly
-PYTHONPATH=demos/demo-hub/src uv run python -m demo_hub   # :7000 (DEMO_HUB_PORT)
 ```
 
 Then open <http://127.0.0.1:7000>:
@@ -27,40 +53,39 @@ Then open <http://127.0.0.1:7000>:
 | `/api/status` | JSON status for every embedded demo (`up` / `down` / `cli`) |
 | `/demos/resilient-rates/` | Each demo lives at `/demos/<slug>/` |
 
-The first boot takes ~15–20 s while all 13 children boot; cards flip to green
-as each one becomes ready.
+## Layout — read it in this order
 
-## How embedding works
+| # | File | Lesson |
+|---|------|--------|
+| 1 | `src/demo_hub/app.py` | ⭐ Composition root: config → modules → providers |
+| 2 | `src/demo_hub/main.py` | Lifecycle: `Application.start/stop`, Fleet mounting |
+| 3 | `src/demo_hub/di/provider.py` | DI wiring: register() binds, boot() initializes Fleet |
+| 4 | `src/demo_hub/fleet.py` | Fleet: import, start, mount, teardown child demos |
+| 5 | `src/demo_hub/subsite.py` | SubsiteMiddleware: HTML/JS rewriting for nested mounts |
+| 6 | `src/demo_hub/controllers/api.py` | JSON API: status endpoint returning fleet snapshot |
+| 7 | `src/demo_hub/services/registry.py` | Service registry: demo metadata and capabilities |
+| 8 | `application.yaml` | Web config (the hub has no demo-specific knobs) |
 
-- `Fleet` imports each demo's own `Module.configure()` factory — the demos'
-  code is used exactly as-is.
-- Each child is a complete `Application` (own DI container, providers, state).
-- `SubsiteMiddleware` makes root-relative frontends work under the mount:
-  HTML asset URLs are rewritten server-side, a small injected shim prefixes
-  `fetch` / `EventSource` / `WebSocket`, JS navigations such as
-  `location.href = "/login"` are rebased, and redirects/cookies stay inside
-  each demo's subtree.
-
-Sandbox notice shown on the console applies to every child: in-memory state
-resets often; auth consoles use seeded demo credentials only.
-
-## Standalone mode (unchanged)
-
-Any demo still runs alone, e.g.:
-
-```bash
-PYTHONPATH=demos/resilient-rates/src uv run python -m rates serve     # :7073
-PYTHONPATH=demos/auth-rbac/src uv run python -m rbac_console          # :8090
+```
+demos/demo-hub/
+├── src/demo_hub/
+│   ├── app.py                 # ⭐ composition root (start here)
+│   ├── main.py                # entry point / lifecycle
+│   ├── fleet.py               # Fleet: mount child demos
+│   ├── subsite.py             # HTML/JS rewriting middleware
+│   ├── di/
+│   │   └── provider.py        # DI wiring + boot() Fleet resolution
+│   ├── controllers/api.py     # JSON API: /api/status
+│   ├── services/
+│   │   └── registry.py        # Service registry + demo metadata
+│   └── ui/
+│       └── pages.py           # Hub console HTML page
+├── application.yaml           # web section (LEX_* overrides win)
+└── tests/                     # registry + subsite rewrite tests
 ```
 
-See [the demos README](../README.md) for the full table of standalone ports
-and commands. The hub's cards display those standalone ports as reference.
-
-## Tests & gates
+## Tests
 
 ```bash
-uv run --group tooling pytest demos/demo-hub/tests -q
+uv run pytest demos/demo-hub/tests -q
 ```
-
-The hub is registered in `make test-demos verify-demos smoke-demos` like every
-other demo.

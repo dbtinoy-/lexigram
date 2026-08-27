@@ -6,9 +6,9 @@ import pytest
 
 from dev.audit.generators import build_audit_registry
 from dev.audit.generators.base import AuditGeneratorProtocol
-from dev.core.context import resolve_workspace_root
-from dev.core.models import AuditReport
-from dev.core.registry import GeneratorRegistry
+from dev._lib.context import resolve_workspace_root
+from dev._lib.models import AuditReport
+from dev._lib.registry import GeneratorRegistry
 
 EXPECTED_GENERATOR_NAMES = (
     "dependencies",

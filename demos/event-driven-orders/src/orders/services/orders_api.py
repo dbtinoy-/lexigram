@@ -1,7 +1,15 @@
 """Query-side service facade for the event-driven orders demo.
 
 Resolves the framework buses and demo services once, then exposes simple
-methods the CLI (or a future web controller) can call.
+methods the REST controllers and browser UI can call.
+
+This facade is the **single entry point** for all order operations.
+It dispatches commands through the command bus and queries the read-side
+projection.  Controllers and UI handlers never touch the buses directly.
+
+Convention: a facade wraps the command bus, event bus, read model, and
+outbox into a simple async API.  Controllers receive the facade via
+constructor injection — they never resolve buses themselves.
 """
 
 from __future__ import annotations
@@ -23,6 +31,10 @@ logger = get_logger(__name__)
 
 class OrdersApi:
     """Facade over the command bus, read model and outbox.
+
+    Convention: the facade is the **only** way controllers interact with
+    the domain.  It owns the wiring between commands, handlers, and the
+    read model — controllers stay thin.
 
     Args:
         command_bus: The command bus.

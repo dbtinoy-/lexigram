@@ -10,6 +10,9 @@ Three framework features on display:
 - All mutating handlers return ``Result`` values; the pipeline renders ``Ok``
   payloads and maps ``Err`` errors to ProblemDetail responses automatically
   (the demo's domain errors subclass contracts' NotFound/Validation/Conflict).
+
+Convention: controllers are thin — they delegate to services and return
+``Result`` values.  No business logic lives here.
 """
 
 from __future__ import annotations
@@ -21,7 +24,7 @@ from feedback_loop.errors import (
     UnknownTraceError,
 )
 from feedback_loop.schemas import AskRequest, RateRequest, RegressRequest
-from feedback_loop.services.loop_service import LoopService
+from feedback_loop.services import LoopService
 from lexigram.result import Err, Ok, Result
 from lexigram.web import Controller, get, post
 

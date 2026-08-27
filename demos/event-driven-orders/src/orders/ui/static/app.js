@@ -201,12 +201,48 @@ async function flushOutbox() {
   }
 }
 
+/* ── Demo ─────────────────────────────────────────────── */
+
+async function runDemo() {
+  const btn = $("demo-btn");
+  btn.disabled = true;
+  btn.textContent = "Running\u2026";
+  hide("demo-result");
+  try {
+    const res = await fetch("/api/demo", { method: "POST" });
+    const data = await res.json();
+    if (!res.ok) {
+      $("demo-result").textContent = "Demo failed: " + (data.detail || data.error || res.status);
+      show("demo-result");
+      $("demo-result").className = "error";
+      log("demo failed: " + ($("demo-result").textContent), "log-err");
+      return;
+    }
+    const shortId = (data.order_id || "").substring(0, 8);
+    $("demo-result").textContent = "Order " + shortId + " \u2014 " + data.status + " (total: " + data.total + ")";
+    show("demo-result");
+    $("demo-result").className = "log-ok";
+    log("demo complete: order " + shortId + " lifecycle finished", "log-ok");
+    await loadOrders();
+    await loadOutbox();
+  } catch (e) {
+    $("demo-result").textContent = "Demo error: " + e.message;
+    show("demo-result");
+    $("demo-result").className = "error";
+    log("demo error: " + e.message, "log-err");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Run Demo";
+  }
+}
+
 /* ── Wire up ────────────────────────────────────────────── */
 
 $("place-form").addEventListener("submit", placeOrder);
 $("add-item").addEventListener("click", addItemRow);
 $("flush-btn").addEventListener("click", flushOutbox);
 $("refresh-btn").addEventListener("click", () => { loadOrders(); loadOutbox(); });
+$("demo-btn").addEventListener("click", runDemo);
 
 updateRemoveButtons();
 loadOrders();

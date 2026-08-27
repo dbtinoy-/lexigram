@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from pathlib import Path
+
+_DEMOS_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
 
 
 @dataclass(frozen=True)
@@ -19,6 +22,7 @@ class DemoService:
         demo_dir: Directory under ``demos/`` containing this demo.
         app_path: Dotted path of the demo's ``app`` module exposing
             ``create_app()`` — the composition root (starter pattern).
+        readme_path: Path to the demo's README.md relative to the demos root.
     """
 
     slug: str
@@ -28,6 +32,7 @@ class DemoService:
     blurb: str
     demo_dir: str = ""
     app_path: str = ""
+    readme_path: str = ""
     check_path: str = "/"
     errors: list[str] = field(default_factory=list)
 
@@ -35,6 +40,15 @@ class DemoService:
     def is_hostable(self) -> bool:
         """Whether the fleet can boot and embed this entry."""
         return self.kind == "web"
+
+    def read_readme(self) -> str | None:
+        """Return the README.md content, or ``None`` if not found."""
+        if not self.readme_path:
+            return None
+        full = _DEMOS_ROOT / self.readme_path
+        if full.is_file():
+            return full.read_text(encoding="utf-8")
+        return None
 
 
 class ServiceRegistry:
@@ -50,15 +64,17 @@ class ServiceRegistry:
                 "SSE replay + WebSocket operator channel",
                 "realtime-monitor",
                 "ops_console.app",
+                "realtime-monitor/README.md",
             ),
             DemoService(
                 "resilient-rates",
                 "Resilient Rates",
                 7073,
                 "web",
-                "Retry, circuit breaker, stale fallback desk",
+                "Cache-aside + resilience pipeline with stale fallback",
                 "resilient-rates",
                 "rates.app",
+                "resilient-rates/README.md",
             ),
             DemoService(
                 "event-driven-orders",
@@ -68,6 +84,7 @@ class ServiceRegistry:
                 "CQRS lifecycle with transactional outbox",
                 "event-driven-orders",
                 "orders.app",
+                "event-driven-orders/README.md",
             ),
             DemoService(
                 "rag-docs",
@@ -77,6 +94,7 @@ class ServiceRegistry:
                 "Cited answers over framework documentation",
                 "rag-docs",
                 "rag_docs.app",
+                "rag-docs/README.md",
             ),
             DemoService(
                 "support-agent",
@@ -86,6 +104,7 @@ class ServiceRegistry:
                 "ReAct agent with scripted LLM + tools",
                 "support-agent",
                 "support_agent.app",
+                "support-agent/README.md",
             ),
             DemoService(
                 "memory-chat",
@@ -95,15 +114,17 @@ class ServiceRegistry:
                 "Episodic + semantic memory, owner isolation",
                 "memory-chat",
                 "memory_chat.app",
+                "memory-chat/README.md",
             ),
             DemoService(
                 "ai-guardrails",
                 "AI Guardrails",
                 8084,
                 "web",
-                "Injection blocking, PII redaction, budgets",
+                "Injection blocking, PII redaction, governance gates",
                 "ai-guardrails",
                 "guard_gate.app",
+                "ai-guardrails/README.md",
             ),
             DemoService(
                 "prompt-lab",
@@ -113,6 +134,7 @@ class ServiceRegistry:
                 "Prompt versioning with deterministic A/B",
                 "prompt-lab",
                 "prompt_lab.app",
+                "prompt-lab/README.md",
             ),
             DemoService(
                 "feedback-loop",
@@ -122,6 +144,7 @@ class ServiceRegistry:
                 "Ratings promoted into regression suites",
                 "feedback-loop",
                 "feedback_loop.app",
+                "feedback-loop/README.md",
             ),
             DemoService(
                 "auth-web",
@@ -131,6 +154,7 @@ class ServiceRegistry:
                 "Cookie sessions, JWT claims, lockout",
                 "auth-web",
                 "auth_web.app",
+                "auth-web/README.md",
             ),
             DemoService(
                 "auth-rbac",
@@ -140,6 +164,7 @@ class ServiceRegistry:
                 "Permission matrix with live authorize()",
                 "auth-rbac",
                 "rbac_console.app",
+                "auth-rbac/README.md",
             ),
             DemoService(
                 "auth-apikeys",
@@ -149,6 +174,7 @@ class ServiceRegistry:
                 "Scoped machine keys, instant revocation",
                 "auth-apikeys",
                 "apikey_console.app",
+                "auth-apikeys/README.md",
             ),
             DemoService(
                 "auth-mfa",
@@ -158,14 +184,7 @@ class ServiceRegistry:
                 "TOTP challenge flow with backup codes",
                 "auth-mfa",
                 "mfa_console.app",
-            ),
-            DemoService(
-                "llm-reproducibility",
-                "LLM Reproducibility",
-                0,
-                "cli",
-                "Seeded digest-pinned experiment (CLI/notebook)",
-                "llm-reproducibility",
+                "auth-mfa/README.md",
             ),
         ]
 

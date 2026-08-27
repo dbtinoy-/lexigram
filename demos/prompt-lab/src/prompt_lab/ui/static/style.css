@@ -1,19 +1,19 @@
 /* Prompt lab theme */
-:root { --bg:#0f1412; --panel:#1a2420; --ink:#dcefe4; --accent:#ffd166; }
+:root { --bg:#0f1412; --panel:#1a2420; --text:#dcefe4; --accent:#ffd166; --ok:#7fd18b; --error:#ff7a7a; }
 * { box-sizing:border-box; }
-body { margin:0; font-family:system-ui,sans-serif; background:var(--bg); color:var(--ink); }
+body { margin:0; font-family:system-ui,sans-serif; background:var(--bg); color:var(--text); }
 header h1 { margin:.6rem 1rem; font-size:1.2rem; }
 main { display:flex; gap:1rem; padding:0 1rem 1rem; }
 #console { flex:1; background:var(--panel); border-radius:8px; padding:1rem; }
 aside { width:280px; background:var(--panel); border-radius:8px; padding:.75rem; }
 .row { display:flex; gap:.75rem; align-items:flex-start; }
 #variants button, #preview-form button, #rollback-btn, #ab-btn {
-  background:#22322b; color:var(--ink); border:1px solid #3b5347;
+  background:#22322b; color:var(--text); border:1px solid #3b5347;
   border-radius:6px; padding:.35rem .7rem; cursor:pointer; }
 #variants button.active { background:var(--accent); color:#231c05; border-color:var(--accent); }
 #preview-form { display:flex; gap:.5rem; margin:.75rem 0; }
 #preview-form input { padding:.4rem .55rem; border-radius:6px; border:1px solid #3b5347;
-  background:#0c1210; color:var(--ink); }
+  background:#0c1210; color:var(--text); }
 #issue { flex:1; } #rev { width:80px; }
 #preview { background:#0c1210; border-radius:6px; padding:.75rem; min-height:120px;
   white-space:pre-wrap; font-size:.85rem; }

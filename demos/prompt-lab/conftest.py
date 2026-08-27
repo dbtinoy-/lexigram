@@ -1,33 +1,43 @@
 """Pytest bootstrap for the prompt-lab demo.
 
-Adds the demo's ``src`` directory to ``sys.path`` (auth-web pattern):
+Sets the working directory to the demo root so ``application.yaml`` is
+discovered automatically, then adds ``src/`` to ``sys.path`` for imports.
+
+Run::
 
     uv run pytest demos/prompt-lab/tests -q
 """
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
+import os
 from pathlib import Path
 import sys
-
-sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
-
-from collections.abc import AsyncIterator
 
 import httpx
 import pytest
 from starlette.applications import Starlette
 
-from lexigram.web.di.provider import WebProvider
+_DEMO_ROOT = Path(__file__).resolve().parent
+os.chdir(_DEMO_ROOT)
+sys.path.insert(0, str(_DEMO_ROOT / "src"))
+
+from lexigram.web.di.provider import WebProvider  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def _ensure_cwd() -> None:
+    """Pin cwd to the demo root before every test."""
+    os.chdir(_DEMO_ROOT)
 
 
 @pytest.fixture
 async def app() -> AsyncIterator[Starlette]:
     """Boot the real composition root and expose its ASGI app."""
     from prompt_lab.app import create_app
-    from prompt_lab.config import load_lex_config
 
-    application = create_app(load_lex_config())
+    application = create_app()
     await application.start()
     try:
         web = await application.container.resolve(WebProvider)
@@ -38,6 +48,7 @@ async def app() -> AsyncIterator[Starlette]:
 
 @pytest.fixture
 async def client(app: Starlette) -> AsyncIterator[httpx.AsyncClient]:
+    """Async HTTP client wired to the in-process ASGI app."""
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(
         transport=transport, base_url="http://testserver"

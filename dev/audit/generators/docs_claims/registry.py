@@ -17,7 +17,7 @@ from dev.audit.generators.docs_claims.introspect import (
     _union_members,
 )
 from dev.audit.generators.docs_claims._constants import _DIRECT_READ_ENV_VARS
-from dev.core.package_inventory import discover_package_paths
+from dev._lib.package_inventory import discover_package_paths
 
 
 def _nested_keypaths(config_cls: type, max_depth: int = 4) -> tuple[str, ...]:

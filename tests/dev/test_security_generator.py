@@ -5,9 +5,9 @@ from pathlib import Path
 
 from dev.audit.generators import security
 from dev.audit.generators.security import SecurityAuditGenerator
-from dev.core.evidence import CommandEvidence
-from dev.core.rule_engine import RuleSeverity
-from dev.core.rules_catalog import make_rule_finding
+from dev._lib.evidence import CommandEvidence
+from dev._lib.rule_engine import RuleSeverity
+from dev._lib.rules_catalog import make_rule_finding
 
 TRACKER_FIXTURE = """\
 | # | Area | Severity mix | Spec | Plan |

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import ClassVar
 
 from lexigram.config.base import BaseConfig
@@ -9,6 +10,7 @@ from lexigram.contracts.core.config import ConfigIssue, Environment
 from lexigram.validation import ConfigDict, Field
 
 
+@dataclass(init=False)
 class SecurityHeadersConfig(BaseConfig):
     """Configuration for security response headers.
 
@@ -55,6 +57,7 @@ class SecurityHeadersConfig(BaseConfig):
         return issues
 
 
+@dataclass(init=False)
 class HSTSConfig(BaseConfig):
     """HTTP Strict Transport Security configuration.
 
@@ -81,6 +84,7 @@ class HSTSConfig(BaseConfig):
     )
 
 
+@dataclass(init=False)
 class CrossOriginConfig(BaseConfig):
     """Cross-Origin policy configuration.
 

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dev.core.validation import parse_rules_report_summary
+from dev._lib.validation import parse_rules_report_summary
 
 _RULES_REPORT = """# AUDIT_RULES.md — Lexigram Framework Rules Audit
 

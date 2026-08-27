@@ -14,7 +14,7 @@ build step. Everything runs offline against in-memory stores.
 | Registration (policy-checked) | `src/auth_web/controllers/api.py` | `AuthenticationService.register_user(RegisterRequest)` |
 | Login with lockout | `controllers/api.py` | `authenticate_user(email, password)` — constant-time verify, `AccountLockedError` after 5 failures |
 | JWT issue + verify | `controllers/api.py` | `create_token(user) -> AuthToken`, `verify_token(token) -> Result[VerifiedToken]` |
-| Cookie sessions | `services/session_repository.py`, `di/provider.py` | `SessionCookieBackend.login/authenticate/logout`, `SessionRepositoryProtocol` adapter |
+| Cookie sessions | `repository/session_repository.py`, `di/provider.py` | `SessionCookieBackend.login/authenticate/logout`, `SessionRepositoryProtocol` adapter |
 | RBAC claims | `controllers/api.py` | role definitions seeded via `AuthorizationService.set_roles`, effective permissions via `get_role_permissions` |
 | Change password | `services/password_change.py` | composed Argon2id/bcrypt hasher + `PasswordPolicyProtocol` |
 | UI assets | `ui/` | vanilla JS `fetch` client (`app.js`), HTML views, stylesheet |
@@ -25,11 +25,12 @@ build step. Everything runs offline against in-memory stores.
 PYTHONPATH=demos/auth-web/src uv run python -m auth_web
 ```
 
-Open http://127.0.0.1:8081 and log in with the seeded account:
+Open http://127.0.0.1:8081 and log in with the seeded account (defined in
+`application.yaml`):
 
 ```
 email:    admin@auth.demo
-password: Demo-Password-1
+password: Admin-Pass-123!
 ```
 
 Walk the flows: register a second account, view the profile's token claims
@@ -40,23 +41,41 @@ change your password and re-login.
 
 - Every command boots a fresh in-memory world: users and sessions reset per
   process.
-- The demo seeds one admin account at boot; registration adds more.
-- `AUTH_WEB_PORT` overrides the port (default 8081).
+- The demo seeds users from `application.yaml` at boot; registration adds more.
+- Host/port come from `application.yaml` (`web.server`); override via
+  `LEX_WEB__SERVER__PORT` without editing the file.
 
-## Layout
+## Layout — read it in this order
+
+Start at the composition root and follow the wiring outward.
+Each file has teaching comments explaining the Lexigram convention it follows.
+
+| # | File | Lesson |
+|---|------|--------|
+| 1 | `src/auth_web/app.py` | ⭐ Composition root: config → modules → providers |
+| 2 | `src/auth_web/main.py` | Lifecycle: uvicorn boot, graceful shutdown |
+| 3 | `src/auth_web/di/provider.py` | Provider wiring: seeds users + roles, wires cookie backend |
+| 4 | `src/auth_web/services/seed.py` | Boot-time seeding from `AuthConfig` in YAML |
+| 5 | `src/auth_web/services/password_change.py` | Composed service: Argon2id/bcrypt hasher + policy protocol |
+| 6 | `src/auth_web/repository/` | Protocol binding: `InMemorySessionRepository` adapter |
+| 7 | `src/auth_web/controllers/api.py` | Result-returning handlers → auto HTTP status mapping |
+| 8 | `src/auth_web/ui/` | Page controllers: serve HTML/assets only, no logic |
 
 ```
 demos/auth-web/
 ├── src/auth_web/
-│   ├── controllers/api.py     # JSON API (register/login/logout/me/profile/password/sessions)
-│   ├── controllers/pages.py   # static file-serving routes only
-│   ├── ui/                    # views/*.html + static/app.js, style.css
-│   ├── services/              # PasswordChangeService (composed-hasher aware)
-│   ├── repository/            # InMemorySessionRepository
-│   ├── di/provider.py         # AuthWebProvider (seeds user + roles, wires cookie backend)
-│   ├── module.py              # AuthWebModule (imports AuthModule + WebModule)
-│   └── main.py                # uvicorn boot
-└── tests/                     # end-to-end API flow tests (httpx ASGI transport)
+│   ├── controllers/          # JSON API (register/login/logout/me/profile/password/sessions)
+│   │   └── api.py
+│   ├── di/provider.py        # AuthWebProvider (seeds user + roles, wires cookie backend)
+│   ├── repository/           # InMemorySessionRepository (SessionRepositoryProtocol adapter)
+│   ├── services/
+│   │   ├── password_change.py  # PasswordChangeService (composed-hasher aware)
+│   │   └── seed.py            # DemoSeedService (reads AuthConfig.users from yaml)
+│   ├── ui/                   # views/*.html + static/app.js, style.css
+│   ├── app.py                # Composition root (build_modules, build_providers, create_app)
+│   └── main.py               # uvicorn boot (run_server_async)
+├── application.yaml          # Runtime config (web + auth sections)
+└── tests/                    # end-to-end API flow tests (httpx ASGI transport)
 ```
 
 ## Tests

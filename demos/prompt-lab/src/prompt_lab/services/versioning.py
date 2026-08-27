@@ -1,4 +1,15 @@
-"""Revision management for the two prompt variants."""
+"""Versioned prompt store façade — push, history, rollback.
+
+Wraps ``VersionedPromptStore`` from the prompt package with a
+variant-keyed interface.  Each variant (``v1``, ``v2``) maps to an
+internal store key, and the façade exposes ``active()``,
+``get_revision()``, ``rollback()``, and ``history()`` — so callers
+never touch the raw store directly.
+
+The ``seed()`` method pushes template revisions at provider
+registration time, creating the bounded version history that the
+A/B runner scores against.
+"""
 
 from __future__ import annotations
 

@@ -1,11 +1,26 @@
-"""JSON API for the prompt lab console — no HTML lives here."""
+"""JSON API for the prompt lab — the **Result-pattern showcase**.
+
+Every handler returns ``Result<Ok, Err>`` instead of raising or returning
+raw responses.  The web pipeline then does the boring work:
+
+- ``Ok(payload)``            → serialized as JSON (or rendered)
+- ``Err(ValidationError)``   → HTTP 422 ProblemDetail
+- ``Err(NotFoundError)``     → HTTP 404
+
+So handlers read like use-cases ("validate → render → respond") and
+error-to-HTTP mapping lives in exactly one place.  Compare with the
+try/except-and-JSONResponse dance in traditional stacks.
+"""
 
 from __future__ import annotations
 
 from starlette.requests import Request
 
 from lexigram.ai.prompt.exceptions import PromptNotFoundError, PromptRenderError
-from lexigram.contracts.exceptions.domain import NotFoundError, ValidationError
+from lexigram.contracts.exceptions import (
+    NotFoundError,
+    ValidationError,
+)
 from lexigram.result import Err, Ok, Result
 from lexigram.serialization import loads as json_loads
 from lexigram.web import Controller, get, post
@@ -29,7 +44,16 @@ async def _body(request: Request) -> dict:
 
 
 class LabApiController(Controller):
-    """Endpoints consumed by ui/static/app.js."""
+    """Prompt lab API consumed by the UI's vanilla-JS client.
+
+    Lexigram pattern: controllers are stateless handlers that receive
+    collaborators via constructor injection.  The framework resolves the
+    controller when a request matches its routes — you never instantiate
+    it manually.
+
+    Route decorators (@get, @post) come from lexigram.web, not Starlette
+    directly — they integrate with the framework's middleware stack.
+    """
 
     def __init__(self, versions: LabVersions, runner: ABRunner) -> None:
         self._versions = versions
@@ -37,6 +61,7 @@ class LabApiController(Controller):
 
     @get("/api/templates")
     async def templates(self, request: Request) -> list[dict]:
+        """List all variants with their active revision number."""
         rows = []
         for variant in ("v1", "v2"):
             rev, _tpl = self._versions.active(variant)
@@ -54,7 +79,12 @@ class LabApiController(Controller):
         self,
         request: Request,
     ) -> Result[dict, NotFoundError | ValidationError]:
-        """Render one variant at an optional revision with supplied vars."""
+        """Render one variant at an optional revision with supplied vars.
+
+        Return type uses ``Result[T, E]`` — the web pipeline maps Err
+        types to HTTP status codes automatically (ValidationError → 422,
+        NotFoundError → 404).
+        """
         data = await _body(request)
         variant = str(data.get("variant", ""))
         if variant not in VARIANT_LABELS:
@@ -81,7 +111,7 @@ class LabApiController(Controller):
 
     @get("/api/history/{variant}")
     async def history(self, request: Request) -> Result[dict, NotFoundError]:
-        """Revision history for one variant."""
+        """Revision history for one variant — active revision is flagged."""
         variant = request.path_params["variant"]
         if variant not in VARIANT_LABELS:
             return Err(NotFoundError(f"unknown variant: {variant!r}"))
@@ -89,7 +119,7 @@ class LabApiController(Controller):
 
     @post("/api/rollback")
     async def rollback(self, request: Request) -> Result[dict, NotFoundError]:
-        """Roll one variant back by N revisions."""
+        """Roll one variant back by N revisions; return the new active rev."""
         data = await _body(request)
         variant = str(data.get("variant", ""))
         if variant not in VARIANT_LABELS:

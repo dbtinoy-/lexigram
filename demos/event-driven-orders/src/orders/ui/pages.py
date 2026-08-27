@@ -1,4 +1,10 @@
-"""Order console page — static serving only (logic lives in the API controller)."""
+"""Order console page — static serving only (logic lives in the API controller).
+
+Convention: page controllers serve static HTML/CSS/JS assets.  They contain
+no business logic — all dynamic behavior comes from the API controller's
+endpoints.  The page controller is registered alongside the API controller
+in the composition root's ``WebModule.configure(controllers=[...])``.
+"""
 
 from __future__ import annotations
 
@@ -24,7 +30,12 @@ def _static(name: str, media_type: str) -> FileResponse:
 
 
 class OrdersPageController(Controller):
-    """Serve the order console; every handler reads from ui/."""
+    """Serve the order console; every handler reads from ui/.
+
+    Convention: page controllers are stateless — no constructor
+    injection, no business logic.  They exist only to map routes
+    to files.
+    """
 
     def __init__(self) -> None:
         """Stateless."""

@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol, runtime_checkable
 
-from dev.core.package_inventory import discover_package_paths
+from dev._lib.package_inventory import discover_package_paths
 
 
 @dataclass(frozen=True, slots=True)

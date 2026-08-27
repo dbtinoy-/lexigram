@@ -1,4 +1,15 @@
-"""The two support-reply prompt variants under iteration."""
+"""The two support-reply prompt variants under iteration.
+
+Lexigram convention: ``repository/`` holds data access, fixtures, and
+scripted stores.  These templates are plain Python — no framework imports
+beyond the prompt contracts.  ``build_v1`` and ``build_v2`` are factories
+that return fresh ``ChatPromptTemplate`` instances, keyed by variant id
+in the ``TEMPLATES`` dict.
+
+The ``PromptVariable`` declarations let the framework validate that every
+``{issue}`` and ``{tone}`` placeholder is supplied at render time —
+undeclared variables fail ``validate()`` with a clear error.
+"""
 
 from __future__ import annotations
 
@@ -7,6 +18,8 @@ from collections.abc import Callable
 from lexigram.ai.prompt.template.base import AbstractPromptTemplate
 from lexigram.ai.prompt.template.chat import ChatPromptTemplate
 from lexigram.ai.prompt.variables.types import PromptVariable
+
+__all__ = ["TEMPLATES", "VARIANT_LABELS", "build_v1", "build_v2"]
 
 _VARS = [
     PromptVariable(name="issue"),

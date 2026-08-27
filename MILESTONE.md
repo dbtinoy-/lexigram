@@ -14,52 +14,67 @@ annotated `v0.1.x` tags published on `dbtinoy-/lexigram` (authoritative);
 | `v0.1.1` | 2026-05-15 | Release on the 0.1 line: version alignment across all packages; workspace split into core / packages / experimental tiers. |
 | `v0.1.2` | 2026-06-21 | Hardening release: dynamic settings categories with per-spec stores, tenant-scoped settings, verified-only JWTs, secrets never rendered in settings HTML, publish gate blocks sensitive wheel content, `required_audience` enforced, 305 low-risk SAST findings remediated family-by-family, structured error detail in blind-except paths. |
 | `v0.1.3` | 2026-08-21 | Admin live widgets over a shared `EventSource`, RBAC-gated widget stream (`/admin/_sse/widgets`), tenant-scoped `SubjectAdminEventHub`; around this release: docs restructure (`docs/{audit,ecosystem,fundamentals,getting-started,guides,reference}`), fullstack-demo extracted to its own repository, `DEPENDENCY_TREE.md` committed, CI step names aligned for scanner detection. |
+| `v0.1.4` | 2026-08-23 | Generator system overhaul: 26 packages contribute generators via entry points; stub-to-real conversion for auth, events, features, monitor, notification, tenancy, vector, workflow, queue, cache, tasks; generator contract harness with per-package tests. Dual-mode config with late-binding injection (clusters A–D). Import depth lint gate (max 6 segments). MFA config dataclass. Auth-Rbac demo rewritten as teaching exemplar. |
 
-## Current cycle — Week of 2026-08-17 → 2026-08-23 (Security audit execution)
+---
 
-Rounds executed to completion this week, verified and committed (tracker:
-`docs/audit/AUDIT_SECURITY.md` — verified-clean surfaces + open risk table):
+## Current cycle — Week of 2026-08-24 → 2026-08-30 (Coverage push + doc cleanup)
 
-- **Rounds 1–2:** P0 session-secret, SQL injection, XSS, Tenancy, Secrets, SSRF, Deserialization, Web-CSRF — complete
-- **Round 3:** AI-guard (§11), GraphQL (§12), Media-upload (§13) — complete
-- **Round 4:** §16 AI-memory owner-scoping, §17 logging, §18 relay/worker/MCP trust, §19 HTTP client, §20 non-SQL query injection — complete
-- **Round 5:** §21–25 RBAC super-admin, password-reset, CORS, MFA, impersonation — complete
-- **Round 6:** admin-surface fixes — setup-wizard takeover, atomic first-admin claim, mandatory setup token, login/profile fixes, open-redirect — complete
-- **Round 7:** §31–36 SQL identifiers, auth-guard bypass, Alpine JS, search escaping, session-fallback TTL, login roles bug — complete
-- **Round 8:** §37–39 relations XSS/authz/Excel export, §40 Meilisearch/Typesense filter injection, §41–42 settings/command-palette — complete
-- **Round 9:** §45 pgvector, §46 storage KV traversal, §47 MCP handshake, §48 agent tool-visibility, §49 OAuth2 email-verified binding — complete
-- **Deserialization deep-dive (§3.9):** pickle deserializers removed or restricted, `@cacheable` registry-only reconstruction (zero `importlib`), SkillLoader fail-closed sandbox, CLI MySQL backup/restore argv-only — complete
-- **Round 10:** §50–60 (governance, observability, ai-workers, prompt, features, monitor, resilience) — complete
-- **Round 11:** §61–79 (ai core/evaluation/feedback, audit, events, queue, tasks, workflow) — complete
+Focus: push aggregate test coverage from 75.6% toward 80% target; resolve documentation claims; update roadmap to reflect actual status.
 
-Transport hygiene QA this week (verified locally, committed to `main`):
+### Completed this week
 
-- `dev/check_env_example.py` passes: 1796 documented vars, 44 referenced vars, 0 missing
-- `docs/reference/DEPENDENCY_TREE.md` committed (full `uv tree --locked` graph)
-- Workspace-config test now enforces direct dependency declarations per member
-- Error-tracking wiring integration scenario tests the provider boot → Sentry → excepthook chain (faked SDK, no infra)
+- **v0.1.4 released** (2026-08-23) — generator system overhaul, dual-mode config, import depth gate
+- **YAML config generator** — `dev/generators/yaml_config_example.py` produces `application.full.example.yaml` from catalog; all 43 catalog packages covered
+- **Dev tooling rename** — `dev/core/` → `dev/_lib/` (internal shared library); `tools/lint_imports.py` → `dev/checks/lint_imports.py`
+- **MFA config** — `MFAConfig` dataclass with TOTP, backup codes, and issuer settings
+- **Import depth lint gate** — new CI check enforcing max 6-segment import depth
 
-In progress:
+### In progress
 
-- **Admin dashboard** — polish continuation (open-ended)
+- **Coverage push** — targeting low-coverage packages: secrets (58%), sql (62%), events (63%), storage (62%), auth (68%)
 
-Shipped this cycle:
+---
 
-- **Reactive layer** — wiring end events complete: `ops.on_end`,
-  `Subject.error()`, `share()` failure propagation, `merge()`/`take()`
-  defect fixes, `docs/reference/REF_REACTIVE.md`
+## Next week — 2026-09-03 → 2026-09-09 (Coverage + release)
 
-## Next week
+| Day | Focus | Target |
+|-----|-------|--------|
+| Mon–Tue | Coverage: `lexigram-auth` + `lexigram` (core) | 68%→75%, 39%→45% |
+| Wed | Aggregate coverage check | verify ~78–79% |
+| Thu–Fri | Cut v0.1.5 release | bump + tag |
+| Sat | Update MILESTONE.md with v0.1.5 status | sync |
+| Sun | Buffer / overflow | — |
 
-- **Admin dashboard** — polish continuation
-- **Release `v0.1.4`** — cut once the reactive-layer milestone lands (planned)
+---
 
 ## Backlog (proposed, not scheduled)
 
+- Additional backend support (Q2 roadmap item — not yet started)
+- Performance optimizations (Q3-Q4 roadmap item)
 - AI subsystem GA: routing / governance / observability conformance sweeps
 - Multimedia pipeline milestones (TTS, music, video, image)
 - CLI 1.0: 42-generator coverage completion and docs
 - Platform: OpenTelemetry exporter GA, deploy-stage CI job
+- Reach 70% test coverage overall (unit + integration; integration-only baseline ~35%)
+- Enterprise features, distributed tracing, advanced monitoring (2027)
+
+---
+
+## Status snapshot
+
+| Area | Status | Notes |
+|------|--------|-------|
+| Test coverage | **75.6%** | Target 80%; gap in core packages |
+| AI subsystem | **Done** | 17 packages, all passing, 51–97% coverage |
+| CLI | **Done** | 22 commands, 26 generators, 80% coverage |
+| Demos | **Done** | 14 demos, all with tests |
+| Security audit | **Done** | 11 rounds, clean, 0 open items |
+| Admin dashboard | **In progress** | Polish ongoing (SSE widgets, RBAC) |
+| Documentation | **Done** | 3 minor unresolved claims (in progress) |
+| Dev tooling | **Done** | 12 checks, 6 generators, import depth gate |
+
+---
 
 ## Process commitments
 

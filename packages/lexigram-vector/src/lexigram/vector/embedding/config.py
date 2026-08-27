@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import ClassVar, Literal, cast
 
 from lexigram.config.base import BaseConfig
@@ -10,6 +11,7 @@ from lexigram.validation import ConfigDict, Field
 ENV_PREFIX: str = "LEX_VECTOR__EMBEDDING__"
 
 
+@dataclass(init=False)
 class EmbeddingClientConfig(BaseConfig):
     """Configuration for the OpenAI-compatible embedding HTTP client.
 

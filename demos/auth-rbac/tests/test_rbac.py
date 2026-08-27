@@ -1,12 +1,14 @@
 """End-to-end RBAC flow tests: login personas, matrix, guards.
 
-These are the *behavioral* half of the demo suite (pages smoke-test in
-``test_pages.py``).  Every test drives the real ASGI app through httpx —
-real middleware, real cookies — via fixtures from ``conftest.py``:
+Every test drives the real ASGI app through httpx — real middleware, real
+cookies — via fixtures from conftest.py.  This validates the full
+request lifecycle: middleware → controller → service → Result → HTTP.
 
-- ``client``     — one browser session (cookie jar persists per test)
-- ``app``        — the booted Starlette app, for second-browser scenarios
-- ``login_as``   — helper: POST /api/login as a seeded persona
+Key Lexigram test patterns:
+- Real composition root (no mocks of framework internals)
+- Cookie-based sessions via ASGITransport (in-process, no network)
+- Result<T,E> handlers mapping to HTTP status codes automatically
+- second_browser() for multi-session scenarios
 """
 
 from __future__ import annotations
@@ -17,13 +19,22 @@ from starlette.applications import Starlette
 
 
 async def login_as(client: httpx.AsyncClient, persona: str) -> None:
-    """Log the client in as one of the seeded personas."""
+    """Log the client in as one of the seeded personas.
+
+    Conftest also provides login_as as a module-level function; this local
+    copy exists for readability in test files that need it frequently.
+    """
     response = await client.post("/api/login", json={"persona": persona})
     assert response.status_code == 200, response.text
 
 
 def second_browser(app: Starlette) -> httpx.AsyncClient:
-    """An independent browser (own cookie jar) over the same app."""
+    """An independent browser (own cookie jar) over the same app.
+
+    Demonstrates that sessions are per-client — two clients can be logged
+    in as different personas simultaneously, which is how RBAC isolation
+    is validated in test_articles_guarded_by_role.
+    """
     return httpx.AsyncClient(
         transport=httpx.ASGITransport(app=app), base_url="http://testserver"
     )
@@ -96,6 +107,12 @@ async def test_try_endpoint_matches_matrix(
 async def test_articles_guarded_by_role(
     client: httpx.AsyncClient, app: Starlette
 ) -> None:
+    """Core RBAC test: viewer denied, editor allowed, cross-browser visibility.
+
+    Pattern: login_as(viewer) → denied (403) → second_browser → login_as(editor)
+    → created (201) → original client sees it in listing.  Validates that
+    role-based guards work AND that the singleton ArticleStore is shared.
+    """
 
     # viewer cannot create
     await login_as(client, "viewer")

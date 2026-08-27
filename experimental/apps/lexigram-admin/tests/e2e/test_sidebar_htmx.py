@@ -1,5 +1,7 @@
 import os
 
+import pytest
+pytest.importorskip("playwright", reason="E2E tests require playwright")
 from playwright.sync_api import sync_playwright
 
 

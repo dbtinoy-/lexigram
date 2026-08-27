@@ -1,0 +1,1381 @@
+# ==============================================================================
+# application.example.yaml
+# Lexigram Framework — complete configuration reference.
+#
+# All values shown are exact defaults taken from each package's config class.
+# Secrets:  prefer environment variables or a vault over plaintext.
+#           Syntax: "${ENV_VAR_NAME}" lets the loader substitute at runtime.
+# Env-var overrides use double-underscore nesting, e.g.:
+#   LEX_WEB__SERVER__PORT=9000  →  web.server.port = 9000
+# ==============================================================================
+
+# ── Core Framework (lexigram) ──────────────────────────────────────────────────
+# config_section: root (folded by LexigramConfig._fold_lexigram_env_section)
+# Core config fields live at the root level of the YAML.
+app_name: "lexigram-app"
+debug: false
+env: development
+logging:
+  level: info
+  format: json
+modules: []
+discovery:
+  auto_discover: true
+  package_patterns:
+    - "lexigram_*"
+health:
+  enabled: true
+  path: /health
+  detailed: false
+
+# ── Admin (lexigram-admin) ─────────────────────────────────────────────────────
+# env_prefix: LEX_ADMIN__
+admin:
+  api_prefix: "/admin/api"  # —
+  audit:
+    read_audit_enabled: false  # Log read operations (off by default; compliance mode only).
+  auth:
+    csrf_token_lifetime: 3600  # CSRF token expiry in seconds
+    email_otp:
+      enabled: true  # Enable email OTP factor
+      resend_cooldown_seconds: 60  # Minimum seconds between email OTP sends
+      ttl_minutes: 10  # Code validity window in minutes
+    email_verification:
+      enabled: true  # Enable email verification flow
+      enforcement: true  # Block login until the email is verified
+      token_ttl_hours: 24  # Verify link validity in hours
+    enabled: true  # Enable authentication
+    env: "development"  # Deployment environment for cookie security defaults
+    idle_timeout: 3600  # Session idle timeout in seconds
+    login_url: "/admin/login"  # —
+    logout_url: "/admin/logout"  # —
+    mfa:
+      enabled: true  # Enable TOTP 2FA
+      factor: "totp"  # Second factor used at login: 'totp' (authenticator app) or 'email' (one-time ...
+      issuer: "Lexigram Admin"  # TOTP issuer label shown in authenticator apps
+      skew: 1  # Allowed clock skew in 30 second steps
+    oauth_enabled: false  # —
+    oauth_providers: null  # —
+    password_policy:
+      max_length: 128  # —
+      min_length: 12  # —
+      reject_common_passwords: true  # —
+      reject_containing_email: true  # —
+      require_digit: true  # —
+      require_lowercase: true  # —
+      require_special: true  # —
+      require_uppercase: true  # —
+    permission_cache_ttl: 300  # —
+    principal_source: "internal"  # —
+    registration:
+      allowed_email_domains: null  # Restrict registration to these email domains (empty = any)
+      default_role: "admin"  # Role granted to new accounts
+      enabled: false  # Allow self-service registration
+    roles: null  # —
+    security:
+      ip_rate_limit_enabled: true  # —
+      ip_rate_limit_per_15_minutes: 30  # —
+      ip_rate_limit_per_hour: 60  # —
+      ip_rate_limit_per_minute: 10  # —
+      lockout_thresholds: null  # —
+      permanent_lockout_threshold: 50  # —
+      setup_token: "${LEX_ADMIN__AUTH__SECURITY__SETUP_TOKEN}"  # Optional ADMIN_SETUP_TOKEN — when set, must be provided during first-run setup.
+      setup_token_optin_unsafe: false  # Explicit escape hatch: boot without a setup token. Only for local/ephemeral e...
+    session_lifetime: 86400  # —
+    session_secret: "${LEX_ADMIN__AUTH__SESSION_SECRET}"  # Session secret for signing
+    users: null  # —
+  clusters:
+    extra: null  # Extra clusters beyond the built-in infrastructure cluster
+  commands: null  # —
+  contributor_collision_mode: "warn"  # How to handle name collisions when multiple contributors register widgets, pa...
+  contributors: null  # —
+  dashboard_layout:
+    layout: "grid"  # —
+    max_widgets: 20  # —
+    widget_refresh_default: 30  # —
+  data:
+    query_timeout_seconds: 5  # —
+  debug: false  # —
+  enabled: true  # —
+  extensions: null  # —
+  features:
+    activity_feed: false  # —
+    api_docs: true  # —
+    audit_logging: true  # —
+    autosave: false  # —
+    command_palette: true  # —
+    keyboard_shortcuts: true  # —
+    notifications: true  # —
+    optimistic_updates: true  # —
+    search: true  # —
+    theme_toggle: true  # —
+    undo_redo: true  # —
+    webhooks: false  # —
+  form_defaults: null  # —
+  framework_pages:
+    enabled: true  # —
+    require_permission: "admin:framework:access"  # —
+  htmx_prefix: "/admin/htmx"  # —
+  integrations:
+    cache:
+      default_ttl_seconds: 60  # —
+      enabled: true  # —
+      key_prefix: "admin"  # —
+    enabled: true  # —
+    features:
+      enabled: true  # —
+    monitor:
+      enabled: true  # —
+    resilience:
+      circuit_failure_threshold: 5  # —
+      enabled: true  # —
+      retry_max_attempts: 3  # —
+    search:
+      enabled: true  # —
+      fallback_to_like: true  # —
+    storage:
+      enabled: true  # —
+      presigned_url_expiry: 3600  # —
+    tasks:
+      bulk_threshold: 25  # —
+      enabled: true  # —
+  name: "admin"  # —
+  navigation_groups: null  # —
+  observability:
+    high_cardinality_labels_enabled: false  # —
+    metrics_enabled: true  # —
+  prefix: "/admin"  # —
+  rate_limit:
+    bulk_per_minute: 5  # —
+    burst_size: 10  # —
+    create_per_minute: 30  # —
+    delete_per_minute: 20  # —
+    enabled: true  # —
+    requests_per_hour: 1000  # —
+    requests_per_minute: 60  # —
+    update_per_minute: 60  # —
+  rbac:
+    super_admin_role: "superadmin"  # already special-cased by settings/widgets/impersonation.
+  require_auth: true  # —
+  resource_defaults: null  # —
+  resources: null  # —
+  static_dir: null  # —
+  static_prefix: "/admin/static"  # —
+  strict_resource_resolution: true  # When True (production default), resource/controller resolution failures durin...
+  table_defaults: null  # —
+  templates_dir: null  # —
+  tenancy:
+    cookie_name: "admin_tenant"  # —
+    default_tenant_id: null  # —
+    enabled: false  # —
+    header_name: "x-tenant-id"  # —
+    route_prefix_template: null  # —
+    tenant_field: "tenant_id"  # —
+  title: "Lexigram Admin"  # —
+  ui:
+    content_max_width: null  # —
+    favicon_url: null  # —
+    logo_url: null  # —
+    primary_color: "#6B7280"  # —
+    sidebar_collapsed_width: 64  # —
+    sidebar_width: 256  # —
+    theme: "system"  # —
+
+# ── AI (lexigram-ai) ───────────────────────────────────────────────────────────
+# env_prefix: LEX_AI__
+ai:
+  enabled: true  # Enable AI features
+  governance: null  # AI governance configuration
+  llm: null  # LLM configuration (optional)
+  name: "ai"  # Configuration name
+  observability: null  # AI observability configuration (tracing and metrics)
+  rag: null  # RAG pipeline configuration (optional)
+  subsystems: null  # Dynamic configuration for third-party AI subsystems discovered via entry poin...
+  vector: null  # Vector store configuration
+
+# ── AI Agents (lexigram-ai-agents) ─────────────────────────────────────────────
+# env_prefix: LEX_AI_AGENTS__
+ai_agents:
+  default_max_tokens: 2048  # Default max tokens for LLM responses
+  default_temperature: 0.7  # Default temperature for LLM calls
+  enable_metrics: true  # Enable Prometheus metrics
+  enable_tracing: true  # Enable OpenTelemetry tracing
+  enabled: true  # Enable the AI agents subsystem
+  max_iterations: 10  # Maximum reasoning iterations per execution
+  tool_max_retries: 3  # Number of retries for transient tool execution errors (ConnectionError, Timeo...
+
+# ── AI Evaluation (lexigram-ai-evaluation) ─────────────────────────────────────
+# env_prefix: LEX_AI_EVALUATION__
+ai_evaluation:
+  default_seed: null  # Default seed for reproducible experiment runs
+  default_threshold: 0.8  # Default score threshold for passing evaluations
+  embedding_model: "text-embedding-3-small"  # Model to use for embedding-based evaluations
+  enabled: true  # Enable the AI evaluation subsystem
+  experiment_dir: null  # Base directory for experiment tracking and checkpoint artifacts
+  include_metadata: true  # Whether to include metadata in run reports
+  max_retries: 3  # Maximum retries for failed evaluations
+  max_samples: null  # Maximum number of samples per evaluation run
+  timeout_seconds: 30  # Timeout for evaluation execution in seconds
+
+# ── AI Feedback (lexigram-ai-feedback) ─────────────────────────────────────────
+# env_prefix: LEX_AI_FEEDBACK__
+ai_feedback:
+  async_processing: true  # Process feedback handlers asynchronously in the background
+  enabled: true  # Master on/off switch for all feedback collection
+  store_raw_payloads: false  # Persist raw incoming feedback payloads for auditing
+
+# ── AI Governance (lexigram-ai-governance) ─────────────────────────────────────
+# env_prefix: LEX_AI_GOVERNANCE__
+ai_governance:
+  enabled: true  # Enable AI governance
+  enforce_budget: true  # Enforce budget limits
+  fail_open_on_persistence_error: false  # Allow requests when the persistence backend is unavailable. When False (defau...
+  max_request_cost: null  # Maximum cost in dollars for a single request. Requests with an estimated cost...
+  max_tokens_per_request: null  # Max tokens per request
+  monthly_budget: null  # Monthly budget in dollars
+  resource_units: null  # Resource units this governance instance tracks. Per-tenant limits are configu...
+  restricted_models: null  # List of restricted models
+  rpm_limit: null  # Requests Per Minute limit
+  soft_limit_pct: null  # Fraction of monthly_budget at which to emit a soft-limit warning (e.g. 0.8 = ...
+  tpm_limit: null  # Tokens Per Minute limit
+
+# ── AI Guard (lexigram-ai-guard) ───────────────────────────────────────────────
+# env_prefix: LEX_AI_GUARD__
+ai_guard:
+  enable_llm_guards: false  # —
+  enabled: true  # —
+  guard_model: "gpt-4o-mini"  # —
+  injection_action: "block"  # —
+  injection_detection: true  # —
+  length_action: "block"  # —
+  llm_guard_fail_open: false  # —
+  llm_guard_threshold: 0.7  # —
+  max_input_chars: 0  # —
+  max_output_chars: 0  # —
+  parallel_execution: false  # —
+  pii_action: "redact"  # —
+  pii_detection: true  # —
+  pii_entities: null  # —
+  pii_redaction_output: true  # —
+  restricted_topics: null  # —
+  sensitivity_level: "medium"  # —
+
+# ── AI LLM (lexigram-ai-llm) ───────────────────────────────────────────────────
+# env_prefix: LEX_AI_LLM__
+ai_llm:
+  api_base: null  # Custom API base URL (for Azure, local, or proxied endpoints).
+  api_key: "${LEX_AI_LLM__API_KEY}"  # API key for the chosen provider.
+  cache_ttl: 3600  # Cache TTL in seconds.
+  enable_cache: false  # Enable response caching (requires CacheBackendProtocol in container).
+  enabled: true  # Enable the LLM subsystem
+  extra: null  # Provider-specific extra parameters passed verbatim.
+  max_tokens: null  # Maximum tokens in response.
+  model: "gpt-4-turbo"  # Model name or identifier.
+  pin_policy: "ModelPinPolicy.LATEST"  # Policy for enforcing the model revision pin.
+  pricing:
+    cache_ttl: 86400  # Pricing cache TTL in seconds (default: 24 hours).
+    enable_fuzzy_match: true  # Allow substring matching of model names to prices.
+    enabled: true  # Register pricing manager and cost estimator.
+    sources: null  # Pricing sources in priority order.
+  provider: "ModelProvider.OPENAI"  # LLM provider name.
+  temperature: 0.7  # Sampling temperature.
+  thinking:
+    budget_tokens: 10000  # —
+    effort: null  # —
+    level: null  # —
+    suppress: false  # —
+  timeout: 60.0  # Request timeout in seconds.
+
+# ── AI MCP (lexigram-ai-mcp) ───────────────────────────────────────────────────
+# env_prefix: LEX_AI_MCP__
+ai_mcp:
+  allow_unauthenticated: false  # —
+  client_stdio_command: null  # —
+  client_url: null  # —
+  cors_origins: null  # —
+  enable_sse: true  # —
+  enabled: true  # Enable the MCP server subsystem
+  host: "0.0.0.0"  # —
+  max_request_size: "1024 * 1024"  # —
+  path: "/mcp"  # —
+  port: 8080  # —
+  request_timeout: 30.0  # —
+  server_name: "lexigram-mcp"  # —
+  server_version: "1.0.0"  # —
+  stdio_mode: false  # —
+
+# ── AI Memory (lexigram-ai-memory) ─────────────────────────────────────────────
+# env_prefix: LEX_AI_MEMORY__
+ai_memory:
+  consolidation:
+    age_threshold_hours: null  # Minimum entry age (hours) before it can be consolidated
+    batch_size: null  # Maximum entries processed per consolidation pass
+    enabled: true  # Whether automatic background consolidation is active
+    importance_prune_threshold: null  # Entries below this importance score are eligible for pruning
+    interval_seconds: null  # How often to run a consolidation pass (seconds)
+  default_backend: null  # Backend type to use ('in_memory', 'cache', 'database', 'vector')
+  enabled: true  # Enable the AI memory subsystem
+  episodic:
+    default_top_k: null  # Default number of episodes to retrieve
+    importance_weight: null  # Weight applied to entry importance during scoring
+    recency_weight: null  # Weight applied to temporal recency during scoring
+    relevance_weight: null  # Weight applied to semantic similarity during scoring
+    ttl_seconds: null  # Time-to-live for entries in seconds (0 = never expire)
+  semantic:
+    max_facts_per_entity: null  # Hard cap on stored facts per entity
+    min_confidence: null  # Minimum confidence score required to store a fact
+  ttl_seconds: null  # Default entry TTL in seconds (0 = never expire)
+  working:
+    episodic_fraction: null  # Fraction of remaining budget for episodic recall
+    max_recent_turns: null  # Hard cap on recent turns regardless of budget
+    recent_turns_fraction: null  # Fraction of remaining budget for recent turns
+    semantic_fraction: null  # Fraction of remaining budget for semantic facts
+    system_prompt_tokens: null  # Fixed token allocation for system prompt
+    tool_descriptions_fraction: null  # Fraction of remaining budget for tool descriptions
+
+# ── AI Observability (lexigram-ai-observability) ───────────────────────────────
+# env_prefix: LEX_AI_OBSERVABILITY__
+ai_observability:
+  enabled: true  # Master on/off switch for all observability
+  health_checks_enabled: true  # Enable background health checking for AI components
+  metrics_enabled: true  # Enable metrics collection
+  trace_max_attribute_length: 0  # Cap on string attribute values written to trace spans, in characters. 0 disab...
+  trace_redaction_enabled: false  # Redact secret-shaped keys (e.g. token, password, api_key) from trace span att...
+  tracing_enabled: true  # Enable distributed tracing
+
+# ── AI Prompt (lexigram-ai-prompt) ─────────────────────────────────────────────
+# env_prefix: LEX_AI_PROMPT__
+ai_prompt:
+  default_format: "DEFAULT_RENDER_FORMAT"  # —
+  enabled: true  # Enable the AI prompt subsystem
+  max_variable_length: 0  # —
+  sanitize_inputs: true  # —
+  strict_sanitizer: true  # —
+
+# ── AI RAG (lexigram-ai-rag) ───────────────────────────────────────────────────
+# env_prefix: LEX_AI_RAG__
+ai_rag:
+  cache_ttl: 3600  # Cache TTL in seconds (default: 1 hour)
+  chunk_overlap: 50  # Overlap between consecutive chunks
+  chunk_size: 512  # Text chunk size in tokens
+  chunking_strategy: "recursive"  # Chunking strategy (recursive, semantic, token)
+  citation_style: "inline"  # Citation style (inline, footnote, numbered)
+  collection_name: "default"  # Collection/index name for vector store
+  embedding_model: null  # Embedding model identifier. Must be set explicitly — no vendor-specific default.
+  embedding_provider: "openai"  # Embedding provider (openai, cohere, etc.)
+  enable_caching: true  # Enable caching for RAG queries
+  enable_citations: true  # Include source citations in responses
+  enable_hallucination_detection: true  # Enable hallucination detection for AI responses
+  enable_hyde: false  # Enable HyDE (Hypothetical Document Embeddings)
+  enable_query_expansion: true  # Enable query expansion techniques
+  enabled: true  # Enable the RAG pipeline
+  min_citation_confidence: 0.6  # Minimum confidence for citation inclusion
+  persist_directory: null  # Local directory path for vector store persistence (e.g. Chroma)
+  similarity_threshold: 0.7  # Minimum similarity score threshold
+  synthesis_strategy: "hybrid"  # Synthesis strategy (direct, extractive, abstractive, hybrid)
+  tenancy:
+    enabled: false  # Enable tenant-aware collection resolution in RAG pipeline
+  top_k: 5  # Number of documents to retrieve
+  use_hybrid_search: true  # Enable hybrid search (semantic + keyword)
+  vector_dimension: 1536  # Embedding vector dimension (1536 for OpenAI ada-002)
+  vector_store_type: "pgvector"  # Vector store backend (pgvector, chroma, qdrant, mock)
+
+# ── AI Session (lexigram-ai-session) ───────────────────────────────────────────
+# env_prefix: LEX_AI_SESSION__
+ai_session:
+  auto_checkpoint_interval: null  # Checkpoint every N turns; None to disable
+  backend: null  # Persistence backend (in_memory, cache, database)
+  cleanup_interval_s: null  # How often the cleanup scheduler sweeps for expired sessions
+  consolidate_on_close: null  # Whether to trigger memory consolidation on session close
+  cookie_name: null  # Cookie name for web session ID; None disables cookies
+  default_system_prompt: null  # System prompt injected into every new session
+  default_turn_strategy: null  # Default turn-selection strategy (round_robin, priority, llm_directed)
+  enabled: true  # Enable the AI session subsystem
+  header_name: null  # HTTP header name for session ID pass-through
+  max_agents_per_group: null  # Maximum agents in a multi-agent group session
+  max_branches_per_session: null  # Maximum forked branches per session
+  max_checkpoints_per_session: null  # Maximum retained checkpoints per session
+  max_sessions_per_user: null  # Maximum concurrent sessions per user
+  max_turns_per_session: null  # Hard cap on turns before the session is closed
+  name: "ai-session"  # Logical name used for DI registration keys
+  session_ttl: null  # Maximum age of a session in seconds (0 to disable)
+
+# ── AI Skills (lexigram-ai-skills) ─────────────────────────────────────────────
+# env_prefix: LEX_AI_SKILLS__
+ai_skills:
+  allowed_script_types: null  # Allowed script types (py, sh, js)
+  auto_discover: null  # Whether to auto-scan packages for skills on boot
+  builtin_skills: null  # Names of built-in skills to register
+  cache_backend: null  # Which cache backend to use (in_memory, cache)
+  cache_enabled: null  # Whether result caching is globally enabled
+  cache_ttl_seconds: null  # Default TTL for cached skill results (seconds)
+  default_timeout_seconds: null  # Default execution timeout per skill (seconds)
+  enable_builtin: null  # Whether built-in skills are registered on boot
+  enable_skill_sources: true  # Whether to scan for external skill sources on boot
+  enabled_directories: null  # Which skill directories to enable (claude_code, opencode, cursor, etc.)
+  enforce_permissions: null  # Whether permission checks are enforced
+  lazy_load_context: null  # Whether to lazily load skill context files
+  max_concurrent_executions: null  # Semaphore cap on concurrent skill executions
+  max_retries: null  # Default maximum retry attempts for skill execution
+  name: "ai-skills"  # Logical name used for DI registration keys
+  scan_packages: null  # Fully-qualified package names to scan for skills
+  script_timeout_seconds: null  # Timeout for skill script execution (seconds)
+  skill_paths: null  # Paths to scan for skills (SKILL.md folders)
+
+# ── AI Workers (lexigram-ai-workers) ───────────────────────────────────────────
+# env_prefix: LEX_AI_WORKERS__
+ai_workers:
+  batch_embedding_concurrency: 3  # Concurrency level for batch embedding execution
+  dlq_check_interval: 60  # Interval in seconds for DLQ recovery sweeps
+  document_ingestion_concurrency: 3  # Concurrency level for document parsing and chunking
+  enable_maintenance: true  # Enable vector store and cache maintenance tasks
+  enabled: true  # Master on/off switch for all background workers
+
+# ── Audit (lexigram-audit) ─────────────────────────────────────────────────────
+# env_prefix: LEX_AUDIT__
+audit:
+  enable_admin: null  # Whether to register the AuditAdminContributor
+  hmac_key: "${LEX_AUDIT__HMAC_KEY}"  # HMAC key for checksum computation
+  retention_policy: null  # Retention rules
+  store_backend: null  # Backend type — 'sql' or 'memory'
+  table_name: null  # SQL table name for the unified audit store
+  verification_batch_size: null  # Entries to verify per verification run
+  verification_schedule: null  # Cron expression for scheduled verification
+
+# ── Auth (lexigram-auth) ───────────────────────────────────────────────────────
+# env_prefix: LEX_AUTH__
+auth:
+  admin_email: null  # Initial admin email
+  admin_password: "${LEX_AUTH__ADMIN_PASSWORD}"  # Initial admin password
+  enabled: true  # —
+  login_rate_limit: "5/minute"  # Default rate limit
+  max_sessions_per_user: null  # Maximum number of concurrent sessions allowed per user. ``None`` (the default...
+  middleware:
+    backend: "session"  # Auth backend type
+    exclude_paths: null  # Paths excluded from auth
+    exclude_prefixes: null  # Path prefixes excluded
+    header_name: "Authorization"  # Header name for token
+    login_rate_limit: "5/minute"  # Rate limit for auth endpoints
+    login_url: null  # URL to redirect for login
+    optional_auth: false  # Whether authentication is optional
+    permissions_required: null  # Permissions required
+    roles_required: null  # Roles required
+    scheme: null  # Token scheme
+  name: "auth"  # —
+  oauth2_providers: null  # OAuth2 configs
+  password:
+    argon2_memory_cost: 65536  # Argon2id memory cost in KiB (OWASP floor is 19456)
+    argon2_parallelism: 4  # Argon2id parallelism
+    argon2_time_cost: 3  # Argon2id time cost
+    banned_patterns: null  # Substrings that must not appear in the password (case-insensitive). Use to re...
+    bcrypt_rounds: 12  # bcrypt cost factor for new hashes (minimum 12 in production)
+    max_length: 128  # Maximum password length
+    min_length: 12  # Minimum password length
+    require_digits: true  # Require at least one digit
+    require_lowercase: false  # Require at least one lowercase letter
+    require_special: false  # Require at least one special character (non-alphanumeric)
+    require_uppercase: true  # Require at least one uppercase letter
+  rbac:
+    cache_permissions: true  # Cache resolved permissions
+    default_role: "viewer"  # Default role for new users
+    enabled: true  # Enable RBAC enforcement
+    permission_cache_ttl: 300  # Permission cache TTL in seconds
+    superuser_bypass: true  # Allow superuser role to bypass all checks
+  relay_verification: false  # Enable binding ``RelayAuthVerifierProtocol`` for the relay gateway's inbound ...
+  roles: null  # Role definitions
+  secret_key: "${LEX_AUTH__SECRET_KEY}"  # Secret key for signing
+  token:
+    access_token_expire: null  # Access token expiry duration
+    algorithm: null  # Algorithm
+    id_token_expire: "1h"  # ID token expiry duration
+    key_rotation_grace_period: null  # Duration during which tokens signed by a rotated-out key remain accepted. Pre...
+    refresh_token_expire: null  # Refresh token expiry duration
+    required_audience: null  # Expected ``aud`` claim for every token verified by this service. When set, to...
+    secret_key: "${LEX_AUTH__TOKEN__SECRET_KEY}"  # Secret key for signing tokens
+  users: null  # Initial users
+
+# ── Cache (lexigram-cache) ─────────────────────────────────────────────────────
+# env_prefix: LEX_CACHE__
+cache:
+  backends: null  # Backend configs
+  debug: null  # Debug mode
+  enabled: null  # Whether cache is enabled
+  env: null  # Environment (development/staging/production)
+  environment: null  # Environment
+  name: null  # Provider name
+  service:
+    circuit_breaker_enabled: null  # Enable circuit breaker
+    circuit_breaker_threshold: null  # Circuit breaker threshold
+    default_backend: null  # Default backend name
+    default_serializer: null  # Default serializer
+    enable_health_checks: null  # Enable health checks
+    enable_metrics: null  # Enable metrics
+    enable_protection: null  # Enable stampede protection
+    protection_lock_ttl: null  # Protection lock TTL
+    protection_max_wait: null  # Max wait for locks
+    protection_retry_interval: null  # Lock retry interval
+  version: null  # Config version
+
+# ── CLI (lexigram-cli) ─────────────────────────────────────────────────────────
+# env_prefix: LEX_CLI__
+cli:
+  color: true  # —
+  default_database: "postgres"  # —
+  default_template: "web-api"  # —
+  verbose: false  # —
+
+# ── Events (lexigram-events) ───────────────────────────────────────────────────
+# env_prefix: LEX_EVENTS__
+events:
+  command_bus:
+    enable_logging: null  # —
+    enable_metrics: null  # —
+    enable_validation: null  # —
+    max_retries: null  # —
+    retry_delay_seconds: null  # —
+    timeout_seconds: null  # —
+  debug: null  # —
+  enabled: true  # —
+  env: null  # Environment (development/staging/production)
+  event_bus:
+    allow_no_handlers: null  # —
+    continue_on_error: null  # —
+    enable_dead_letter: null  # —
+    handler_timeout_seconds: null  # —
+    max_concurrent_handlers: null  # —
+    max_handler_retries: null  # —
+    max_queue_per_subscriber: null  # Maximum number of events queued per event type before backpressure is applied...
+    parallel_dispatch: null  # —
+    retry_failed_handlers: null  # —
+  event_store_backend: null  # —
+  kafka:
+    auto_offset_reset: null  # —
+    bootstrap_servers: null  # Kafka bootstrap servers
+    consumer_group: null  # —
+    enable_auto_commit: null  # —
+    topic_prefix: null  # —
+  logging_middleware:
+    enabled: null  # —
+    include_payload: null  # —
+    log_level: null  # —
+    max_payload_length: null  # —
+  memory:
+    enable_snapshots: null  # —
+    max_events_per_stream: null  # —
+  metrics_middleware:
+    enabled: null  # —
+    histogram_buckets: null  # —
+    include_histograms: null  # —
+    prefix: null  # —
+  mongodb:
+    connection_string: null  # MongoDB connection string
+    database_name: null  # —
+    events_collection: null  # —
+    max_pool_size: null  # —
+    server_selection_timeout: null  # —
+    snapshots_collection: null  # —
+  name: "events"  # —
+  postgres:
+    auto_create_tables: true  # —
+    command_timeout: 60.0  # —
+    dsn: null  # PostgreSQL connection string. Optional when a DatabaseProviderProtocol is inj...
+    events_table: "events"  # —
+    pool_max_size: 20  # —
+    pool_min_size: 5  # —
+    snapshots_table: "snapshots"  # —
+  projection:
+    batch_size: null  # —
+    checkpoint_interval: null  # —
+    enable_parallel_projections: null  # —
+    max_catch_up_events: null  # —
+    rebuild_batch_size: null  # —
+  query_bus:
+    enable_logging: null  # —
+    enable_metrics: null  # —
+    timeout_seconds: null  # —
+  rabbitmq:
+    durable: null  # —
+    exchange_name: null  # —
+    prefetch_count: null  # —
+    queue_prefix: null  # —
+    url: null  # AMQP connection URL
+  retry_middleware:
+    enabled: null  # —
+    exponential_base: null  # —
+    initial_delay_seconds: null  # —
+    max_delay_seconds: null  # —
+    max_retries: null  # —
+  saga:
+    cleanup_completed_after_hours: null  # —
+    default_timeout_seconds: null  # —
+    enable_compensation: null  # —
+    max_retries_per_step: null  # —
+    persist_state: null  # —
+    retry_delay_seconds: null  # —
+  snapshots:
+    enabled: null  # —
+    event_count_threshold: null  # —
+    max_snapshots_per_aggregate: null  # —
+    strategy: null  # —
+    time_threshold_seconds: null  # —
+  sqlite:
+    database: "./events.db"  # —
+    journal_mode: "WAL"  # —
+    pragmas: null  # —
+    wal_mode: true  # —
+  streaming:
+    batch_size: null  # —
+    buffer_size: null  # —
+    enable_websocket: null  # —
+    max_subscribers: null  # —
+    poll_interval_ms: null  # —
+    websocket_ping_interval: null  # —
+  transaction_middleware:
+    enabled: null  # —
+    isolation_level: null  # —
+    timeout_seconds: null  # —
+  validation_middleware:
+    enabled: null  # —
+    strict_mode: null  # —
+  version_skew_alerts_enabled: true  # —
+
+# ── Features (lexigram-features) ───────────────────────────────────────────────
+# env_prefix: LEX_FEATURES__
+features:
+  cache_ttl: "DEFAULT_CACHE_TTL"  # Seconds to cache flag evaluations (0 = disabled).
+  default_enabled: "DEFAULT_ENABLED"  # Default value when a flag is not found in the provider.
+  enabled: true  # Enable the feature flags subsystem
+  flag_env_prefix: "FLAG_ENV_PREFIX"  # Env var prefix used by EnvProvider when reading flag values.
+  initial_flags: null  # Seed flags for the in-memory provider (name -> enabled).
+
+# ── Graph (lexigram-graph) ─────────────────────────────────────────────────────
+# env_prefix: LEX_GRAPH__
+graph:
+  backend: null  # Graph store backend to use
+  bulk_batch_size: null  # Batch size for bulk operations
+  default_query_limit: null  # Default limit for query results
+  default_traversal_max_depth: null  # Default maximum depth for traversals
+  enabled: true  # Enable the graph store subsystem
+  max_retries: null  # Maximum number of retries for operations
+  memory:
+    max_edges: null  # Maximum number of edges in memory
+    max_nodes: null  # Maximum number of nodes in memory
+  neo4j:
+    connection_timeout: null  # Connection timeout in seconds
+    database: null  # Target database name
+    encrypted: false  # Whether to use SSL/TLS encryption
+    fetch_size: null  # Default fetch size for results
+    max_connection_pool_size: null  # Maximum number of connections in the pool
+    max_transaction_retry_time: 30.0  # Maximum time for transaction retries
+    password: "${LEX_GRAPH__NEO4J__PASSWORD}"  # Neo4j password
+    trust: "TRUST_SYSTEM_CA_SIGNED_CERTIFICATES"  # Trust strategy for SSL
+    uri: "bolt://localhost:7687"  # Neo4j BOLT URI
+    username: "neo4j"  # Neo4j username
+  retry_delay: null  # Delay between retries in seconds
+  tenancy:
+    enabled: false  # Enable tenant-aware graph resolution
+    strategy: "node_property"  # Which tenancy strategy to use. One of ``"node_property"`` or ``"graph_per_ten...
+    template: null  # Collection name template for ``GRAPH_PER_TENANT`` strategy. Supports ``{logic...
+
+# ── GraphQL (lexigram-graphql) ─────────────────────────────────────────────────
+# env_prefix: LEX_GRAPHQL__
+graphql:
+  alias_limit:
+    enabled: true  # —
+    max_aliases: null  # —
+  batch:
+    enabled: false  # —
+    max_batch_size: 10  # —
+  cache:
+    default_max_age: null  # —
+    default_scope: "CacheScope.PUBLIC"  # —
+    enabled: true  # —
+    vary_headers: null  # —
+  complexity:
+    default_field_cost: 1.0  # —
+    default_list_cost: 10.0  # —
+    enabled: true  # —
+    max_complexity: null  # —
+  dataloader:
+    batch_delay_ms: 2.0  # Delay in milliseconds before executing a DataLoaderProtocol batch. A small no...
+    batch_enabled: true  # —
+    cache_enabled: true  # —
+    enabled: true  # —
+    max_batch_size: 100  # —
+  debug: false  # —
+  depth_limit:
+    enabled: true  # —
+    ignore_introspection: true  # —
+    max_depth: null  # —
+  enable_identity_resolution: false  # —
+  enabled: true  # —
+  env: null  # Environment (development/staging/production)
+  errors:
+    debug_mode: false  # —
+    include_stacktrace: false  # —
+    log_errors: true  # —
+    mask_errors: true  # —
+  introspection:
+    allowed_environments: null  # —
+    enabled: true  # —
+  metrics:
+    enabled: false  # —
+    histogram_buckets: null  # —
+    include_labels: null  # —
+    namespace: "lexigram_graphql"  # —
+  name: "graphql"  # —
+  path: null  # —
+  persisted_queries:
+    enabled: true  # —
+    store_type: "memory"  # —
+    ttl_seconds: 86400  # —
+  playground:
+    enabled: true  # —
+    path: null  # —
+    title: "Lexigram GraphQL Playground"  # —
+  rate_limit:
+    burst_limit: 10  # —
+    enabled: true  # —
+    requests_per_minute: 60  # —
+  schema_baseline_path: null  # Path to a GraphQL SDL (.graphql) file containing the baseline schema. When se...
+  subscriptions:
+    connection_timeout: 60  # —
+    enabled: true  # —
+    keepalive_interval: null  # —
+    path: null  # —
+    protocol: "SubscriptionProtocol.GRAPHQL_TRANSPORT_WS"  # —
+  tracing:
+    enabled: false  # —
+    sample_rate: 1.0  # —
+    service_name: "lexigram-graphql"  # —
+    trace_dataloaders: true  # —
+    trace_resolvers: true  # —
+
+# ── HTTP Client (lexigram-http) ────────────────────────────────────────────────
+# env_prefix: LEX_HTTP__
+http:
+  cookie_jar: true  # —
+  enforce_url_safety: true  # —
+  max_redirects: 5  # —
+  pool:
+    force_close: false  # —
+    max_connections: "DEFAULT_MAX_CONNECTIONS"  # —
+    max_connections_per_host: "DEFAULT_MAX_CONNECTIONS_PER_HOST"  # —
+    max_keepalive_connections: "DEFAULT_MAX_KEEPALIVE_CONNECTIONS"  # —
+    timeout: "DEFAULT_TIMEOUT"  # —
+    ttl_dns_cache: "DEFAULT_TTL_DNS_CACHE"  # —
+  proxy: null  # —
+  trust_env: true  # —
+
+# ── Monitor (lexigram-monitor) ─────────────────────────────────────────────────
+# env_prefix: LEX_MONITOR__
+monitor:
+  backend_type: null  # Monitoring backend type
+  debug: null  # Enable debug mode
+  enabled: null  # Enable monitoring
+  env: null  # Environment (development/staging/production)
+  environment: null  # Deployment environment
+  error_tracking:
+    dsn: null  # Sentry DSN; error tracking is a no-op when unset
+    environment: null  # Environment tag for captured events
+    send_default_pii: null  # Send default PII fields to the error tracker
+    traces_sample_rate: null  # Traces sample rate (0.0 to 1.0)
+  health:
+    checks: null  # List of health check names to run
+    enabled: null  # Enable health checks
+    include_details: null  # Include detailed health info in response
+    interval: null  # Health check interval in seconds
+    path: null  # Health endpoint path
+    timeout: null  # Health check timeout in seconds
+  logging:
+    enabled: null  # Enable structured logging
+    format: null  # Log format (json, text)
+    include_trace_context: null  # Include trace context in logs
+    level: null  # Default log level
+    redact_fields: null  # Fields to redact from logs
+  metrics:
+    collection_interval: null  # Metrics collection interval in seconds
+    default_labels: null  # Default labels for all metrics
+    enabled: null  # Enable metrics collection
+    histogram_buckets: null  # Default histogram bucket boundaries
+    prefix: null  # MetricProtocol name prefix
+  name: null  # Provider name
+  opentelemetry:
+    batch_size: null  # Export batch size
+    compression: null  # Compression type (none, gzip)
+    endpoint: null  # OTLP endpoint URL
+    export_interval: null  # Export interval seconds
+    headers: null  # OTLP request headers
+    insecure: null  # Use insecure connection
+    metrics_exporters: null  # List of metrics exporters to build.
+    timeout: null  # Export timeout seconds
+    tracing_exporters: null  # List of tracing exporters to build.
+  prometheus:
+    enable_default_metrics: null  # Enable default process metrics
+    metrics_table: null  # Table name for metrics samples
+    path: null  # Metrics endpoint path
+    port: null  # Metrics server port
+    push_interval: null  # Push interval for Pushgateway
+    pushgateway_url: null  # Pushgateway URL for push-based metrics
+    store_in_db: null  # Persist metrics observations to DB
+  slo:
+    alert_channels: null  # Alert channel names for SLO violation dispatch
+    enabled: null  # Enable periodic SLO evaluation worker
+    evaluation_interval: null  # SLO evaluation interval in seconds
+    suppression_window_seconds: null  # Alert suppression window in seconds
+  tracing:
+    enabled: null  # Enable tracing
+    max_attributes: null  # Max attributes per span
+    max_events: null  # Max events per span
+    max_links: null  # Max links per span
+    max_spans: null  # Max number of spans to keep in memory
+    max_traces_per_second: null  # Max traces to sample per second
+    propagation_formats: null  # Propagation format list
+    sample_rate: null  # Sample rate (0.0 to 1.0)
+    sampler_type: null  # Tracing sampler type
+    service_name: null  # Service name for traces
+
+# ── Multimedia (lexigram-multimedia) ───────────────────────────────────────────
+# env_prefix: LEX_MULTIMEDIA__
+multimedia:
+  beat:
+    backend: "librosa"  # —
+    librosa_sample_rate: 22050  # —
+    madmom_base_url: "http://localhost:5600"  # —
+    max_analyze_samples: 60000000  # —
+    max_asset_bytes: "25 * 1024 * 1024"  # —
+    timeout: 30.0  # —
+  cache_results: false  # —
+  image:
+    backend: "local-http"  # —
+    comfyui_base_url: "http://localhost:8188"  # —
+    comfyui_cfg_scale: 7.0  # —
+    comfyui_checkpoint: "sd_xl_base_1.0.safetensors"  # —
+    comfyui_poll_interval: 1.0  # —
+    comfyui_steps: 20  # —
+    comfyui_workflow_path: null  # —
+    local_http_base_url: "http://localhost:5005"  # —
+    openai_api_key_secret_name: "${LEX_MULTIMEDIA__IMAGE__OPENAI_API_KEY_SECRET_NAME}"  # —
+    openai_base_url: "https://api.openai.com"  # —
+    openai_model: "dall-e-3"  # —
+    stability_api_key_secret_name: "${LEX_MULTIMEDIA__IMAGE__STABILITY_API_KEY_SECRET_NAME}"  # —
+    timeout: 60.0  # —
+  interpolate:
+    backend: "rife"  # —
+    rife_base_url: "http://localhost:5500"  # —
+    timeout: 15.0  # —
+  music:
+    ace_step_base_url: "http://localhost:5300"  # —
+    backend: "local-http"  # —
+    local_http_base_url: "http://localhost:5003"  # —
+    stability_api_key_secret_name: "${LEX_MULTIMEDIA__MUSIC__STABILITY_API_KEY_SECRET_NAME}"  # —
+    stable_audio_open_base_url: "http://localhost:5301"  # —
+    timeout: 60.0  # —
+  storage_path_prefix: "multimedia/"  # —
+  tts:
+    backend: "local-http"  # —
+    chatterbox_base_url: "http://localhost:5100"  # —
+    chatterbox_cfg_weight: 0.5  # —
+    chatterbox_exaggeration: 0.5  # —
+    chatterbox_temperature: 0.85  # —
+    elevenlabs_api_key_secret_name: "${LEX_MULTIMEDIA__TTS__ELEVENLABS_API_KEY_SECRET_NAME}"  # —
+    elevenlabs_voice_id: null  # —
+    f5_tts_base_url: "http://localhost:5102"  # —
+    kokoro_base_url: "http://localhost:5101"  # —
+    kokoro_default_voice: "af_heart"  # —
+    local_http_base_url: "http://localhost:5002"  # —
+    openai_api_key_secret_name: "${LEX_MULTIMEDIA__TTS__OPENAI_API_KEY_SECRET_NAME}"  # —
+    openai_base_url: "https://api.openai.com"  # —
+    openai_model: "tts-1"  # —
+    openai_voice: "alloy"  # —
+    piper_base_url: "http://localhost:5103"  # —
+    piper_default_voice: "en_US-lessac-medium"  # —
+    timeout: 60.0  # —
+  upscale:
+    backend: "real-esrgan"  # —
+    hat_base_url: "http://localhost:5401"  # —
+    real_esrgan_base_url: "http://localhost:5400"  # —
+    timeout: 30.0  # —
+  video:
+    backend: "local-http"  # —
+    cogvideox_base_url: "http://localhost:5201"  # —
+    comfyui_base_url: "http://localhost:8188"  # —
+    comfyui_checkpoint: "svd_xt_1_1.safetensors"  # —
+    comfyui_fps: 6  # —
+    comfyui_motion_bucket_id: 127  # —
+    comfyui_poll_interval: 1.0  # —
+    comfyui_workflow_path: null  # —
+    local_http_base_url: "http://localhost:5004"  # —
+    openai_api_key_secret_name: "${LEX_MULTIMEDIA__VIDEO__OPENAI_API_KEY_SECRET_NAME}"  # —
+    openai_base_url: "https://api.openai.com"  # —
+    openai_model: "sora-2"  # —
+    processing:
+      ffmpeg_binary: "ffmpeg"  # —
+      max_asset_bytes: "25 * 1024 * 1024"  # —
+      max_concurrent_jobs: 2  # —
+      temp_dir: null  # —
+      timeout: 300.0  # —
+    runway_api_key_secret_name: "${LEX_MULTIMEDIA__VIDEO__RUNWAY_API_KEY_SECRET_NAME}"  # —
+    svd_base_url: "http://localhost:5202"  # —
+    timeout: null  # —
+    wan22_base_url: "http://localhost:5200"  # —
+
+# ── NoSQL (lexigram-nosql) ─────────────────────────────────────────────────────
+# env_prefix: LEX_NOSQL__
+nosql:
+  backends: null  # Named NoSQL backends for multi-store support. When non-empty, the provider re...
+  driver: "mongodb"  # NoSQL driver name
+  enabled: true  # Enable NoSQL support
+  firestore:
+    credentials_json: null  # Path to a service account JSON key file, or the raw JSON string. When ``None`...
+    database_id: null  # Firestore database ID (use '(default)' for the default database)
+    project_id: null  # Google Cloud project ID
+  mongodb:
+    auth_source: "admin"  # Authentication database
+    connect_timeout_ms: 10000  # Connection timeout (ms)
+    database: "lexigram"  # Database name
+    max_pool_size: 100  # Maximum connection pool size
+    min_pool_size: 10  # Minimum connection pool size
+    read_preference: "primaryPreferred"  # Read preference mode
+    retry_reads: true  # Enable read retries
+    retry_writes: true  # Enable write retries
+    server_selection_timeout_ms: 5000  # Server selection timeout (ms)
+    socket_timeout_ms: 30000  # Socket timeout (ms)
+    uri: "mongodb://localhost:27017"  # MongoDB connection URI
+    write_concern_w: "majority"  # Write concern level
+
+# ── Notification (lexigram-notification) ───────────────────────────────────────
+# env_prefix: LEX_NOTIFICATION__
+notification:
+  push_backends: null  # Named push notification backends for multi-backend support. When non-empty, t...
+  sms_backends: null  # Named SMS backends for multi-backend support. When non-empty, the provider re...
+
+# ── Queue (lexigram-queue) ─────────────────────────────────────────────────────
+# env_prefix: LEX_QUEUE__
+queue:
+  backends: null  # Named queue backends for multi-backend support. When non-empty, the provider ...
+
+# ── Resilience (lexigram-resilience) ───────────────────────────────────────────
+# env_prefix: LEX_RESILIENCE__
+resilience:
+  bulkhead:
+    max_concurrent: 10  # Max concurrent requests
+    name: null  # Bulkhead name
+    queue_size: 100  # Max queue size
+    timeout: 30.0  # Execution timeout
+  circuit_breaker: null  # —
+  retry:
+    abort_if: null  # —
+    abort_on: null  # —
+    backoff_factor: 2.0  # —
+    base_delay: 1.0  # —
+    idempotent_methods_only: true  # —
+    jitter: true  # —
+    max_attempts: 3  # —
+    max_delay: 60.0  # —
+    on_retry: null  # —
+    retry_if: null  # —
+    retry_on: null  # —
+    retry_on_result: null  # —
+    retry_sync: false  # —
+  timeout:
+    timeout: 30.0  # —
+    timeout_message: "Operation timed out"  # —
+
+# ── Search (lexigram-search) ───────────────────────────────────────────────────
+# env_prefix: LEX_SEARCH__
+search:
+  backend_type: null  # Search backend type
+  backends: null  # Named search backends for multi-backend support. When non-empty, the provider...
+  database: null  # Named database to use for DB-backed backends (postgres/mysql). References a n...
+  elasticsearch:
+    api_key: "${LEX_SEARCH__ELASTICSEARCH__API_KEY}"  # —
+    hosts: null  # Elasticsearch hosts
+    index_prefix: "lexigram_search_"  # —
+    number_of_replicas: 0  # —
+    number_of_shards: 1  # —
+    password: "${LEX_SEARCH__ELASTICSEARCH__PASSWORD}"  # —
+    use_ssl: false  # —
+    username: null  # —
+    verify_certs: true  # —
+  enabled: true  # Enable the search subsystem
+  meilisearch:
+    api_key: "${LEX_SEARCH__MEILISEARCH__API_KEY}"  # MeiliSearch API key
+    displayed_attributes: null  # Fields to return in results
+    filterable_attributes: null  # Attributes that can be filtered
+    max_connections: 10  # Maximum number of connections
+    min_word_size_for_typos: null  # Minimum word size for typo tolerance
+    ranking_rules: null  # Ranking rules in order
+    searchable_attributes: null  # Fields to search in
+    sortable_attributes: null  # Attributes that can be sorted
+    timeout: 30  # Request timeout in seconds
+    typo_tolerance_enabled: true  # Enable typo tolerance
+    url: "http://localhost:7700"  # MeiliSearch server URL
+  mongo:
+    connection_string: null  # —
+    database_name: "search"  # —
+    use_atlas_search: false  # —
+  mysql:
+    connection_string: null  # —
+    fulltext_mode: "natural_language"  # —
+    min_word_length: 3  # —
+  opensearch:
+    hosts: null  # OpenSearch hosts
+    index_prefix: "lexigram_search_"  # —
+    password: "${LEX_SEARCH__OPENSEARCH__PASSWORD}"  # —
+    timeout: 30  # —
+    use_ssl: false  # —
+    username: null  # —
+    verify_ssl: true  # —
+  operations:
+    bulk_chunk_size: null  # Bulk request chunk size
+    max_retries: null  # Max retry attempts
+    request_timeout: null  # Request timeout seconds
+    retry_backoff: null  # Retry backoff multiplier
+  postgres:
+    auto_create_tables: true  # —
+    connection_string: null  # PostgreSQL connection string
+    enable_trigram: true  # Enable pg_trgm fuzzy matching
+    text_search_config: "english"  # PostgreSQL text search config
+  query:
+    default_limit: null  # —
+    enable_aggregations: false  # —
+    enable_faceting: true  # —
+    enable_highlighting: true  # —
+    fuzzy_threshold: 0.8  # —
+    max_limit: null  # —
+    strategy: "fuzzy"  # —
+  sqlite:
+    auto_create_tables: true  # —
+    db_path: ":memory:"  # —
+    tokenizer: "porter unicode61"  # —
+  timeout: null  # Default request timeout seconds
+  typesense:
+    api_key: "${LEX_SEARCH__TYPESENSE__API_KEY}"  # Typesense API key
+    connection_timeout: 30  # Connection timeout
+    health_check_interval: 60  # Health check interval
+    nodes: null  # Typesense node connections
+
+# ── Secrets (lexigram-secrets) ─────────────────────────────────────────────────
+# env_prefix: LEX_SECRETS_
+secrets:
+  audit_actor_id: "${LEX_SECRETS__AUDIT_ACTOR_ID}"  # Actor identifier for audit log entries
+  backend_options: "${LEX_SECRETS__BACKEND_OPTIONS}"  # Keyword arguments for backend constructor
+  backend_type: "${LEX_SECRETS__BACKEND_TYPE}"  # Backend store type (memory, vault, ...)
+  enabled: "${LEX_SECRETS__ENABLED}"  # Whether secrets subsystem is enabled
+  max_age_seconds: "${LEX_SECRETS__MAX_AGE_SECONDS}"  # Seconds before automatic rotation
+  name: "${LEX_SECRETS__NAME}"  # Configuration name
+  tenant_id: "${LEX_SECRETS__TENANT_ID}"  # Optional tenant namespace
+  warning_before_seconds: "${LEX_SECRETS__WARNING_BEFORE_SECONDS}"  # Seconds before expiry to warn
+
+# ── SQL Database (lexigram-sql) ────────────────────────────────────────────────
+# env_prefix: LEX_SQL__
+db:
+  audit_hmac_key: "${LEX_SQL__AUDIT_HMAC_KEY}"  # HMAC key for audit checksum signing. Plain text or base64.
+  backend:
+    url: null  # Database connection URL (may contain credentials)
+  backends: null  # Multi-database backends list. When non-empty, drives multi-DB mode. The entry...
+  enabled: true  # —
+  migrations:
+    lock_timeout: "30s"  # —
+  name: "database"  # —
+  operations:
+    echo: false  # —
+    statement_timeout: "60s"  # —
+  outbox:
+    batch_max_age: "30s"  # —
+    enabled: true  # —
+    poll_interval: "5s"  # —
+  pool:
+    acquire_timeout: "30s"  # —
+    idle_timeout: "5m"  # —
+    max_lifetime: "1h"  # —
+    max_overflow: 5  # —
+    max_size: null  # —
+    min_size: null  # —
+    recycle: 3600  # —
+    timeout: null  # —
+
+# ── Storage (lexigram-storage) ─────────────────────────────────────────────────
+# env_prefix: LEX_STORAGE__
+storage:
+  backends: null  # Named storage backends for multi-store support. When non-empty, the provider ...
+  default_driver: null  # Default storage driver to use
+  drivers: null  # Driver-specific configurations
+  enabled: true  # —
+  env: null  # Environment (development/staging/production)
+  health_check_timeout: 5.0  # Timeout in seconds for the startup health check in StorageProvider.boot()
+  name: "storage"  # —
+  service:
+    allowed_mime_types: null  # Allowed MIME types for upload validation. Defaults to a safe set of common im...
+    max_file_size_mb: null  # Maximum file size in MB
+
+# ── Tasks (lexigram-tasks) ─────────────────────────────────────────────────────
+# env_prefix: LEX_TASKS__
+tasks:
+  backend:
+    amqp_url: null  # AMQP connection URL (may contain credentials).
+    postgres_dsn: null  # Postgres DSN (required when type="postgres"; may contain credentials).
+    queue_name: null  # Name of the task queue
+    redis_url: null  # Redis connection URL (may contain credentials).
+    type: null  # Queue backend type
+  backends: null  # Named task queue backends for multi-queue support. When non-empty, the provid...
+  enabled: true  # Whether tasks module is enabled
+  env: null  # Environment (development/staging/production)
+  extra: null  # —
+  name: "tasks"  # Configuration name
+  rate_limit:
+    burst: null  # Maximum burst size
+    enabled: false  # Whether rate limiting is enabled
+    per: 1.0  # Time period in seconds
+    rate: 100  # Number of tasks allowed per time period
+  retry:
+    abort_if: null  # —
+    abort_on: null  # —
+    backoff_factor: 2.0  # —
+    base_delay: 1.0  # —
+    idempotent_methods_only: true  # —
+    jitter: true  # —
+    max_attempts: 3  # —
+    max_delay: 60.0  # —
+    on_retry: null  # —
+    retry_if: null  # —
+    retry_on: null  # —
+    retry_on_result: null  # —
+    retry_sync: false  # —
+  scheduler:
+    check_interval: null  # Interval between schedule checks (seconds)
+    enabled: true  # Whether scheduling is enabled
+    timezone: null  # Timezone for cron expressions
+  timeout:
+    default_timeout: null  # Default timeout
+    enforce_timeout: true  # Enforce timeouts
+    max_timeout: null  # Maximum allowed timeout
+  worker:
+    default_timeout: null  # Default timeout for tasks without an explicit timeout (seconds)
+    enforce_timeout: true  # Whether to enforce timeouts on all tasks
+    max_concurrent_tasks: null  # Maximum concurrent tasks per worker
+    max_timeout: null  # Maximum allowed timeout for any task (seconds)
+    poll_interval: null  # Interval between queue polls (seconds)
+    shutdown_timeout: null  # Timeout for graceful shutdown (seconds)
+    worker_count: null  # Number of worker instances
+
+# ── Tenancy (lexigram-tenancy) ─────────────────────────────────────────────────
+# env_prefix: LEX_TENANCY__
+tenancy:
+  integration:
+    cache_key_prefix: true  # —
+    sql_context_bridge: true  # —
+  lifecycle:
+    auto_provision_isolation: true  # —
+    isolation_strategy: "row_level"  # —
+  overrides:
+    cache_ttl: "DEFAULT_CONFIG_CACHE_TTL"  # —
+  resolution:
+    header_name: "DEFAULT_HEADER_NAME"  # —
+    jwt_claim_key: "DEFAULT_JWT_CLAIM_KEY"  # —
+    path_pattern: "DEFAULT_PATH_PATTERN"  # —
+    resolvers: null  # —
+    strict_membership: true  # —
+    subdomain_pattern: null  # —
+    trusted_resolvers: null  # —
+    validator_cache_ttl: "DEFAULT_VALIDATOR_CACHE_TTL"  # —
+
+# ── Testing (lexigram-testing) ─────────────────────────────────────────────────
+# env_prefix: LEX_TESTING__
+# LEX_TEST_ELASTICSEARCH_URL=—
+# LEX_TEST_KAFKA_BOOTSTRAP=—
+# LEX_TEST_MINIO_ACCESS_KEY=—
+# LEX_TEST_MINIO_ENDPOINT=—
+# LEX_TEST_MINIO_SECRET_KEY=—
+# LEX_TEST_MONGODB_DSN=—
+# LEX_TEST_NEO4J_AUTH=—
+# LEX_TEST_NEO4J_URL=—
+# LEX_TEST_POSTGRES_DSN=—
+# LEX_TEST_POSTGRES_DSN_RAW=—
+# LEX_TEST_QDRANT_URL=—
+# LEX_TEST_REDIS_URL=—
+
+# ── UI (lexigram-ui) ───────────────────────────────────────────────────────────
+# env_prefix: LEX_UI__
+ui:
+  auto_escape: true  # HTML-escape user strings by default.
+  debug_components: false  # Render data-component debug attributes.
+  default_theme: "default"  # Default CSS theme name.
+  enable_realtime: false  # Enable realtime update features.
+  enable_sse: false  # Enable Server-Sent Events support.
+  htmx_version: "2.0.4"  # HTMX CDN version.
+  theme: "light"  # Active UI theme.
+
+# ── Vector (lexigram-vector) ───────────────────────────────────────────────────
+# env_prefix: LEX_VECTOR__
+vector:
+  backend: null  # Vector store backend to use
+  backends: null  # Named vector store backends for multi-store support. When non-empty, the prov...
+  cache_ttl: 86400  # Cache TTL in seconds (default: 24 hours)
+  collection_name: "default"  # Default collection name for AI-layer operations
+  default_dimension: 1536  # Default vector dimension
+  default_distance_metric: "DistanceMetric.COSINE"  # Default distance metric for new collections
+  default_index_type: "IndexType.HNSW"  # Default index type for new collections
+  embedding_model: "text-embedding-3-small"  # Embedding model name for AI-layer embedding generation
+  enable_cache: false  # Enable embedding caching (requires a CacheBackend binding)
+  enabled: true  # Enable the vector store subsystem
+  max_retries: null  # Maximum number of retries for operations
+  memory:
+    max_collections: 100  # Maximum number of collections in memory
+    max_vectors_per_collection: 100000  # Maximum number of vectors per collection
+  pgvector:
+    create_extension: true  # Whether to create pgvector extension if missing
+    database: "primary"  # Name of the database backend from db.backends to use for pgvector. Matches a ...
+    default_ef_search: null  # Default ef_search for HNSW index
+    default_lists: null  # Default number of lists for IVFFlat index
+    default_probes: null  # Default number of probes for IVFFlat index
+    schema: "public"  # Database schema for vector tables
+    table_prefix: "vec_"  # Prefix for vector storage tables
+  pinecone:
+    api_key: "${LEX_VECTOR__PINECONE__API_KEY}"  # Pinecone API key
+    environment: null  # Pinecone environment (e.g. 'us-west1-gcp')
+    index_name: null  # Name of the Pinecone index
+    namespace: null  # Default namespace for the index
+    pool_threads: 4  # Number of threads for the connection pool
+    timeout: null  # Request timeout in seconds
+  qdrant:
+    api_key: "${LEX_VECTOR__QDRANT__API_KEY}"  # Qdrant API key
+    grpc_port: 6334  # gRPC port for Qdrant
+    prefer_grpc: true  # Whether to prefer gRPC over HTTP
+    timeout: null  # Request timeout in seconds
+    url: "http://localhost:6333"  # Qdrant server URL
+  retry_delay: null  # Delay between retries in seconds
+  tenancy:
+    enabled: false  # Enable tenant-aware collection name resolution
+    resolver_kind: "templated"  # Which ``TenantCollectionResolver`` to use. One of ``"templated"`` or ``"pinec...
+  upsert_batch_size: null  # Number of vectors per upsert batch
+  weaviate:
+    api_key: "${LEX_VECTOR__WEAVIATE__API_KEY}"  # Weaviate API key for authenticated clusters
+    grpc_port: 50051  # gRPC port for the Weaviate cluster
+    timeout: null  # Request timeout in seconds
+    url: "http://localhost:8080"  # Weaviate cluster URL (HTTP)
+
+# ── Web (lexigram-web) ─────────────────────────────────────────────────────────
+# env_prefix: LEX_WEB__
+web:
+  api_docs:
+    enabled: true  # Enable API documentation endpoints (/docs, /redoc) and auto-configure CSP for...
+    provider: "both"  # Documentation provider: 'swagger', 'redoc', or 'both'
+  auth_exclude_paths: null  # Paths to exclude from authentication
+  compression_enabled: true  # —
+  cors: null  # —
+  debug_routes: false  # Enable debug routes
+  debug_routes_token: "${LEX_WEB__DEBUG_ROUTES_TOKEN}"  # Token required to access debug routes (sent as X-Debug-Token header).
+  enable_auth: false  # Enable built-in authentication middleware. Requires authenticators to be regi...
+  enable_debug_routes_env_gate: false  # Require explicit opt-in for debug route registration.
+  enable_identity_resolution: false  # Automatically resolve OAuth external IDs to internal UUIDs in authenticated r...
+  enabled: true  # —
+  env: null  # Environment (development/staging/production)
+  max_body_size: "10 * 1024 * 1024"  # Maximum allowed request body size in bytes. Requests with a Content-Length he...
+  name: "web"  # —
+  openapi_title: "API"  # OpenAPI Title
+  openapi_url: null  # —
+  openapi_version: "1.0.0"  # OpenAPI Version
+  rate_limit:
+    default_limit: null  # Max requests per window
+    default_window: null  # Window size in seconds
+    enabled: true  # Enable rate limiting. When true, RateLimitMiddleware enforces the matched per...
+    rules: null  # Per-path rate limit rules; longest-prefix match wins
+    storage_backend: "memory"  # Storage backend (memory/redis)
+    whitelist_ips: null  # Exempt IP addresses
+  redoc_js_url: null  # —
+  redoc_url: "/redoc"  # —
+  role_guard:
+    rules: null  # Role guard rules in declaration order
+  security:
+    allowed_hosts: null  # Hostnames permitted to reach the application. Empty by default; must be confi...
+    cors:
+      allow_credentials: "${LEX_WEB__SECURITY__CORS__ALLOW_CREDENTIALS}"  # —
+      allow_headers: null  # —
+      allow_methods: null  # —
+      allow_origin_regex: null  # Regex pattern for allowed origins (matched when not in allowed_origins)
+      allowed_origins: null  # Allowed origins (use ['*'] to allow all)
+      debug_permissive: false  # When True and debug mode is active, allow any origin via wildcard (explicit o...
+      enabled: true  # Enable CORS
+      expose_headers: null  # —
+      max_age: 600  # —
+    cross_origin:
+      embedder_policy: "require-corp"  # Cross-Origin-Embedder-Policy header value
+      enabled: false  # Emit cross-origin isolation headers
+      opener_policy: "same-origin"  # Cross-Origin-Opener-Policy header value
+      resource_policy: "same-origin"  # Cross-Origin-Resource-Policy header value
+    csp:
+      enabled: true  # Emit the Content-Security-Policy header
+    csrf:
+      cookie_domain: null  # —
+      cookie_httponly: true  # —
+      cookie_name: "csrf_token"  # —
+      cookie_path: "/"  # —
+      cookie_samesite: "Lax"  # —
+      cookie_secure: true  # —
+      enabled: false  # —
+      exclude_auth_schemes: null  # Authorization header schemes that bypass CSRF validation (explicit opt-in).
+      exclude_content_types: null  # Content-Type values that bypass CSRF validation (explicit opt-in — JSON reque...
+      excluded_paths: null  # URL path prefixes exempt from CSRF validation for cookie-less requests; cooki...
+      header_name: "X-CSRF-Token"  # —
+      secret_key: "${LEX_WEB__SECURITY__CSRF__SECRET_KEY}"  # HMAC secret used to sign and verify CSRF tokens (populated via LEX_WEB__SECUR...
+      token_length: 32  # —
+      token_ttl: 3600  # TTL in seconds for synchronizer-mode tokens stored in cache.
+    custom_headers: null  # Additional HTTP response headers emitted verbatim
+    enable_cors: true  # —
+    enable_csrf: true  # —
+    enabled: true  # Enable the security subsystem
+    headers:
+      content_type_nosniff: true  # —
+      csp: null  # —
+      frame_options: "DENY"  # —
+      hsts_include_subdomains: true  # —
+      hsts_max_age: 31536000  # —
+      permissions_policy: null  # —
+      referrer_policy: "strict-origin-when-cross-origin"  # —
+      xss_protection: "1; mode=block"  # —
+    hsts:
+      enabled: false  # Emit the Strict-Transport-Security header
+      include_subdomains: true  # Apply HSTS to all subdomains
+      max_age: 31536000  # HSTS max-age in seconds (default 1 year)
+      preload: false  # Include site in HSTS preload list
+    permissions_policy: null  # Permissions-Policy directive map
+    referrer_policy: "strict-origin-when-cross-origin"  # Referrer-Policy header value
+  server:
+    debug: false  # Enable debug mode
+    host: null  # Bind host
+    port: null  # Bind port
+    reload: null  # Enable auto-reload
+    workers: null  # Number of workers
+  static:
+    directory: "static"  # Directory to serve
+    enabled: false  # Enable static file serving
+    html: false  # Serve HTML files (SPA mode)
+    prefix: "/static"  # URL prefix for static files
+  swagger_css_url: null  # —
+  swagger_js_url: null  # —
+  swagger_ui_url: null  # —
+  template_directory: "templates"  # Directory for Jinja2 templates
+
+# ── Webhook (lexigram-webhook) ─────────────────────────────────────────────────
+# env_prefix: LEX_WEBHOOK__
+webhook:
+  allow_private_urls: null  # Allow registering and delivering webhooks to private, loopback, or link-local...
+  delivery_log_retention_days: null  # Days to retain delivery log (0 = indefinite)
+  delivery_timeout_seconds: null  # HTTP request timeout per delivery attempt
+  disable_after_consecutive_failures: null  # Auto-disable threshold
+  enable_admin: null  # Whether to register the admin contributor
+  event_id_header: null  # HTTP header for the event ID
+  event_type_header: null  # HTTP header for the event type
+  failure_window_hours: null  # Window for counting consecutive failures
+  retry_backoff_factor: null  # Exponential backoff multiplier
+  retry_base_delay: null  # Initial retry delay in seconds
+  retry_max_attempts: null  # Maximum delivery attempts before dead-letter
+  retry_max_delay: null  # Maximum retry delay ceiling in seconds
+  secret_length: "${LEX_WEBHOOK__SECRET_LENGTH}"  # Secret length in bytes (hex-encoded output is 2x)
+  secret_rotation_grace_hours: "${LEX_WEBHOOK__SECRET_ROTATION_GRACE_HOURS}"  # Hours both old and new secrets are accepted
+  signature_algorithm: null  # HMAC algorithm name
+  signature_header: null  # HTTP header for the HMAC signature
+  store_backend: null  # Persistence backend ('sql' requires lexigram-webhook[sql])
+  timestamp_header: null  # HTTP header for the delivery timestamp

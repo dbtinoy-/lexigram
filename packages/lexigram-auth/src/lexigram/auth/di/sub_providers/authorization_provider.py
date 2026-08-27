@@ -58,15 +58,24 @@ class AuthorizationProvider(Provider):
         # This lets demos define roles in application.yaml instead of hand-seeding.
         roles_to_load = self.initial_roles
         if not roles_to_load and self.auth_config and self.auth_config.roles:
-            # Convert AuthRoleConfig instances to the dict format set_roles expects
-            roles_to_load = {
-                name: {
-                    "name": role.name,
-                    "permissions": role.permissions,
-                    "inherits": role.inherits,
-                }
-                for name, role in self.auth_config.roles.items()
-            }
+            # Convert AuthRoleConfig instances (or raw dicts from yaml) to
+            # the dict format set_roles expects.
+            roles_to_load = {}
+            for name, role in self.auth_config.roles.items():
+                if isinstance(role, dict):
+                    # Raw dict from yaml parsing — AuthConfig didn't coerce
+                    roles_to_load[name] = {
+                        "name": name,
+                        "permissions": role.get("permissions", []),
+                        "inherits": role.get("inherits", []),
+                    }
+                else:
+                    # AuthRoleConfig instance
+                    roles_to_load[name] = {
+                        "name": role.name,
+                        "permissions": role.permissions,
+                        "inherits": role.inherits,
+                    }
 
         if roles_to_load:
             auth_service.set_roles(roles_to_load)

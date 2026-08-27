@@ -1,4 +1,15 @@
-"""Rate desk page — static serving only (logic lives in the API controller)."""
+"""Rate desk page controller — static serving only.
+
+Convention followed: **Page controller pattern** — ``RatesPageController``
+serves the static HTML/CSS/JS files for the single-page console.  All
+dynamic behavior is handled by the API controller.
+
+Routes:
+
+- ``GET /``            — the desk console (``desk.html``)
+- ``GET /static/style.css`` — stylesheet
+- ``GET /static/app.js``    — vanilla JS client
+"""
 
 from __future__ import annotations
 

@@ -4,19 +4,9 @@ Run::
 
     uv run python -m prompt_lab
 
-Host/port come from ``application.yaml`` (``web.server``); override without
-editing the file via ``LEX_WEB__SERVER__PORT``.
-
-Lifecycle teaching notes:
-- ``Application.boot(...)`` is the idiomatic context manager: it creates the
-  app, starts every provider in dependency order, yields, and *guarantees*
-  ``stop()`` runs on exit — even on exceptions or Ctrl-C.
-- Inside the block the app is ``STARTED``: the container is frozen (no new
-  registrations) yet fully resolvable — this is where servers run. The lab
-  is ready too: ``LabProvider`` seeded its template revisions during register
-  and assembled the A/B runner during boot.
-- Resolving ``WebProvider`` here demonstrates post-start resolution; its
-  auto-injected ``.config`` carries the server host/port.
+``create_app()`` builds the application.  This file boots it and
+runs the web server.  Host/port are read automatically from
+``application.yaml`` — no manual config wiring needed.
 """
 
 from __future__ import annotations
@@ -25,33 +15,32 @@ import asyncio
 import sys
 
 from lexigram.logging import get_logger
-from prompt_lab.app import build_modules, build_providers
-from prompt_lab.config import load_lex_config
+from prompt_lab.app import create_app
 
 logger = get_logger(__name__)
 
 
 async def serve() -> None:
-    """Boot once and serve until interrupted; stop cleanly afterwards."""
-    from lexigram.app.base import Application
-    from lexigram.web.di.provider import WebProvider
+    """Boot and serve until interrupted.
+
+    ``app.start()`` triggers the full lifecycle:
+    register → freeze → boot (seeding happens here) → server start.
+    The ``finally`` block ensures ``stop()`` runs even on errors.
+    """
     from lexigram.web.server.runner import run_server_async
 
-    config = load_lex_config()  # cwd-proof: absolute path to this demo's yaml
-
-    async with Application.boot(
-        name="prompt-lab",
-        config=config,
-        modules=build_modules(config),
-        providers=build_providers(),
-    ) as app:
-        web = await app.container.resolve(WebProvider)
-        server = web.config.server
-        logger.info("server.listening", host=server.host, port=server.port)
-        await run_server_async(web.starlette, host=server.host, port=server.port)
+    app = create_app()
+    await app.start()
+    try:
+        # run_server_async reads host/port from application.yaml by default;
+        # pass explicit kwargs to override (e.g. during tests).
+        await run_server_async(app)
+    finally:
+        await app.stop()
 
 
 def main() -> int:
+    """Sync entry point: translate asyncio interrupts into exit codes."""
     try:
         asyncio.run(serve())
     except KeyboardInterrupt:

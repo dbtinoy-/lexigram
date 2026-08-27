@@ -8,7 +8,7 @@ one per RBAC tier, so every row of the permission matrix can be exercised
 by logging in as a different user (see ``data/seed.py`` for how they're
 created and ``tests/test_rbac.py`` for the login helper).
 
-Teaching note: personas are *demo scaffolding*, not a framework concept.
+Note: personas are *demo scaffolding*, not a framework concept.
 In a real app your users come from a database or an identity provider;
 the rest of this demo never imports this module except to render the
 persona picker.
@@ -20,6 +20,8 @@ from dataclasses import dataclass, field
 from typing import Any
 
 PERSONAS: tuple[str, ...] = ("viewer", "editor", "admin")
+# Tuple of persona role names — used by seed.py, controllers, and tests.
+# In a real app this comes from a database; here it's demo scaffolding.
 
 
 @dataclass
@@ -38,7 +40,12 @@ class PersonaDirectory:
         self._by_role[role] = user
 
     def get(self, role: str) -> Any | None:
-        """Return the persona user for ``role``, or None."""
+        """Return the persona user for ``role``, or None.
+
+        Uses ``Any`` deliberately — the user type comes from the auth
+        module's UserService, which is framework-owned.  Your app can
+        use a concrete type if you define your own user model.
+        """
         return self._by_role.get(role)
 
     def roles(self) -> list[str]:

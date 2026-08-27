@@ -1,8 +1,9 @@
-"""Demo configuration — ``demo:`` section of application.yaml.
+"""Demo-specific configuration — ``demo:`` section of application.yaml.
 
-Framework convention: run the demo from its own directory so
-``LexigramConfig``/``from_yaml`` auto-discovers ``application.yaml``.
-``LEX_REALTIME__*`` overrides and ``LEX_PROFILE`` overlays apply via the loader.
+The ``RealtimeConfig`` dataclass declares the typed ``demo:`` section with
+field-level defaults.  Environment variable overrides use the double-
+underscore convention: ``LEX_DEMO__HEARTBEAT_INTERVAL_SECONDS=5`` sets
+``heartbeat_interval_seconds = 5``.
 """
 
 from __future__ import annotations

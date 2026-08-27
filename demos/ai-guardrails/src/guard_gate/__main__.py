@@ -1,9 +1,8 @@
-"""Enable ``python -m guard_gate``."""
+"""python -m guard_gate entry."""
 
 from __future__ import annotations
 
-import sys
-
 from guard_gate.main import main
 
-sys.exit(main())
+if __name__ == "__main__":
+    main()

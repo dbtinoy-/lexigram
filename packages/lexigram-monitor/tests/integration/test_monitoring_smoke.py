@@ -1,5 +1,8 @@
+import pytest
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor, SpanExportResult
+
+pytest.importorskip("prometheus_client", reason="Integration tests require prometheus_client")
 from prometheus_client import Counter, generate_latest
 
 

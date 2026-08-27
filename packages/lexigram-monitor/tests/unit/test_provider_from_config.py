@@ -1,11 +1,13 @@
 """Tests for MonitorProvider creation from config"""
 
+import pytest
 
 from lexigram.monitor.config import BackendType, MonitorConfig
 from lexigram.monitor.di.factories import create_provider_from_config
 
 
 def test_create_prometheus_provider_from_config(monkeypatch):
+    pytest.importorskip("prometheus_client", reason="Prometheus backend requires prometheus_client")
     cfg = MonitorConfig(backend_type=BackendType.PROMETHEUS)
     provider = create_provider_from_config(cfg)
     assert provider is not None

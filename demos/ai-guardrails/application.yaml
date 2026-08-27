@@ -1,8 +1,178 @@
-# AI Guardrails — runtime configuration (Blueprint §3).
+# ══════════════════════════════════════════════════════════════════════════════
+# AI Guardrails Demo — Complete Configuration Reference
+# ══════════════════════════════════════════════════════════════════════════════
+#
+# Every configuration key available for this demo.
+# Uncommented lines are the values we override; commented lines show
+# defaults.  Each section maps 1:1 to a typed config model — the
+# framework validates your yaml against it at boot time.
+#
+# LEARNING PATH:
+#   1. web:            HTTP server, security, rate limiting
+#   2. ai_guard:       Content safety — injection, PII, length limits
+#   3. ai_governance:  Budget, restricted models, rate limits, audit
+#
+# For full reference see:
+#   - Lexigram Web:          packages/lexigram-web/src/lexigram/web/config/
+#   - Lexigram AI Guard:     experimental/ai/lexigram-ai-guard/src/lexigram/ai/guard/config.py
+#   - Lexigram AI Governance: experimental/ai/lexigram-ai-governance/src/lexigram/ai/governance/config.py
+#
+# ENVIRONMENT VARIABLE OVERRIDE:
+#   Every key can be overridden via LEX_* env vars with __ as delimiter.
+#   Examples:
+#     LEX_AI_GUARD__MAX_INPUT_CHARS=2000
+#     LEX_AI_GOVERNANCE__MONTHLY_BUDGET=1.00
+#     LEX_WEB__SERVER__PORT=9000
+# ══════════════════════════════════════════════════════════════════════════════
+
+
+# ── Web ──────────────────────────────────────────────────────────────────────
+# Lexigram Web auto-configures Starlette, OpenAPI, CORS, CSRF, and
+# rate limiting from this single section.  The WebModule reads it
+# automatically via config_key="web" / config_model=WebConfig.
+# ─────────────────────────────────────────────────────────────────────────────
 web:
+  # ── Server ─────────────────────────────────────────────────────────────────
   server:
-    host: 127.0.0.1
-    port: 8084
+    host: 127.0.0.1       # bind address (0.0.0.0 for external access)
+    port: 8084             # listen port
+    # workers: 1           # uvicorn workers (1 = single process)
+    # reload: false        # auto-reload on file changes (dev only)
+    # debug: false         # enable debug mode
+
+  # ── Security ───────────────────────────────────────────────────────────────
   security:
+    # enabled: true                    # master switch for security subsystem
+
+    # ── CSRF ───────────────────────────────────────────────────────────────
+    # Disabled here because the demo posts JSON from the browser console.
     csrf:
-      enabled: false # playground posts JSON
+      enabled: false                    # disable for JSON-only playground
+      # cookie_name: csrf_token
+      # header_name: X-CSRF-Token
+      # cookie_secure: true
+      # cookie_httponly: true
+      # cookie_samesite: Lax
+      # token_length: 32
+      # token_ttl: 3600
+      # excluded_paths: []
+
+    # ── CORS ───────────────────────────────────────────────────────────────
+    # cors:
+    #   enabled: true
+    #   allowed_origins:
+    #     - http://localhost:8084        # this demo
+    #   allow_methods: [GET, POST, PUT, DELETE, PATCH, OPTIONS]
+    #   allow_headers: ["*"]
+    #   allow_credentials: false
+    #   max_age: 600
+
+    # ── Headers ─────────────────────────────────────────────────────────────
+    # custom_headers:
+    #   x-content-type-options: nosniff
+    #   x-frame-options: DENY
+    #   x-xss-protection: "1; mode=block"
+    # referrer_policy: strict-origin-when-cross-origin
+
+  # ── Rate Limiting ──────────────────────────────────────────────────────────
+  # rate_limit:
+  #   enabled: true
+  #   default_limit: 100
+  #   default_window: 60
+  #   whitelist_ips: []
+  #   storage_backend: memory
+
+  # ── Misc ───────────────────────────────────────────────────────────────────
+  # openapi_title: API
+  # openapi_version: "1.0.0"
+  # openapi_url: /openapi.json
+  # swagger_ui_url: /docs
+  # redoc_url: /redoc
+  # compression_enabled: true
+  # template_directory: templates
+  # enable_auth: false
+  # max_body_size: 10485760            # 10 MiB
+
+
+# ── AI Guard ─────────────────────────────────────────────────────────────────
+# Content safety pipeline — injection detection, PII redaction, length
+# limits, topic restriction, and optional LLM-based guards.
+#
+# The GuardModule reads this section automatically via
+# config_key="ai_guard" / config_model=GuardConfig.
+#
+# The orchestrator calls get_section("ai_guard", GuardConfig) and injects
+# the result into GuardProvider.config before register() runs.
+# ─────────────────────────────────────────────────────────────────────────────
+ai_guard:
+  # enabled: true                      # master switch for guard pipeline
+
+  # ── Injection Detection ────────────────────────────────────────────────────
+  # Detects prompt injection attacks in user inputs.
+  injection_detection: true            # enable the injection detector
+  injection_action: block              # "block" or "warn"
+
+  # ── PII Detection ──────────────────────────────────────────────────────────
+  # Detects and redacts personally identifiable information.
+  pii_detection: true                  # enable PII detection on inputs
+  pii_action: redact                   # "redact", "block", or "warn"
+  # pii_entities: []                   # empty = detect all PII types
+  pii_redaction_output: true           # redact PII in LLM outputs too
+
+  # ── Length Limits ──────────────────────────────────────────────────────────
+  # Prevents oversized inputs/outputs from reaching the LLM.
+  max_input_chars: 500                 # max input length (0 = unlimited)
+  # max_output_chars: 0                # max output length (0 = unlimited)
+  length_action: block                 # "block" or "warn"
+
+  # ── Topic Restriction ──────────────────────────────────────────────────────
+  # blocked_topics: []                 # topics to block in user inputs
+
+  # ── LLM-Based Guards ───────────────────────────────────────────────────────
+  # Uses a lightweight LLM to detect injection and jailbreak attempts.
+  # Requires an LLMClientProtocol in the container.
+  # enable_llm_guards: false           # enable LLM-based detection
+  # guard_model: gpt-4o-mini           # model for LLM guards
+  # llm_guard_threshold: 0.7           # confidence threshold (0.0-1.0)
+  # llm_guard_fail_open: false         # fail open on LLM errors
+
+  # ── Sensitivity ────────────────────────────────────────────────────────────
+  # sensitivity_level: medium          # "low", "medium", or "high"
+  # parallel_execution: false          # run guards concurrently
+
+
+# ── AI Governance ────────────────────────────────────────────────────────────
+# Budget tracking, model access control, rate limiting, and audit trail.
+#
+# The GovernanceModule reads this section automatically via
+# config_key="ai_governance" / config_model=GovernanceConfig.
+#
+# The orchestrator calls get_section("ai_governance", GovernanceConfig)
+# and injects the result into GovernanceProvider.config before register()
+# runs.
+# ─────────────────────────────────────────────────────────────────────────────
+ai_governance:
+  # enabled: true                      # master switch for governance
+
+  # ── Budget ─────────────────────────────────────────────────────────────────
+  monthly_budget: 0.50                 # monthly budget in dollars
+  # enforce_budget: true               # enforce budget limits
+  # soft_limit_pct: null               # fraction for soft-limit warning (0.0-1.0)
+  # max_request_cost: null             # max cost per single request (dollars)
+
+  # ── Rate Limits ────────────────────────────────────────────────────────────
+  # rpm_limit: null                    # requests per minute
+  # tpm_limit: null                    # tokens per minute
+  # max_tokens_per_request: null       # max tokens per request
+
+  # ── Model Access Control ───────────────────────────────────────────────────
+  restricted_models:                   # models blocked from use
+    - gpt-5-restricted
+  # model_allowlist: {}                # per-user/role allowlist
+  # model_denylist: {}                 # per-user/role denylist
+
+  # ── Resource Units ─────────────────────────────────────────────────────────
+  # resource_units: []                 # resource units to track
+
+  # ── Persistence ────────────────────────────────────────────────────────────
+  # fail_open_on_persistence_error: false  # allow requests when DB is down

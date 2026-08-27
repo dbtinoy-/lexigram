@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from dev.core.rule_engine import run_rules
+from dev._lib.rule_engine import run_rules
 
 VIOLATIONS = """\
 from __future__ import annotations

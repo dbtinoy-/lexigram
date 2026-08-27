@@ -66,17 +66,6 @@ A live ops dashboard with zero frontend dependencies:
   or external tools
 - **Vanilla JS** `EventSource` client — no build step, no npm
 
-### [llm-reproducibility](llm-reproducibility/) — reproducible AI experiments
-
-LLM evaluation with science-grade determinism:
-
-- **Same seed ⇒ same digest** — byte-identical reruns, verified on every run
-- **Thinking ablation** — measure the cost of reasoning with
-  digest-verified delta records
-- **Full observability** — tracking, checkpoints, metrics, tracing, and
-  post-hoc error analysis persisted per run
-- **Notebook included** — `reproducibility.ipynb` walks the contract
-
 ### [rag-docs](rag-docs/) — RAG over our own docs
 
 - **REST API** — `POST /ask {question}` → cited answer,
@@ -211,7 +200,6 @@ PYTHONPATH=demos/feedback-loop/src uv run python -m feedback_loop serve      # s
 PYTHONPATH=demos/rag-docs/src uv run python -m rag_docs demo                 # cited answers from our own docs
 PYTHONPATH=demos/rag-docs/src uv run python -m rag_docs serve                # same corpus as an ask API (:7075)
 PYTHONPATH=demos/realtime-monitor/src uv run python -m ops_console           # realtime dashboard server (:7071)
-PYTHONPATH=demos/llm-reproducibility/src uv run python demos/llm-reproducibility/run_experiment.py  # seeded experiment + rerun
 
 # ── auth consoles ─────────────────────────────────────────────────
 PYTHONPATH=demos/auth-web/src uv run python -m auth_web                      # account lifecycle (:8081)

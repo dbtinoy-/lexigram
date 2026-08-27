@@ -1,6 +1,6 @@
 """Tests for lexigram.ai.provider module (sub-provider composition)."""
 
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -78,7 +78,8 @@ class TestAIProviderRegister:
         from lexigram.ai.observability.tracing import AITracer
 
         provider = AIProvider()
-        await provider.register(mock_container)
+        with patch("importlib.metadata.entry_points", return_value=[]):
+            await provider.register(mock_container)
 
         registered_types = [
             call.args[0] if call.args else None
@@ -92,7 +93,8 @@ class TestAIProviderRegister:
     async def test_register_no_config_creates_no_sub_providers(self, mock_container):
         """With no LLM/vector/RAG/ML config, no sub-providers are instantiated."""
         provider = AIProvider()
-        await provider.register(mock_container)
+        with patch("importlib.metadata.entry_points", return_value=[]):
+            await provider.register(mock_container)
 
         assert provider._llm_sub is None
         assert provider._vector_sub is None
@@ -106,7 +108,10 @@ class TestAIProviderRegister:
         # Simulate orchestrator setting the config
         provider.config = config
 
-        await provider.register(mock_container)
+        with patch("importlib.metadata.entry_points", return_value=[]), \
+             patch("lexigram.ai.llm.di.provider.LLMProvider") as MockLLM:
+            MockLLM.return_value.register = AsyncMock()
+            await provider.register(mock_container)
 
         # Verify LLMProvider was instantiated and stored
         assert provider._llm_sub is not None
@@ -128,7 +133,10 @@ class TestAIProviderRegister:
         # Simulate orchestrator setting the config
         provider.config = config
 
-        await provider.register(mock_container)
+        with patch("importlib.metadata.entry_points", return_value=[]), \
+             patch("lexigram.vector.di.provider.VectorProvider") as MockVector:
+            MockVector.return_value.register = AsyncMock()
+            await provider.register(mock_container)
 
         # Verify VectorProvider was instantiated and stored
         assert provider._vector_sub is not None
@@ -150,7 +158,10 @@ class TestAIProviderRegister:
         # Simulate orchestrator setting the config
         provider.config = config
 
-        await provider.register(mock_container)
+        with patch("importlib.metadata.entry_points", return_value=[]), \
+             patch("lexigram.ai.rag.di.provider.RAGProvider") as MockRAG:
+            MockRAG.return_value.register = AsyncMock()
+            await provider.register(mock_container)
 
         # Verify RAGProvider was instantiated and stored
         assert provider._rag_sub is not None

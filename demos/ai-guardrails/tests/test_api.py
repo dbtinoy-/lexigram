@@ -1,4 +1,10 @@
-"""End-to-end tests over the JSON API."""
+"""End-to-end tests over the JSON API.
+
+These tests hit the full stack — real DI, real services,
+real HTTP routing.  They validate that the composition root wires
+everything correctly and that the API contract matches expectations.
+For unit tests, mock GuardPipelineProtocol in isolation.
+"""
 
 from __future__ import annotations
 

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "lexigram-ai-llm"
-version = "0.1.5002"
+version = "0.1.5003"
 description = "LLM client layer for the Lexigram Framework — OpenAI, Anthropic, Ollama, Cohere, Groq, Mistral"
 readme = "README.md"
 requires-python = ">=3.11"

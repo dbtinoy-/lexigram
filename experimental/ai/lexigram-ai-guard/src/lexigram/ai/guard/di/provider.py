@@ -65,7 +65,7 @@ class GuardProvider(Provider):
     ) -> None:
         super().__init__()
         self._requested_config = config
-        self._config = config or GuardConfig()
+        self._config = config if config is not None else GuardConfig()
         self._enable_audit_logging = enable_audit_logging
         self._pipeline: GuardPipeline | None = None
 

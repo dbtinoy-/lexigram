@@ -16,17 +16,55 @@
   (`make_run_id`); artifacts under `.runs/`
 - **Error analysis** — score mean/min/max + top failures from the tracker
 
-## Layout
+## Layout — read it in this order
 
-House flat structure, CLI-first (event-driven-orders anatomy). State is
-per-process; the `demo` subcommand plays the whole loop.
+Start at the composition root and follow the wiring outward.
+Each file has teaching comments explaining the Lexigram convention it follows.
+
+| # | File | Lesson |
+|---|------|--------|
+| 1 | `src/feedback_loop/app.py` | ⭐ Composition root: config → modules → providers |
+| 2 | `src/feedback_loop/main.py` | Lifecycle: boots app, runs web server |
+| 3 | `src/feedback_loop/di/provider.py` | `register()` (bind) vs `boot()` (initialize); DI wiring |
+| 4 | `src/feedback_loop/errors.py` | Domain errors subclassing contracts |
+| 5 | `src/feedback_loop/schemas.py` | Request DTOs as `DomainModel` (frozen dataclasses) |
+| 6 | `src/feedback_loop/services/loop_service.py` | Core orchestration: ask → rate → stats → regress → report |
+| 7 | `src/feedback_loop/services/regression.py` | Dataset builder: ratings → evaluation samples |
+| 8 | `src/feedback_loop/repository/bot.py` | Canned Q→A registry; in-memory protocol impl |
+| 9 | `src/feedback_loop/controllers/api.py` | Result-returning handlers → auto HTTP status mapping |
+| 10 | `src/feedback_loop/ui/pages.py` | Page controllers: serve HTML/assets only, no logic |
+
+```
+src/feedback_loop/
+├── __init__.py          # Public exports
+├── __main__.py          # Thin shim → main.main()
+├── main.py              # Entry point: boots app, runs web server
+├── app.py               # Composition root: modules + providers
+├── errors.py            # Domain errors (subclass contracts)
+├── schemas.py           # Request DTOs (DomainModel)
+├── controllers/
+│   └── api.py           # JSON API endpoints
+├── services/
+│   ├── loop_service.py  # Ask → rate → stats → regress → report
+│   └── regression.py    # Dataset builder
+├── repository/
+│   └── bot.py           # Canned Q→A registry
+├── di/
+│   └── provider.py      # DI wiring
+└── ui/
+    ├── pages.py         # Page controller (serves HTML)
+    ├── views/
+    │   └── loop.html    # Single-page console
+    └── static/
+        ├── app.js       # Vanilla-JS client
+        └── style.css    # Stylesheet
+```
 
 ## Run
 
 ```bash
-PYTHONPATH=demos/feedback-loop/src uv run python -m feedback_loop demo
-# subcommands: ask / rate / stats / regress / report / demo / serve
-PYTHONPATH=demos/feedback-loop/src uv run python -m feedback_loop serve   # web console :8086
+# Web console
+PYTHONPATH=demos/feedback-loop/src uv run python -m feedback_loop
 ```
 
 ## Tests

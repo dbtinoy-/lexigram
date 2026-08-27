@@ -205,11 +205,13 @@ class TestRichTextField:
         assert "<script" in output
 
     def test_render_column_renders_html(self) -> None:
+        pytest.importorskip("nh3", reason="HTML sanitization requires nh3")
         field = RichTextField(name="content")
         output = str(field.render_column(None, "<p>Hello</p>"))
         assert "<p>Hello</p>" in output
 
     def test_render_column_sanitizes_script_tags(self) -> None:
+        pytest.importorskip("nh3", reason="HTML sanitization requires nh3")
         field = RichTextField(name="content")
         output = str(field.render_column(None, "<p>hi</p><script>alert(1)</script>"))
         assert "<p>hi</p>" in output
@@ -217,12 +219,14 @@ class TestRichTextField:
         assert "alert(1)" not in output
 
     def test_render_column_strips_event_handler_attributes(self) -> None:
+        pytest.importorskip("nh3", reason="HTML sanitization requires nh3")
         field = RichTextField(name="content")
         output = str(field.render_column(None, '<img src=x onerror="alert(1)">'))
         assert "<img" not in output
         assert "onerror" not in output
 
     def test_render_column_strips_javascript_urls(self) -> None:
+        pytest.importorskip("nh3", reason="HTML sanitization requires nh3")
         field = RichTextField(name="content")
         output = str(
             field.render_column(None, '<a href="javascript:alert(1)">click</a>')

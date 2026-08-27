@@ -16,6 +16,7 @@ from starlette.applications import Starlette
 
 from demo_hub.services.registry import ServiceRegistry
 from demo_hub.subsite import SubsiteMiddleware
+from lexigram.config.main import LexigramConfig
 from lexigram.logging import get_logger
 from lexigram.web.di.provider import WebProvider
 
@@ -57,6 +58,19 @@ class Fleet:
             if str(src) not in sys.path:
                 sys.path.append(str(src))
 
+    def _load_child_config(self, svc: ServiceRegistry.DemoService) -> LexigramConfig:
+        """Load the child demo's own ``application.yaml``.
+
+        When the hub mounts a child, cwd is the hub's directory, so the
+        framework's auto-discovery would load the hub's config instead of
+        the child's.  This method loads the child's YAML explicitly and
+        passes it to ``create_app(config=…)``.
+        """
+        yaml_path = REPO_ROOT / "demos" / svc.demo_dir / "application.yaml"
+        if yaml_path.exists():
+            return LexigramConfig.from_yaml(yaml_path)
+        return LexigramConfig()
+
     async def mount_all(self, parent: Starlette) -> None:
         """Boot every web demo and mount it under ``/demos/<slug>/``.
 
@@ -67,7 +81,8 @@ class Fleet:
         for svc in self._registry.web_services():
             try:
                 module = importlib.import_module(svc.app_path)
-                child_app = module.create_app()
+                child_config = self._load_child_config(svc)
+                child_app = module.create_app(config=child_config)
                 await child_app.start()
                 web = await child_app.container.resolve(WebProvider)
                 if web.starlette is None:

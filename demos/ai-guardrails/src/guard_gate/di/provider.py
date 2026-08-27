@@ -1,82 +1,91 @@
-"""DI wiring for the ai-guardrails demo (internal)."""
+"""DI wiring for the ai-guardrails demo.
+
+A Provider tells the DI container *what* exists and *how* to build it.
+Two-phase lifecycle: ``register()`` binds, ``boot()`` initializes.
+
+This is YOUR provider — it registers domain services only.
+Framework services (GuardPipeline, Governance) are registered by their
+own modules (GuardModule, GovernanceModule).  Your provider bridges
+them into your domain objects.
+"""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-from lexigram.ai.governance.audit import AIAuditStore
-from lexigram.contracts.ai.governance import AIGovernanceProtocol
-from lexigram.contracts.core.health import HealthCheckResult
-from lexigram.di.provider import Provider
-
-if TYPE_CHECKING:
-    from lexigram.contracts.core.di import (
-        ContainerRegistrarProtocol,
-        ContainerResolverProtocol,
-    )
-
+from guard_gate.domain.guarded_assistant import GuardedAssistant
+from guard_gate.domain.policy import PolicyToggle
 from guard_gate.repository.acts import COST_PER_TURN
-from guard_gate.services.guarded_assistant import GuardedAssistant
-from guard_gate.services.policy import PolicyToggle
+from lexigram.ai.governance import AIAuditStore
+from lexigram.contracts.ai import AIGovernanceProtocol
+from lexigram.contracts.core.di import (
+    BootContainerProtocol,
+    ContainerRegistrarProtocol,
+)
+from lexigram.contracts.exceptions import UnresolvableDependencyError
+from lexigram.di.provider import Provider
+from lexigram.logging import get_logger
+
+logger = get_logger(__name__)
+
+__all__ = ["GuardrailsProvider"]
 
 
 class GuardrailsProvider(Provider):
-    """Resolves guard + governance contracts and assembles the assistant."""
+    """Wire the guardrails services; assembly runs at boot.
+
+    Provider naming convention is <Domain>Provider.
+    The `name` attribute identifies this provider in logs/diagnostics.
+    register() does NO I/O — it only binds factories/instances.
+    boot() is where you connect to databases, warm caches, etc.
+    """
 
     name = "guard-assistant"
 
-    async def health_check(self, timeout: float = 5.0) -> HealthCheckResult:
-        """Report protection state and budget headroom."""
-        assistant = self._assistant
-        return HealthCheckResult(
-            component=self.name,
-            details={
-                "policy_enabled": self._toggle.enabled,
-                "remaining_budget": assistant.remaining if assistant else None,
-            },
-        )
-
-    def __init__(self) -> None:
-        super().__init__()
-        self._toggle = PolicyToggle()
-        self._assistant: GuardedAssistant | None = None
-
-    def _get_assistant(self) -> GuardedAssistant:
-        if self._assistant is None:
-            raise RuntimeError("GuardrailsProvider has not been booted yet")
-        return self._assistant
-
     async def register(self, container: ContainerRegistrarProtocol) -> None:
-        """Bind the toggle eagerly; the assistant resolves in boot()."""
-        container.singleton(PolicyToggle, instance=self._toggle)
-        container.singleton(GuardedAssistant, factory=self._get_assistant)
+        """Bind demo services — no I/O here.
 
-    async def boot(self, container: ContainerResolverProtocol) -> None:
-        """Assemble from booted collaborators."""
-        from lexigram.ai.governance.config import GovernanceConfig
-        from lexigram.contracts.ai.guards import GuardPipelineProtocol
+        container.singleton() registers a single shared instance.
+        Use container.transient() for per-request instances, or
+        container.scoped() for per-request-but-shared-within-scope.
 
-        pipeline = await container.resolve(GuardPipelineProtocol)
-        governance = await container.resolve(AIGovernanceProtocol)
-        audit_store = await container.resolve_optional(AIAuditStore)
-        gov_config = await container.resolve(GovernanceConfig)
+        The factory function (build_assistant) runs at RESOLUTION time,
+        not registration time — this is how you defer I/O until boot.
+        """
+        toggle = PolicyToggle()
+        container.singleton(PolicyToggle, instance=toggle)
 
-        self._assistant = GuardedAssistant(
-            pipeline=pipeline,
-            governance=governance,
-            audit_store=audit_store if audit_store is not None else _fallback_store(),
-            monthly_budget=float(gov_config.monthly_budget or 0.50),
-            restricted_models=list(gov_config.restricted_models),
-            toggle=self._toggle,
-            cost_per_turn=COST_PER_TURN,
-        )
+        async def build_assistant(resolver):
+            from lexigram.ai.governance import GovernanceConfig, InMemoryAuditStore
+            from lexigram.contracts.ai import GuardPipelineProtocol
 
+            pipeline = await resolver.resolve(GuardPipelineProtocol)
+            governance = await resolver.resolve(AIGovernanceProtocol)
+            gov_config = await resolver.resolve(GovernanceConfig)
 
-def _fallback_store() -> AIAuditStore:
-    """Governance auto-binds an InMemoryAuditStore; this is a safety net."""
-    from lexigram.ai.governance.audit import InMemoryAuditStore
+            # GovernanceModule registers InMemoryAuditStore; fall back
+            # if someone runs without governance.
+            try:
+                audit_store = await resolver.resolve(AIAuditStore)
+            except UnresolvableDependencyError:
+                audit_store = InMemoryAuditStore()
 
-    return InMemoryAuditStore()
+            return GuardedAssistant(
+                pipeline=pipeline,
+                governance=governance,
+                audit_store=audit_store,
+                monthly_budget=float(gov_config.monthly_budget or 0.50),
+                restricted_models=list(gov_config.restricted_models),
+                toggle=toggle,
+                cost_per_turn=COST_PER_TURN,
+            )
 
+        container.singleton(GuardedAssistant, factory=build_assistant)
 
-__all__ = ["GuardrailsProvider"]
+    async def boot(self, container: BootContainerProtocol) -> None:
+        """Post-registration setup — I/O allowed here.
+
+        boot() runs AFTER all providers have registered.
+        The container is frozen — you can resolve but not register.
+        This demo has no boot-time I/O, but a real app would connect
+        databases, prefetch config, or warm caches here.
+        """
+        logger.info("guardrails_provider.booted")

@@ -7,12 +7,14 @@ HTTP-specific configs (``CORSConfig``, ``CSRFConfig``, ``CSPConfig``,
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import ClassVar
 
 from lexigram.config.base import BaseConfig
 from lexigram.validation import ConfigDict, Field
 
 
+@dataclass(init=False)
 class InputSanitizerConfig(BaseConfig):
     """Configuration for input sanitization.
 
@@ -31,6 +33,7 @@ class InputSanitizerConfig(BaseConfig):
     default_sanitize_mode: str = "allow"
 
 
+@dataclass(init=False)
 class HashingConfig(BaseConfig):
     """Configuration for core security hashing services."""
 
@@ -44,6 +47,7 @@ class HashingConfig(BaseConfig):
     blake2b_digest_size: int = Field(default=64)
 
 
+@dataclass(init=False)
 class SecurityConfig(BaseConfig):
     """Configuration for the core security subsystem."""
 

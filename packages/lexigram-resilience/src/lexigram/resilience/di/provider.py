@@ -51,12 +51,17 @@ class ResilienceProvider(Provider):
 
         cfg = self._config or ResilienceConfig()
 
-        # 1. Register Configs (Transient) — factories close over the resolved
+        # 1. Register Configs (Singleton) — factories close over the resolved
         #    section so pipeline construction receives yaml-driven values.
-        container.transient(CircuitBreakerConfig, lambda *, _cfg=cfg: _cfg.circuit_breaker)
-        container.transient(RetryConfig, lambda *, _cfg=cfg: _cfg.retry)
-        container.transient(TimeoutConfig, lambda *, _cfg=cfg: _cfg.timeout)
-        container.transient(BulkheadConfig, lambda *, _cfg=cfg: _cfg.bulkhead)
+        #    Singleton because Bulkhead (singleton) requires BulkheadConfig;
+        #    transient configs in a singleton dependency tree trigger
+        #    LEX_ERR_DI_008 scope violations.
+        container.singleton(
+            CircuitBreakerConfig, lambda *, _cfg=cfg: _cfg.circuit_breaker
+        )
+        container.singleton(RetryConfig, lambda *, _cfg=cfg: _cfg.retry)
+        container.singleton(TimeoutConfig, lambda *, _cfg=cfg: _cfg.timeout)
+        container.singleton(BulkheadConfig, lambda *, _cfg=cfg: _cfg.bulkhead)
 
         # 2. Register Registries (Singleton)
         self._registry = CircuitBreakerRegistry()

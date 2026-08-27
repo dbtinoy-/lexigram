@@ -4,6 +4,12 @@ Commands are frozen dataclasses extending the framework's
 :class:`~lexigram.events.messages.Command`. Each command targets a handler on
 the command bus; handlers mutate the write-side state and publish domain
 events afterwards (CQRS write path).
+
+Commands are **intent objects** — they describe what the caller wants, not how
+to do it.  The command bus routes each command type to exactly one handler.
+
+Convention: ``@dataclass(frozen=True, kw_only=True)`` for immutable
+command objects; ``Command`` base from lexigram.events.messages.
 """
 
 from __future__ import annotations

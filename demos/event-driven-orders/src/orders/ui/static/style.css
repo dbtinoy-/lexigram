@@ -47,6 +47,13 @@ td { padding:.4rem .5rem; border-bottom:1px solid #1a2230; }
 #outbox-actions { display:flex; gap:.5rem; margin-bottom:.5rem; }
 #flush-btn { color:var(--accent); border-color:var(--accent); }
 
+/* Demo */
+#demo-panel { grid-column:1 / -1; text-align:center; }
+#demo-btn { background:var(--accent); color:#08111e; border-color:var(--accent); font-weight:600; padding:.5rem 1.5rem; }
+#demo-btn:hover { opacity:.9; }
+#demo-btn:disabled { opacity:.4; cursor:default; }
+#demo-result { margin-top:.5rem; font-size:.85rem; }
+
 /* Log */
 #log-panel { grid-column:1 / -1; }
 #log { max-height:180px; overflow-y:auto; font-size:.8rem; font-family:monospace; }

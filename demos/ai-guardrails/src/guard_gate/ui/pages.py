@@ -1,4 +1,11 @@
-"""Playground page — static serving only (logic lives in the API controller)."""
+"""Playground page — static serving only (logic lives in the API controller).
+
+Lexigram separates concerns: pages.py serves HTML/CSS/JS,
+api.py handles business logic.  This controller is stateless — no
+dependencies injected.  In a real app with a SPA frontend, you might
+delete this controller entirely and serve static files via WebModule
+or an external CDN.
+"""
 
 from __future__ import annotations
 
@@ -24,10 +31,16 @@ def _static(name: str, media_type: str) -> FileResponse:
 
 
 class PlaygroundPageController(Controller):
-    """Serve the guardrails playground; every handler reads from ui/."""
+    """Serve the guardrails playground; every handler reads from ui/.
+
+    FileResponse is a Lexigram web primitive for serving
+    static files.  The ui/ directory structure (views/, static/) is
+    a convention — not enforced by the framework.  Put your HTML
+    templates in views/ and assets in static/.
+    """
 
     def __init__(self) -> None:
-        """Stateless."""
+        """Stateless — no dependencies to inject."""
 
     @get("/")
     async def playground(self, request: Request) -> FileResponse:

@@ -9,7 +9,7 @@ from dev.audit.index import (
     render_index_json,
     render_index_markdown,
 )
-from dev.core.registry import GeneratorRegistry
+from dev._lib.registry import GeneratorRegistry
 
 
 @dataclass(frozen=True, slots=True)

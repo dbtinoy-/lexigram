@@ -1,4 +1,11 @@
-"""Ambient identifier generation for the event-driven orders demo."""
+"""Ambient identifier generation for the event-driven orders demo.
+
+Uses the framework's ambient identity module — no DI needed.
+
+Convention: ambient capabilities (clock, identity, hashing) are
+process-level and exempt from constructor injection.  They live in their
+own module so the rest of the codebase imports from a single source.
+"""
 
 from __future__ import annotations
 

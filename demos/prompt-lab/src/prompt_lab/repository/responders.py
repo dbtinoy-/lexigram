@@ -1,10 +1,21 @@
-"""Variant-keyed canned completion styles (Registry dispatch, no LLM)."""
+"""Variant-keyed canned completion styles — Registry dispatch, no LLM.
+
+Instead of calling a real language model, each variant maps to a canned
+reply function registered in a ``lexigram.primitives.Registry``.  This
+keeps the A/B loop deterministic and byte-stable: same inputs always
+produce the same outputs, so scores are reproducible.
+
+The ``RESPONDERS`` registry is module-level so the A/B runner can look
+up any variant's reply function by key at runtime.
+"""
 
 from __future__ import annotations
 
 from collections.abc import Callable
 
 from lexigram.primitives import Registry
+
+__all__ = ["RESPONDERS"]
 
 
 def _v1_style(question: str) -> str:

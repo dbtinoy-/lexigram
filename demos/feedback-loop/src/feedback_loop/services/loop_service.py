@@ -1,4 +1,13 @@
-"""Orchestrates bot answers, rating capture, regression runs."""
+"""Orchestrates bot answers, rating capture, regression runs.
+
+Convention: the service layer owns business logic.  ``LoopService``
+exposes the five core operations — ``ask``, ``rate``, ``stats``,
+``regress``, ``report`` — each returning ``Result[T, E]`` for expected
+domain failures.
+
+The service delegates storage to ``FeedbackCollector`` (in-memory mode)
+and evaluation to ``EvaluationHarness`` via the container.
+"""
 
 from __future__ import annotations
 
@@ -10,9 +19,8 @@ from feedback_loop.errors import (
     UnknownQuestionError,
     UnknownTraceError,
 )
-from feedback_loop.repository.bot import BOT, TRACE_IDS
+from feedback_loop.repository import BOT, TRACE_IDS
 from feedback_loop.services.regression import build_dataset
-from lexigram.ai.evaluation.harness.runner import EvaluationHarness
 from lexigram.contracts.ai.evaluation import EvaluationHarnessProtocol
 from lexigram.contracts.ai.experiment import ExperimentConfig, RunStatus
 from lexigram.contracts.ai.feedback import FeedbackType
@@ -66,7 +74,12 @@ class LoopService:
         tracker=None,
     ) -> None:
         self._collector = collector
-        self._harness = harness or EvaluationHarness(pass_threshold=PASS_THRESHOLD)
+        if harness is not None:
+            self._harness = harness
+        else:
+            from lexigram.ai.evaluation.harness.runner import EvaluationHarness
+
+            self._harness = EvaluationHarness(pass_threshold=PASS_THRESHOLD)
         self._tracker = tracker
 
     async def ask(

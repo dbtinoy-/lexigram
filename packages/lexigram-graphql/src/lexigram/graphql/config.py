@@ -15,6 +15,7 @@ Example:
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 import os
 from typing import ClassVar, cast
 
@@ -32,6 +33,7 @@ except (
     Duration = None  # type: ignore[assignment,misc]
 
 
+@dataclass(init=False)
 class CacheConfig(BaseConfig):
     """Cache configuration for GraphQL responses.
 
@@ -52,6 +54,7 @@ class CacheConfig(BaseConfig):
     )
 
 
+@dataclass(init=False)
 class DepthLimitConfig(BaseConfig):
     """Query depth limiting configuration.
 
@@ -68,6 +71,7 @@ class DepthLimitConfig(BaseConfig):
     ignore_introspection: bool = True
 
 
+@dataclass(init=False)
 class ComplexityConfig(BaseConfig):
     """Query complexity limiting configuration.
 
@@ -86,6 +90,7 @@ class ComplexityConfig(BaseConfig):
     default_list_cost: float = Field(default=10.0, ge=0)
 
 
+@dataclass(init=False)
 class AliasLimitConfig(BaseConfig):
     """Query alias limiting configuration.
 
@@ -100,6 +105,7 @@ class AliasLimitConfig(BaseConfig):
     max_aliases: int = Field(default=const.DEFAULT_MAX_ALIASES, ge=1)
 
 
+@dataclass(init=False)
 class PersistedQueryConfig(BaseConfig):
     """Automatic Persisted Queries configuration.
 
@@ -116,6 +122,7 @@ class PersistedQueryConfig(BaseConfig):
     ttl_seconds: Duration | int = Field(default=86400, ge=60)  # 24 hours
 
 
+@dataclass(init=False)
 class BatchConfig(BaseConfig):
     """Query batching configuration.
 
@@ -130,6 +137,7 @@ class BatchConfig(BaseConfig):
     max_batch_size: int = Field(default=10, ge=1, le=50)
 
 
+@dataclass(init=False)
 class IntrospectionConfig(BaseConfig):
     """GraphQL introspection configuration.
 
@@ -156,6 +164,7 @@ class IntrospectionConfig(BaseConfig):
     )
 
 
+@dataclass(init=False)
 class PlaygroundConfig(BaseConfig):
     """GraphQL Playground/GraphiQL configuration.
 
@@ -172,6 +181,7 @@ class PlaygroundConfig(BaseConfig):
     title: str = "Lexigram GraphQL Playground"
 
 
+@dataclass(init=False)
 class SubscriptionConfig(BaseConfig):
     """WebSocket subscription configuration.
 
@@ -194,6 +204,7 @@ class SubscriptionConfig(BaseConfig):
     connection_timeout: Duration | int = Field(default=60, ge=1)
 
 
+@dataclass(init=False)
 class DataLoaderConfig(BaseConfig):
     """DataLoaderProtocol configuration.
 
@@ -222,6 +233,7 @@ class DataLoaderConfig(BaseConfig):
     )
 
 
+@dataclass(init=False)
 class TracingConfig(BaseConfig):
     """Distributed tracing configuration.
 
@@ -242,6 +254,7 @@ class TracingConfig(BaseConfig):
     sample_rate: float = Field(default=1.0, ge=0.0, le=1.0)
 
 
+@dataclass(init=False)
 class MetricsConfig(BaseConfig):
     """Metrics collection configuration.
 
@@ -264,6 +277,7 @@ class MetricsConfig(BaseConfig):
     )
 
 
+@dataclass(init=False)
 class ErrorConfig(BaseConfig):
     """Error handling configuration.
 
@@ -282,6 +296,7 @@ class ErrorConfig(BaseConfig):
     log_errors: bool = True
 
 
+@dataclass(init=False)
 class GraphQLConfig(BaseConfig):
     """Hierarchical root configuration for Lexigram GraphQL.
 

@@ -1,4 +1,8 @@
-"""Regression dataset builder tests."""
+"""Regression dataset builder tests.
+
+Convention: unit tests for the ``build_dataset`` function.  These are
+pure logic tests — no I/O, no fixtures, no mocking.
+"""
 
 from __future__ import annotations
 

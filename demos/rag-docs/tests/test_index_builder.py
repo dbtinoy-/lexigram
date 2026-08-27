@@ -7,6 +7,7 @@ from pathlib import Path
 from lexigram.contracts.data.vector.types import SearchQuery
 from lexigram.vector.backends.memory import MemoryVectorStore
 
+from rag_docs.di.provider import resolve_default_docs_dir
 from rag_docs.repository.embedder import EMBEDDING_DIMENSION, HashingEmbedder
 from rag_docs.repository.index_builder import (
     CORPUS_COLLECTION_NAME,
@@ -77,3 +78,11 @@ async def test_title_falls_back_to_file_name_without_heading(tmp_path: Path) -> 
     record = await collection.get(["untitled-notes.md#0"])
     assert record
     assert record[0].metadata["title"] == "Untitled Notes"
+
+
+async def test_default_docs_dir_points_at_repo_docs() -> None:
+    """resolve_default_docs_dir() is CWD-proof — anchored to this file's location."""
+    default_dir = resolve_default_docs_dir()
+
+    assert default_dir.name == "docs"
+    assert default_dir.exists()

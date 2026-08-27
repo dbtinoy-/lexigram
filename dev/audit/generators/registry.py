@@ -16,7 +16,7 @@ from dev.audit.generators.quality import QualityAuditGenerator
 from dev.audit.generators.rules import RulesAuditGenerator
 from dev.audit.generators.security import SecurityAuditGenerator
 from dev.audit.generators.tests import TestsAuditGenerator
-from dev.core.registry import GeneratorRegistry
+from dev._lib.registry import GeneratorRegistry
 
 
 def build_audit_registry() -> GeneratorRegistry[AuditGeneratorProtocol]:

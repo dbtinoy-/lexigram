@@ -1,12 +1,26 @@
-"""DI wiring for the feedback-loop demo (internal)."""
+"""DI wiring for the feedback-loop demo (internal).
+
+A Provider tells the DI container *what* exists and *how* to build it.
+Two-phase lifecycle: ``register()`` binds, ``boot()`` initialises.
+
+Simplest patterns for new users:
+
+- ``container.singleton(Thing, instance=Thing())`` — already built, hand it over
+- ``container.singleton(Thing, factory=lambda: ...)`` — build lazily on first resolve
+- ``container.singleton(Thing, factory=self._build_thing)`` — async factory for complex wiring
+
+Convention: providers contain no business logic — only registration,
+boot wiring, and shutdown cleanup.  ``LoopProvider`` assembles
+``LoopService`` from its collaborators (``FeedbackCollector``,
+``ExperimentTrackerProtocol``).
+"""
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from lexigram.contracts.core.health import (
-    HealthCheckResult,
-)
+from feedback_loop.services import LoopService
+from lexigram.contracts.core.health import HealthCheckResult
 from lexigram.di.provider import Provider
 
 if TYPE_CHECKING:
@@ -14,8 +28,6 @@ if TYPE_CHECKING:
         ContainerRegistrarProtocol,
         ContainerResolverProtocol,
     )
-
-from feedback_loop.services.loop_service import LoopService
 
 
 class LoopProvider(Provider):

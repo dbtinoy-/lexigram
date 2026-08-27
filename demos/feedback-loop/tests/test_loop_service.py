@@ -1,4 +1,9 @@
-"""Boot-level service tests (ratings → stats → regression → report)."""
+"""Boot-level service tests (ratings → stats → regression → report).
+
+Convention: service tests exercise ``LoopService`` methods directly.
+The ``service`` fixture boots the real application and resolves the
+service through the container.
+"""
 
 from __future__ import annotations
 

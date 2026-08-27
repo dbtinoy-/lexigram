@@ -1,4 +1,10 @@
-"""Smoke tests for the playground page routes."""
+"""Smoke tests for the playground page routes.
+
+Page tests verify that the UI controller serves the right
+content types and that HTML contains expected elements (e.g. data-act
+attributes for the JS to bind to).  These are lightweight — they don't
+test business logic (that's test_api.py's job).
+"""
 
 from __future__ import annotations
 

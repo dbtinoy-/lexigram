@@ -3,8 +3,8 @@ from __future__ import annotations
 import subprocess
 import sys
 
-from dev.core import command_runner
-from dev.core.command_runner import run_command
+from dev._lib import command_runner
+from dev._lib.command_runner import run_command
 
 
 def test_run_command_captures_success_output_and_cwd(tmp_path):

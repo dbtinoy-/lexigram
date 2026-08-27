@@ -29,13 +29,23 @@ def _static(name: str, media_type: str) -> FileResponse:
 
 
 class PagesController(Controller):
-    """Serve the console's HTML/JS/CSS; logic lives in the API controller."""
+    """Serve the console's HTML/JS/CSS; logic lives in the API controller.
+
+    Lexigram convention: page controllers are stateless — they serve
+    files and redirect, nothing more.  All dynamic behavior goes through
+    the JSON API (RbacApiController).  HTMX/vanilla-JS in the views
+    calls those endpoints directly.
+
+    If you use an external frontend (React, Vue), omit this controller
+    entirely — RbacApiController is all you need.
+    """
 
     def __init__(self) -> None:
-        """Stateless: every handler reads straight from the ui/ folder."""
+        """Stateless: no constructor dependencies needed."""
 
     @get("/")
     async def index(self, request: Request) -> RedirectResponse:
+        """Redirect root to /matrix — convention: root serves the main view."""
         return RedirectResponse(url="/matrix", status_code=307)
 
     @get("/login")

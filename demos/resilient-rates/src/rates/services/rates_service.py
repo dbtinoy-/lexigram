@@ -1,22 +1,42 @@
-"""Cache-aside rates service with resilience and single-flight reads."""
+"""Cache-aside rates service with resilience and single-flight reads.
+
+Convention followed: **Service pattern** — this module owns the core
+business logic for the rate desk.  It composes three Lexigram
+subsystems:
+
+1. **Cache-aside** — ``StampedeProtectedCache`` wraps the framework's
+   ``CacheBackendProtocol`` with per-key single-flight locks.  Reads
+   check the cache first; misses compute through the pipeline and write
+   the result back.
+
+2. **Resilience pipeline** — ``ResiliencePipelineFactoryProtocol`` builds
+   a retry → circuit breaker → timeout pipeline from contract config
+   models.  Terminal failures (retries exhausted or circuit open) fall
+   back to the stale tier.
+
+3. **Stale tier** — an in-memory dict of last-known-good quotes keyed by
+   pair.  Served when the circuit is OPEN and the cache is cold.
+
+All domain failures return ``Result[RateQuote, RateUnavailableError]``
+— infrastructure exceptions propagate naturally.
+"""
 
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
 
 from lexigram.cache.service.stampede import StampedeProtectedCache
-from lexigram.contracts.core.result import Err, Ok, Result
-from lexigram.contracts.infra.cache.protocols import CacheBackendProtocol
-from lexigram.contracts.infra.resilience.models import (
+from lexigram.contracts.infra.cache import CacheBackendProtocol
+from lexigram.contracts.infra.resilience import ResiliencePipelineFactoryProtocol
+from lexigram.logging import get_logger
+from lexigram.resilience import (
     CircuitBreakerConfig,
+    CircuitOpenError,
     RetryConfig,
+    RetryExhaustedError,
     TimeoutConfig,
 )
-from lexigram.contracts.infra.resilience.protocols import (
-    ResiliencePipelineFactoryProtocol,
-)
-from lexigram.logging import get_logger
-from lexigram.resilience.exceptions import CircuitOpenError, RetryExhaustedError
+from lexigram.result import Err, Ok, Result
 from rates.domain import RateQuote
 from rates.exceptions import (
     RateUnavailableError,
@@ -60,10 +80,12 @@ class RatesService:
 
     Args:
         cache: The framework cache backend.
+        protection: Stampede protection wrapping the cache.
         pipeline_factory: Factory building the retry/circuit/timeout
             pipeline from contract config models.
         provider: The simulated upstream.
         faults: The shared fault controller.
+        cache_ttl: Optional TTL override (seconds).  Defaults to 300.
     """
 
     def __init__(
@@ -102,6 +124,7 @@ class RatesService:
         self._stale: dict[str, RateQuote] = {}
 
     def _note_retry(self, attempt: int, exc: Exception | None) -> None:
+        """Hook called by the retry policy on each attempt."""
         self._stats.retries += 1
         logger.warning("retry_scheduled", attempt=attempt, error=str(exc))
 
@@ -122,6 +145,14 @@ class RatesService:
     async def fetch(self, pair: str) -> Result[RateQuote, RateUnavailableError]:
         """Return a quote for ``pair`` via cache-aside + resilience.
 
+        The read path is:
+
+        1. ``StampedeProtectedCache.get_or_compute`` checks the cache.
+        2. On miss, ``compute()`` runs through the resilience pipeline.
+        3. The pipeline calls ``SimulatedRatesProvider.fetch()``.
+        4. On terminal failure, the stale tier is checked.
+        5. If no stale copy exists, ``Err(RateUnavailableError)``.
+
         Args:
             pair: Currency pair symbol.
 
@@ -133,9 +164,6 @@ class RatesService:
         """
         logger.debug("fetch_started", pair=pair, scenario=self._faults.current.value)
 
-        # The cell marks whether THIS call ran the compute coroutine; if it
-        # did not, the value came from the framework's single-flight gate
-        # (either a stored copy or a co-running leader).
         leader = {"computed": False}
 
         async def compute() -> dict[str, object]:
@@ -150,8 +178,6 @@ class RatesService:
                 ttl=self._cache_ttl,
             )
         except (CircuitOpenError, RetryExhaustedError) as exc:
-            # Terminal pipeline failure falls back to the stale tier when a
-            # last-known-good copy exists; without one, the outage surfaces.
             stale = self._stale.get(pair)
             if stale is None:
                 return Err(

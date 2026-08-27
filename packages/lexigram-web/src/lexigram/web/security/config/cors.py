@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any, ClassVar
 
 from lexigram.config.base import BaseConfig
@@ -9,6 +10,7 @@ from lexigram.contracts.core.config import ConfigIssue, Environment
 from lexigram.validation import ConfigDict, Field, model_validator
 
 
+@dataclass(init=False)
 class CORSConfig(BaseConfig):
     """CORS configuration.
 

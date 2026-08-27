@@ -1,9 +1,15 @@
-"""Tests for the acts registry and policy toggle."""
+"""Tests for the acts registry and policy toggle.
+
+Unit tests for pure domain objects — no DI, no container.
+These validate the Registry pattern (register/get/keys) and the
+toggle state machine.  In Lexigram, unit tests for domain models
+are simple and fast — no framework boot required.
+"""
 
 from __future__ import annotations
 
 from guard_gate.repository.acts import ACTS, ALLOWED_MODEL, COST_PER_TURN
-from guard_gate.services.policy import PolicyToggle
+from guard_gate.domain.policy import PolicyToggle
 
 
 class TestActs:

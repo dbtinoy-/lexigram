@@ -1,8 +1,21 @@
-"""Render → respond → evaluate → compare, fully offline."""
+"""Deterministic A/B runner — render → respond → evaluate → compare.
+
+For each variant the runner:
+  1. Resolves the active template revision from ``LabVersions``
+  2. Renders every ``Case`` through the template
+  3. Feeds the rendered input to the variant's canned responder
+  4. Scores the responder output against the case reference via
+     ``CriteriaEvaluator`` (contains-match)
+  5. Aggregates average score, pass count, and total samples
+
+Winner is declared per-run by highest ``average_score``.  The entire
+loop is offline — no LLM calls — so results are byte-stable.
+"""
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 from lexigram.ai.evaluation.evaluators.criteria import CriteriaEvaluator
 from lexigram.ai.evaluation.harness.runner import EvaluationHarness
@@ -12,6 +25,9 @@ from lexigram.contracts.ai.evaluation import (
 )
 from lexigram.logging import get_logger
 from prompt_lab.repository.cases import CASES, CRITERIA
+
+if TYPE_CHECKING:
+    from prompt_lab.services.versioning import LabVersions
 
 logger = get_logger(__name__)
 
@@ -32,7 +48,7 @@ class ABRunner:
 
     def __init__(
         self,
-        versions,
+        versions: LabVersions,
         harness: EvaluationHarnessProtocol | None = None,
     ) -> None:
         self._versions = versions

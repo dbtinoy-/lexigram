@@ -12,8 +12,8 @@ from __future__ import annotations
 import asyncio
 
 from lexigram.contracts.core.di import (
+    BootContainerProtocol,
     ContainerRegistrarProtocol,
-    ContainerResolverProtocol,
 )
 from lexigram.contracts.core.health import (
     HealthCheckCategory,
@@ -49,16 +49,15 @@ class RealtimeProvider(Provider):
     config_key: str | None = "demo"
     config_model: type | None = RealtimeConfig
 
-    def __init__(self, config: RealtimeConfig | None = None) -> None:
+    def __init__(self) -> None:
         super().__init__()
-        self._config = config or RealtimeConfig()
         self._stream: EventStreamService | None = None
         self._heartbeat_task: asyncio.Task[None] | None = None
         self._stopping = False
 
     async def register(self, container: ContainerRegistrarProtocol) -> None:
         """Declare bindings; the router constructs controllers itself."""
-        cfg = self.config or RealtimeConfig()
+        cfg: RealtimeConfig = self.config or RealtimeConfig()
 
         container.singleton(RealtimeConfig, instance=cfg)
         container.singleton(
@@ -72,7 +71,7 @@ class RealtimeProvider(Provider):
         container.singleton(EventsStreamHandler, EventsStreamHandler)
         container.singleton(OperatorHandler, OperatorHandler)
 
-    async def boot(self, container: ContainerResolverProtocol) -> None:
+    async def boot(self, container: BootContainerProtocol) -> None:
         """Resolve the shared stream and start the heartbeat producer."""
         self._stream = await container.resolve(EventStreamService)
         self._start_heartbeat()
@@ -112,9 +111,10 @@ class RealtimeProvider(Provider):
     async def _heartbeat(self) -> None:
         """Emit a rotating heartbeat event every interval until shutdown."""
         assert self._stream is not None  # booted before heartbeat starts
+        cfg: RealtimeConfig = self.config or RealtimeConfig()
         index = 0
         while True:
-            await asyncio.sleep(self._config.heartbeat_interval_seconds)
+            await asyncio.sleep(cfg.heartbeat_interval_seconds)
             kind = HEARTBEAT_EVENTS[index % len(HEARTBEAT_EVENTS)]
             index += 1
             await self._stream.publish(

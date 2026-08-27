@@ -1,8 +1,158 @@
-# Prompt Lab — runtime configuration (Blueprint §3).
+# ══════════════════════════════════════════════════════════════════════════════
+# Prompt Lab — Complete Configuration Reference
+# ══════════════════════════════════════════════════════════════════════════════
+#
+# Every configuration key available for this demo.
+# Uncommented lines are the values we override; commented lines show
+# defaults.  Each section maps 1:1 to a typed config model — the
+# framework validates your yaml against it at boot time.
+#
+# LEARNING PATH:
+#   1. web:        HTTP server, security, rate limiting
+#   2. ai_prompt:  Prompt template rendering, sanitisation, limits
+#
+# For full reference see:
+#   - Lexigram Web:    packages/lexigram-web/src/lexigram/web/config/
+#   - Lexigram Prompt: experimental/ai/lexigram-ai-prompt/src/lexigram/ai/prompt/config.py
+#
+# ENVIRONMENT VARIABLE OVERRIDE:
+#   Every key can be overridden via LEX_* env vars with __ as delimiter.
+#   Examples:
+#     LEX_WEB__SERVER__PORT=9000
+#     LEX_AI_PROMPT__SANITIZE_INPUTS=false
+# ══════════════════════════════════════════════════════════════════════════════
+
+
+# ── Web ──────────────────────────────────────────────────────────────────────
+# Lexigram Web auto-configures Starlette, OpenAPI, CORS, CSRF, and
+# rate limiting from this single section.  The WebModule reads it
+# automatically via config_key="web" / config_model=WebConfig.
+#
+# The orchestrator calls get_section("web", WebConfig) and injects
+# the result into WebProvider.config before register() runs.
+# ─────────────────────────────────────────────────────────────────────────────
 web:
+  # ── Server ─────────────────────────────────────────────────────────────────
+  # Binds the uvicorn / gunicorn process.
   server:
-    host: 127.0.0.1
-    port: 8085
+    host: 127.0.0.1       # bind address (0.0.0.0 for external access)
+    port: 8085             # listen port
+    # workers: 1           # uvicorn workers (1 = single process)
+    # reload: false        # auto-reload on file changes (dev only)
+    # debug: false         # enable debug mode
+
+  # ── Security ───────────────────────────────────────────────────────────────
+  # HSTS, CSP, CORS, CSRF, and security headers — all aggregated here.
   security:
+    # enabled: true                    # master switch for security subsystem
+
+    # ── CSRF ───────────────────────────────────────────────────────────────
+    # Protects against cross-site request forgery.  Disabled here because
+    # the demo posts JSON from the browser console (no cookies).
     csrf:
-      enabled: false # lab API for scripts
+      enabled: false                    # disable for JSON-only playground
+      # cookie_name: csrf_token         # CSRF cookie name
+      # header_name: X-CSRF-Token       # client sends token in this header
+      # cookie_secure: true             # HTTPS only
+      # cookie_httponly: true            # no JS access
+      # cookie_samesite: Lax            # SameSite policy
+      # token_length: 32                # token bytes
+      # token_ttl: 3600                 # synchronizer-mode TTL (seconds)
+      # excluded_paths: []              # paths exempt from CSRF validation
+      # exclude_content_types: []       # Content-Types that bypass CSRF
+      # exclude_auth_schemes: []        # Auth schemes that bypass CSRF
+      # secret_key: null                # HMAC key (LEX_WEB__SECURITY__CSRF__SECRET_KEY)
+
+    # ── CORS ───────────────────────────────────────────────────────────────
+    # cors:
+    #   enabled: true
+    #   allowed_origins:                # browser origins allowed to call API
+    #     - http://localhost:3000       #   (dev frontend)
+    #     - http://localhost:8085       #   (this demo)
+    #   allow_methods: [GET, POST, PUT, DELETE, PATCH, OPTIONS]
+    #   allow_headers: ["*"]
+    #   expose_headers: []
+    #   allow_credentials: false        # true requires explicit origins
+    #   max_age: 600                    # preflight cache (seconds)
+
+    # ── Hosts ──────────────────────────────────────────────────────────────
+    # allowed_hosts: []                # hostnames permitted to reach app
+                                      # empty = reject all in production
+
+    # ── HSTS ───────────────────────────────────────────────────────────────
+    # hsts:
+    #   enabled: false                 # true in production
+    #   max_age: 31536000              # 1 year
+    #   include_subdomains: true
+    #   preload: true
+
+    # ── Headers ─────────────────────────────────────────────────────────────
+    # custom_headers:
+    #   x-content-type-options: nosniff
+    #   x-frame-options: DENY
+    #   x-xss-protection: "1; mode=block"
+    # referrer_policy: strict-origin-when-cross-origin
+
+  # ── Rate Limiting ──────────────────────────────────────────────────────────
+  # Prevents brute-force and DoS attacks.  Longest-prefix-match selects
+  # the rule for each request path.
+  # rate_limit:
+  #   enabled: true
+  #   default_limit: 100               # max requests per window
+  #   default_window: 60               # window size (seconds)
+  #   whitelist_ips: []                # exempt IPs
+  #   storage_backend: memory          # "memory" or "redis"
+  #   rules:                           # per-path overrides
+  #     /api/render:
+  #       requests: 30
+  #       window: 60
+
+  # ── Static Files ───────────────────────────────────────────────────────────
+  # static:
+  #   enabled: false                   # serve static files
+  #   directory: static
+  #   prefix: /static
+  #   html: false                      # SPA mode
+
+  # ── OpenAPI / Docs ─────────────────────────────────────────────────────────
+  # openapi_title: API
+  # openapi_version: "1.0.0"
+  # openapi_url: /openapi.json
+  # swagger_ui_url: /docs
+  # redoc_url: /redoc
+
+  # ── Misc ───────────────────────────────────────────────────────────────────
+  # compression_enabled: true          # gzip / brotli
+  # template_directory: templates      # Jinja2 templates
+  # enable_identity_resolution: false  # resolve OAuth external IDs
+  # enable_auth: false                 # built-in auth middleware
+  # max_body_size: 10485760            # 10 MiB — protects against OOM DoS
+
+
+# ── AI Prompt ────────────────────────────────────────────────────────────────
+# Lexigram AI Prompt manages template registration, rendering, input
+# sanitisation, and variable validation.  The PromptModule reads this
+# section automatically via config_key="ai_prompt" / config_model=PromptConfig.
+#
+# The orchestrator calls get_section("ai_prompt", PromptConfig) and injects
+# the result into PromptProvider.config before register() runs.
+#
+# ENVIRONMENT VARIABLE OVERRIDE:
+#   LEX_AI_PROMPT__DEFAULT_FORMAT=jinja2
+#   LEX_AI_PROMPT__SANITIZE_INPUTS=false
+# ─────────────────────────────────────────────────────────────────────────────
+# ai_prompt:
+  # enabled: true                      # master switch for prompt subsystem
+
+  # ── Rendering Format ──────────────────────────────────────────────────────
+  # Default format applied to templates that don't specify their own.
+  # One of: "f_string", "jinja2", "dollar", "simple"
+  # default_format: f_string
+
+  # ── Input Sanitisation ────────────────────────────────────────────────────
+  # Scans user-supplied variable values for injection patterns.
+  # sanitize_inputs: true              # enable automatic injection scanning
+  # strict_sanitizer: true             # raise on detection; false = warn-only
+
+  # ── Limits ────────────────────────────────────────────────────────────────
+  # max_variable_length: 0             # max chars per variable value (0 = unlimited)

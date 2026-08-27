@@ -11,7 +11,7 @@ implementation.  ``di/provider.py`` binds both sides::
 concrete class.  Swap this file for a Postgres implementation and
 nothing else changes.
 
-Also demonstrated: the ambient clock (``lexigram.primitives.clock``)
+Uses the ambient clock (``lexigram.primitives.clock``)
 for testable time — tests can freeze it via ``clock.use(FixedClock(...))``.
 """
 
@@ -20,7 +20,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
 
-from lexigram.contracts.auth.repositories import SessionRepositoryProtocol
+from lexigram.contracts.auth import SessionRepositoryProtocol
 from lexigram.primitives import clock
 
 
@@ -28,13 +28,22 @@ from lexigram.primitives import clock
 class InMemorySessionRepository(SessionRepositoryProtocol):
     """Process-local session store implementing the storage contract.
 
-    Rows expire by ``expires_at`` and deactivate via ``active=False``.
-    Not thread-safe by design: single event loop, single process.
+    This is the **protocol binding** pattern: ``SessionRepositoryProtocol``
+    lives in ``lexigram.contracts.auth.repositories``; this class supplies
+    the implementation.  ``di/provider.py`` binds both to the same instance,
+    so framework code resolves the protocol while tests can import the
+    concrete class.
+
+    To swap for Postgres, replace this class and update di/provider.py —
+    nothing else changes.
     """
 
     _rows: dict[str, dict] = field(default_factory=dict)
 
     async def insert(self, payload: dict) -> None:
+        """Insert a session row.  Uses ambient clock (lexigram.primitives.clock)
+        for testable time — tests can freeze it with ``clock.use(FixedClock(...))``.
+        """
         row = dict(payload)
         row.setdefault("active", True)
         row.setdefault("created_at", clock.now())

@@ -1,4 +1,7 @@
 """End-to-end API-key flow tests: issue, machine auth, revoke, expiry."""
+# E2E tests — boot the real app, exercise HTTP endpoints,
+# verify full request/response cycle. Uses httpx.AsyncClient with
+# ASGITransport for in-process testing (no server needed).
 
 from __future__ import annotations
 
@@ -6,13 +9,18 @@ import httpx
 import pytest
 from starlette.applications import Starlette
 
-from apikey_console.di.provider import DEMO_EMAIL, DEMO_PASSWORD
+# Test credentials — must match application.yaml auth.users[0]
+DEMO_EMAIL = "admin@keys.demo"
+DEMO_PASSWORD = "Demo-Password-1"
 
 EXPIRED_RAW = "sk_live_expired0000000000000000000000000000"
 
 
 def second_browser(app: Starlette) -> httpx.AsyncClient:
     """An independent browser (own cookie jar) over the same running app."""
+    # Independent session — second_browser creates a fresh
+    # httpx client with its own cookies, simulating a separate machine
+    # making API-key-only requests (no session cookies).
     return httpx.AsyncClient(
         transport=httpx.ASGITransport(app=app), base_url="http://testserver"
     )
@@ -20,6 +28,9 @@ def second_browser(app: Starlette) -> httpx.AsyncClient:
 
 @pytest.fixture
 async def logged_in(client: httpx.AsyncClient) -> httpx.AsyncClient:
+    # logged_in fixture — logs in once, reuses the
+    # authenticated client across tests. Session cookie is stored
+    # in the client's cookie jar.
     response = await client.post(
         "/api/login", json={"email": DEMO_EMAIL, "password": DEMO_PASSWORD}
     )

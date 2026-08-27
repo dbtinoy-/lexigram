@@ -21,10 +21,8 @@ from lexigram.result import Err, Result
 from orders.commands import PayOrder, PlaceOrder, ShipOrder
 from orders.domain import OrderItem, OrderNotPaidError, OrderPlaced, OrderStatus
 from orders.events import NotificationHandler, OrdersView
-from structlog.testing import capture_logs
 
 from orders.app import create_app
-from orders.cli import build_parser, run
 from orders.repository.outbox import Outbox, OutboxError
 from orders.repository.order_repository import OrderRepository
 from orders.services.orders_api import OrdersApi
@@ -151,21 +149,6 @@ class TestOutbox:
         assert result.is_ok()
         assert result.unwrap() == 1
         assert not outbox.pending()
-
-
-class TestDemoCommand:
-    async def test_demo_runs_full_lifecycle_in_one_process(self) -> None:
-        args = build_parser().parse_args(["demo"])
-        with capture_logs() as events:
-            exit_code = await run(args)
-
-        assert exit_code == 0
-        names = [e["event"] for e in events]
-        for marker in ("order.placed", "order.paid", "order.shipped",
-                       "outbox.record", "outbox.flushed"):
-            assert marker in names, f"missing narration event: {marker}"
-        flushed = next(e for e in events if e["event"] == "outbox.flushed")
-        assert flushed["count"] == 3
 
 
 class TestOutboxFailurePaths:

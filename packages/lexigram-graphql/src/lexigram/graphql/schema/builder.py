@@ -270,7 +270,7 @@ class SchemaBuilderProtocol:
 
         logger.info(
             "Built GraphQL schema with query=%s, mutation=%s, subscription=%s",
-            self._query_type.__name__,
+            self._query_type.__name__ if self._query_type else None,
             self._mutation_type.__name__ if self._mutation_type else None,
             self._subscription_type.__name__ if self._subscription_type else None,
         )

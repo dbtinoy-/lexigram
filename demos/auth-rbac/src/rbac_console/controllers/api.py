@@ -27,10 +27,9 @@ from rbac_console.domain.articles import ArticleStore
 from rbac_console.domain.personas import PERSONAS, PersonaDirectory
 from starlette.requests import Request
 
-from lexigram.auth.authn.user_service import UserService
-from lexigram.auth.authz.service import AuthorizationService
-from lexigram.auth.session.cookie_backend import SessionCookieBackend
-from lexigram.contracts.exceptions.domain import (
+from lexigram.auth import SessionCookieBackend, UserService
+from lexigram.auth.authz import AuthorizationService
+from lexigram.contracts.exceptions import (
     AuthenticationError,
     NotFoundError,
     PermissionDeniedError,
@@ -65,10 +64,13 @@ def _granted(verdict: Result[bool, Any]) -> bool:
 class RbacApiController(Controller):
     """RBAC API consumed by the UI's vanilla-JS client.
 
-    Constructor injection: every collaborator arrives already built —
-    the DI provider resolved them during boot (see ``di/provider.py``).
-    The framework's ``Controller`` base supplies the ``@get`` / ``@post``
-    route decorators used below.
+    Lexigram pattern: controllers are stateless handlers that receive
+    collaborators via constructor injection.  The framework resolves the
+    controller when a request matches its routes — you never instantiate
+    it manually.
+
+    Route decorators (@get, @post) come from lexigram.web, not Starlette
+    directly — they integrate with the framework's middleware stack.
     """
 
     def __init__(
@@ -89,7 +91,12 @@ class RbacApiController(Controller):
     async def login(
         self, request: Request
     ) -> Result[JSONResponse, ValidationError | NotFoundError]:
-        """Log in as one of the seeded personas."""
+        """Log in as one of the seeded personas.
+
+        Return type uses ``Result[T, E]`` — the web pipeline maps Err
+        types to HTTP status codes automatically (ValidationError → 422,
+        NotFoundError → 404, AuthenticationError → 401, PermissionDeniedError → 403).
+        """
         data = json_loads(await request.body())
         persona = str(data.get("persona", ""))
         if persona not in PERSONAS:
@@ -113,7 +120,11 @@ class RbacApiController(Controller):
     async def _authenticated_user(
         self, request: Request
     ) -> Result[Any, AuthenticationError]:
-        """Authenticate via session cookie or fail with a 401-mapped error."""
+        """Authenticate via session cookie — shared guard for protected endpoints.
+
+        This helper is called at the top of each protected handler.
+        If it returns Err(AuthenticationError), the pipeline maps it to 401.
+        """
         user = await self._cookies.authenticate(request)
         if user is None:
             return Err(AuthenticationError("not authenticated"))
@@ -210,6 +221,12 @@ class RbacApiController(Controller):
         self,
         request: Request,
     ) -> Result[dict, AuthenticationError | PermissionDeniedError]:
+        """Create an article — the deny-before-mutate guard rejects this for viewers.
+
+        Pattern: authenticate → authorize → act.  If either check fails,
+        return an Err and let the pipeline map it to the correct HTTP status.
+        This is the standard Lexigram guard pattern.
+        """
         user_result = await self._authenticated_user(request)
         if user_result.is_err():
             return Err(user_result.unwrap_err())

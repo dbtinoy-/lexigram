@@ -46,7 +46,7 @@ class AuthProvider(Provider):
 
     def __init__(self, config: AuthConfig | None = None) -> None:
         super().__init__()
-        self._config = config or AuthConfig()
+        self._config = config
 
     @classmethod
     def from_config(cls, config: AuthConfig, **context: Any) -> AuthProvider:
@@ -54,6 +54,8 @@ class AuthProvider(Provider):
 
     async def register(self, container: ContainerRegistrarProtocol) -> None:
         """Register auth services with the DI container."""
+        if self._config is None:
+            self._config = AuthConfig()
         container.singleton(AuthConfig, instance=self._config)
 
         container.singleton(

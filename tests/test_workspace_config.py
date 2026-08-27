@@ -7,7 +7,7 @@ import tomllib
 
 import pytest
 
-from dev.core.package_inventory import discover_packages
+from dev._lib.package_inventory import discover_packages
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 CONFIG = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text())
@@ -69,7 +69,7 @@ def test_every_member_declares_runtime_dependencies() -> None:
     pyproject.toml so the intent is reviewable.
     """
 
-    from dev.core.package_inventory import discover_package_paths
+    from dev._lib.package_inventory import discover_package_paths
 
     undecorated: list[str] = []
     for member in discover_package_paths(REPO_ROOT):

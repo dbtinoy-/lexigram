@@ -12,10 +12,10 @@ from dev.audit.generators.security_tracker import (
     row_is_done,
     severity_counts,
 )
-from dev.core.command_runner import run_command
-from dev.core.evidence import CommandEvidence
-from dev.core.rule_engine import RuleSeverity, run_rules
-from dev.core.rules_catalog import RuleFinding
+from dev._lib.command_runner import run_command
+from dev._lib.evidence import CommandEvidence
+from dev._lib.rule_engine import RuleSeverity, run_rules
+from dev._lib.rules_catalog import RuleFinding
 
 PIP_AUDIT_TIMEOUT = 240.0
 RUFF_TIMEOUT = 120.0

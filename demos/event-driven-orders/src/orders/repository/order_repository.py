@@ -1,4 +1,14 @@
-"""Write-side repository for the event-driven orders demo."""
+"""Write-side repository for the event-driven orders demo.
+
+In-memory store for the order aggregate.  In production, swap for a
+database-backed implementation using ``DatabaseProviderProtocol`` from
+``lexigram-contracts``.  The repository owns the write-side state;
+the read side is built by the ``OrdersView`` projection.
+
+Convention: repositories are simple data-access classes — no business
+logic, no domain events.  The command handler orchestrates persistence
+and event staging; the repository only stores and retrieves aggregates.
+"""
 
 from __future__ import annotations
 

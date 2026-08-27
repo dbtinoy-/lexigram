@@ -7,7 +7,7 @@ import re
 
 from dev.audit.generators.base import MarkdownAuditGenerator
 from dev.audit.generators.non_config_env_sources import NON_CONFIG_ENV_SOURCES
-from dev.core.package_inventory import discover_package_paths
+from dev._lib.package_inventory import discover_package_paths
 
 
 @dataclass(frozen=True, slots=True)

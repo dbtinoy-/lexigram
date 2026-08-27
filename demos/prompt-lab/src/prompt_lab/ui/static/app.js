@@ -7,6 +7,18 @@ const $ = (id) => document.getElementById(id);
 const show = (id) => $(id).classList.remove("hidden");
 const hide = (id) => $(id).classList.add("hidden");
 
+async function api(path, options = {}) {
+  const res = await fetch(path, {
+    headers: { "Content-Type": "application/json", ...options.headers },
+    ...options,
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(body.error || body.detail || res.statusText);
+  }
+  return res.json();
+}
+
 function setActiveVariant() {
   document.querySelectorAll("#variants button").forEach((b) => {
     b.classList.toggle("active", b.dataset.variant === variant);
@@ -21,54 +33,58 @@ function showError(message) {
 async function renderPreview(event) {
   if (event) event.preventDefault();
   hide("error");
-  const vars = { issue: $("issue").value, tone: $("tone").value };
-  const payload = { variant, vars };
-  const revRaw = $("rev").value.trim();
-  if (revRaw) payload.rev = Number(revRaw);
-
-  const res = await fetch("/api/render", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) return showError((await res.json()).error);
-  $("preview").textContent = (await res.json()).rendered;
+  try {
+    const vars = { issue: $("issue").value, tone: $("tone").value };
+    const payload = { variant, vars };
+    const revRaw = $("rev").value.trim();
+    if (revRaw) payload.rev = Number(revRaw);
+    const data = await api("/api/render", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+    $("preview").textContent = data.rendered;
+  } catch (e) {
+    showError(e.message);
+  }
 }
 
 async function loadHistory() {
-  const res = await fetch(`/api/history/${variant}`);
-  if (!res.ok) {
+  try {
+    const { entries } = await api(`/api/history/${variant}`);
+    $("history-list").innerHTML = entries
+      .map((e) => `<li>rev ${e.rev}${e.current ? " ← active" : ""}</li>`)
+      .join("");
+  } catch {
     $("history-list").innerHTML = "<li class='muted'>unknown variant</li>";
-    return;
   }
-  const { entries } = await res.json();
-  $("history-list").innerHTML = entries
-    .map((e) => `<li>rev ${e.rev}${e.current ? " ← active" : ""}</li>`)
-    .join("");
 }
 
 async function rollback() {
   hide("error");
-  const res = await fetch("/api/rollback", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ variant }),
-  });
-  if (!res.ok) return showError((await res.json()).error);
-  await loadHistory();
-  await renderPreview();
+  try {
+    await api("/api/rollback", {
+      method: "POST",
+      body: JSON.stringify({ variant }),
+    });
+    await loadHistory();
+    await renderPreview();
+  } catch (e) {
+    showError(e.message);
+  }
 }
 
 async function runAb() {
   hide("error");
-  const res = await fetch("/api/ab", { method: "POST" });
-  if (!res.ok) return showError((await res.json()).error);
-  const report = await res.json();
-  $("ab-body").innerHTML = Object.entries(report.variants)
-    .map(([key, v]) =>
-      `<tr><td>${key}</td><td>${v.average_score}</td><td>${v.passed}/${v.total}</td></tr>`)
-    .join("");
-  $("winner").textContent = `winner: ${report.winner}`;
+  try {
+    const report = await api("/api/ab", { method: "POST" });
+    $("ab-body").innerHTML = Object.entries(report.variants)
+      .map(([key, v]) =>
+        `<tr><td>${key}</td><td>${v.average_score}</td><td>${v.passed}/${v.total}</td></tr>`)
+      .join("");
+    $("winner").textContent = `winner: ${report.winner}`;
+  } catch (e) {
+    showError(e.message);
+  }
 }
 
 document.querySelectorAll("#variants button").forEach((b) =>

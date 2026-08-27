@@ -13,7 +13,7 @@ from dev.catalogs.env_vars_catalog._model import (
     ConfigField,
     REPO_ROOT,
 )
-from dev.core.package_inventory import discover_package_paths
+from dev._lib.package_inventory import discover_package_paths
 
 
 def discover_packages(include_all: bool = False) -> list[Path]:

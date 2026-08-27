@@ -20,6 +20,7 @@ def test_monitor_backend_registry_manager_defaults():
 
 def test_prometheus_backend_registry():
     """Test Prometheus backend creation via registry."""
+    pytest.importorskip("prometheus_client", reason="Prometheus backend requires prometheus_client")
     registry = PrometheusBackendRegistry()
     assert registry.can_create(BackendType.PROMETHEUS)
     assert not registry.can_create(BackendType.OPENTELEMETRY)
@@ -68,6 +69,7 @@ def test_monitor_backend_registry_manager_register():
 
 def test_monitor_backend_registry_manager_create_backend():
     """Test create_backend through manager."""
+    pytest.importorskip("prometheus_client", reason="Prometheus backend requires prometheus_client")
     manager = MonitorBackendRegistryManager.with_defaults()
     config = MagicMock(spec=MonitorConfig)
     config.prometheus = {"port": 8000}

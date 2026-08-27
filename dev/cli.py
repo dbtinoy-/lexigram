@@ -7,7 +7,7 @@ import sys
 
 from dev.audit.generators import build_audit_registry
 from dev.audit.generators.base import AuditGeneratorProtocol, AuditRunResult
-from dev.core.validation import (
+from dev._lib.validation import (
     has_quality_evidence,
     has_tests_evidence,
     parse_rules_report_summary,

@@ -320,7 +320,7 @@ class LifecycleManager:
         if provider.config_key is None:
             return
 
-        if provider.config is not None:
+        if getattr(provider, "_config_from_factory", False):
             return
 
         if provider.config_model is None:

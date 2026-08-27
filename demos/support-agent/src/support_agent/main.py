@@ -1,11 +1,12 @@
-"""Serve the support-agent demo.
+"""Entry point for the support-agent demo.
 
 Run::
 
-    PYTHONPATH=demos/support-agent/src uv run python -m support_agent
+    uv run python -m support_agent
 
-Host/port come from ``application.yaml`` (``web.server``); override without
-editing the file via ``LEX_WEB__SERVER__PORT``.
+``create_app()`` builds the application.  This file boots it and
+runs the web server.  Host/port are read automatically from
+``application.yaml`` — no manual config wiring needed.
 """
 
 from __future__ import annotations
@@ -15,36 +16,36 @@ import sys
 
 from lexigram.logging import get_logger
 from support_agent.app import create_app
-from support_agent.config import load_lex_config
 
 logger = get_logger(__name__)
 
 
 async def serve() -> None:
-    """Boot once and serve until interrupted; stop cleanly afterwards."""
-    from lexigram.web.config import WebConfig
-    from lexigram.web.di.provider import WebProvider
+    """Boot and serve until interrupted.
+
+    ``app.start()`` triggers the full lifecycle:
+    register → freeze → boot (seeding happens here) → server start.
+    The ``finally`` block ensures ``stop()`` runs even on errors.
+    """
     from lexigram.web.server.runner import run_server_async
 
-    config = load_lex_config()
-    web_config = config.get_section("web", WebConfig)
-    app = create_app(config)
+    app = create_app()
+    await app.start()
     try:
-        await app.start()
-        web = await app.container.resolve(WebProvider)
-        logger.info(
-            "server.listening", host=web_config.server.host, port=web_config.server.port
-        )
-        await run_server_async(
-            web.starlette,
-            host=web_config.server.host,
-            port=web_config.server.port,
-        )
+        # run_server_async reads host/port from application.yaml by default;
+        # pass explicit kwargs to override (e.g. during tests).
+        await run_server_async(app)
     finally:
         await app.stop()
 
 
 def main() -> int:
+    """Sync entry point: translate asyncio interrupts into exit codes.
+
+    Convention: ``python -m <package>`` calls ``main()``.  Return 0 for
+    success, 130 for keyboard interrupt — the shell will see this as the
+    process exit code.
+    """
     try:
         asyncio.run(serve())
     except KeyboardInterrupt:

@@ -377,6 +377,7 @@ class TestFactoryFunctions:
 
     def test_create_redis_task_provider(self) -> None:
         """Factory creates Redis-backed provider."""
+        pytest.importorskip("redis")
         provider = create_redis_task_provider(
             redis_url="redis://localhost:6379",
             queue_name="my_tasks",

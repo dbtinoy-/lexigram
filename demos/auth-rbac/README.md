@@ -10,6 +10,19 @@ inheritance.
 
 Fully offline against in-memory stores. No build step — vanilla JS + fetch.
 
+## Lexigram concepts used
+
+| Concept | Where in this demo | Your app |
+|---------|-------------------|----------|
+| Composition root | `app.py` | Replace controllers/providers list |
+| Module pattern | `AuthModule`, `WebModule` | Add your own modules |
+| Provider lifecycle | `di/provider.py` | Replace with your registrations |
+| Result<T,E> pattern | `controllers/api.py` | Return Result from handlers |
+| Protocol binding | `repository/session_repository.py` | Swap impl for Postgres/etc |
+| Constructor injection | Everywhere | Declare deps as typed params |
+| Domain models | `domain/` | Plain dataclasses, no framework imports |
+| Boot-time seeding | `data/seed.py` | Your own data initialization |
+
 ## What it shows
 
 | Piece | Where | Lexigram API used |
@@ -59,16 +72,19 @@ Override the port without touching yaml: `LEX_WEB__SERVER__PORT=9000`.
 
 ## Layout — read it in this order
 
+Start at the composition root and follow the wiring outward.
+Each file has teaching comments explaining the Lexigram convention it follows.
+
 | # | File | Lesson |
 |---|------|--------|
-| 1 | `src/rbac_console/app.py` | ⭐ composition root: config → modules → providers |
-| 2 | `src/rbac_console/main.py` | lifecycle: `Application.boot`, graceful stop |
-| 3 | `src/rbac_console/di/provider.py` | register (bind) vs boot (seed); simplest DI patterns |
-| 4 | `src/rbac_console/data/seed.py` | boot-time data seeding; `Result` handling |
-| 5 | `src/rbac_console/controllers/api.py` | Result-returning handlers → auto HTTP mapping |
-| 6 | `src/rbac_console/repository/session_repository.py` | protocol binding (contracts ↔ impl) |
-| 7 | `src/rbac_console/domain/articles.py` · `personas.py` | domain stores registered as singletons |
-| 8 | `src/rbac_console/ui/pages.py` | page controllers serve HTML/assets only |
+| 1 | `src/rbac_console/app.py` | ⭐ Composition root: config → modules → providers |
+| 2 | `src/rbac_console/main.py` | Lifecycle: `Application.start/stop`, graceful shutdown |
+| 3 | `src/rbac_console/di/provider.py` | `register()` (bind) vs `boot()` (initialize); DI patterns |
+| 4 | `src/rbac_console/data/seed.py` | Boot-time seeding; `Result` error handling |
+| 5 | `src/rbac_console/controllers/api.py` | Result-returning handlers → auto HTTP status mapping |
+| 6 | `src/rbac_console/repository/session_repository.py` | Protocol binding (contracts ↔ implementation) |
+| 7 | `src/rbac_console/domain/articles.py` · `personas.py` | Framework-agnostic domain stores as singletons |
+| 8 | `src/rbac_console/ui/pages.py` | Page controllers: serve HTML/assets only, no logic |
 
 ```
 demos/auth-rbac/

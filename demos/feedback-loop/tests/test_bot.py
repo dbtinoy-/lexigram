@@ -1,4 +1,9 @@
-"""Bot registry surface tests."""
+"""Bot registry surface tests.
+
+Convention: unit tests for domain data invariants.  These verify that
+the ``BOT``, ``TRACE_IDS``, and ``POOR_KEYS`` registries are consistent
+and that the error hierarchy matches contracts base classes.
+"""
 
 from __future__ import annotations
 

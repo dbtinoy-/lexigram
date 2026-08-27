@@ -1,4 +1,16 @@
-"""Domain model for the resilient rates demo."""
+"""Domain model for the resilient rates demo.
+
+Convention followed: **Value type** — ``RateQuote`` is a frozen dataclass
+that represents a single exchange-rate observation.  It carries no
+behavior beyond serialization/deserialization and is passed freely across
+layer boundaries.
+
+The ``source`` field tracks where the quote came from:
+
+- ``"upstream"`` — freshly fetched from the simulated provider
+- ``"cache"`` — served from the cache-aside layer
+- ``"stale"`` — served from the stale store while the circuit is open
+"""
 
 from __future__ import annotations
 

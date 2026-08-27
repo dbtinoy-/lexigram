@@ -8,13 +8,20 @@ from __future__ import annotations
 
 from typing import cast
 
-from auth_web.repository import InMemorySessionRepository
-from auth_web.services.password_change import PasswordChangeService
 from starlette.requests import Request
 
-from lexigram.auth.authn.schemas.requests import RegisterRequest
-from lexigram.auth.authn.services import AuthenticationService
-from lexigram.auth.authz.service import AuthorizationService
+from auth_web.config import AuthWebConfig
+from auth_web.services.account_verification import DemoAccountVerificationService
+from auth_web.services.password_change import PasswordChangeService
+from auth_web.services.password_reset import DemoPasswordResetService
+from lexigram.auth import (
+    AuthenticationService,
+    SessionCookieBackend,
+    TokenError,
+    User,
+)
+from lexigram.auth.authn import RegisterRequest
+from lexigram.auth.authz import AuthorizationService
 from lexigram.auth.exceptions import (
     AccountLockedError,
     AuthenticationError,
@@ -22,17 +29,12 @@ from lexigram.auth.exceptions import (
     InvalidCredentialsError,
     PasswordPolicyError,
 )
-from lexigram.auth.models.user import User
-from lexigram.auth.session.cookie_backend import SessionCookieBackend
-from lexigram.contracts.auth.exceptions import TokenError
-from lexigram.contracts.exceptions.domain import (
-    NotFoundError,
-)
+from lexigram.contracts.auth import SessionRepositoryProtocol
 from lexigram.logging import get_logger
 from lexigram.primitives import clock
 from lexigram.result import Err, Ok, Result
 from lexigram.serialization import loads as json_loads
-from lexigram.web import Controller, JSONResponse, get, post
+from lexigram.web import Controller, JSONResponse, NotFoundError, get, post
 
 logger = get_logger(__name__)
 
@@ -44,38 +46,60 @@ class AuthApiController(Controller):
         self,
         authentication: AuthenticationService,
         cookies: SessionCookieBackend,
-        sessions: InMemorySessionRepository,
+        sessions: SessionRepositoryProtocol,
         authz: AuthorizationService,
         password_changes: PasswordChangeService,
+        password_resets: DemoPasswordResetService,
+        verification: DemoAccountVerificationService,
+        config: AuthWebConfig | None = None,
     ) -> None:
         self._authentication = authentication
         self._cookies = cookies
         self._sessions = sessions
         self._authz = authz
         self._password_changes = password_changes
+        self._password_resets = password_resets
+        self._verification = verification
+        self._config = config or AuthWebConfig()
 
     @post("/api/register")
     async def register(
         self,
         request: Request,
     ) -> Result[JSONResponse, EmailExistsError | PasswordPolicyError]:
-        """Create an account and start a session for it."""
+        """Create an account and start a session for it.
+
+        If ``auto_send_verification`` is enabled in config, a verification
+        token is returned in the response (simulated email delivery).
+        """
         data = json_loads(await request.body())
-        result = await self._authentication.register_user(
-            RegisterRequest(
+        try:
+            req = RegisterRequest(
                 name=str(data.get("name", "")),
                 email=str(data.get("email", "")),
                 password=str(data.get("password", "")),
                 confirm_password=str(data.get("confirm_password", "")),
             )
-        )
+        except ValueError as e:
+            return Err(PasswordPolicyError(str(e)))
+
+        result = await self._authentication.register_user(req)
         if result.is_err():
             return Err(result.unwrap_err())
 
         user = result.unwrap()
-        response = JSONResponse(
-            {"ok": True, "user": {"email": user.email}}, status_code=201
-        )
+        body: dict = {"ok": True, "user": {"email": user.email}}
+
+        if self._config.registration.auto_send_verification:
+            token_result = await self._verification.send_verification(user.user_id)
+            if token_result.is_ok():
+                body["verification_token"] = token_result.unwrap()
+                logger.info(
+                    "auto_verification_sent",
+                    user_id=user.user_id,
+                )
+
+        response = JSONResponse(body, status_code=201)
         await self._cookies.login(response, user.user_id)
         return Ok(response)
 
@@ -218,6 +242,77 @@ class AuthApiController(Controller):
 
         await self._sessions.revoke(session_id)
         return Ok({"ok": True})
+
+    @post("/api/forgot-password")
+    async def forgot_password(
+        self,
+        request: Request,
+    ) -> Result[JSONResponse, AuthenticationError]:
+        """Request a password reset token for the given email.
+
+        Returns the token directly (simulated email delivery for the demo).
+        Always returns 200 to prevent email enumeration.
+        """
+        data = json_loads(await request.body())
+        email = str(data.get("email", ""))
+
+        result = await self._password_resets.request_reset(email)
+        if result.is_err():
+            # Return 200 even on error to prevent email enumeration.
+            return Ok(JSONResponse({"ok": True}))
+
+        return Ok(JSONResponse({"ok": True, "reset_token": result.unwrap()}))
+
+    @post("/api/reset-password")
+    async def reset_password(
+        self,
+        request: Request,
+    ) -> Result[JSONResponse, PasswordPolicyError]:
+        """Reset a password using a valid reset token."""
+        data = json_loads(await request.body())
+        token = str(data.get("token", ""))
+        new_password = str(data.get("new_password", ""))
+
+        result = await self._password_resets.confirm_reset(token, new_password)
+        if result.is_err():
+            return Err(PasswordPolicyError(str(result.unwrap_err())))
+        return Ok(JSONResponse({"ok": True}))
+
+    @post("/api/verify-email")
+    async def verify_email(
+        self,
+        request: Request,
+    ) -> Result[JSONResponse, AuthenticationError]:
+        """Verify the session user's email with a verification token."""
+        user = await self._cookies.authenticate(request)
+        if user is None:
+            return Err(AuthenticationError("not authenticated"))
+
+        data = json_loads(await request.body())
+        token = str(data.get("token", ""))
+
+        result = await self._verification.verify(token)
+        if result.is_err():
+            return Err(AuthenticationError(str(result.unwrap_err())))
+        return Ok(JSONResponse({"ok": True}))
+
+    @post("/api/send-verification")
+    async def send_verification(
+        self,
+        request: Request,
+    ) -> Result[JSONResponse, AuthenticationError]:
+        """Send a verification email for the session user.
+
+        Returns the token directly (simulated email delivery for the demo).
+        """
+        user = await self._cookies.authenticate(request)
+        if user is None:
+            return Err(AuthenticationError("not authenticated"))
+
+        result = await self._verification.send_verification(user.user_id)
+        if result.is_err():
+            return Err(AuthenticationError(str(result.unwrap_err())))
+        return Ok(JSONResponse({"ok": True, "verification_token": result.unwrap()}))
 
 
 __all__ = ["AuthApiController"]

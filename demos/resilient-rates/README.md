@@ -1,5 +1,7 @@
 # Resilient Rates Demo
 
+> Module name: `rates` — run with `PYTHONPATH=src uv run python -m rates`
+
 Demonstrates the **resilience + cache subsystems** of Lexigram.
 
 This demo is a small FX rate desk in front of a hostile upstream. Every read
@@ -12,86 +14,86 @@ locks collapse concurrent misses into one upstream call.
 No network, broker, or external service is required — the upstream is a
 deterministic seeded random-walk provider whose faults you script live.
 
-## REST API
+## Lexigram concepts used
 
-```bash
-PYTHONPATH=demos/resilient-rates/src uv run python -m rates serve            # :7073 (override: LEX_WEB__SERVER__PORT)
-curl localhost:7073/rates/EUR/USD       # quote via cache → pipeline → stale
-curl -X POST localhost:7073/scenario/down   # flip upstream health live
-curl localhost:7073/stats               # hits/misses/retries/stale
-```
-
+| Concept | Where in this demo | Your app |
+|---------|-------------------|----------|
+| Composition root | `app.py` | Replace modules/providers list |
+| Resilience pipeline | `services/rates_service.py` | `ResiliencePipelineFactoryProtocol` |
+| Cache-aside + stale | `services/rates_service.py` | `CacheBackendProtocol`, `StampedeProtectedCache` |
+| Scriptable faults | `repository/simulated_upstream.py` | `FaultController` via DI |
+| Custom config model | `config.py` → `RatesConfig` | Add demo-specific knobs in `demo:` section |
+| Provider lifecycle | `di/provider.py` | register() binds, boot() wires faults |
 
 ## What it shows
 
 | Piece | Where | Lexigram API used |
 |-------|-------|-------------------|
-| Resilience pipeline (retry → breaker → timeout) | `src/rates/service.py` | `ResiliencePipelineFactoryProtocol`, `RetryConfig`, `CircuitBreakerConfig`, `TimeoutConfig` |
-| Cache-aside reads + TTL writes | `src/rates/service.py` | `CacheBackendProtocol`, `Result[Ok, Err]` cache results |
-| Stale fallback while the circuit is OPEN | `src/rates/service.py` | `CircuitOpenError`, `RetryExhaustedError` handling |
-| Single-flight (per-key locks) | `src/rates/service.py` | `asyncio.Lock` keyed map around the pipeline call |
-| Scriptable fault scenarios | `src/rates/provider.py` | `FaultController` (container-managed), `Scenario` enum |
-| Module wiring | `src/rates/module.py` | `ResilienceModule.configure()`, `CacheModule.configure()`, `@module` |
-| DI provider | `src/rates/di/provider.py` | `Provider` registering service + faults |
-| CLI | `src/rates/main.py` | `Application.boot()` + container resolution |
-
-## Scenarios
-
-Flip upstream health at any time with `PYTHONPATH=demos/resilient-rates/src uv run python -m rates scenario <name>`:
-
-| Scenario | Upstream behavior |
-|----------|-------------------|
-| `healthy` | Always answers with a fresh random-walk quote |
-| `flaky` | ~70% of calls raise a timeout — retries absorb them |
-| `down` | Hard failure on every call — breaker opens, stale serves |
-| `slow` | Adds latency to every call — exercises the timeout tier |
+| Resilience pipeline (retry → breaker → timeout) | `services/rates_service.py` | `ResiliencePipelineFactoryProtocol`, `RetryConfig`, `CircuitBreakerConfig`, `TimeoutConfig` |
+| Cache-aside reads + TTL writes | `services/rates_service.py` | `CacheBackendProtocol`, `Result[Ok, Err]` cache results |
+| Stale fallback while the circuit is OPEN | `services/rates_service.py` | `CircuitOpenError`, `RetryExhaustedError` handling |
+| Single-flight (per-key locks) | `services/rates_service.py` | `StampedeProtectedCache` around the pipeline call |
+| Scriptable fault scenarios | `repository/simulated_upstream.py` | `FaultController` (container-managed), `Scenario` enum |
+| Module wiring | `app.py` | `ResilienceModule.configure()`, `CacheModule.configure()`, `WebModule.configure()` |
+| DI provider | `di/provider.py` | `Provider` registering service + faults |
+| REST API | `controllers/api.py` | `Controller`, `@get`, `@post`, `ResultResponseMapper` |
+| Web UI | `ui/views/desk.html` + `ui/static/app.js` | Vanilla JS client for all endpoints |
 
 ## Run it
 
 ```bash
-PYTHONPATH=demos/resilient-rates/src uv run python -m rates demo
+cd demos/resilient-rates
+PYTHONPATH=src uv run python -m rates
 ```
 
-`demo` runs the whole story in one process across five acts:
+Open `http://localhost:7073` for the rate desk console.
 
-1. **healthy — cache-aside**: first fetch misses and hits the upstream, second
-   fetch is served from cache.
-2. **flaky — retries absorb timeouts**: backoff retries soak up the flaky
-   upstream until a quote lands.
-3. **down — breaker opens, stale serves reads**: after the threshold the
-   circuit opens and every read falls back to the last known-good quote.
-4. **heal — HALF_OPEN probe closes the circuit**: recovery window passes, one
-   probe succeeds, the circuit closes.
-5. **stampede — single-flight collapses 10 into 1**: ten concurrent fetchers
-   of a cold key produce exactly one upstream call.
+## Layout — read it in this order
 
-You can also drive each piece yourself:
-
-```bash
-PYTHONPATH=demos/resilient-rates/src uv run python -m rates fetch EUR/USD        # one quote (cache → upstream → stale)
-PYTHONPATH=demos/resilient-rates/src uv run python -m rates scenario flaky       # flip upstream health live
-PYTHONPATH=demos/resilient-rates/src uv run python -m rates stats                # hits / misses / upstream / retries / stale
-PYTHONPATH=demos/resilient-rates/src uv run python -m rates clear-cache          # drop cached quotes
-PYTHONPATH=demos/resilient-rates/src uv run python -m rates stampede USD/JPY     # 10 concurrent fetches of one pair
-```
-
-All state is in-memory and per-process: each invocation boots a fresh
-application, so scenarios and caches reset between commands. Use `demo` for
-the full narrative in a single process, or the test suite below.
-
-## Layout
+| # | File | Lesson |
+|---|------|--------|
+| 1 | `src/rates/app.py` | ⭐ Composition root: modules → providers → create_app |
+| 2 | `src/rates/main.py` | Lifecycle: `Application.start/stop`, graceful shutdown |
+| 3 | `src/rates/config.py` | Custom config model: `RatesConfig` for `demo:` section |
+| 4 | `src/rates/di/provider.py` | DI wiring: register() binds pipeline + cache, boot() wires faults |
+| 5 | `src/rates/services/rates_service.py` | Cache-aside + resilience + single-flight + stale |
+| 6 | `src/rates/repository/simulated_upstream.py` | FaultController: scriptable upstream scenarios |
+| 7 | `src/rates/controllers/api.py` | REST API: fetch, stats, scenario, cache, stampede, demo |
+| 8 | `application.yaml` | Cache + resilience + web + demo config sections |
 
 ```
 demos/resilient-rates/
 ├── src/rates/
-│   ├── domain.py          # RateQuote value type
-│   ├── exceptions.py      # UpstreamTimeoutError / UpstreamUnavailableError / RateUnavailableError
-│   ├── provider.py        # SimulatedRatesProvider (seeded random walk) + FaultController + Scenario
-│   ├── service.py         # RatesService: cache-aside + resilience pipeline + single-flight + stale tier
-│   ├── di/provider.py     # RatesProvider (wires cache, pipeline factory, provider, faults)
-│   ├── module.py          # RatesModule (imports ResilienceModule + CacheModule)
-│   └── main.py            # CLI + five-act demo
-└── tests/                 # pytest suite (boots the module, drives every scenario)
+│   ├── app.py                 # ⭐ composition root (start here)
+│   ├── main.py                # entry point / lifecycle
+│   ├── config.py              # RatesConfig for demo: section
+│   ├── domain.py              # RateQuote value type
+│   ├── exceptions.py          # RateProviderError hierarchy
+│   ├── di/
+│   │   └── provider.py        # RatesProvider (wires cache, pipeline, faults)
+│   ├── controllers/
+│   │   └── api.py             # REST endpoints (fetch, stats, scenario, demo)
+│   ├── repository/
+│   │   └── simulated_upstream.py  # SimulatedRatesProvider + FaultController
+│   ├── services/
+│   │   └── rates_service.py   # RatesService: cache + resilience + stale
+│   └── ui/
+│       ├── pages.py           # Static serving routes
+│       ├── static/app.js      # Vanilla JS client
+│       └── views/desk.html    # Single-page console
+├── application.yaml           # cache + resilience + web + demo sections
+└── tests/                     # scenario-driven resilience tests
+```
+
+## REST API
+
+```bash
+curl localhost:7073/rates/EUR/USD              # quote via cache → pipeline → stale
+curl localhost:7073/stats                      # hits/misses/retries/stale
+curl -X POST localhost:7073/scenario/down      # flip upstream health live
+curl -X POST localhost:7073/cache/clear        # drop cached quotes
+curl -X POST localhost:7073/stampede/USD/JPY   # 10 concurrent fetches → 1 upstream call
+curl -X POST localhost:7073/demo               # five-act guided walkthrough
 ```
 
 ## Tests
@@ -99,8 +101,3 @@ demos/resilient-rates/
 ```bash
 uv run pytest demos/resilient-rates/tests -q
 ```
-
-The tests boot the real module (framework memory cache backend + real
-resilience pipeline), script each fault scenario through the
-`FaultController`, and assert on stats: retry absorption, breaker opening,
-stale serving, HALF_OPEN healing, and single-flight collapse.

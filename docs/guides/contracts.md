@@ -78,7 +78,7 @@ imports of the known local protocol modules (see the `local-protocols-scoped`
 contract). Run the check with:
 
 ```bash
-uv run python tools/lint_imports.py
+uv run python dev/checks/lint_imports.py
 ```
 
 ### R5 — One canonical definition
@@ -145,5 +145,5 @@ them.
 - [ ] If experimental: is the domain dir sanctioned (ai/multimedia/admin/ui/cli) or does it need a proposal (R2)?
 - [ ] Does it import only core domains (R3)?
 - [ ] If it stays local: is it a single-package seam, and does it pass
-      `python tools/lint_imports.py` (R4)?
+      `python dev/checks/lint_imports.py` (R4)?
 - [ ] Consumer-only? Leave it in the consumer project (R6).

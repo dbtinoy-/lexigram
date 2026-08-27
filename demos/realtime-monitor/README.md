@@ -1,6 +1,6 @@
 # Realtime Monitor Demo
 
-> Module name: `ops_console` — run with `PYTHONPATH=demos/realtime-monitor/src uv run python -m ops_console`
+> Module name: `ops_console` — run with `PYTHONPATH=src uv run python -m ops_console`
 
 Demonstrates the **real-time web** subsystem of Lexigram.
 
@@ -10,49 +10,73 @@ over a **WebSocket** channel and publish events straight into the same stream
 so every dashboard updates live. No external services, databases, or CDN
 assets are required — the browser client is a dependency-free `EventSource`.
 
+## Lexigram concepts used
+
+| Concept | Where in this demo | Your app |
+|---------|-------------------|----------|
+| Composition root | `app.py` | Replace controllers/providers list |
+| Provider lifecycle | `di/provider.py` | register() binds, boot() initializes heartbeat |
+| SSE streaming | `controllers/console.py` | `AbstractSSEHandler` for real-time push |
+| WebSocket handler | `controllers/operator.py` | `AbstractWebSocketHandler` for bidirectional |
+| Custom config model | `config.py` → `RealtimeConfig` | Add demo-specific knobs in `demo:` section |
+| Event bus | `services/event_stream.py` | In-memory pub/sub with replay |
+
 ## What it shows
 
 | Piece | Where | Lexigram API used |
 |-------|-------|-------------------|
-| In-process pub/sub bus with history replay and bounded queues | `src/ops_console/services/event_stream.py` | plain `asyncio` primitives |
-| SSE streaming endpoint (replay-then-live + heartbeats) | `src/ops_console/controllers/console.py` | `AbstractSSEHandler`, `EventSourceResponse` |
-| HTTP publish endpoint (`POST /api/events`) | `src/ops_console/controllers/console.py` | `Controller` + `@get` / `@post` |
-| WebSocket operator channel (bidirectional) | `src/ops_console/controllers/operator.py` | `AbstractWebSocketHandler` |
-| Dashboard page (vanilla JS `EventSource`, no frameworks) | `src/ops_console/controllers/console.py` | `lexigram.ui` + `HTMLContent` |
-| DI wiring + heartbeat producer + route hookup | `src/ops_console/di/provider.py` | `Provider`, provider lifecycle priorities |
+| In-process pub/sub bus with history replay and bounded queues | `services/event_stream.py` | plain `asyncio` primitives |
+| SSE streaming endpoint (replay-then-live + heartbeats) | `controllers/console.py` | `AbstractSSEHandler`, `EventSourceResponse` |
+| HTTP publish endpoint (`POST /api/events`) | `controllers/console.py` | `Controller` + `@get` / `@post` |
+| WebSocket operator channel (bidirectional) | `controllers/operator.py` | `AbstractWebSocketHandler` |
+| Dashboard page (vanilla JS `EventSource`, no frameworks) | `ui/pages.py` | `lexigram.ui` + `HTMLContent` |
+| DI wiring + heartbeat producer + route hookup | `di/provider.py` | `Provider`, provider lifecycle priorities |
 
 ## Run it
 
 ```bash
-PYTHONPATH=demos/realtime-monitor/src uv run python -m ops_console                 # serves http://127.0.0.1:7071
+cd demos/realtime-monitor
+PYTHONPATH=src uv run python -m ops_console
 ```
 
 Open http://127.0.0.1:7071 in two browsers — you should see the same live
 heartbeats appear in both. Then push a manual event:
 
 ```bash
-PYTHONPATH=demos/realtime-monitor/src uv run python -m ops_console --publish --message "deploy request approved"
+PYTHONPATH=src uv run python -m ops_console --publish --message "deploy request approved"
 ```
 
-Big picture: the SSE handler replays recent history for a brand-new subscriber,
-so a dashboard that connects late still renders the latest state instead of a
-blank page. The WebSocket channel lets an operator (or a script) inject events
-without refreshing or reloading anything.
+## Layout — read it in this order
 
-## Layout
+| # | File | Lesson |
+|---|------|--------|
+| 1 | `src/ops_console/app.py` | ⭐ Composition root: config → modules → providers |
+| 2 | `src/ops_console/main.py` | Lifecycle: `Application.start/stop`, CLI publish |
+| 3 | `src/ops_console/di/provider.py` | DI wiring: register() binds, boot() starts heartbeat |
+| 4 | `src/ops_console/config.py` | Custom config model: `RealtimeConfig` for `demo:` section |
+| 5 | `src/ops_console/services/event_stream.py` | Event bus: pub/sub, replay, bounded queues |
+| 6 | `src/ops_console/controllers/console.py` | SSE streaming + HTTP publish endpoint |
+| 7 | `src/ops_console/controllers/operator.py` | WebSocket operator channel |
+| 8 | `application.yaml` | Web + demo config sections |
 
 ```
 demos/realtime-monitor/
 ├── src/ops_console/
-│   ├── domain.py                 # SystemEvent value type + Severity enum
-│   ├── services/event_stream.py  # EventStreamService (pub/sub + replay)
+│   ├── app.py                 # ⭐ composition root (start here)
+│   ├── main.py                # entry point / lifecycle + CLI publish
+│   ├── config.py              # RealtimeConfig for demo: section
+│   ├── domain.py              # SystemEvent value type + Severity enum
+│   ├── di/
+│   │   └── provider.py        # RealtimeProvider (wiring + heartbeat)
 │   ├── controllers/
-│   │   ├── console.py            # dashboard + SSE + HTTP publish
-│   │   └── operator.py           # WebSocket operator handler
-│   ├── di/provider.py            # RealtimeProvider (wiring + heartbeat)
-│   ├── module.py                 # RealtimeModule (binds web layer)
-│   └── main.py                   # server + publish CLI
-└── tests/                        # pytest suite (asyncio mode auto)
+│   │   ├── console.py         # dashboard + SSE + HTTP publish
+│   │   └── operator.py        # WebSocket operator handler
+│   ├── services/
+│   │   └── event_stream.py    # EventStreamService (pub/sub + replay)
+│   └── ui/
+│       └── pages.py           # Dashboard HTML page
+├── application.yaml           # web + demo sections (LEX_* overrides win)
+└── tests/                     # bus isolation + HTTP/WebSocket tests
 ```
 
 ## Tests
@@ -60,18 +84,3 @@ demos/realtime-monitor/
 ```bash
 uv run pytest demos/realtime-monitor/tests -q
 ```
-
-The tests cover the bus in isolation (fan-out to many subscribers, replay for
-late subscribers, and the drop-oldest behavior for slow consumers), plus HTTP
-and WebSocket endpoints exercised through a Starlette `TestClient`.
-
-## Known boot noise
-
-On startup the server may log one
-`web.contributor_mount_failed ... 'admin_bundle'` error. This comes from
-**optional-package contributor discovery**: any installed package that
-declares a `lexigram.admin.contributors` entry point (today:
-`lexigram-auth`) is loaded into every web app's registry, and its mount
-resolves an admin bundle only the full admin application registers. The
-failure is isolated by design — the demo neither imports nor needs the admin
-panel, and serving is unaffected.

@@ -26,7 +26,7 @@ import sys
 import tomllib
 
 
-from dev.core.package_inventory import discover_package_paths
+from dev._lib.package_inventory import discover_package_paths
 
 _REQ_NAME = re.compile(r"^([A-Za-z0-9._-]+)")
 

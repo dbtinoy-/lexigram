@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import httpx
 import pytest
-from starlette.applications import Starlette
 
-from auth_web.di.provider import DEMO_EMAIL, DEMO_PASSWORD
+# Test credentials — must match application.yaml users section.
+DEMO_EMAIL = "admin@auth.demo"
+DEMO_PASSWORD = "Admin-Pass-123!"
 
 
-def second_browser(app: Starlette) -> httpx.AsyncClient:
+def _second_browser(app) -> httpx.AsyncClient:
     """An independent browser (own cookie jar) over the same running app."""
     return httpx.AsyncClient(
         transport=httpx.ASGITransport(app=app), base_url="http://testserver"
@@ -37,9 +38,9 @@ async def test_profile_returns_claims_and_sessions(authed: httpx.AsyncClient) ->
 
 
 async def test_revoke_second_session_kills_it(
-    app: Starlette, authed: httpx.AsyncClient
+    app, authed: httpx.AsyncClient
 ) -> None:
-    second = second_browser(app)
+    second = _second_browser(app)
     await second.post(
         "/api/login", json={"email": DEMO_EMAIL, "password": DEMO_PASSWORD}
     )
@@ -79,7 +80,7 @@ async def test_change_password_wrong_current_is_error(
 
 
 async def test_change_password_updates_and_relogin_works(
-    app: Starlette, authed: httpx.AsyncClient
+    app, authed: httpx.AsyncClient
 ) -> None:
     changed = await authed.post(
         "/api/profile/password",
@@ -91,7 +92,7 @@ async def test_change_password_updates_and_relogin_works(
     )
     assert changed.status_code == 200
 
-    fresh = second_browser(app)
+    fresh = _second_browser(app)
     relogin = await fresh.post(
         "/api/login", json={"email": DEMO_EMAIL, "password": "Brand-New-Pass-1"}
     )

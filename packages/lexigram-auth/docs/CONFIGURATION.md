@@ -40,7 +40,6 @@ The configuration section key is **`auth`**. Values are read from YAML, environm
 | `id_token_expire` | `Duration` | `1 hour` | `LEX_AUTH__TOKEN__ID_TOKEN_EXPIRE` | ID token lifetime |
 | `key_rotation_grace_period` | `Duration` | `300 seconds` | `LEX_AUTH__TOKEN__KEY_ROTATION_GRACE_PERIOD` | Grace period for rotated keys |
 | `required_audience` | `str` | `None` | `LEX_AUTH__TOKEN__REQUIRED_AUDIENCE` | Required `aud` claim |
-| `allow_unverified_dev` | `bool` | `False` | `LEX_AUTH__TOKEN__ALLOW_UNVERIFIED_DEV` | Allow unverified decode in dev |
 
 ## `password`: `PasswordConfig`
 

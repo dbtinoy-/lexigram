@@ -1,4 +1,7 @@
 """Dict-backed API-key repository for the demo."""
+# Repository pattern — implements APIKeyRepositoryProtocol
+# from lexigram-contracts. This is the in-memory demo adapter; swap
+# for a database-backed implementation in production.
 
 from __future__ import annotations
 
@@ -22,6 +25,11 @@ class InMemoryAPIKeyRepository(APIKeyRepositoryProtocol):
     the manager supplied (name, key_hash, prefix, user_id, scopes,
     expires_at, created_at, updated_at).
     """
+
+    # Protocol-based design — the class implements the
+    # protocol from contracts, not a base class. Framework code resolves
+    # APIKeyRepositoryProtocol; this concrete class is registered in
+    # the DI container.
 
     _rows: dict[str, dict[str, Any]] = field(default_factory=dict)
     _seq: int = 0

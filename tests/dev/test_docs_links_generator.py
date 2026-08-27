@@ -32,7 +32,7 @@ def _write_workspace(root: Path) -> None:
     (root / "lexigram-web" / "docs" / "index.md").write_text("# web\n", encoding="utf-8")
     (root / "lexigram-bare").mkdir()
 
-    # Workspace manifest required by the package inventory (dev/core/package_inventory.py).
+    # Workspace manifest required by the package inventory (dev/_lib/package_inventory.py).
     (root / "pyproject.toml").write_text(
         "[tool.uv.workspace]\nmembers = [\"lexigram-web\", \"lexigram-bare\"]\n",
         encoding="utf-8",

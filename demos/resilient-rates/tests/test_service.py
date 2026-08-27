@@ -10,16 +10,16 @@ import pytest
 
 from lexigram.cache.backends.memory.backend import MemoryCacheBackend
 from lexigram.cache.service.stampede import StampedeProtectedCache
-from lexigram.contracts.infra.resilience.models import (
+from lexigram.resilience import (
     CircuitBreakerConfig,
+    ResiliencePipeline,
     RetryConfig,
     TimeoutConfig,
 )
-from lexigram.resilience.pipeline.executor import ResiliencePipeline
 
 from rates.exceptions import RateUnavailableError
-from rates.repository.simulated_upstream import FaultController, Scenario, SimulatedRatesProvider
-from rates.services.rates_service import RatesService
+from rates.repository import FaultController, Scenario, SimulatedRatesProvider
+from rates.services import RatesService
 
 
 def make_pipeline_factory() -> Any:

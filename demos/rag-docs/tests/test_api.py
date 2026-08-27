@@ -1,40 +1,13 @@
 """REST endpoint tests for the rag-docs demo.
 
-Boots the composition root (corpus ingestion at boot included) and
-which ingests the corpus at boot — and drives the real routes via an
-``httpx.AsyncClient`` over the framework's ASGI app.
+Uses the shared ``client`` fixture from ``tests/conftest.py`` which boots
+the composition root (corpus ingestion included) and drives the real
+routes via an ``httpx.AsyncClient`` over the framework's ASGI app.
 """
 
 from __future__ import annotations
 
-from typing import AsyncIterator
-
 import httpx
-import pytest
-
-from lexigram.web.di.provider import WebProvider
-
-from rag_docs.app import create_app
-
-
-@pytest.fixture
-async def client() -> AsyncIterator[httpx.AsyncClient]:
-    application = create_app()
-    await application.start()
-    try:
-        web = await application.container.resolve(WebProvider)
-        transport = httpx.ASGITransport(app=web.starlette)
-        async with httpx.AsyncClient(
-            transport=transport, base_url="http://test"
-        ) as http:
-            yield http
-    finally:
-        await application.stop()
-
-
-from lexigram.web.di.provider import WebProvider
-
-from rag_docs.app import create_app  # noqa: E402  (after sys.path setup)
 
 
 async def test_ask_returns_answer_with_citations(

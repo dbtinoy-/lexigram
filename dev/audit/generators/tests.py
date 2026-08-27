@@ -6,8 +6,8 @@ import re
 from time import perf_counter
 
 from dev.audit.generators.base import MarkdownAuditGenerator
-from dev.core.command_runner import run_command
-from dev.core.evidence import CommandEvidence
+from dev._lib.command_runner import run_command
+from dev._lib.evidence import CommandEvidence
 
 TEST_COMMAND_TIMEOUT_SECONDS = 120.0
 

@@ -1,28 +1,11 @@
-"""Smoke tests for the docs console page routes."""
+"""Smoke tests for the docs console page routes.
+
+Uses the shared ``client`` fixture from ``tests/conftest.py``.
+"""
 
 from __future__ import annotations
 
 import httpx
-import pytest
-
-
-@pytest.fixture
-async def client():
-    from lexigram.web.di.provider import WebProvider
-
-    from rag_docs.app import create_app
-
-    application = create_app()
-    await application.start()
-    try:
-        web = await application.container.resolve(WebProvider)
-        transport = httpx.ASGITransport(app=web.starlette)
-        async with httpx.AsyncClient(
-            transport=transport, base_url="http://testserver"
-        ) as http:
-            yield http
-    finally:
-        await application.stop()
 
 
 async def test_root_serves_console(client: httpx.AsyncClient) -> None:

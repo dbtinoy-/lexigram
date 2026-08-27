@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import ClassVar
 
 from lexigram.config.base import BaseConfig
@@ -18,6 +19,7 @@ from lexigram.web.security.config.headers import (
 )
 
 
+@dataclass(init=False)
 class SecurityConfig(BaseConfig):
     """Root HTTP security configuration for lexigram-web.
 

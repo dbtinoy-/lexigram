@@ -17,16 +17,57 @@
   `budget_exceeded`) queryable from the resolved store
 - **Live toggle** — policy off bypasses gate, guards, and cost tracking
 
-## Layout
+## Lexigram patterns used
 
-House flat structure with auth-web's co-located `ui/`. Package is named
-`guard_gate` (never `guard` — namespace shadow).
+| Pattern | Where | What to reuse |
+|---|---|---|
+| Composition root | `app.py` | Single wiring file for your app |
+| Module.configure() | `app.py` | Declarative framework capabilities |
+| Provider register/boot | `di/provider.py` | Two-phase service lifecycle |
+| Registry dispatch | `repository/acts.py` | Replace if/elif with Registry |
+| Result-typed controllers | `controllers/api.py` | Automatic error→ProblemDetail mapping |
+| Protocol-based DI | `domain/guarded_assistant.py` | Swap implementations without code changes |
+| Frozen dataclasses | `domain/`, `repository/` | Immutable value types |
+| Container singleton | `domain/policy.py` | Live config shared across services |
+
+## Layout — read it in this order
+
+Start at the composition root and follow the wiring outward.
+Each file has teaching comments explaining the Lexigram convention it follows.
+
+| # | File | Lesson |
+|---|------|--------|
+| 1 | `src/guard_gate/app.py` | ⭐ Composition root: config → modules → providers |
+| 2 | `src/guard_gate/main.py` | Lifecycle: `Application.start/stop`, graceful shutdown |
+| 3 | `src/guard_gate/di/provider.py` | `register()` (bind) vs `boot()` (initialize); two-phase DI |
+| 4 | `src/guard_gate/domain/policy.py` | Container singleton for live config shared across services |
+| 5 | `src/guard_gate/domain/guarded_assistant.py` | Protocol-based DI: swap implementations without code changes |
+| 6 | `src/guard_gate/repository/acts.py` | Registry dispatch replacing if/elif chains |
+| 7 | `src/guard_gate/controllers/api.py` | Result-typing: automatic error→ProblemDetail mapping |
+| 8 | `src/guard_gate/ui/` | Page controllers: serve HTML/assets only, no logic |
+
+```
+demos/ai-guardrails/
+├── src/guard_gate/
+│   ├── app.py                # composition root (start here)
+│   ├── main.py               # entry point / lifecycle
+│   ├── di/provider.py        # DI wiring + boot() assembly
+│   ├── domain/
+│   │   ├── guarded_assistant.py  # the guarded pipeline
+│   │   └── policy.py            # live toggle
+│   ├── controllers/api.py    # JSON API: ask/policy/state/audit
+│   ├── repository/acts.py    # scripted demo acts
+│   └── ui/                   # pages controller + views/ + static/
+├── application.yaml          # web/guard/governance config
+└── tests/                    # e2e flow via ASGITransport
+```
 
 ## Run
 
 ```bash
-PYTHONPATH=demos/ai-guardrails/src uv run python -m guard_gate
-# → http://127.0.0.1:8084  (override: --port / GUARD_GATE_PORT)
+cd demos/ai-guardrails
+PYTHONPATH=src uv run python -m guard_gate
+# → http://127.0.0.1:8084
 ```
 
 | Act | Outcome |

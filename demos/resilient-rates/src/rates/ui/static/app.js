@@ -112,6 +112,50 @@ async function clearCache() {
   }
 }
 
+async function stampede() {
+  const btn = $("btn-stampede");
+  btn.disabled = true;
+  btn.textContent = "Running...";
+  try {
+    const res = await fetch("/stampede/USD/JPY?workers=10", { method: "POST" });
+    const data = await res.json();
+    if (data.ok) {
+      log("stampede: " + data.workers + " workers &rarr; " + data.distinct_rates + " distinct rate(s), " + data.upstream_calls + " upstream call(s)");
+      await refreshStats();
+    } else {
+      log("stampede failed", "log-error");
+    }
+  } catch (e) {
+    log("stampede failed: " + e.message, "log-error");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Stampede (10 concurrent)";
+  }
+}
+
+async function runDemo() {
+  const btn = $("btn-demo");
+  btn.disabled = true;
+  btn.textContent = "Running demo...";
+  log("=== 5-act demo started ===", "log-hit");
+  try {
+    const res = await fetch("/demo", { method: "POST" });
+    const data = await res.json();
+    if (data.ok) {
+      log("=== demo complete (" + data.acts + " acts) ===", "log-hit");
+    } else {
+      log("demo stopped at act " + (data.act || "?") + ": " + (data.error || "unknown"), "log-error");
+    }
+    await refreshStats();
+    await fetchAll();
+  } catch (e) {
+    log("demo failed: " + e.message, "log-error");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Run 5-Act Demo";
+  }
+}
+
 function buildCards() {
   const container = $("pair-cards");
   PAIRS.forEach((pair) => {
@@ -138,6 +182,8 @@ document.querySelectorAll("#scenarios button").forEach((b) =>
   b.addEventListener("click", () => setScenario(b.dataset.scenario))
 );
 $("clear-cache").addEventListener("click", clearCache);
+$("btn-stampede").addEventListener("click", stampede);
+$("btn-demo").addEventListener("click", runDemo);
 
 /* Initial load */
 fetchAll();

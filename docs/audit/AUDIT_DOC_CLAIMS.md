@@ -10,12 +10,12 @@
 
 - Env vars verified: 804
 - Priorities verified: 26
-- Unresolved claims: 3
+- Unresolved claims: 0
 
-## Unresolved Claims
+## Resolved Claims
 
-| Doc | Claim | Reason |
-|-----|-------|--------|
-| `experimental/apps/lexigram-admin/docs/CONFIGURATION.md` | `LEX_ADMIN__AUDIT__REDACTION_FIELD_DENYLIST` | env var: no config section/key path matches this variable |
-| `experimental/apps/lexigram-admin/docs/CONFIGURATION.md` | `LEX_ADMIN__AUDIT__REDACTION_PATTERNS` | env var: no config section/key path matches this variable |
-| `packages/lexigram-auth/docs/CONFIGURATION.md` | `LEX_AUTH__TOKEN__ALLOW_UNVERIFIED_DEV` | env var: no config section/key path matches this variable |
+| Doc | Claim | Resolution |
+|-----|-------|------------|
+| `experimental/apps/lexigram-admin/docs/CONFIGURATION.md` | `LEX_ADMIN__AUDIT__REDACTION_FIELD_DENYLIST` | Removed — field is in core logging configurator, not admin config |
+| `experimental/apps/lexigram-admin/docs/CONFIGURATION.md` | `LEX_ADMIN__AUDIT__REDACTION_PATTERNS` | Removed — field is in core logging configurator, not admin config |
+| `packages/lexigram-auth/docs/CONFIGURATION.md` | `LEX_AUTH__TOKEN__ALLOW_UNVERIFIED_DEV` | Removed — field does not exist; JWTConfig enforces verified-only decoding |

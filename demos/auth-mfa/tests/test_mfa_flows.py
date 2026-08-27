@@ -2,16 +2,22 @@
 
 from __future__ import annotations
 
+import time
+
 import httpx
 import pytest
 from starlette.applications import Starlette
 
 from lexigram.auth.authn.mfa import DEFAULT_TOTP_PERIOD, generate_totp_code
 from lexigram.auth.authn.user_service import UserService
-from lexigram.auth.mfa.manager import MFAManager
 
-PLAIN = {"email": "plain@mfa.demo", "password": "Demo-Password-1"}
-MFA_USER = {"email": "mfa@mfa.demo", "password": "Demo-Password-1"}
+# Test credentials — must match application.yaml auth.users
+PLAIN_EMAIL = "plain@mfa.demo"
+MFA_EMAIL = "mfa@mfa.demo"
+DEMO_PASSWORD = "Demo-Password-1"
+
+PLAIN = {"email": PLAIN_EMAIL, "password": DEMO_PASSWORD}
+MFA_USER = {"email": MFA_EMAIL, "password": DEMO_PASSWORD}
 
 
 def second_browser(app: Starlette) -> httpx.AsyncClient:
@@ -35,8 +41,31 @@ async def code_for(app: Starlette, email: str) -> str:
     return generate_totp_code(secret)
 
 
+async def generate_code_for_offset(
+    app: Starlette,
+    email: str,
+    *,
+    offset_steps: int,
+) -> str:
+    """Compute the TOTP for a time `offset_steps` periods away from now."""
+    secret = await current_secret(app, email)
+    return generate_totp_code(
+        secret,
+        for_time=int(time.time()) - offset_steps * DEFAULT_TOTP_PERIOD,
+    )
+
+
 async def login(client: httpx.AsyncClient, creds: dict[str, str]) -> httpx.Response:
     return await client.post("/api/login", json=creds)
+
+
+@pytest.fixture
+async def authed_plain(
+    app: Starlette, client: httpx.AsyncClient
+) -> httpx.AsyncClient:
+    """Log in as the plain user and return the authenticated client."""
+    await client.post("/api/login", json=PLAIN)
+    return client
 
 
 async def test_plain_user_skips_challenge(client: httpx.AsyncClient) -> None:
@@ -64,7 +93,7 @@ async def test_valid_code_upgrades_to_full_session(
     client: httpx.AsyncClient, app: Starlette
 ) -> None:
     await login(client, MFA_USER)
-    code = await code_for(app, "mfa@mfa.demo")
+    code = await code_for(app, MFA_EMAIL)
 
     response = await client.post("/api/mfa/challenge", json={"code": code})
 
@@ -106,7 +135,7 @@ async def test_backup_code_works_exactly_once(
     backup_code = enroll.json()["backup_codes"][0]
 
     async def challenge_with(browser: httpx.AsyncClient) -> httpx.Response:
-        await browser.post("/api/login", json=MFA_PLAIN_LOGIN)
+        await browser.post("/api/login", json=PLAIN)
         return await browser.post("/api/mfa/challenge", json={"code": backup_code})
 
     first = second_browser(app)
@@ -118,17 +147,6 @@ async def test_backup_code_works_exactly_once(
     assert replay.status_code == 401
     await first.aclose()
     await second.aclose()
-
-
-MFA_PLAIN_LOGIN = {"email": "plain@mfa.demo", "password": "Demo-Password-1"}
-
-
-@pytest.fixture
-async def authed_plain(
-    app: Starlette, client: httpx.AsyncClient
-) -> httpx.AsyncClient:
-    await client.post("/api/login", json=PLAIN)
-    return client
 
 
 async def test_disable_requires_correct_password(
@@ -157,7 +175,7 @@ async def test_stale_totp_code_is_rejected(
 ) -> None:
     """A code from a long-expired time step fails even within the +/-1 window."""
     await login(client, MFA_USER)
-    stale = await generate_code_for_offset(app, "mfa@mfa.demo", offset_steps=5)
+    stale = await generate_code_for_offset(app, MFA_EMAIL, offset_steps=5)
 
     response = await client.post("/api/mfa/challenge", json={"code": stale})
     assert response.status_code == 401
@@ -195,19 +213,3 @@ async def test_mfa_status_reports_backup_codes(
     after = (await client.get("/api/mfa/status")).json()
     assert after["enabled"] is True
     assert after["backup_codes_left"] == len(codes)
-
-
-async def generate_code_for_offset(
-    app: Starlette,
-    email: str,
-    *,
-    offset_steps: int,
-) -> str:
-    """Compute the TOTP for a time `offset_steps` periods away from now."""
-    import time
-
-    secret = await current_secret(app, email)
-    return generate_totp_code(
-        secret,
-        for_time=int(time.time()) - offset_steps * DEFAULT_TOTP_PERIOD,
-    )

@@ -1,4 +1,9 @@
-"""Console page — static serving only (logic lives in the API controller)."""
+"""Console page — static serving only (logic lives in the API controller).
+
+Convention: page controllers serve HTML views and static assets.  The
+single-page console (``loop.html``) makes API calls to ``/api/*``
+endpoints; all business logic lives in ``controllers/api.py``.
+"""
 
 from __future__ import annotations
 

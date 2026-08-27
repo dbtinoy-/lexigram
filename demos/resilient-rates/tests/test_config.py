@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from lexigram.web.config import WebConfig
+from lexigram.web import WebConfig
 from rates.config import RatesConfig
 
 

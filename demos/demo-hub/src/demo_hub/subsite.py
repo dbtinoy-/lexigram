@@ -5,7 +5,7 @@ The child applications are written to be served from their own origin
 Mounting them under ``/demos/<slug>`` requires two adjustments:
 
 1. Response rewriting for HTML pages — asset attributes gain the mount
-   prefix, and a small bootstrap script teaches ``fetch``, ``EventSource``
+   prefix, and a small bootstrap script demonstrates ``fetch``, ``EventSource``
    and ``WebSocket`` about the prefix.
 2. Header fixing — ``Location`` redirects and ``Path=`` cookie attributes
    are rebased so children stay inside their own subtree.

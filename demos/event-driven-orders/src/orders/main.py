@@ -1,24 +1,19 @@
-"""Entry point for the event-driven orders REST API.
+"""Entry point for the event-driven orders demo.
 
 Run::
 
-    uv run python -m orders serve
+    cd demos/event-driven-orders
+    PYTHONPATH=src uv run python -m orders
 
-Host/port come from ``application.yaml`` (``web.server``); override without
-editing the file via ``LEX_WEB__SERVER__PORT``. Teaching commands
-(place/pay/ship/list/outbox/demo) live in ``orders.cli``.
+Host/port come from ``application.yaml`` — no hardcoded values.
 
 Lifecycle teaching notes:
-- ``Application.boot(...)`` is the idiomatic context manager: it creates the
-  app, starts every provider in dependency order, yields, and *guarantees*
-  ``stop()`` runs on exit — even on exceptions or Ctrl-C.
-- Inside the block the app is ``STARTED``: the container is frozen (no new
-  registrations) yet fully resolvable — this is where servers run. The CQRS
-  wiring is already done too: ``OrdersProvider.boot`` resolved ``OrdersApi``
-  during start, registering every command handler and event subscription
-  before the first request arrives.
-- Resolving ``WebProvider`` here demonstrates post-start resolution; its
-  auto-injected ``.config`` carries the server host/port.
+- ``Application.start()`` boots every provider in dependency order,
+  freezes the container, and yields a fully-wired application.
+- Resolving ``WebProvider`` after start demonstrates post-start
+  resolution; its auto-injected ``.config`` carries the server host/port.
+- The ``OrdersProvider.boot()`` resolves ``OrdersApi``, which triggers
+  handler and event-subscription wiring exactly once (singleton factory).
 """
 
 from __future__ import annotations
@@ -27,33 +22,25 @@ import asyncio
 import sys
 
 from lexigram.logging import get_logger
-from orders.app import build_modules, build_providers
-from orders.config import load_lex_config
+from orders.app import create_app
 
 logger = get_logger(__name__)
 
 
 async def serve() -> None:
     """Boot once and serve until interrupted; stop cleanly afterwards."""
-    from lexigram.app.base import Application
-    from lexigram.web.di.provider import WebProvider
     from lexigram.web.server.runner import run_server_async
 
-    config = load_lex_config()  # cwd-proof: absolute path to this demo's yaml
-
-    async with Application.boot(
-        name="event-driven-orders",
-        config=config,
-        modules=build_modules(config),
-        providers=build_providers(),
-    ) as app:
-        web = await app.container.resolve(WebProvider)
-        server = web.config.server
-        logger.info("server.listening", host=server.host, port=server.port)
-        await run_server_async(web.starlette, host=server.host, port=server.port)
+    app = create_app()
+    await app.start()
+    try:
+        await run_server_async(app)
+    finally:
+        await app.stop()
 
 
 def main() -> int:
+    """Sync wrapper: translate interrupts into a shell-friendly exit code."""
     try:
         asyncio.run(serve())
     except KeyboardInterrupt:

@@ -1,4 +1,11 @@
-"""Service-level tests for the guarded pipeline (resolved from boot)."""
+"""Service-level tests for the guarded pipeline (resolved from boot).
+
+These tests resolve GuardedAssistant from the container —
+the same way the API controller gets it.  This validates that the
+provider's factory function builds the service correctly with all
+its dependencies wired.  The `assistant` fixture depends on `app`,
+which boots the full stack.
+"""
 
 from __future__ import annotations
 
@@ -9,12 +16,19 @@ from guard_gate.repository.acts import ACTS, COST_PER_TURN, ALLOWED_MODEL
 
 @pytest.fixture
 async def assistant(app):
-    from guard_gate.services.guarded_assistant import GuardedAssistant
+    from guard_gate.domain.guarded_assistant import GuardedAssistant
 
     return await app.container.resolve(GuardedAssistant)
 
 
 class TestFiveActs:
+    """Each act exercises a different guard/governance path.
+
+    Test class grouping by concern (acts, ledger, bypass).
+    Each test is independent — the budget tests use a fresh user_id
+    ("bob") to avoid state leakage from other tests.
+    """
+
     async def test_injection_blocked(self, assistant) -> None:
         act = ACTS.get("injection")
         outcome = await assistant.handle("alice", act.text, act.model)

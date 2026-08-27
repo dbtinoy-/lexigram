@@ -1,58 +1,45 @@
-"""Entry point for the API-keys console.
+"""Entry point for the api-keys demo.
 
 Run::
 
-    uv run python -m apikey_console            # serves application.yaml (:8091)
+    cd demos/auth-apikeys
+    PYTHONPATH=src uv run python -m apikey_console
 
-Server host/port come from ``application.yaml`` (``web.server``); override
-without editing the file via ``LEX_WEB__SERVER__PORT``.
-
-Lifecycle teaching notes:
-- No config object is passed anywhere: ``Application`` loads
-  ``application.yaml`` itself, and every provider with a ``config_key``
-  receives its typed section automatically before boot.
-- ``Application.boot(...)`` is the idiomatic context manager: it creates the
-  app, starts every provider in dependency order, yields, and *guarantees*
-  ``stop()`` runs on exit — even on exceptions or Ctrl-C.
-- Inside the block the app is ``STARTED``: the container is frozen (no new
-  registrations) yet fully resolvable — this is where servers run. Resolving
-  ``WebProvider`` here demonstrates post-start resolution; its auto-injected
-  ``.config`` carries the server host/port.
+Host/port come from ``application.yaml`` — no hardcoded values.
 """
+# Entry point is thin — just asyncio.run(serve()).
+# Composition root handles all wiring; this file only manages the
+# event loop lifecycle and shell-friendly exit codes.
 
 from __future__ import annotations
 
 import asyncio
 import sys
 
-from apikey_console.app import build_modules, build_providers
-from apikey_console.config import load_lex_config
-from lexigram.app.base import Application
+from apikey_console.app import create_app
 from lexigram.logging import get_logger
 
 logger = get_logger(__name__)
 
 
 async def serve() -> None:
-    """Boot once and serve until interrupted; stop cleanly afterwards."""
-    from lexigram.web.di.provider import WebProvider
+    """Boot and serve until interrupted."""
     from lexigram.web.server.runner import run_server_async
 
-    config = load_lex_config()  # cwd-proof: absolute path to this demo's yaml
-
-    async with Application.boot(
-        name="apikeys-console",
-        config=config,
-        modules=build_modules(config),
-        providers=build_providers(),
-    ) as app:
-        web = await app.container.resolve(WebProvider)
-        server = web.config.server
-        logger.info("server.listening", host=server.host, port=server.port)
-        await run_server_async(web.starlette, host=server.host, port=server.port)
+    # Lazy import of the server runner. The web module's
+    # run_server_async reads host/port from application.yaml by default.
+    app = create_app()
+    await app.start()
+    try:
+        # run_server_async reads host/port from application.yaml by default;
+        # pass explicit kwargs to override (e.g. during tests).
+        await run_server_async(app)
+    finally:
+        await app.stop()
 
 
 def main() -> int:
+    """Sync wrapper: translate interrupts into a shell-friendly exit code."""
     try:
         asyncio.run(serve())
     except KeyboardInterrupt:

@@ -43,9 +43,9 @@ class EntityMigrationGenerator(GeneratorBase):
         table = table_name or f"{self._to_snake_case(name)}s"
 
         column_lines = [
-            f'        sa.Column("{f.name}",'
+            f'sa.Column("{f.name}",'
             f" sa.{self._SA_TYPES.get(f.type, 'String(length=255)')},"
-            f" nullable={'False' if f.required else 'True'}"
+            f" nullable={'False' if f.required else 'True'}),"
             for f in parsed
         ]
 

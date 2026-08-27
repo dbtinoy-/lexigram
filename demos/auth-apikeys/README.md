@@ -5,55 +5,69 @@ in a browser (issue with scopes, list, revoke), then call a protected JSON
 endpoint with the `X-API-Key` header. Raw keys are shown exactly once; only
 hashes persist. Fully offline.
 
-## What it shows
+## Lexigram concepts used
 
-| Piece | Where | Lexigram API used |
-|-------|-------|-------------------|
-| Key issuance (scopes, prefix, raw-once) | `controllers/api.py` | `APIKeyManager.create_key(user_id, name, scopes)` |
-| Machine authentication | `controllers/api.py` | `X-API-Key` header → `APIKeyManager.validate_key(raw)` |
-| Revocation | `controllers/api.py` | `revoke_key(key_id)` — revoked keys immediately 401 |
-| Cookie-vs-key auth side by side | `controllers/api.py` | management pages need a session; `/api/me` needs a key |
-| Repository adapter | `keys_repository.py` | `APIKeyRepositoryProtocol` implemented in-memory |
+| Concept | File | Your app |
+|---------|------|----------|
+| Composition root | `app.py` | Your `app.py` — modules + providers |
+| Auto-config | `application.yaml` | All config lives here, not in code |
+| Provider lifecycle | `di/provider.py` | Your app's DI wiring |
+| Dual binding (concrete + protocol) | `di/provider.py` | Framework resolves contracts |
+| Result-based controllers | `controllers/api.py` | HTTP → Result → ProblemDetail |
+| Repository pattern | `repository/keys_repository.py` | Your persistence adapters |
+| Cookie vs. X-API-Key auth | `controllers/api.py` | Browser + machine access |
+| Boot-time seeding | `domain/seed.py` | Database migrations, fixtures |
+
+## Layout — read it in this order
+
+Start at the composition root and follow the wiring outward.
+Each file has teaching comments explaining the Lexigram convention it follows.
+
+| # | File | Lesson |
+|---|------|--------|
+| 1 | `src/apikey_console/app.py` | ⭐ Composition root: config → modules → providers |
+| 2 | `src/apikey_console/main.py` | Lifecycle: `Application.start/stop`, graceful shutdown |
+| 3 | `src/apikey_console/di/provider.py` | `register()` (bind) vs `boot()` (initialize); dual binding |
+| 4 | `src/apikey_console/domain/` | Boot-time seeding; framework-agnostic seed service |
+| 5 | `src/apikey_console/repository/` | Protocol binding: in-memory implementations of contracts |
+| 6 | `src/apikey_console/controllers/api.py` | Result-returning handlers → auto HTTP status mapping |
+| 7 | `src/apikey_console/controllers/pages.py` | Page controllers: serve HTML/assets only, no logic |
+
+```
+demos/auth-apikeys/
+├── application.yaml          # web + auth config (auto-discovered)
+├── src/apikey_console/
+│   ├── app.py                # composition root (start here)
+│   ├── main.py               # entry point / lifecycle
+│   ├── di/provider.py        # DI wiring + boot() assembly
+│   ├── domain/               # framework-agnostic seed service
+│   ├── repository/           # in-memory protocol implementations
+│   ├── controllers/api.py    # JSON API: login, keys CRUD, /api/me
+│   ├── controllers/pages.py  # static file-serving routes
+│   └── ui/                   # views/*.html + static/
+└── tests/                    # end-to-end issue/auth/revoke flows
+```
 
 ## Run it
 
 ```bash
-PYTHONPATH=demos/auth-apikeys/src uv run python -m apikey_console
+cd demos/auth-apikeys
+PYTHONPATH=src uv run python -m apikey_console
+# → http://127.0.0.1:8091
 ```
 
-Open http://127.0.0.1:8084 and log in as `admin@keys.demo` /
-`Demo-Password-1`. Create a key with scopes, then call the machine endpoint:
+Log in as `admin@keys.demo` / `Demo-Password-1`. Create a key with scopes,
+then call the machine endpoint:
 
 ```bash
-curl -H "X-API-Key: <raw-key>" http://127.0.0.1:8084/api/me
-```
-
-## Notes
-
-- Every command boots a fresh in-memory world: users and keys reset per
-  process.
-- `APIKEYS_PORT` overrides the port (default 8084).
-
-## Layout
-
-```
-demos/auth-apikeys/
-├── src/apikey_console/
-│   ├── controllers/api.py     # login/logout, keys CRUD, /api/me (X-API-Key)
-│   ├── controllers/pages.py   # static file-serving routes
-│   ├── ui/                    # views/*.html + static/app.js, keys.js, style.css
-│   ├── keys_repository.py     # dict-backed APIKeyRepositoryProtocol
-│   ├── session_repository.py  # dict-backed SessionRepositoryProtocol
-│   ├── di/provider.py         # seeds demo user, wires manager + backend
-│   ├── module.py              # ApiKeysModule (imports AuthModule + WebModule)
-│   └── main.py                # uvicorn boot (:8084, APIKEYS_PORT)
-└── tests/test_apikeys.py      # end-to-end issue/authenticate/revoke flows
+curl -H "X-API-Key: <raw-key>" http://127.0.0.1:8091/api/me
 ```
 
 ## Tests
 
 ```bash
-uv run pytest demos/auth-apikeys/tests -q
+cd demos/auth-apikeys
+uv run pytest tests -q
 ```
 
 Covers: raw key shown exactly once, valid-key machine identity, missing/

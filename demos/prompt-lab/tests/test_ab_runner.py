@@ -29,27 +29,23 @@ class TestResponders:
 
 
 class TestABRunner:
-    @pytest.mark.asyncio
     async def test_scores_are_deterministic(self, runner) -> None:
         first = await runner.run_all()
         second = await runner.run_all()
 
         assert first == second
 
-    @pytest.mark.asyncio
     async def test_v2_outscores_v1(self, runner) -> None:
         report = await runner.run_all()
         scores = {k: v["average_score"] for k, v in report["variants"].items()}
 
         assert scores["v2"] > scores["v1"]
 
-    @pytest.mark.asyncio
     async def test_winner_is_v2(self, runner) -> None:
         report = await runner.run_all()
 
         assert report["winner"] == "v2"
 
-    @pytest.mark.asyncio
     async def test_totals_cover_all_cases(self, runner) -> None:
         report = await runner.run_all()
 

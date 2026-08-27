@@ -1,4 +1,7 @@
 """Static UI file-serving routes for the API-keys console (assets only)."""
+# UI controller — same pattern as controllers/pages.py.
+# Serves HTML views and static assets. The JS client calls /api/*
+# endpoints for data and handles auth redirects on 401.
 
 from __future__ import annotations
 

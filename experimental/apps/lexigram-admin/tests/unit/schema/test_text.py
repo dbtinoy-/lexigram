@@ -297,6 +297,8 @@ class TestMarkdownField:
 
 
 class TestRichTextField:
+    pytest.importorskip("nh3", reason="HTML sanitization requires nh3")
+
     def test_render_form(self) -> None:
         field = RichTextField(name="content")
         element = field.render_form("<p>Hello</p>")

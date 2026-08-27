@@ -1,7 +1,13 @@
 """Deterministic scenario scripts driving the scripted LLM.
 
-Each entry is one full completion. ReAct parses THOUGHT/ACTION/
-ACTION_INPUT markers and terminates on FINAL_ANSWER (react.py:53-81).
+The ReAct strategy parses ``THOUGHT / ACTION / ACTION_INPUT`` markers
+from the LLM's completion text and terminates on ``FINAL_ANSWER``.
+Each scenario is a list of pre-written completions — one per reasoning
+step — that the ``ScriptedLLM`` pops from a FIFO queue.
+
+This makes the agent loop run for real (tools get called, the strategy
+parser drives the loop) while model output stays byte-stable across
+runs — perfect for testing and demos.
 """
 
 from __future__ import annotations
@@ -9,6 +15,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from lexigram.primitives import Registry
+
+# --- Scenario scripts ------------------------------------------------
 
 HAPPY_SCRIPT: list[str] = [
     (
@@ -48,6 +56,9 @@ FAILURE_SCRIPT: list[str] = [
 ]
 
 
+# --- Scenario registry ------------------------------------------------
+
+
 @dataclass(frozen=True)
 class Scenario:
     """One deterministic demo act: key, display label, scripted turns."""
@@ -58,7 +69,12 @@ class Scenario:
 
 
 def _build_scenarios() -> Registry[str, Scenario]:
-    """Framework Registry keyed by scenario id."""
+    """Framework Registry keyed by scenario id.
+
+    The controller looks up scenarios by key from the POST body,
+    loads the script into the ``ScriptedLLM`` FIFO, then calls
+    ``SupportAgent.ask()``.
+    """
     registry: Registry[str, Scenario] = Registry()
     registry.register("happy", Scenario("happy", "Happy path", HAPPY_SCRIPT))
     registry.register(

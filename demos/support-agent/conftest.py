@@ -1,36 +1,53 @@
 """Pytest bootstrap for the support-agent demo.
 
-Adds the demo's ``src`` directory to ``sys.path`` so tests can import
-``support_agent`` without installing (auth-web pattern):
+Two jobs:
 
-    uv run pytest demos/support-agent/tests -q
+1. Make imports and config discovery work regardless of *where* pytest is
+   invoked: chdir into this demo's root (where ``application.yaml`` lives)
+   and put ``src`` on ``sys.path``. The framework auto-discovers
+   ``application.yaml`` from the working directory, so after this chdir no
+   custom configuration loader is needed anywhere.
+2. Boot the real composition root for tests via fixtures.
+
+    uv run pytest demos/support-agent/tests -q        # from repo root works too
 """
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
+import os
 from pathlib import Path
 import sys
-
-sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
-
-from collections.abc import AsyncIterator
 
 import httpx
 import pytest
 from starlette.applications import Starlette
 
-from lexigram.web.di.provider import WebProvider
+_DEMO_ROOT = Path(__file__).resolve().parent
+
+# Lexigram discovers application.yaml from cwd — pin it so tests work
+# from any invocation point (repo root or in-demo).
+os.chdir(_DEMO_ROOT)
+# Add src/ to sys.path so ``from support_agent...`` resolves in tests.
+sys.path.insert(0, str(_DEMO_ROOT / "src"))
+
+
+@pytest.fixture(autouse=True)
+def _ensure_cwd() -> None:
+    """Pin CWD to demo root for every test (framework reads application.yaml from cwd)."""
+    os.chdir(_DEMO_ROOT)
 
 
 @pytest.fixture
 async def app() -> AsyncIterator[Starlette]:
     """Boot the real composition root and expose its ASGI app."""
     from support_agent.app import create_app
-    from support_agent.config import load_lex_config
 
-    application = create_app(load_lex_config())
+    application = create_app()
     await application.start()
     try:
+        from lexigram.web.di.provider import WebProvider
+
         web = await application.container.resolve(WebProvider)
         yield web.starlette
     finally:

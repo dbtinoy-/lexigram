@@ -1,51 +1,79 @@
-"""Composition root for the API-keys console.
+"""Composition root for the api-keys demo — start reading here.
 
 Every Lexigram application has exactly one place that knows how the pieces
-fit together — the **composition root** — and here it is deliberately tiny:
+fit together: the **composition root**.  Everything else (controllers,
+services, templates) is inert until *this file* wires it.
 
-1. **Capabilities**: framework ``Module.configure(...)`` bundles. Each
-   framework package reads its own section of ``application.yaml`` through
-   provider auto-injection (``config_key`` / ``config_model``), so you pass
-   *nothing* — just list the controllers your app contributes.
-2. **Services**: this demo's own ``Provider`` (imperative register/boot
-   lifecycle for stateful services — see ``di/provider.py``). It seeds a
-   demo user and binds the in-memory key/session repositories to their
-   ``lexigram-contracts`` protocols, so ``lexigram-auth`` resolves
-   implementations it has never imported.
+The mental model has three layers.  Once these click, every Lexigram app
+reads the same way:
 
-That's the whole story: configuration never passes through your code.
+┌─────────────────────────────────────────────────────────────────────────┐
+│ 1. CONFIGURATION                                                        │
+│    ``application.yaml`` holds your values.  The framework loads it,     │
+│    merges overrides on top (highest → lowest):                          │
+│                                                                         │
+│        LEX_WEB__SERVER__PORT=9000   env vars   ← win over everything    │
+│        application.production.yaml  profile overlay                     │
+│        application.yaml             base file                           │
+│        dataclass field defaults     last resort                         │
+│                                                                         │
+│    Result: ONE typed ``LexigramConfig`` object.                         │
+│                                                                         │
+│ 2. CAPABILITIES (declarative)                                           │
+│    ``Module.configure(...)`` switches framework packages on and tells   │
+│    them which controllers are yours.  Each package reads its own yaml   │
+│    section through its config model.                                    │
+│                                                                         │
+│ 3. SERVICES (imperative)                                               │
+│    A ``Provider`` registers the services *you* wrote into the DI        │
+│    container, with register/boot/shutdown lifecycle hooks.              │
+└─────────────────────────────────────────────────────────────────────────┘
 
-Run with ``uv run python -m apikey_console``.
+Two wiring styles are supported everywhere; both produce identical
+runtime behavior:
+
+- **Explicit** (this file): sections passed to ``configure(config=...)``
+
+Run with::
+
+    cd demos/auth-apikeys
+    PYTHONPATH=src uv run python -m apikey_console
 """
+# Lexigram composition root — the single file that wires
+# all modules and providers together. Your app will have exactly one
+# composition root. Framework modules (AuthModule, WebModule) are
+# declarative; your app-specific Provider is imperative.
 
 from __future__ import annotations
 
-from apikey_console.config import load_lex_config
 from apikey_console.controllers.api import KeysApiController
 from apikey_console.di.provider import ApiKeysProvider
 from apikey_console.ui.pages import PagesController
 from lexigram.app.base import Application
-from lexigram.auth.config import AuthConfig
 from lexigram.auth.module import AuthModule
 from lexigram.config.main import LexigramConfig
 from lexigram.di.provider import Provider
-from lexigram.web.config import WebConfig
 from lexigram.web.module import WebModule
 
 
-def build_modules(config: LexigramConfig) -> list[object]:
-    """Declarative capabilities — framework modules bound to typed sections.
+def build_modules() -> list[object]:
+    """Declarative capabilities — zero configuration arguments needed.
 
-    ``config`` stays explicit here because demos live in subdirectories:
-    binding against this demo's own ``application.yaml`` (absolute path)
-    keeps behavior identical no matter the caller's working directory.
+    Each ``Module.configure()`` (no args) reads its typed section from
+    application.yaml automatically via config_key/config_model on the
+    module's providers.  Override per-provider if needed.
     """
+    # Module.configure() auto-reads its yaml section.
+    # No manual config passing — the framework discovers the config_key
+    # from each provider. AuthModule reads `auth:`, WebModule reads `web:`.
     return [
-        AuthModule.configure(
-            config=config.get_section("auth", AuthConfig),
-        ),
+        # Auth: users, roles, RBAC, JWT, password rules.
+        # Reads ``auth:`` from application.yaml automatically.
+        AuthModule.configure(),
+        # Web: Starlette server + middleware.  Controllers are your HTTP
+        # surface.  Omit PagesController + delete ui/ if using
+        # an external frontend.
         WebModule.configure(
-            web_config=config.get_section("web", WebConfig),
             controllers=[KeysApiController, PagesController],
         ),
     ]
@@ -59,13 +87,17 @@ def build_providers() -> list[Provider]:
 def create_app(config: LexigramConfig | None = None) -> Application:
     """Create the application in ``CREATED`` state (not yet started).
 
-    Programmatic/tests entry point. For serving, prefer the idiomatic
-    ``Application.boot(...)`` context manager shown in ``main.serve`` —
-    it guarantees ``stop()`` even on exceptions or Ctrl-C.
+    Use this in tests (boot it yourself) or hand to ``main.py`` which
+    calls ``app.start()`` / ``app.stop()``.
+
+    Args:
+        config: Optional pre-loaded config. When ``None`` the framework
+            auto-discovers ``application.yaml`` from the working directory.
     """
-    config = config or load_lex_config()
+    # Application is created, modules+providers added,
+    # but not yet started. Tests use this to boot the app manually.
     app = Application(name="apikeys-console", config=config)
-    app.add_modules(build_modules(config))
+    app.add_modules(build_modules())
     app.add_providers(build_providers())
     return app
 

@@ -1,12 +1,13 @@
-"""Single-port entry point: the hub embeds every demo under /demos/<slug>/.
+"""Entry point for the demo hub.
 
-Usage::
+Run::
 
-    PYTHONPATH=src uv run python -m demo_hub          # http://127.0.0.1:7000
+    PYTHONPATH=src uv run python -m demo_hub
 
-Server host/port come from ``application.yaml`` (``web.server``); override
-without editing the file via ``LEX_WEB__SERVER__PORT``. Each embedded demo
-also runs standalone (see demos/README.md).
+``create_app()`` builds the application.  This file boots it,
+mounts the child demos via Fleet, and runs the web server.
+Host/port are read automatically from ``application.yaml`` —
+no manual config wiring needed.
 """
 
 from __future__ import annotations
@@ -15,43 +16,57 @@ import asyncio
 import sys
 
 from demo_hub.app import create_app
-from demo_hub.config import bind_web
 from lexigram.logging import get_logger
 
 logger = get_logger(__name__)
 
 
-async def _serve() -> None:
+async def serve() -> None:
+    """Boot and serve until interrupted.
+
+    ``app.start()`` triggers the full lifecycle:
+    register → freeze → boot (Fleet mounts children here) → server start.
+    The ``finally`` block ensures ``stop()`` runs even on errors.
+    """
     from demo_hub.fleet import Fleet
     from lexigram.web.di.provider import WebProvider
     from lexigram.web.server.runner import run_server_async
 
-    web_config = bind_web()
     app = create_app()
+    await app.start()
     try:
-        await app.start()
+        # Resolve the WebProvider to get the underlying Starlette app.
         web = await app.container.resolve(WebProvider)
         if web.starlette is None:
             raise RuntimeError("hub starlette app missing")
+
+        # Mount every child demo under /demos/<slug>/.
         fleet = await app.container.resolve(Fleet)
         await fleet.mount_all(web.starlette)
-        await run_server_async(
-            web.starlette,
-            host=web_config.server.host,
-            port=web_config.server.port,
-        )
+
+        # run_server_async reads host/port from application.yaml by default;
+        # pass explicit kwargs to override (e.g. during tests).
+        await run_server_async(app)
+
         # server returned — release embedded children
         await fleet.aclose()
     finally:
         await app.stop()
 
 
-def main() -> None:
+def main() -> int:
+    """Sync entry point: translate asyncio interrupts into exit codes.
+
+    Convention: ``python -m <package>`` calls ``main()``.  Return 0 for
+    success, 130 for keyboard interrupt — the shell will see this as the
+    process exit code.
+    """
     try:
-        asyncio.run(_serve())
+        asyncio.run(serve())
     except KeyboardInterrupt:
-        sys.exit(130)
+        return 130
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

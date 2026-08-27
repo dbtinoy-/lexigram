@@ -1,4 +1,8 @@
-"""Smoke tests for the console page routes."""
+"""Smoke tests for the console page routes.
+
+Convention: page tests verify that HTML views and static assets are
+served correctly.  The ``client`` fixture boots the real application.
+"""
 
 from __future__ import annotations
 

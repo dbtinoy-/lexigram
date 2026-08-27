@@ -1,23 +1,36 @@
-"""Composition root for the event-driven orders demo.
+"""Composition root for the event-driven orders demo — start reading here.
 
 Every Lexigram application has exactly one place that knows how the pieces
-fit together — the **composition root** — and here it is deliberately tiny:
+fit together: the **composition root**.  Everything else (controllers,
+services, templates) is inert until *this file* wires it.
 
-1. **Capabilities**: framework ``Module.configure(...)`` bundles. Each
-   framework package reads its own section of ``application.yaml`` through
-   provider auto-injection (``config_key`` / ``config_model``), so you pass
-   *nothing* — just list the controllers your app contributes.
-2. **Services**: this demo's own ``Provider`` (imperative register/boot
-   lifecycle for stateful services — see ``di/provider.py``).
+The mental model has three layers.  Once these click, every Lexigram app
+reads the same way:
 
-This demo's lesson is CQRS with an event-driven read side: writes enter the
-``CommandBus`` (place/pay/ship), command handlers persist through the
-repository and append to an outbox, and the ``EventBus`` fans domain events
-out to projections and notifications. All of that wiring lives in
-``OrdersProvider.boot`` — none of it here.
+1. CONFIGURATION — ``application.yaml`` holds your values.  The framework
+   loads it; ``LEX_*`` env vars win over yaml.
 
-Run with ``uv run python -m orders serve``.
+2. CAPABILITIES (declarative) — ``Module.configure(...)`` switches
+   framework packages on.  Each reads its own yaml section automatically.
+
+3. SERVICES (imperative) — a ``Provider`` registers the services *you*
+   wrote into the DI container.
+
+This demo's lesson is the **CQRS + outbox** pattern: commands flow through
+the command bus, handlers persist state and stage domain events in the
+outbox, and the outbox relay delivers events to read-side projections and
+notification handlers.  The REST surface and browser UI drive the same
+``OrdersApi`` facade.
+
+Run with::
+
+    cd demos/event-driven-orders
+    PYTHONPATH=src uv run python -m orders
 """
+# Lexigram composition root — the single file that wires
+# all modules and providers together. Your app will have exactly one
+# composition root. Framework modules (EventsModule, WebModule) are
+# declarative; your app-specific Provider is imperative.
 
 from __future__ import annotations
 
@@ -25,27 +38,27 @@ from lexigram.app.base import Application
 from lexigram.config.main import LexigramConfig
 from lexigram.di.provider import Provider
 from lexigram.events.module import EventsModule
-from lexigram.web.config import WebConfig
 from lexigram.web.module import WebModule
-from orders.config import load_lex_config
 from orders.controllers.api import OrdersApiController
 from orders.di.provider import OrdersProvider
 from orders.ui.pages import OrdersPageController
 
 
-def build_modules(config: LexigramConfig) -> list[object]:
-    """Declarative capabilities — framework modules bound to typed sections.
+def build_modules() -> list[object]:
+    """Declarative capabilities — zero configuration arguments needed.
 
-    ``config`` stays explicit here because demos live in subdirectories:
-    binding against this demo's own ``application.yaml`` (absolute path)
-    keeps behavior identical no matter the caller's working directory.
+    Each ``Module.configure()`` (no args) reads its typed section from
+    application.yaml automatically via config_key/config_model on the
+    module's providers.  Override per-provider if needed.
     """
     return [
-        # No config argument → framework defaults: in-memory event store plus
-        # the CommandBusProtocol/EventBusProtocol bindings the demo resolves.
+        # Events: command bus, event bus, domain events.
+        # No config argument -> framework defaults: in-memory event store.
         EventsModule.configure(),
+        # Web: Starlette server + middleware.  Controllers are your HTTP
+        # surface.  Omit OrdersPageController + delete ui/ if using
+        # an external frontend.
         WebModule.configure(
-            web_config=config.get_section("web", WebConfig),
             controllers=[OrdersApiController, OrdersPageController],
         ),
     ]
@@ -59,13 +72,17 @@ def build_providers() -> list[Provider]:
 def create_app(config: LexigramConfig | None = None) -> Application:
     """Create the application in ``CREATED`` state (not yet started).
 
-    Programmatic/tests entry point. For serving, prefer the idiomatic
-    ``Application.boot(...)`` context manager shown in ``main.serve`` —
-    it guarantees ``stop()`` even on exceptions or Ctrl-C.
+    Use this in tests (boot it yourself) or hand to ``main.py`` which
+    calls ``app.start()`` / ``app.stop()``.
+
+    Args:
+        config: Optional pre-loaded config. When ``None`` the framework
+            auto-discovers ``application.yaml`` from the working directory.
     """
-    config = config or load_lex_config()
+    # Application is created, modules+providers added,
+    # but not yet started. Tests use this to boot the app manually.
     app = Application(name="event-driven-orders", config=config)
-    app.add_modules(build_modules(config))
+    app.add_modules(build_modules())
     app.add_providers(build_providers())
     return app
 

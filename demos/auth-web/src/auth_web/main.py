@@ -14,36 +14,32 @@ import asyncio
 import sys
 
 from auth_web.app import create_app
-from auth_web.config import load_lex_config
 from lexigram.logging import get_logger
 
 logger = get_logger(__name__)
 
 
 async def serve() -> None:
-    """Boot once and serve until interrupted; stop cleanly afterwards."""
-    from lexigram.web.config import WebConfig
-    from lexigram.web.di.provider import WebProvider
+    """Boot and serve until interrupted.
+
+    ``app.start()`` triggers the full lifecycle:
+    register → freeze → boot (seeding happens here) → server start.
+    The ``finally`` block ensures ``stop()`` runs even on errors.
+    """
     from lexigram.web.server.runner import run_server_async
 
-    web_config = load_lex_config().get_section("web", WebConfig)
     app = create_app()
+    await app.start()
     try:
-        await app.start()
-        web = await app.container.resolve(WebProvider)
-        logger.info(
-            "server.listening", host=web_config.server.host, port=web_config.server.port
-        )
-        await run_server_async(
-            web.starlette,
-            host=web_config.server.host,
-            port=web_config.server.port,
-        )
+        # run_server_async reads host/port from application.yaml by default;
+        # pass explicit kwargs to override (e.g. during tests).
+        await run_server_async(app)
     finally:
         await app.stop()
 
 
 def main() -> int:
+    """Sync entry point: translate asyncio interrupts into exit codes."""
     try:
         asyncio.run(serve())
     except KeyboardInterrupt:

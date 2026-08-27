@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-import sys
-
 from memory_chat.main import main
 
-sys.exit(main())
+if __name__ == "__main__":
+    main()

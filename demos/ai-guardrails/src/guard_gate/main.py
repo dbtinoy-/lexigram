@@ -1,11 +1,15 @@
-"""Serve the ai-guardrails demo.
+"""Entry point for the ai-guardrails demo.
 
 Run::
 
-    PYTHONPATH=demos/ai-guardrails/src uv run python -m guard_gate
+    uv run python -m guard_gate
 
-Host/port come from ``application.yaml`` (``web.server``); override without
-editing the file via ``LEX_WEB__SERVER__PORT``.
+Host/port come from ``application.yaml`` — no hardcoded values.
+
+main.py is thin on purpose.  It only handles the async lifecycle
+(start/stop) and signal translation (KeyboardInterrupt → exit code).
+All composition lives in app.py.  For a real app, replace nothing here —
+just swap which app you import.
 """
 
 from __future__ import annotations
@@ -14,37 +18,33 @@ import asyncio
 import sys
 
 from guard_gate.app import create_app
-from guard_gate.config import load_lex_config
 from lexigram.logging import get_logger
 
 logger = get_logger(__name__)
 
 
 async def serve() -> None:
-    """Boot once and serve until interrupted; stop cleanly afterwards."""
-    from lexigram.web.config import WebConfig
-    from lexigram.web.di.provider import WebProvider
+    """Boot and serve until interrupted.
+
+    run_server_async reads host/port from application.yaml
+    (web: section).  The try/finally ensures clean shutdown even on
+    SIGINT.  In production, you'd add health checks and graceful
+    drain here.
+    """
     from lexigram.web.server.runner import run_server_async
 
-    config = load_lex_config()
-    web_config = config.get_section("web", WebConfig)
-    app = create_app(config)
+    app = create_app()
+    await app.start()
     try:
-        await app.start()
-        web = await app.container.resolve(WebProvider)
-        logger.info(
-            "server.listening", host=web_config.server.host, port=web_config.server.port
-        )
-        await run_server_async(
-            web.starlette,
-            host=web_config.server.host,
-            port=web_config.server.port,
-        )
+        # host/port auto-consumed from application.yaml by run_server_async
+        # await run_server_async(app, host="0.0.0.0", port=9000)  # manual override
+        await run_server_async(app)
     finally:
         await app.stop()
 
 
 def main() -> int:
+    """Sync wrapper: translate interrupts into a shell-friendly exit code."""
     try:
         asyncio.run(serve())
     except KeyboardInterrupt:

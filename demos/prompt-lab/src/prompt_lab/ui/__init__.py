@@ -1,3 +1,1 @@
-"""Lab assets + static-serving routes (auth-web co-located pattern)."""
-
-from __future__ import annotations
+"""UI assets for the prompt lab (HTML/JS/CSS served as static files)."""

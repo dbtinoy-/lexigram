@@ -13,6 +13,7 @@ except ImportError:
 
 
 def test_create_provider_from_dict_prometheus():
+    pytest.importorskip("prometheus_client", reason="Prometheus backend requires prometheus_client")
     cfg = {"backend_type": "prometheus", "prometheus": {"port": 8555}}
     provider = create_provider_from_config(cfg)
     assert type(provider.backend).__name__ == "PrometheusBackend"

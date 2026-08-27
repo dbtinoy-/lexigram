@@ -1,8 +1,25 @@
-"""Value types and domain errors for the event-driven orders demo.
+"""Domain layer for the event-driven orders demo.
 
-Shows the CQRS hands-off: **commands** are intents handled by the command bus
-(write side); every state change is announced as a **domain event** that read
-models, notifications and triggers subscribe to (read side).
+This file demonstrates the **domain types** pattern: all value types, domain
+events, and domain errors live in one place so the rest of the codebase can
+import from a single canonical source.
+
+Three layers of domain types:
+
+1. VALUE TYPES — ``Order``, ``OrderItem``, ``OrderStatus``.  Frozen
+   dataclasses carrying state.  The write side owns these; the read side
+   projects them into ``OrderView``.
+
+2. DOMAIN EVENTS — ``OrderPlaced``, ``OrderPaid``, ``OrderShipped``.
+   Frozen dataclasses extending ``DomainEvent``.  Announced by command
+   handlers through the outbox; consumed by projections and notifications.
+
+3. DOMAIN ERRORS — ``OrderError`` hierarchy.  Typed failures that the
+   Result bridge maps to HTTP status codes (404, 409, 400).
+
+Convention: ``str, Enum`` for string enums (OrderStatus); ``DomainEvent``
+from lexigram.contracts for event base; ``DomainError`` from
+lexigram.contracts.exceptions for error base.
 """
 
 from __future__ import annotations
@@ -18,7 +35,11 @@ from lexigram.contracts.exceptions.domain import DomainError
 
 
 class OrderStatus(str, Enum):
-    """Lifecycle of an order as seen by the write side."""
+    """Lifecycle of an order as seen by the write side.
+
+    Convention: ``class X(str, Enum)`` for string enums so members compare
+    equal to their string value and serialize naturally to JSON.
+    """
 
     PLACED = "placed"
     PAID = "paid"
@@ -112,6 +133,9 @@ def order_event(
     **payload: Any,
 ) -> DomainEvent:
     """Build a domain event with aggregate context attached.
+
+    Convention: every domain event carries ``aggregate_id`` and
+    ``aggregate_type`` so the event bus can route and log with context.
 
     Args:
         event_cls: The event class to instantiate.

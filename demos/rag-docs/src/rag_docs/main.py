@@ -2,18 +2,17 @@
 
 Run::
 
-    uv run python -m rag_docs serve
+    uv run python -m rag_docs
 
 Host/port come from ``application.yaml`` (``web.server``); override without
-editing the file via ``LEX_WEB__SERVER__PORT``. Teaching commands
-(index/ask/demo) live in ``rag_docs.cli``.
+editing the file via ``LEX_WEB__SERVER__PORT``.
 
 Lifecycle teaching notes:
 - ``Application.boot(...)`` is the idiomatic context manager: it creates the
   app, starts every provider in dependency order, yields, and *guarantees*
   ``stop()`` runs on exit — even on exceptions or Ctrl-C.
 - Inside the block the app is ``STARTED``: the container is frozen (no new
-  registrations) yet fully resolvable — this is where servers run. The RAG
+  registrations) yet fully resolvable — this is where servers run.  The RAG
   index is ready too: ``DocsAskProvider.boot`` ingested and embedded the
   corpus during start, before the first question arrives.
 - Resolving ``WebProvider`` here demonstrates post-start resolution; its
@@ -27,7 +26,6 @@ import sys
 
 from lexigram.logging import get_logger
 from rag_docs.app import build_modules, build_providers
-from rag_docs.config import load_lex_config
 
 logger = get_logger(__name__)
 
@@ -38,12 +36,9 @@ async def serve() -> None:
     from lexigram.web.di.provider import WebProvider
     from lexigram.web.server.runner import run_server_async
 
-    config = load_lex_config()  # cwd-proof: absolute path to this demo's yaml
-
     async with Application.boot(
         name="rag-docs",
-        config=config,
-        modules=build_modules(config),
+        modules=build_modules(),
         providers=build_providers(),
     ) as app:
         web = await app.container.resolve(WebProvider)

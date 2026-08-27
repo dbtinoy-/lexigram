@@ -4,7 +4,7 @@ from pathlib import Path
 
 from dev.audit.generators import quality
 from dev.audit.generators.quality import QualityAuditGenerator
-from dev.core.evidence import CommandEvidence
+from dev._lib.evidence import CommandEvidence
 
 
 def _write_sample_workspace(root: Path) -> None:

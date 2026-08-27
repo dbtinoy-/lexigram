@@ -168,7 +168,7 @@ class LLMProvider(Provider):
                 llm_client = cast("LLMClientProtocol", NoOpLLMClient(self.config))
             else:
                 llm_client = await create_llm_client(self.config, registry)
-        except ImportError as exc:
+        except (ImportError, LLMError) as exc:
             extra = _PROVIDER_EXTRAS.get(
                 self.config.provider.value,
                 self.config.provider.value,
@@ -180,7 +180,12 @@ class LLMProvider(Provider):
                 f"  Or:      pip install lexigram-ai-llm[{extra}]\n"
                 f"  Error:   {exc}"
             )
-            raise LLMError(msg) from exc
+            logger.warning(
+                "llm_client_skipped",
+                provider=self.config.provider,
+                reason=msg,
+            )
+            return
 
         # Always enrich completions with provenance (provider, model_revision,
         # prompt_hash) — innermost wrap so downstream layers see fully-populated

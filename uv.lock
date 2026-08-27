@@ -4275,7 +4275,7 @@ wheels = [
 
 [[package]]
 name = "lexigram"
-version = "0.1.5006"
+version = "0.1.5007"
 source = { editable = "core/lexigram" }
 dependencies = [
     { name = "lexigram-contracts" },
@@ -4285,61 +4285,6 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
-all = [
-    { name = "lexigram-admin" },
-    { name = "lexigram-ai" },
-    { name = "lexigram-ai-agents" },
-    { name = "lexigram-ai-evaluation" },
-    { name = "lexigram-ai-feedback" },
-    { name = "lexigram-ai-governance" },
-    { name = "lexigram-ai-guard" },
-    { name = "lexigram-ai-llm" },
-    { name = "lexigram-ai-mcp" },
-    { name = "lexigram-ai-memory" },
-    { name = "lexigram-ai-observability" },
-    { name = "lexigram-ai-prompt" },
-    { name = "lexigram-ai-rag" },
-    { name = "lexigram-ai-relay" },
-    { name = "lexigram-ai-relay-gateway" },
-    { name = "lexigram-ai-session" },
-    { name = "lexigram-ai-skills" },
-    { name = "lexigram-ai-workers" },
-    { name = "lexigram-audit" },
-    { name = "lexigram-auth" },
-    { name = "lexigram-cache" },
-    { name = "lexigram-cli" },
-    { name = "lexigram-contracts" },
-    { name = "lexigram-events" },
-    { name = "lexigram-features" },
-    { name = "lexigram-graph" },
-    { name = "lexigram-graphql" },
-    { name = "lexigram-http" },
-    { name = "lexigram-monitor" },
-    { name = "lexigram-multimedia" },
-    { name = "lexigram-multimedia-beat" },
-    { name = "lexigram-multimedia-image" },
-    { name = "lexigram-multimedia-interpolate" },
-    { name = "lexigram-multimedia-music" },
-    { name = "lexigram-multimedia-tts" },
-    { name = "lexigram-multimedia-upscale" },
-    { name = "lexigram-multimedia-video" },
-    { name = "lexigram-nosql" },
-    { name = "lexigram-notification" },
-    { name = "lexigram-queue" },
-    { name = "lexigram-resilience" },
-    { name = "lexigram-search" },
-    { name = "lexigram-secrets" },
-    { name = "lexigram-sql" },
-    { name = "lexigram-storage" },
-    { name = "lexigram-tasks" },
-    { name = "lexigram-tenancy" },
-    { name = "lexigram-testing" },
-    { name = "lexigram-ui" },
-    { name = "lexigram-vector" },
-    { name = "lexigram-web" },
-    { name = "lexigram-webhook" },
-    { name = "lexigram-workflow" },
-]
 auth = [
     { name = "lexigram-audit" },
     { name = "lexigram-auth" },
@@ -4395,72 +4340,19 @@ web = [
 requires-dist = [
     { name = "cryptography", marker = "extra == 'security'", specifier = ">=41.0.0" },
     { name = "jinja2", marker = "extra == 'codegen'", specifier = ">=3.1.0" },
-    { name = "lexigram-admin", marker = "extra == 'all'", editable = "experimental/apps/lexigram-admin" },
-    { name = "lexigram-ai", marker = "extra == 'all'", editable = "experimental/ai/lexigram-ai" },
-    { name = "lexigram-ai-agents", marker = "extra == 'all'", editable = "experimental/ai/lexigram-ai-agents" },
-    { name = "lexigram-ai-evaluation", marker = "extra == 'all'", editable = "experimental/ai/lexigram-ai-evaluation" },
-    { name = "lexigram-ai-feedback", marker = "extra == 'all'", editable = "experimental/ai/lexigram-ai-feedback" },
-    { name = "lexigram-ai-governance", marker = "extra == 'all'", editable = "experimental/ai/lexigram-ai-governance" },
-    { name = "lexigram-ai-guard", marker = "extra == 'all'", editable = "experimental/ai/lexigram-ai-guard" },
-    { name = "lexigram-ai-llm", marker = "extra == 'all'", editable = "experimental/ai/lexigram-ai-llm" },
-    { name = "lexigram-ai-mcp", marker = "extra == 'all'", editable = "experimental/ai/lexigram-ai-mcp" },
-    { name = "lexigram-ai-memory", marker = "extra == 'all'", editable = "experimental/ai/lexigram-ai-memory" },
-    { name = "lexigram-ai-observability", marker = "extra == 'all'", editable = "experimental/ai/lexigram-ai-observability" },
-    { name = "lexigram-ai-prompt", marker = "extra == 'all'", editable = "experimental/ai/lexigram-ai-prompt" },
-    { name = "lexigram-ai-rag", marker = "extra == 'all'", editable = "experimental/ai/lexigram-ai-rag" },
-    { name = "lexigram-ai-relay", marker = "extra == 'all'", editable = "experimental/ai/lexigram-ai-relay" },
-    { name = "lexigram-ai-relay-gateway", marker = "extra == 'all'", editable = "experimental/ai/lexigram-ai-relay-gateway" },
-    { name = "lexigram-ai-session", marker = "extra == 'all'", editable = "experimental/ai/lexigram-ai-session" },
-    { name = "lexigram-ai-skills", marker = "extra == 'all'", editable = "experimental/ai/lexigram-ai-skills" },
-    { name = "lexigram-ai-workers", marker = "extra == 'all'", editable = "experimental/ai/lexigram-ai-workers" },
-    { name = "lexigram-audit", marker = "extra == 'all'", editable = "packages/lexigram-audit" },
     { name = "lexigram-audit", marker = "extra == 'auth'", editable = "packages/lexigram-audit" },
-    { name = "lexigram-auth", marker = "extra == 'all'", editable = "packages/lexigram-auth" },
     { name = "lexigram-auth", marker = "extra == 'auth'", editable = "packages/lexigram-auth" },
-    { name = "lexigram-cache", marker = "extra == 'all'", editable = "packages/lexigram-cache" },
     { name = "lexigram-cache", marker = "extra == 'cache'", editable = "packages/lexigram-cache" },
-    { name = "lexigram-cli", marker = "extra == 'all'", editable = "experimental/apps/lexigram-cli" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
-    { name = "lexigram-contracts", marker = "extra == 'all'", editable = "core/lexigram-contracts" },
-    { name = "lexigram-events", marker = "extra == 'all'", editable = "packages/lexigram-events" },
     { name = "lexigram-events", marker = "extra == 'events'", editable = "packages/lexigram-events" },
-    { name = "lexigram-features", marker = "extra == 'all'", editable = "packages/lexigram-features" },
-    { name = "lexigram-graph", marker = "extra == 'all'", editable = "packages/lexigram-graph" },
-    { name = "lexigram-graphql", marker = "extra == 'all'", editable = "packages/lexigram-graphql" },
     { name = "lexigram-graphql", marker = "extra == 'graphql'", editable = "packages/lexigram-graphql" },
-    { name = "lexigram-http", marker = "extra == 'all'", editable = "packages/lexigram-http" },
-    { name = "lexigram-monitor", marker = "extra == 'all'", editable = "packages/lexigram-monitor" },
     { name = "lexigram-monitor", marker = "extra == 'monitor'", editable = "packages/lexigram-monitor" },
     { name = "lexigram-monitor", marker = "extra == 'test'", editable = "packages/lexigram-monitor" },
-    { name = "lexigram-multimedia", marker = "extra == 'all'", editable = "experimental/multimedia/lexigram-multimedia" },
-    { name = "lexigram-multimedia-beat", marker = "extra == 'all'", editable = "experimental/multimedia/lexigram-multimedia-beat" },
-    { name = "lexigram-multimedia-image", marker = "extra == 'all'", editable = "experimental/multimedia/lexigram-multimedia-image" },
-    { name = "lexigram-multimedia-interpolate", marker = "extra == 'all'", editable = "experimental/multimedia/lexigram-multimedia-interpolate" },
-    { name = "lexigram-multimedia-music", marker = "extra == 'all'", editable = "experimental/multimedia/lexigram-multimedia-music" },
-    { name = "lexigram-multimedia-tts", marker = "extra == 'all'", editable = "experimental/multimedia/lexigram-multimedia-tts" },
-    { name = "lexigram-multimedia-upscale", marker = "extra == 'all'", editable = "experimental/multimedia/lexigram-multimedia-upscale" },
-    { name = "lexigram-multimedia-video", marker = "extra == 'all'", editable = "experimental/multimedia/lexigram-multimedia-video" },
-    { name = "lexigram-nosql", marker = "extra == 'all'", editable = "packages/lexigram-nosql" },
     { name = "lexigram-nosql", marker = "extra == 'db'", editable = "packages/lexigram-nosql" },
-    { name = "lexigram-notification", marker = "extra == 'all'", editable = "packages/lexigram-notification" },
-    { name = "lexigram-queue", marker = "extra == 'all'", editable = "packages/lexigram-queue" },
-    { name = "lexigram-resilience", marker = "extra == 'all'", editable = "packages/lexigram-resilience" },
-    { name = "lexigram-search", marker = "extra == 'all'", editable = "packages/lexigram-search" },
     { name = "lexigram-search", marker = "extra == 'db'", editable = "packages/lexigram-search" },
-    { name = "lexigram-secrets", marker = "extra == 'all'", editable = "packages/lexigram-secrets" },
-    { name = "lexigram-sql", marker = "extra == 'all'", editable = "packages/lexigram-sql" },
-    { name = "lexigram-storage", marker = "extra == 'all'", editable = "packages/lexigram-storage" },
     { name = "lexigram-storage", marker = "extra == 'db'", editable = "packages/lexigram-storage" },
-    { name = "lexigram-tasks", marker = "extra == 'all'", editable = "packages/lexigram-tasks" },
     { name = "lexigram-tasks", marker = "extra == 'tasks'", editable = "packages/lexigram-tasks" },
-    { name = "lexigram-tenancy", marker = "extra == 'all'", editable = "packages/lexigram-tenancy" },
-    { name = "lexigram-testing", marker = "extra == 'all'", editable = "packages/lexigram-testing" },
-    { name = "lexigram-ui", marker = "extra == 'all'", editable = "experimental/apps/lexigram-ui" },
-    { name = "lexigram-vector", marker = "extra == 'all'", editable = "packages/lexigram-vector" },
-    { name = "lexigram-web", marker = "extra == 'all'", editable = "packages/lexigram-web" },
     { name = "lexigram-web", extras = ["uvicorn"], marker = "extra == 'web'", editable = "packages/lexigram-web" },
-    { name = "lexigram-webhook", marker = "extra == 'all'", editable = "packages/lexigram-webhook" },
-    { name = "lexigram-workflow", marker = "extra == 'all'", editable = "packages/lexigram-workflow" },
     { name = "mkdocs", marker = "extra == 'docs'", specifier = ">=1.4.0" },
     { name = "mkdocs-material", marker = "extra == 'docs'", specifier = ">=9.0.0" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
@@ -4475,11 +4367,11 @@ requires-dist = [
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.11.0" },
     { name = "structlog", specifier = ">=25.1.0" },
 ]
-provides-extras = ["dev", "codegen", "test", "docs", "security", "web", "db", "cache", "auth", "events", "tasks", "monitor", "graphql", "all"]
+provides-extras = ["dev", "codegen", "test", "docs", "security", "web", "db", "cache", "auth", "events", "tasks", "monitor", "graphql"]
 
 [[package]]
 name = "lexigram-admin"
-version = "0.1.5003"
+version = "0.1.5004"
 source = { editable = "experimental/apps/lexigram-admin" }
 dependencies = [
     { name = "aiofiles" },
@@ -4592,7 +4484,7 @@ requires-dist = [
     { name = "htpy", specifier = ">=0.9" },
     { name = "httpx", specifier = ">=0.27.0" },
     { name = "itsdangerous", specifier = ">=2.2.0" },
-    { name = "jinja2", specifier = ">=3.1.0" },
+    { name = "jinja2", specifier = ">=3.1.0,<4" },
     { name = "ldap3", marker = "extra == 'full'", specifier = ">=2.9.0" },
     { name = "ldap3", marker = "extra == 'ldap'", specifier = ">=2.9.0" },
     { name = "lexigram", editable = "core/lexigram" },
@@ -4655,7 +4547,7 @@ test = [
 
 [[package]]
 name = "lexigram-ai"
-version = "0.1.5002"
+version = "0.1.5003"
 source = { editable = "experimental/ai/lexigram-ai" }
 dependencies = [
     { name = "lexigram" },
@@ -4933,7 +4825,7 @@ test = [
 
 [[package]]
 name = "lexigram-ai-agents"
-version = "0.1.5002"
+version = "0.1.5003"
 source = { editable = "experimental/ai/lexigram-ai-agents" }
 dependencies = [
     { name = "lexigram" },
@@ -5001,7 +4893,7 @@ test = [
 
 [[package]]
 name = "lexigram-ai-evaluation"
-version = "0.1.5002"
+version = "0.1.5003"
 source = { editable = "experimental/ai/lexigram-ai-evaluation" }
 dependencies = [
     { name = "lexigram" },
@@ -5042,7 +4934,7 @@ test = [
 
 [[package]]
 name = "lexigram-ai-feedback"
-version = "0.1.5002"
+version = "0.1.5003"
 source = { editable = "experimental/ai/lexigram-ai-feedback" }
 dependencies = [
     { name = "lexigram" },
@@ -5106,7 +4998,7 @@ test = [
 
 [[package]]
 name = "lexigram-ai-governance"
-version = "0.1.5002"
+version = "0.1.5003"
 source = { editable = "experimental/ai/lexigram-ai-governance" }
 dependencies = [
     { name = "lexigram" },
@@ -5172,7 +5064,7 @@ test = [
 
 [[package]]
 name = "lexigram-ai-guard"
-version = "0.1.5002"
+version = "0.1.5003"
 source = { editable = "experimental/ai/lexigram-ai-guard" }
 dependencies = [
     { name = "lexigram" },
@@ -5238,7 +5130,7 @@ test = [
 
 [[package]]
 name = "lexigram-ai-llm"
-version = "0.1.5002"
+version = "0.1.5003"
 source = { editable = "experimental/ai/lexigram-ai-llm" }
 dependencies = [
     { name = "aiohttp" },
@@ -5380,7 +5272,7 @@ test = [
 
 [[package]]
 name = "lexigram-ai-mcp"
-version = "0.1.5003"
+version = "0.1.5004"
 source = { editable = "experimental/ai/lexigram-ai-mcp" }
 dependencies = [
     { name = "jinja2" },
@@ -5418,7 +5310,7 @@ test = [
 
 [package.metadata]
 requires-dist = [
-    { name = "jinja2", specifier = ">=3.1.0" },
+    { name = "jinja2", specifier = ">=3.1.0,<4" },
     { name = "lexigram", editable = "core/lexigram" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
     { name = "lexigram-testing", marker = "extra == 'test'", editable = "packages/lexigram-testing" },
@@ -5448,7 +5340,7 @@ test = [
 
 [[package]]
 name = "lexigram-ai-memory"
-version = "0.1.5002"
+version = "0.1.5003"
 source = { editable = "experimental/ai/lexigram-ai-memory" }
 dependencies = [
     { name = "lexigram" },
@@ -5516,7 +5408,7 @@ test = [
 
 [[package]]
 name = "lexigram-ai-observability"
-version = "0.1.5002"
+version = "0.1.5003"
 source = { editable = "experimental/ai/lexigram-ai-observability" }
 dependencies = [
     { name = "lexigram" },
@@ -5580,7 +5472,7 @@ test = [
 
 [[package]]
 name = "lexigram-ai-prompt"
-version = "0.1.5002"
+version = "0.1.5003"
 source = { editable = "experimental/ai/lexigram-ai-prompt" }
 dependencies = [
     { name = "jinja2" },
@@ -5646,7 +5538,7 @@ test = [
 
 [[package]]
 name = "lexigram-ai-rag"
-version = "0.1.5002"
+version = "0.1.5003"
 source = { editable = "experimental/ai/lexigram-ai-rag" }
 dependencies = [
     { name = "aiofiles" },
@@ -5764,7 +5656,7 @@ test = [
 
 [[package]]
 name = "lexigram-ai-relay"
-version = "0.1.5002"
+version = "0.1.5003"
 source = { editable = "experimental/ai/lexigram-ai-relay" }
 dependencies = [
     { name = "lexigram" },
@@ -5828,7 +5720,7 @@ test = [
 
 [[package]]
 name = "lexigram-ai-relay-gateway"
-version = "0.1.5002"
+version = "0.1.5003"
 source = { editable = "experimental/ai/lexigram-ai-relay-gateway" }
 dependencies = [
     { name = "lexigram" },
@@ -5898,7 +5790,7 @@ test = [
 
 [[package]]
 name = "lexigram-ai-session"
-version = "0.1.5002"
+version = "0.1.5003"
 source = { editable = "experimental/ai/lexigram-ai-session" }
 dependencies = [
     { name = "lexigram" },
@@ -5962,7 +5854,7 @@ test = [
 
 [[package]]
 name = "lexigram-ai-skills"
-version = "0.1.5002"
+version = "0.1.5003"
 source = { editable = "experimental/ai/lexigram-ai-skills" }
 dependencies = [
     { name = "lexigram" },
@@ -6028,7 +5920,7 @@ test = [
 
 [[package]]
 name = "lexigram-ai-workers"
-version = "0.1.5002"
+version = "0.1.5003"
 source = { editable = "experimental/ai/lexigram-ai-workers" }
 dependencies = [
     { name = "lexigram" },
@@ -6092,7 +5984,7 @@ test = [
 
 [[package]]
 name = "lexigram-audit"
-version = "0.1.5003"
+version = "0.1.5004"
 source = { editable = "packages/lexigram-audit" }
 dependencies = [
     { name = "lexigram" },
@@ -6162,7 +6054,7 @@ test = [
 
 [[package]]
 name = "lexigram-auth"
-version = "0.1.5005"
+version = "0.1.5007"
 source = { editable = "packages/lexigram-auth" }
 dependencies = [
     { name = "argon2-cffi" },
@@ -6282,7 +6174,7 @@ test = [
 
 [[package]]
 name = "lexigram-cache"
-version = "0.1.5005"
+version = "0.1.5006"
 source = { editable = "packages/lexigram-cache" }
 dependencies = [
     { name = "jinja2" },
@@ -6398,7 +6290,7 @@ test = [
 
 [[package]]
 name = "lexigram-cli"
-version = "0.1.5003"
+version = "0.1.5004"
 source = { editable = "experimental/apps/lexigram-cli" }
 dependencies = [
     { name = "aiofiles" },
@@ -6494,7 +6386,7 @@ test = [
 
 [[package]]
 name = "lexigram-contracts"
-version = "0.1.5006"
+version = "0.1.5007"
 source = { editable = "core/lexigram-contracts" }
 dependencies = [
     { name = "typing-extensions" },
@@ -6552,7 +6444,7 @@ test = [
 
 [[package]]
 name = "lexigram-events"
-version = "0.1.5006"
+version = "0.1.5007"
 source = { editable = "packages/lexigram-events" }
 dependencies = [
     { name = "jinja2" },
@@ -6682,7 +6574,7 @@ test = [
 
 [[package]]
 name = "lexigram-features"
-version = "0.1.5006"
+version = "0.1.5007"
 source = { editable = "packages/lexigram-features" }
 dependencies = [
     { name = "lexigram" },
@@ -6750,7 +6642,7 @@ test = [
 
 [[package]]
 name = "lexigram-graph"
-version = "0.1.5003"
+version = "0.1.5004"
 source = { editable = "packages/lexigram-graph" }
 dependencies = [
     { name = "lexigram" },
@@ -6820,7 +6712,7 @@ test = [
 
 [[package]]
 name = "lexigram-graphql"
-version = "0.1.5004"
+version = "0.1.5006"
 source = { editable = "packages/lexigram-graphql" }
 dependencies = [
     { name = "graphql-core" },
@@ -6920,7 +6812,7 @@ test = [
 
 [[package]]
 name = "lexigram-http"
-version = "0.1.5005"
+version = "0.1.5006"
 source = { editable = "packages/lexigram-http" }
 dependencies = [
     { name = "aiohttp" },
@@ -6990,7 +6882,7 @@ test = [
 
 [[package]]
 name = "lexigram-monitor"
-version = "0.1.5006"
+version = "0.1.5007"
 source = { editable = "packages/lexigram-monitor" }
 dependencies = [
     { name = "lexigram" },
@@ -7104,7 +6996,7 @@ test = [
 
 [[package]]
 name = "lexigram-multimedia"
-version = "0.1.5003"
+version = "0.1.5004"
 source = { editable = "experimental/multimedia/lexigram-multimedia" }
 dependencies = [
     { name = "lexigram" },
@@ -7184,7 +7076,7 @@ test = [
 
 [[package]]
 name = "lexigram-multimedia-beat"
-version = "0.1.5003"
+version = "0.1.5004"
 source = { editable = "experimental/multimedia/lexigram-multimedia-beat" }
 dependencies = [
     { name = "aiohttp" },
@@ -7274,7 +7166,7 @@ test = [
 
 [[package]]
 name = "lexigram-multimedia-image"
-version = "0.1.5003"
+version = "0.1.5004"
 source = { editable = "experimental/multimedia/lexigram-multimedia-image" }
 dependencies = [
     { name = "aiohttp" },
@@ -7340,7 +7232,7 @@ test = [
 
 [[package]]
 name = "lexigram-multimedia-interpolate"
-version = "0.1.5003"
+version = "0.1.5004"
 source = { editable = "experimental/multimedia/lexigram-multimedia-interpolate" }
 dependencies = [
     { name = "aiohttp" },
@@ -7410,7 +7302,7 @@ test = [
 
 [[package]]
 name = "lexigram-multimedia-music"
-version = "0.1.5003"
+version = "0.1.5004"
 source = { editable = "experimental/multimedia/lexigram-multimedia-music" }
 dependencies = [
     { name = "aiohttp" },
@@ -7488,7 +7380,7 @@ test = [
 
 [[package]]
 name = "lexigram-multimedia-tts"
-version = "0.1.5003"
+version = "0.1.5004"
 source = { editable = "experimental/multimedia/lexigram-multimedia-tts" }
 dependencies = [
     { name = "aiohttp" },
@@ -7581,7 +7473,7 @@ test = [
 
 [[package]]
 name = "lexigram-multimedia-upscale"
-version = "0.1.5003"
+version = "0.1.5004"
 source = { editable = "experimental/multimedia/lexigram-multimedia-upscale" }
 dependencies = [
     { name = "aiohttp" },
@@ -7647,7 +7539,7 @@ test = [
 
 [[package]]
 name = "lexigram-multimedia-video"
-version = "0.1.5003"
+version = "0.1.5004"
 source = { editable = "experimental/multimedia/lexigram-multimedia-video" }
 dependencies = [
     { name = "aiohttp" },
@@ -7727,7 +7619,7 @@ test = [
 
 [[package]]
 name = "lexigram-nosql"
-version = "0.1.5005"
+version = "0.1.5006"
 source = { editable = "packages/lexigram-nosql" }
 dependencies = [
     { name = "jinja2" },
@@ -7814,7 +7706,7 @@ test = [
 
 [[package]]
 name = "lexigram-notification"
-version = "0.1.5006"
+version = "0.1.5007"
 source = { editable = "packages/lexigram-notification" }
 dependencies = [
     { name = "aiofiles" },
@@ -7916,7 +7808,7 @@ test = [
 
 [[package]]
 name = "lexigram-queue"
-version = "0.1.5005"
+version = "0.1.5006"
 source = { editable = "packages/lexigram-queue" }
 dependencies = [
     { name = "jinja2" },
@@ -7970,7 +7862,7 @@ test = [
 
 [[package]]
 name = "lexigram-resilience"
-version = "0.1.5003"
+version = "0.1.5004"
 source = { editable = "packages/lexigram-resilience" }
 dependencies = [
     { name = "lexigram" },
@@ -8040,7 +7932,7 @@ test = [
 
 [[package]]
 name = "lexigram-search"
-version = "0.1.5004"
+version = "0.1.5005"
 source = { editable = "packages/lexigram-search" }
 dependencies = [
     { name = "jinja2" },
@@ -8180,7 +8072,7 @@ test = [
 
 [[package]]
 name = "lexigram-secrets"
-version = "0.1.5003"
+version = "0.1.5004"
 source = { editable = "packages/lexigram-secrets" }
 dependencies = [
     { name = "botocore" },
@@ -8272,7 +8164,7 @@ test = [
 
 [[package]]
 name = "lexigram-sql"
-version = "0.1.5006"
+version = "0.1.5007"
 source = { editable = "packages/lexigram-sql" }
 dependencies = [
     { name = "aiosqlite" },
@@ -8384,7 +8276,7 @@ test = [
 
 [[package]]
 name = "lexigram-storage"
-version = "0.1.5003"
+version = "0.1.5004"
 source = { editable = "packages/lexigram-storage" }
 dependencies = [
     { name = "aiofiles" },
@@ -8490,7 +8382,7 @@ test = [
 
 [[package]]
 name = "lexigram-tasks"
-version = "0.1.5005"
+version = "0.1.5006"
 source = { editable = "packages/lexigram-tasks" }
 dependencies = [
     { name = "croniter" },
@@ -8604,7 +8496,7 @@ test = [
 
 [[package]]
 name = "lexigram-tenancy"
-version = "0.1.5006"
+version = "0.1.5007"
 source = { editable = "packages/lexigram-tenancy" }
 dependencies = [
     { name = "lexigram" },
@@ -8690,7 +8582,7 @@ test = [
 
 [[package]]
 name = "lexigram-testing"
-version = "0.1.5004"
+version = "0.1.5005"
 source = { editable = "packages/lexigram-testing" }
 dependencies = [
     { name = "lexigram" },
@@ -8838,7 +8730,7 @@ test = [
 
 [[package]]
 name = "lexigram-ui"
-version = "0.1.5002"
+version = "0.1.5003"
 source = { editable = "experimental/apps/lexigram-ui" }
 dependencies = [
     { name = "htpy" },
@@ -8920,7 +8812,7 @@ test = [
 
 [[package]]
 name = "lexigram-vector"
-version = "0.1.5006"
+version = "0.1.5007"
 source = { editable = "packages/lexigram-vector" }
 dependencies = [
     { name = "aiohttp" },
@@ -9030,7 +8922,7 @@ test = [
 
 [[package]]
 name = "lexigram-web"
-version = "0.1.5006"
+version = "0.1.5007"
 source = { editable = "packages/lexigram-web" }
 dependencies = [
     { name = "aiofiles" },
@@ -9182,7 +9074,7 @@ test = [
 
 [[package]]
 name = "lexigram-webhook"
-version = "0.1.5003"
+version = "0.1.5004"
 source = { editable = "packages/lexigram-webhook" }
 dependencies = [
     { name = "httpx" },
@@ -9234,7 +9126,7 @@ test = [
 
 [[package]]
 name = "lexigram-workflow"
-version = "0.1.5006"
+version = "0.1.5007"
 source = { editable = "packages/lexigram-workflow" }
 dependencies = [
     { name = "lexigram" },

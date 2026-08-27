@@ -1,12 +1,14 @@
 """Typed domain errors for the feedback-loop demo.
 
-Subclass contracts domain errors so the web Result-bridge maps them to
-semantic HTTP statuses automatically.
+Convention: domain errors subclass contracts base errors so the web
+Result-bridge maps them to semantic HTTP statuses automatically.
+``UnknownQuestionError`` → 404, ``InvalidRatingError`` → 422,
+``NoLowRatedError`` → 409.
 """
 
 from __future__ import annotations
 
-from lexigram.contracts.exceptions.domain import (
+from lexigram.contracts.exceptions import (
     ConflictError,
     NotFoundError,
     ValidationError,

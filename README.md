@@ -99,7 +99,7 @@ run_server(app, port=8000)
 
 → [Your First App](docs/getting-started/first-app.md) — the full walkthrough with DI, controllers, and `Result` types
 
-→ [Demos](demos/README.md) — 🤖 tool-calling agents, 🧠 conversational memory, 🛡️ guardrails & budgets, ✍️ prompt A/B labs, 🔁 feedback-to-regression loops, plus 🛡️ resilience, 📦 CQRS, 📡 realtime SSE, 🧪 reproducible LLM experiments and 🔐 auth consoles — fourteen runnable apps gated like the framework
+→ [Demos](demos/README.md) — 🤖 tool-calling agents, 🧠 conversational memory, 🛡️ guardrails & budgets, ✍️ prompt A/B labs, 🔁 feedback-to-regression loops, plus 🛡️ resilience, 📦 CQRS, 📡 realtime SSE, 🧪 reproducible LLM experiments and 🔐 auth consoles — runnable apps gated like the framework
 
 ## what's in the box
 
@@ -180,22 +180,23 @@ latest `main` run); each job has a local one-liner:
 #### current status (0.1.x — Alpha)
 - Alpha; public APIs may change before 1.0
 - ~50 open-source packages (MIT)
-- Test suite runs in local CI across packages
+- 32,966 tests across 54 packages — all passing
+- Aggregate coverage: 75.6% (target: 80%)
 
 #### short term (Q2 2026)
-- [x] Extended AI capabilities — AI subsystem packages (agents, guard, memory, rag, …) - `in testing`
-- [x] Reactive state and event wiring — streams, subjects, operators, retry, end-event signaling - `in testing`
-- [x] Demos — runnable demo apps covering agents, memory, guardrails, resilience and more - `in progress`
-- [ ] Additional backend support
+- [x] Extended AI capabilities — AI subsystem packages (agents, guard, memory, rag, …) — `done` (17 packages, all passing)
+- [x] Reactive state and event wiring — streams, subjects, operators, retry, end-event signaling — `done`
+- [x] Demos — runnable demo apps covering agents, memory, guardrails, resilience and more — `in progres` (15 demos, all with tests)
+- [ ] Additional backend support — `not started`
 
 #### medium term (Q3-Q4 2026)
-- [x] Enhanced security — audit remediation - `in testing`
-- [x] Production-grade Admin dashboard — `in progress`
-- [x] Full-stack starter template — `in progress`
-- [x] CLI — in active development — `in progress`
-- [ ] Performance optimizations
-- [x] Reach 80% Unit Tests overall coverage — `in progress` now > 75%
-- [ ] Reach 70% test coverage overall (unit + integration; integration-only baseline ~35%)
+- [x] Enhanced security — audit remediation — `done` (11 rounds, clean)
+- [x] Production-grade Admin dashboard — `in progress` (polish ongoing)
+- [x] Full-stack starter template — `in progres` (extracted to own repository)
+- [x] CLI — `in progres` (22 commands, 26 generators, 80% coverage)
+- [ ] Performance optimizations — `not started`
+- [x] Reach 80% Unit Tests overall coverage — `in progress` (now > 75%)
+- [ ] Reach 70% test coverage overall (unit + integration) — `not started`
 
 #### long term (2027)
 - [ ] Enterprise features

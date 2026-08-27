@@ -54,6 +54,7 @@ class IndexConfig(DomainModel):
     primary_key: str = Field(default="id", description="Document primary key field")
 
 
+@dataclass(init=False)
 class QueryConfig(BaseConfig):
     """Configuration for query building."""
 
@@ -68,6 +69,7 @@ class QueryConfig(BaseConfig):
     fuzzy_threshold: float = Field(default=0.8)
 
 
+@dataclass(init=False)
 class SearchMeiliConfig(BaseConfig):
     """MeiliSearch specific configuration."""
 
@@ -77,6 +79,7 @@ class SearchMeiliConfig(BaseConfig):
     api_key: SecretStr | None = Field(default=None)
 
 
+@dataclass(init=False)
 class PostgresSearchConfig(BaseConfig):
     """PostgreSQL full-text search configuration."""
 
@@ -97,6 +100,7 @@ class PostgresSearchConfig(BaseConfig):
     auto_create_tables: bool = Field(default=True)
 
 
+@dataclass(init=False)
 class MySQLSearchConfig(BaseConfig):
     """MySQL FULLTEXT search configuration."""
 
@@ -107,6 +111,7 @@ class MySQLSearchConfig(BaseConfig):
     min_word_length: int = Field(default=3, ge=1)
 
 
+@dataclass(init=False)
 class SQLiteSearchConfig(BaseConfig):
     """SQLite FTS5 search configuration."""
 
@@ -117,6 +122,7 @@ class SQLiteSearchConfig(BaseConfig):
     auto_create_tables: bool = Field(default=True)
 
 
+@dataclass(init=False)
 class MongoSearchConfig(BaseConfig):
     """MongoDB text search configuration."""
 
@@ -127,6 +133,7 @@ class MongoSearchConfig(BaseConfig):
     use_atlas_search: bool = Field(default=False)
 
 
+@dataclass(init=False)
 class ElasticsearchConfig(BaseConfig):
     """Elasticsearch / OpenSearch configuration."""
 
@@ -146,6 +153,7 @@ class ElasticsearchConfig(BaseConfig):
     number_of_replicas: int = Field(default=0, ge=0)
 
 
+@dataclass(init=False)
 class OpenSearchConfig(BaseConfig):
     """OpenSearch backend configuration."""
 
@@ -163,6 +171,7 @@ class OpenSearchConfig(BaseConfig):
     timeout: int = Field(default=30, ge=1)
 
 
+@dataclass(init=False)
 class TypesenseConfig(BaseConfig):
     """Typesense backend configuration."""
 
@@ -181,6 +190,7 @@ class TypesenseConfig(BaseConfig):
     )
 
 
+@dataclass(init=False)
 class MeiliSearchConfig(BaseConfig):
     """MeiliSearch backend configuration."""
 
@@ -243,6 +253,7 @@ class MeiliSearchConfig(BaseConfig):
     )
 
 
+@dataclass(init=False)
 class SearchOperationsConfig(BaseConfig):
     """Configuration for search operations."""
 
@@ -312,6 +323,7 @@ class NamedSearchConfig(DomainModel):
     mongo: MongoSearchConfig | None = Field(default=None)
 
 
+@dataclass(init=False)
 class SearchConfig(BaseConfig):
     """Root configuration for Lexigram Search."""
 

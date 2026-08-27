@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any, ClassVar
 
 from lexigram.config.base import BaseConfig
@@ -41,6 +42,7 @@ _DEFAULT_DIRECTIVES: dict[str, str] = {
 }
 
 
+@dataclass(init=False)
 class CSPConfig(BaseConfig):
     """Content Security Policy configuration.
 

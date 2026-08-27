@@ -1,5 +1,7 @@
 # MFA Console Demo
 
+> Module name: `mfa_console` — run with `PYTHONPATH=demos/auth-mfa/src uv run python -m mfa_console`
+
 Demonstrates **multi-factor authentication** from lexigram-auth through a
 real browser flow: password login issues a *pending* challenge for
 MFA-enabled users, a 6-digit TOTP code (or single-use backup code) upgrades
@@ -9,6 +11,19 @@ Fully offline: the seeded `mfa@mfa.demo` account is enrolled at boot, and
 tests compute RFC 6238 codes directly from the framework's
 `generate_totp_code`.
 
+## Lexigram concepts used
+
+| Concept | Where in this demo | Your app |
+|---------|-------------------|----------|
+| Composition root | `app.py` | Replace controllers/providers list |
+| Module pattern | `AuthModule`, `WebModule` | Add your own modules |
+| Provider lifecycle | `di/provider.py` | Replace with your registrations |
+| Result<T,E> pattern | `controllers/api.py` | Return Result from handlers |
+| Protocol binding | `repository/session_repository.py` | Swap impl for Postgres/etc |
+| Constructor injection | Everywhere | Declare deps as typed params |
+| Domain models | `repository/` | Plain dataclasses, no framework imports |
+| Boot-time seeding | `di/provider.py` boot() | Your own data initialization |
+
 ## What it shows
 
 | Piece | Where | Lexigram API used |
@@ -17,15 +32,18 @@ tests compute RFC 6238 codes directly from the framework's
 | Enrollment (secret + provisioning URI + backup codes) | `controllers/api.py` | `MFAManager.enable_totp(user_id, issuer)` — codes shown once |
 | Disable with password re-check | `controllers/api.py` | `authenticate_user` re-verification + `disable_totp` |
 | Attempt capping | `controllers/api.py` | 3 wrong codes revoke the pending session back to `/login` |
-| Cookie sessions | `session_repository.py`, `di/provider.py` | `SessionCookieBackend` + `SessionRepositoryProtocol` adapter |
+| Cookie sessions | `repository/session_repository.py`, `di/provider.py` | `SessionCookieBackend` + `SessionRepositoryProtocol` adapter |
 
 ## Run it
 
+From this demo's root (so `application.yaml` is discovered):
+
 ```bash
-PYTHONPATH=demos/auth-mfa/src uv run python -m mfa_console
+cd demos/auth-mfa
+PYTHONPATH=src uv run python -m mfa_console
 ```
 
-Open http://127.0.0.1:8083.
+Open http://127.0.0.1:8092.
 
 - Log in as `mfa@mfa.demo` / `Demo-Password-1` → redirected to `/challenge`.
   The current code is computable from the boot-enrolled secret (tests do
@@ -33,27 +51,35 @@ Open http://127.0.0.1:8083.
 - Or log in as `plain@mfa.demo` → straight to `/profile`; enroll TOTP there,
   confirm with a code on next login.
 
-## Notes
+## Layout — read it in this order
 
-- `AuthConfig.users`/`AuthConfig.roles` are inert today — users are seeded in
-  the provider's `boot()`, and enrollment happens at boot for `mfa@`.
-- Backup codes are stored as SHA-256 digests and consumed on first use.
-- `MFA_PORT` overrides the port (default 8083).
+Start at the composition root and follow the wiring outward.
+Each file has teaching comments explaining the Lexigram convention it follows.
 
-## Layout
+| # | File | Lesson |
+|---|------|--------|
+| 1 | `src/mfa_console/app.py` | ⭐ Composition root: config → modules → providers |
+| 2 | `src/mfa_console/main.py` | Lifecycle: `Application.start/stop`, graceful shutdown |
+| 3 | `src/mfa_console/di/provider.py` | `register()` (bind) vs `boot()` (initialize); DI patterns |
+| 4 | `src/mfa_console/controllers/api.py` | Result-returning handlers → auto HTTP status mapping |
+| 5 | `src/mfa_console/repository/session_repository.py` | Protocol binding (contracts ↔ implementation) |
+| 6 | `src/mfa_console/ui/pages.py` | Page controllers: serve HTML/assets only, no logic |
 
 ```
 demos/auth-mfa/
 ├── src/mfa_console/
-│   ├── controllers/api.py     # login/challenge/me/status/enroll/disable
-│   ├── ui/pages.py            # static file-serving routes
-│   ├── ui/views/*.html        # login, challenge, profile
-│   ├── ui/static/*            # app.js, mfa.js, style.css
-│   ├── session_repository.py  # dict-backed SessionRepositoryProtocol
-│   ├── di/provider.py         # seeds users, boot-enrolls mfa persona
-│   ├── module.py              # MfaModule (imports AuthModule + WebModule)
-│   └── main.py                # uvicorn boot (:8083, MFA_PORT)
-└── tests/test_mfa_flows.py    # end-to-end challenge/enroll/disable flows
+│   ├── app.py                 # ⭐ composition root (start here)
+│   ├── main.py                # entry point / lifecycle
+│   ├── di/
+│   │   └── provider.py        # DI wiring + boot() seeding
+│   ├── controllers/
+│   │   ├── __init__.py
+│   │   └── api.py             # JSON API: login/challenge/me/enroll/disable
+│   ├── repository/
+│   │   └── session_repository.py  # SessionRepositoryProtocol impl
+│   └── ui/                    # pages controller + views/ + static/
+├── application.yaml           # web/auth sections (LEX_* overrides win)
+└── tests/                     # e2e flow via ASGITransport
 ```
 
 ## Tests

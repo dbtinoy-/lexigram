@@ -1,20 +1,149 @@
-# Resilient Rates — every runtime knob lives here (Blueprint §3).
-# Profiles: application.<LEX_PROFILE>.yaml overlays on top of this file.
+# ══════════════════════════════════════════════════════════════════════════════
+# Resilient Rates Demo — Complete Configuration Reference
+# ══════════════════════════════════════════════════════════════════════════════
+#
+# Every configuration key available for this demo.
+# Uncommented lines are the values we override; commented lines show
+# defaults.  Each section maps 1:1 to a typed config model — the
+# framework validates your yaml against it at boot time.
+#
+# DEMO FOCUS: Cache-aside reads, resilience pipeline (retry + circuit
+# breaker + timeout), single-flight collapse, stale fallback, and
+# scriptable upstream fault scenarios.
+#
+# LEARNING PATH:
+#   1. web:        HTTP server, security, CSRF
+#   2. cache:      In-memory backend, TTL, stampede protection
+#   3. demo:       Upstream scenario selector
+#
+# For full reference see:
+#   - Lexigram Web:       packages/lexigram-web/src/lexigram/web/config/
+#   - Lexigram Cache:     packages/lexigram-cache/src/lexigram/cache/config/
+#   - Demo config:        demos/resilient-rates/src/rates/config.py
+# ══════════════════════════════════════════════════════════════════════════════
+
+
+# ── Web ──────────────────────────────────────────────────────────────────────
+# Lexigram Web auto-configures Starlette, OpenAPI, CORS, CSRF, and
+# rate limiting from this single section.  The WebModule reads it
+# automatically via config_key="web" / config_model=WebConfig.
+# ─────────────────────────────────────────────────────────────────────────────
 web:
+  # ── Server ─────────────────────────────────────────────────────────────────
   server:
-    host: 127.0.0.1
-    port: 7073
+    host: 127.0.0.1       # bind address (0.0.0.0 for external access)
+    port: 7073             # listen port
+    # workers: 1           # uvicorn workers (1 = single process)
+    # reload: false        # auto-reload on file changes (dev only)
+    # debug: false         # enable debug mode
+
+  # ── Security ───────────────────────────────────────────────────────────────
   security:
+    # enabled: true                    # master switch for security subsystem
+
+    # ── CSRF ───────────────────────────────────────────────────────────────
+    # Disabled here because the demo posts JSON from the browser console.
     csrf:
-      enabled: false
+      enabled: false                    # disable for JSON-only playground
+      # cookie_name: csrf_token
+      # header_name: X-CSRF-Token
+      # cookie_secure: true
+      # cookie_httponly: true
+      # cookie_samesite: Lax
+      # token_length: 32
+      # token_ttl: 3600
+      # excluded_paths: []
 
-# lexigram-cache (config_key: "cache") — backend owns TTL semantics
+    # ── CORS ───────────────────────────────────────────────────────────────
+    # cors:
+    #   enabled: true
+    #   allowed_origins:
+    #     - http://localhost:7073        # this demo
+    #   allow_methods: [GET, POST, PUT, DELETE, PATCH, OPTIONS]
+    #   allow_headers: ["*"]
+    #   allow_credentials: false
+    #   max_age: 600
+
+    # ── Headers ─────────────────────────────────────────────────────────────
+    # custom_headers:
+    #   x-content-type-options: nosniff
+    #   x-frame-options: DENY
+    #   x-xss-protection: "1; mode=block"
+    # referrer_policy: strict-origin-when-cross-origin
+
+  # ── Rate Limiting ──────────────────────────────────────────────────────────
+  # rate_limit:
+  #   enabled: true
+  #   default_limit: 100
+  #   default_window: 60
+  #   whitelist_ips: []
+  #   storage_backend: memory
+
+  # ── Misc ───────────────────────────────────────────────────────────────────
+  # openapi_title: API
+  # openapi_version: "1.0.0"
+  # openapi_url: /openapi.json
+  # swagger_ui_url: /docs
+  # redoc_url: /redoc
+  # compression_enabled: true
+  # template_directory: templates
+  # enable_auth: false
+  # max_body_size: 10485760            # 10 MiB
+
+
+# ── Cache ───────────────────────────────────────────────────────────────────
+# Lexigram Cache provides cache-aside reads, TTL writes, single-flight
+# (stampede protection), and pluggable backends.  The CacheModule reads
+# this section automatically via config_key="cache" /
+# config_model=CacheConfig.
+#
+# This demo uses the in-memory backend — no Redis or external service
+# required.  The backend owns TTL semantics; the service reads
+# default_ttl via CacheConfig.
+# ─────────────────────────────────────────────────────────────────────────────
 cache:
-  backends:
-    - name: default
-      type: memory
-      default: true
-      default_ttl: 60
+  # enabled: true                      # master switch for cache subsystem
 
+  # ── Backends ───────────────────────────────────────────────────────────────
+  # Exactly one backend must be marked as default.  The framework routes
+  # all cache operations to the default backend unless a key prefix
+  # overrides the routing.
+  backends:
+    - name: default                    # unique backend name
+      type: memory                     # memory | redis | memcached
+      default: true                    # this is the default backend
+      default_ttl: 60                  # TTL in seconds for cached entries
+      # enabled: true                  # backend is enabled
+      # key_prefix: ""                 # namespace prefix for keys
+      # enable_metrics: true           # collect hit/miss metrics
+      # health_check_interval: 30      # seconds between health probes
+
+      # ── Memory-specific ──────────────────────────────────────────────────
+      # max_size: null                 # max entries (null = unlimited)
+      # cleanup_interval: 60           # seconds between expired-key sweeps
+
+      # ── Redis-specific (when type: redis) ────────────────────────────────
+      # redis_host: 127.0.0.1
+      # redis_port: 6379
+      # redis_db: 0
+      # redis_password: null
+      # redis_url: null                # full URL overrides host/port/db
+      # redis_ssl: false
+      # redis_pool_size: 10
+
+      # ── Memcached-specific (when type: memcached) ────────────────────────
+      # memcached_host: 127.0.0.1
+      # memcached_port: 11211
+      # memcached_servers: null        # explicit server list
+
+
+# ── Demo ────────────────────────────────────────────────────────────────────
+# Demo-specific settings for the simulated FX upstream.  The
+# RatesProvider reads this section automatically via config_key="demo" /
+# config_model=RatesConfig.
+#
+# Flip the upstream scenario at runtime via POST /scenario/{name} or
+# the CLI: python -m rates scenario flaky
+# ─────────────────────────────────────────────────────────────────────────────
 demo:
-  upstream_scenario: healthy # healthy | flaky | down | slow
+  upstream_scenario: healthy           # healthy | flaky | down | slow

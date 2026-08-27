@@ -2,7 +2,7 @@
 """Empirically verify that every documented ``LEX_*`` variable actually binds.
 
 Reads ``.env.example`` and runs each ``LEX_*`` entry through
-``dev.core.env_binding.check_var``, which loads the owning config family
+``dev._lib.env_binding.check_var``, which loads the owning config family
 through its real ``from_yaml()`` path and checks whether the variable
 reaches a declared field.  Exits non-zero when any documented variable is
 provably dead, so CI can gate documentation accuracy against runtime truth.
@@ -28,7 +28,7 @@ from typing import cast
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from dev.core.bootstrap import REPO_ROOT as ROOT  # noqa: E402 — needs bootstrap first
+from dev._lib.bootstrap import REPO_ROOT as ROOT  # noqa: E402 — needs bootstrap first
 
 EXAMPLE = ROOT / ".env.example"
 
@@ -55,7 +55,7 @@ def run_check(
 ) -> int:
     """Probe each name and print a verdict summary; return an exit code.
 
-    ``probe`` defaults to ``dev.core.env_binding.check_var`` and is
+    ``probe`` defaults to ``dev._lib.env_binding.check_var`` and is
     injectable so tests can supply canned verdicts.
     """
     if probe is None:
@@ -123,7 +123,7 @@ def main() -> int:
     return run_check(names, strict=args.strict)
 
 
-# -- empirical binding engine (verbatim from dev/core/env_binding.py) --
+# -- empirical binding engine (verbatim from dev/_lib/env_binding.py) --
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 

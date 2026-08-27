@@ -6,7 +6,7 @@ from pathlib import Path
 from dev.audit.generators import build_audit_registry
 from dev.audit.generators.base import AuditRunResult
 from dev.cli import _resolve_root, main
-from dev.core.registry import GeneratorRegistry
+from dev._lib.registry import GeneratorRegistry
 
 
 @dataclass(frozen=True, slots=True)

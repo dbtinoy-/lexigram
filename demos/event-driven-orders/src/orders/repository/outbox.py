@@ -5,6 +5,18 @@ domain event they will publish, and the outbox tracks it until it is flushed
 (here: re-published through the event bus, or reported). In a real deployment
 the outbox rows live in the same transaction as the write-side state; this
 demo keeps the shape of that pattern without a database.
+
+Outbox pattern in three steps:
+
+1. STAGE — command handler calls ``outbox.stage(event)`` after persisting.
+2. TRACK — outbox records the event as ``PENDING``.
+3. FLUSH — ``outbox.flush(event_bus)`` publishes all pending records and
+   marks them ``SENT``.  If any publish fails, records stay ``PENDING``
+   and the error is returned.
+
+Convention: the outbox is the **single delivery path** from write side to
+event bus.  Command handlers never publish directly — this prevents
+double-publishing and enables at-least-once delivery guarantees.
 """
 
 from __future__ import annotations
@@ -18,7 +30,11 @@ from lexigram.result import Err, Ok, Result
 
 
 class OutboxStatus(str, Enum):
-    """Lifecycle of an outbox record."""
+    """Lifecycle of an outbox record.
+
+    Convention: ``str, Enum`` for string enums so members serialize
+    naturally to JSON and compare equal to their string value.
+    """
 
     PENDING = "pending"
     SENT = "sent"
@@ -47,8 +63,12 @@ class OutboxError(Exception):
 class Outbox:
     """In-memory outbox that tracks staged domain events until flushed.
 
+    Convention: the outbox is a simple queue — stage records in, flush
+    records out.  The relay (``flush``) publishes each pending record
+    through the event bus and marks it ``SENT``.
+
     Args:
-        max_records: Cap on the number of staged records (drop-oldest applies).
+        max_records: Cap on the number of staged records.
     """
 
     def __init__(self, max_records: int = 1000) -> None:

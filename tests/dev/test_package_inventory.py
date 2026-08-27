@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from dev.core.package_inventory import discover_package_paths, discover_packages
+from dev._lib.package_inventory import discover_package_paths, discover_packages
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 

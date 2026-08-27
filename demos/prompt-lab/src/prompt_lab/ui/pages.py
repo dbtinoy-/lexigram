@@ -1,4 +1,11 @@
-"""Lab page — static serving only (logic lives in the API controller)."""
+"""Server-rendered page + static assets for the prompt lab.
+
+Demonstrates the *page controller* half of a Lexigram web app: HTML lives
+in ``ui/views/``, assets in ``ui/static/``, and this controller serves
+them with zero business logic — every dynamic interaction goes through
+the JSON API in ``controllers/api.py`` instead.  The vanilla-JS client in
+``static/app.js`` calls those endpoints directly.
+"""
 
 from __future__ import annotations
 

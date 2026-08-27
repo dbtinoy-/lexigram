@@ -196,7 +196,7 @@ class AuthenticationProvider(Provider):
         mfa_service: MFAManager | None = None,
     ) -> None:
         super().__init__(name="authentication", priority=ProviderPriority.SECURITY)
-        self.config = config
+        self._config = config
         if password_policy is not None:
             self.password_policy = password_policy
         elif config is not None and config.password is not None:
@@ -235,7 +235,7 @@ class AuthenticationProvider(Provider):
         if self._hasher is None:
             primary = Argon2idPasswordHasher(
                 kdf=Argon2idKeyDerivation(
-                    config=self.config.password if self.config else None,
+                    config=self._config.password if self._config else None,
                 ),
             )
             self._hasher = ComposedPasswordHasher(

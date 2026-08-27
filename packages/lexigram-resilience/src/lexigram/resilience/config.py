@@ -61,6 +61,7 @@ _IDEMPOTENCY_ENV_PREFIX = "LEX_RESILIENCE__IDEMPOTENCY__"
 _IDEMPOTENCY_ENV_NESTED_DELIMITER = "__"
 
 
+@dataclass(init=False)
 class IdempotencyConfig(BaseConfig):
     """Idempotency subsystem configuration.
 

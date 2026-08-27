@@ -5,12 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
 
-from lexigram.contracts.auth.repositories import SessionRepositoryProtocol
+from lexigram.contracts.auth import SessionRepositoryProtocol
 from lexigram.primitives import clock
-
-
-def _utc_now() -> datetime:
-    return clock.now()
 
 
 @dataclass
@@ -26,7 +22,7 @@ class InMemorySessionRepository(SessionRepositoryProtocol):
     async def insert(self, payload: dict) -> None:
         row = dict(payload)
         row.setdefault("active", True)
-        row.setdefault("created_at", _utc_now())
+        row.setdefault("created_at", clock.now())
         row.setdefault("last_active_at", row["created_at"])
         self._rows[row["session_id"]] = row
 
@@ -34,7 +30,7 @@ class InMemorySessionRepository(SessionRepositoryProtocol):
         row = self._rows.get(session_id)
         if row is None or not row.get("active"):
             return None
-        if row.get("expires_at") and row["expires_at"] <= _utc_now():
+        if row.get("expires_at") and row["expires_at"] <= clock.now():
             return None
         return row
 

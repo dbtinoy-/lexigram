@@ -20,7 +20,7 @@ from dev.audit.generators.docs_claims import (
     _union_members,
     _verify_env_var,
 )
-from dev.core.package_inventory import discover_package_paths
+from dev._lib.package_inventory import discover_package_paths
 
 _UNPARSEABLE_CELL = frozenset({"", "—", "-", "*", "n/a", "na"})
 

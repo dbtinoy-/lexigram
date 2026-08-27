@@ -1,120 +1,136 @@
-"""DI wiring for the auth web demo."""
+"""DI wiring for the auth web demo.
+
+A Provider tells the DI container *what* exists and *how* to build it.
+Two-phase lifecycle: ``register()`` binds, ``boot()`` initializes.
+"""
 
 from __future__ import annotations
 
-from collections.abc import Awaitable, Callable
-from typing import cast
-
+from auth_web.config import AuthWebConfig
 from auth_web.controllers.api import AuthApiController
+from auth_web.data.seed import DemoSeedService
 from auth_web.repository import InMemorySessionRepository
+from auth_web.services.account_verification import DemoAccountVerificationService
 from auth_web.services.password_change import PasswordChangeService
-from auth_web.services.seed import DEMO_EMAIL, DEMO_PASSWORD, DemoSeedService
+from auth_web.services.password_reset import DemoPasswordResetService
 from auth_web.ui.pages import PagesController
-from lexigram.auth.authn.services import AuthenticationService
-from lexigram.auth.authn.user_service import UserService
-from lexigram.auth.authz.service import AuthorizationService
-from lexigram.auth.session.cookie_backend import SessionCookieBackend
-from lexigram.contracts.auth import AuthenticatedUserProtocol
-from lexigram.contracts.auth.protocols import PasswordHasherProtocol
-from lexigram.contracts.auth.repositories import SessionRepositoryProtocol
-from lexigram.contracts.core.di import (
-    ContainerRegistrarProtocol,
-    ContainerResolverProtocol,
+from lexigram.auth import (
+    AuthConfig,
+    AuthenticationService,
+    SessionCookieBackend,
+    UserService,
 )
-from lexigram.contracts.core.health import HealthCheckResult
+from lexigram.auth.authz import AuthorizationService
+from lexigram.contracts.auth import (
+    PasswordHasherProtocol,
+    SessionRepositoryProtocol,
+)
+from lexigram.contracts.core.di import (
+    BootContainerProtocol,
+    ContainerRegistrarProtocol,
+)
 from lexigram.di.provider import Provider
+from lexigram.logging import get_logger
 
-DEMO_SECRET = "auth-web-demo-secret-key-0123456789abcdef"
+logger = get_logger(__name__)
 
-__all__ = [
-    "DEMO_EMAIL",
-    "DEMO_PASSWORD",
-    "AuthWebProvider",
-]
+__all__ = ["AuthWebProvider"]
 
 
 class AuthWebProvider(Provider):
-    """Assemble the demo's session layer and register UI services.
+    """Demo-specific DI registrations — your app replaces this.
 
-    All boot-built collaborators are exposed as resolver-receiving async
-    factories: the container invokes them lazily (and awaits them), so the
-    provider holds no state and needs no None-guards.
+    Provider lifecycle: register() → boot() → shutdown().
+    register() binds services (no I/O); boot() initializes after freeze.
     """
 
     name = "auth-web"
+    config_key: str | None = "auth_web"
+    config_model: type | None = AuthWebConfig
 
-    async def health_check(self, timeout: float = 5.0) -> HealthCheckResult:
-        """Report component readiness."""
-        return HealthCheckResult(component=self.name)
+    def __init__(self, config: AuthWebConfig | None = None) -> None:
+        super().__init__()
+        self._config = config
 
     async def register(self, container: ContainerRegistrarProtocol) -> None:
-        """Bind pure instances now; collaborators build lazily post-boot."""
+        """Bind demo services — no I/O here."""
+        if self._config is None:
+            self._config = AuthWebConfig()
+        container.singleton(AuthWebConfig, instance=self._config)
+
+        # --- Stores: trivial objects, bind as instances ---
         repository = InMemorySessionRepository()
         container.singleton(InMemorySessionRepository, instance=repository)
         container.singleton(SessionRepositoryProtocol, instance=repository)
-        container.singleton(UserService, factory=self._build_user_service)
-        container.singleton(SessionCookieBackend, factory=self._build_backend)
-        container.singleton(PasswordChangeService, factory=self._build_password_changes)
-        container.singleton(AuthApiController, factory=self._build_api)
+
+        # --- Services that need auth dependencies: async factories ---
+        async def build_users(resolver):
+            authn = await resolver.resolve(AuthenticationService)
+            return UserService(
+                password_policy=authn.password_policy,
+                user_store=authn.user_store,
+            )
+
+        async def build_cookies(resolver):
+            return SessionCookieBackend(
+                session_repository=await resolver.resolve(InMemorySessionRepository),
+                user_fetcher=(await resolver.resolve(UserService)).get_user,
+                secure=False,
+            )
+
+        async def build_password_changes(resolver):
+            authentication = await resolver.resolve(AuthenticationService)
+            return PasswordChangeService(
+                password_hasher=await resolver.resolve(PasswordHasherProtocol),
+                policy=authentication.password_policy,
+                user_store=authentication.user_store,
+            )
+
+        async def build_password_resets(resolver):
+            authentication = await resolver.resolve(AuthenticationService)
+            config = await resolver.resolve(AuthWebConfig)
+            return DemoPasswordResetService(
+                user_store=authentication.user_store,
+                config=config.password_reset,
+            )
+
+        async def build_verification(resolver):
+            authentication = await resolver.resolve(AuthenticationService)
+            config = await resolver.resolve(AuthWebConfig)
+            return DemoAccountVerificationService(
+                user_store=authentication.user_store,
+                config=config.account_verification,
+            )
+
+        async def build_api(resolver):
+            return AuthApiController(
+                authentication=await resolver.resolve(AuthenticationService),
+                cookies=await resolver.resolve(SessionCookieBackend),
+                sessions=await resolver.resolve(InMemorySessionRepository),
+                authz=await resolver.resolve(AuthorizationService),
+                password_changes=await resolver.resolve(PasswordChangeService),
+                password_resets=await resolver.resolve(DemoPasswordResetService),
+                verification=await resolver.resolve(DemoAccountVerificationService),
+                config=await resolver.resolve(AuthWebConfig),
+            )
+
+        async def build_seed(resolver):
+            return DemoSeedService(
+                user_service=await resolver.resolve(UserService),
+                config=await resolver.resolve(AuthConfig),
+                authz=await resolver.resolve(AuthorizationService),
+            )
+
+        container.singleton(UserService, factory=build_users)
+        container.singleton(SessionCookieBackend, factory=build_cookies)
+        container.singleton(PasswordChangeService, factory=build_password_changes)
+        container.singleton(DemoPasswordResetService, factory=build_password_resets)
+        container.singleton(DemoAccountVerificationService, factory=build_verification)
+        container.singleton(AuthApiController, factory=build_api)
         container.singleton(PagesController, instance=PagesController())
-        container.singleton(DemoSeedService, factory=self._build_seed_service)
+        container.singleton(DemoSeedService, factory=build_seed)
 
-    async def _build_user_service(
-        self, resolver: ContainerResolverProtocol
-    ) -> UserService:
-        authentication = await resolver.resolve(AuthenticationService)
-        # UserService ships unregistered: build it on the SAME policy/user
-        # store AuthenticationService holds so password changes are visible
-        # to login.
-        # TODO(framework): export UserService (or its dep keys) from
-        # lexigram-auth so this attribute-fishing disappears.
-        return UserService(
-            password_policy=authentication.password_policy,
-            user_store=authentication.user_store,
-        )
-
-    async def _build_backend(
-        self, resolver: ContainerResolverProtocol
-    ) -> SessionCookieBackend:
-        return SessionCookieBackend(
-            session_repository=(await resolver.resolve(InMemorySessionRepository)),
-            user_fetcher=cast(
-                "Callable[[str], Awaitable[AuthenticatedUserProtocol | None]]",
-                (await resolver.resolve(UserService)).get_user,
-            ),
-            secure=False,  # local demo runs plain http
-        )
-
-    async def _build_password_changes(
-        self, resolver: ContainerResolverProtocol
-    ) -> PasswordChangeService:
-        authentication = await resolver.resolve(AuthenticationService)
-        return PasswordChangeService(
-            password_hasher=await resolver.resolve(PasswordHasherProtocol),
-            policy=authentication.password_policy,
-            user_store=authentication.user_store,
-        )
-
-    async def _build_api(
-        self, resolver: ContainerResolverProtocol
-    ) -> AuthApiController:
-        return AuthApiController(
-            authentication=await resolver.resolve(AuthenticationService),
-            cookies=await resolver.resolve(SessionCookieBackend),
-            sessions=await resolver.resolve(InMemorySessionRepository),
-            authz=await resolver.resolve(AuthorizationService),
-            password_changes=await resolver.resolve(PasswordChangeService),
-        )
-
-    async def _build_seed_service(
-        self, resolver: ContainerResolverProtocol
-    ) -> DemoSeedService:
-        return DemoSeedService(
-            user_service=await resolver.resolve(UserService),
-            authz=await resolver.resolve(AuthorizationService),
-        )
-
-    async def boot(self, container: ContainerResolverProtocol) -> None:
-        """Seed demo data; everything else wires lazily."""
+    async def boot(self, container: BootContainerProtocol) -> None:
+        """Seed demo users and roles — I/O is allowed here."""
         seeder = await container.resolve(DemoSeedService)
         await seeder.run()
