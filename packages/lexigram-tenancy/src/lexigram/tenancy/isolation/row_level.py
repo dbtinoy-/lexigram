@@ -12,11 +12,16 @@ from lexigram.result import Ok, Result
 
 
 class RowLevelIsolationStrategy:
-    """Row-level isolation strategy.
+    """Row-level isolation strategy (default).
 
     Provisioning is a no-op because isolation is enforced at query time by
-    ``lexigram-sql``'s ``multi_tenant=True`` flag and ``TenantScope`` query
-    scope rather than by separate schema/database resources.
+    ``lexigram-sql`` rather than by separate schema/database resources:
+
+    - ``multi_tenant=True`` repositories (the preferred path) auto-scope
+      every query to the ambient tenant and **fail closed** with
+      ``TenantScopingError`` when no tenant is active.
+    - ``TenantScope`` (declared per-repository via ``__scopes__``) is an
+      opt-in fallback for repositories that don't use ``multi_tenant``.
 
     Attributes:
         name: ``"row_level"``

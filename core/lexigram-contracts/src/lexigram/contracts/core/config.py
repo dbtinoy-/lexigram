@@ -31,8 +31,16 @@ class Environment(StrEnum):
     def from_env(cls, default: Environment = "development") -> Environment:  # type: ignore[assignment]
         """Read the active environment from ``LEX_ENV`` or ``APP_ENV``.
 
+        .. note::
+            When neither variable is set (or its value is not a valid
+            environment name), the result falls back to *default*, which is
+            **development**. Production deployments MUST set ``LEX_ENV`` (or
+            ``APP_ENV``) to ``production`` explicitly: every production
+            gate (e.g. ``debug=True`` rejection at boot) only applies when
+            the resolved environment is production.
+
         Args:
-            default: Fallback when neither variable is set.
+            default: Fallback when neither variable is set (or unparseable).
 
         Returns:
             The resolved ``Environment`` member.

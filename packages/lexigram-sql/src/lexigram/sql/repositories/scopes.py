@@ -68,7 +68,17 @@ class ActiveScope(QueryScope):
 
 
 class TenantScope(QueryScope):
-    """Scopes queries to a specific tenant."""
+    """Scopes queries to a specific tenant.
+
+    .. warning::
+        Opt-in per repository: the scope only applies where declared in
+        ``__scopes__``. A repository over a tenant-owned table that neither
+        declares :class:`TenantScope` nor is built with
+        ``multi_tenant=True`` has **no** tenant filter and will read/write
+        across tenants. Prefer ``multi_tenant=True`` for tenant-owned
+        repositories — it auto-scopes every query and raises
+        ``TenantScopingError`` (fail-closed) when no ambient tenant is set.
+    """
 
     def __init__(self, tenant_id: str, column: str = "tenant_id") -> None:
         self.tenant_id = tenant_id

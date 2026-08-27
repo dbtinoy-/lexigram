@@ -43,7 +43,16 @@ class SSLVerifyFullConfig:
 
 
 class SSLCertPathConfig:
-    """SSL config with custom certificate path."""
+    """TLS transport with NO server-certificate verification.
+
+    .. warning::
+        Despite the name, *cert_path* is only stored and **not used for
+        verification**: the connection is made over TLS with
+        ``check_hostname=False`` and ``verify_mode=CERT_NONE``. Use it only
+        for self-signed/lab certificates where you accept the
+        man-in-the-middle risk; prefer ``require`` / ``verify-ca`` /
+        ``verify-full`` otherwise.
+    """
 
     def __init__(self, cert_path: str):
         self._cert_path = cert_path
