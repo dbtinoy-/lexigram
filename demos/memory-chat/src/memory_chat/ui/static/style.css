@@ -53,3 +53,14 @@ h2 { font-size: .75rem; font-weight: 600; text-transform: uppercase; letter-spac
 .demo-footer a { color: var(--accent); text-decoration: none; }
 .demo-footer a:hover { text-decoration: underline; }
 body { padding-bottom: 2rem; }
+
+/* Demo navigation bar */
+.demo-nav { display: flex; align-items: center; gap: .75rem; padding: .5rem 1.25rem;
+  background: var(--surface); border-bottom: 1px solid var(--border); font-size: .85rem; }
+.nav-brand { display: flex; align-items: center; gap: .4rem; color: var(--ink); text-decoration: none; font-weight: 600; }
+.nav-brand:hover { color: var(--accent); }
+.nav-logo { width: 18px; height: 18px; }
+.nav-demo { color: var(--ink-dim); }
+.nav-links { margin-left: auto; display: flex; gap: 1rem; }
+.nav-links a { color: var(--ink-dim); text-decoration: none; }
+.nav-links a:hover { color: var(--accent); }

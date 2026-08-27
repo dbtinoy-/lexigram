@@ -28,8 +28,8 @@ table { width: 100%; border-collapse: collapse; }
 th, td { text-align: left; padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--border); }
 th { font-weight: 600; color: var(--ink-dim); font-size: .75rem; text-transform: uppercase; }
 code { color: var(--accent); word-break: break-all; }
-nav a { color: var(--ink-dim); margin-right: 1rem; text-decoration: none; }
-nav a:hover { color: var(--accent); }
+body > nav ~ .card nav a, body > nav ~ nav a { color: var(--ink-dim); margin-right: 1rem; text-decoration: none; }
+body > nav ~ .card nav a:hover, body > nav ~ nav a:hover { color: var(--accent); }
 .row { display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; }
 .logo-header { display: flex; align-items: center; gap: .6rem; margin: 1.5rem 0 .5rem; }
 .logo-header img { width: 28px; height: 28px; }
@@ -39,3 +39,14 @@ nav a:hover { color: var(--accent); }
 .demo-footer a { color: var(--accent); text-decoration: none; }
 .demo-footer a:hover { text-decoration: underline; }
 body { padding-bottom: 2rem; }
+
+/* Demo navigation bar */
+.demo-nav { display: flex; align-items: center; align-self: stretch; gap: .75rem; padding: .5rem 1.25rem;
+  background: var(--surface); border-bottom: 1px solid var(--border); font-size: .85rem; }
+.nav-brand { display: flex; align-items: center; gap: .4rem; color: var(--ink); text-decoration: none; font-weight: 600; }
+.nav-brand:hover { color: var(--accent); }
+.nav-logo { width: 18px; height: 18px; }
+.nav-demo { color: var(--ink-dim); }
+.nav-links { margin-left: auto; display: flex; gap: 1rem; }
+.nav-links a { color: var(--ink-dim); text-decoration: none; }
+.nav-links a:hover { color: var(--accent); }
