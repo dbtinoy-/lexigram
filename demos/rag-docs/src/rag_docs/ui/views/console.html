@@ -17,11 +17,11 @@
   </div>
 </nav>
 
-<header>
-  <h1>RAG Docs</h1>
-  <p class="muted">No LLM — BLAKE2b hashing embedder + extractive synthesis. Byte-stable.</p>
-</header>
-<div class="app">
+  <header>
+    <h1>RAG Docs</h1>
+    <p class="muted">No LLM — BLAKE2b hashing embedder + extractive synthesis. Byte-stable.</p>
+  </header>
+  <main>
     <!-- Left panel: input + controls + stats -->
     <aside class="sidebar">
       <form id="ask-form" class="ask-form">
@@ -54,7 +54,7 @@
     </aside>
 
     <!-- Right panel: answer + citations -->
-    <main class="content">
+    <div class="content">
       <div id="answer-area" class="answer-area empty-state">
         <p class="placeholder">Ask a question to get started</p>
       </div>
@@ -65,8 +65,8 @@
       </div>
 
       <div id="error-toast" class="error-toast hidden"></div>
-    </main>
-  </div>
+    </div>
+  </main>
 
   <script src="/static/app.js"></script>
   <footer class="demo-footer">
