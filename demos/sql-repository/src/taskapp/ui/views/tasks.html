@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="utf-8">
+  <title>Task Manager</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<nav class="demo-nav">
+  <a href="/" class="nav-brand"><img src="/static/logo.png" alt="" class="nav-logo"> Lexigram</a>
+  <span class="nav-demo">SQL Repository</span>
+  <div class="nav-links">
+    <a href="https://lexigram.dev">Docs</a>
+    <a href="https://github.com/dbtinoy-/lexigram">GitHub</a>
+  </div>
+</nav>
+
+  <header>
+    <div class="logo-header"><img src="/static/logo.png" alt="Lexigram"><h1>Task Manager</h1></div>
+    <p class="muted">SQL Repository Demo — Demonstrates lexigram-sql CRUD operations</p>
+  </header>
+  <main>
+    <section id="users-panel">
+      <h2>Users</h2>
+      <div id="users-list"></div>
+    </section>
+
+    <section id="projects-panel">
+      <h2>Projects</h2>
+      <div id="projects-list"></div>
+    </section>
+
+    <section id="tasks-panel">
+      <h2>Tasks</h2>
+      <div id="tasks-list"></div>
+    </section>
+
+    <section id="log-panel">
+      <h2>Activity Log</h2>
+      <div id="log"></div>
+    </section>
+  </main>
+  <script src="/static/app.js"></script>
+  <div class="demo-footer">Powered by <a href="https://lexigram.dev">Lexigram</a></div>
+</body>
+</html>

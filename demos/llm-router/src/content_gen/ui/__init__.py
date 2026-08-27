@@ -1,24 +1,16 @@
-"""Page controller — serves HTML views (optional)."""
+"""Content generator UI assets and static-serving routes.
+
+Convention followed: **Page controller pattern** — ``ContentPageController``
+serves static HTML/CSS/JS files.  The API controller handles all dynamic
+behavior.
+
+Exports:
+
+- ``ContentPageController`` — static file serving routes
+"""
 
 from __future__ import annotations
 
-from typing import Any
-
-from lexigram.web import Controller, get
-
-
-class ContentPageController(Controller):
-    """Page routes for the content generation UI."""
-
-    prefix = ""
-
-    @get("/")
-    async def index(self) -> dict[str, Any]:
-        """Home page."""
-        return {
-            "title": "Content Generator",
-            "description": "LLM Router Demo — Demonstrates Lexigram LLM client pattern",
-        }
-
+from content_gen.ui.pages import ContentPageController
 
 __all__ = ["ContentPageController"]

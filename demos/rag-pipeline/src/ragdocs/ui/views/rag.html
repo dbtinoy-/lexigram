@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="utf-8">
+  <title>RAG Pipeline</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<nav class="demo-nav">
+  <a href="/" class="nav-brand"><img src="/static/logo.png" alt="" class="nav-logo"> Lexigram</a>
+  <span class="nav-demo">RAG Pipeline</span>
+  <div class="nav-links">
+    <a href="https://lexigram.dev">Docs</a>
+    <a href="https://github.com/dbtinoy-/lexigram">GitHub</a>
+  </div>
+</nav>
+
+  <header>
+    <div class="logo-header"><img src="/static/logo.png" alt="Lexigram"><h1>RAG Pipeline</h1></div>
+    <p class="muted">RAG Pipeline Demo — Demonstrates Lexigram RAG pipeline pattern</p>
+  </header>
+  <main>
+    <section id="query-panel">
+      <h2>Query Documents</h2>
+      <div>
+        <input id="query-input" type="text" placeholder="Ask a question..." style="border:1px solid var(--border); border-radius:6px; padding:.4rem .75rem; width:70%;">
+        <button id="btn-query" class="accent">Search</button>
+      </div>
+      <div id="results" style="margin-top:.75rem;"></div>
+    </section>
+
+    <section id="ingest-panel">
+      <h2>Ingest Document</h2>
+      <div>
+        <textarea id="doc-input" rows="3" style="width:100%; border:1px solid var(--border); border-radius:6px; padding:.5rem;" placeholder="Paste document text to ingest..."></textarea>
+        <button id="btn-ingest" style="margin-top:.5rem;">Ingest</button>
+      </div>
+    </section>
+
+    <section id="log-panel">
+      <h2>Activity Log</h2>
+      <div id="log"></div>
+    </section>
+  </main>
+  <script src="/static/app.js"></script>
+  <div class="demo-footer">Powered by <a href="https://lexigram.dev">Lexigram</a></div>
+</body>
+</html>

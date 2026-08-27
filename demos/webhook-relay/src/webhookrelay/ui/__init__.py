@@ -1,7 +1,16 @@
-"""Page controllers — serve HTML pages (if needed)."""
+"""Webhook relay UI assets and static-serving routes.
+
+Convention followed: **Page controller pattern** — ``WebhookPageController``
+serves static HTML/CSS/JS files.  The API controller handles all dynamic
+behavior.
+
+Exports:
+
+- ``WebhookPageController`` — static file serving routes
+"""
 
 from __future__ import annotations
 
-from webhookrelay.controllers.api import WebhookApiController
+from webhookrelay.ui.pages import WebhookPageController
 
-__all__ = ["WebhookApiController"]
+__all__ = ["WebhookPageController"]

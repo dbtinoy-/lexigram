@@ -1,24 +1,61 @@
-"""Page controller — serves HTML views (optional)."""
+"""Webhook relay page controller — static serving only.
+
+Convention followed: **Page controller pattern** — ``WebhookPageController``
+serves the static HTML/CSS/JS files for the single-page console.  All
+dynamic behavior is handled by the API controller.
+
+Routes:
+
+- ``GET /``            — the webhook console (``webhook.html``)
+- ``GET /static/style.css`` — stylesheet
+- ``GET /static/app.js``    — vanilla JS client
+"""
 
 from __future__ import annotations
 
-from typing import Any
+from pathlib import Path
 
-from lexigram.web import Controller, get
+from starlette.requests import Request
+
+from lexigram.web import Controller, FileResponse, get
+
+UI_ROOT = Path(__file__).resolve().parent
+VIEWS_ROOT = UI_ROOT / "views"
+STATIC_ROOT = UI_ROOT / "static"
+
+
+def _view(name: str) -> FileResponse:
+    """Serve one HTML view."""
+    return FileResponse(path=VIEWS_ROOT / name, media_type="text/html")
+
+
+def _static(name: str, media_type: str) -> FileResponse:
+    """Serve one static asset."""
+    return FileResponse(path=STATIC_ROOT / name, media_type=media_type)
 
 
 class WebhookPageController(Controller):
-    """Page routes for the webhook relay UI."""
+    """Serve the webhook console; every handler reads from ui/."""
 
-    prefix = ""
+    def __init__(self) -> None:
+        """Stateless."""
 
     @get("/")
-    async def index(self) -> dict[str, Any]:
-        """Home page."""
-        return {
-            "title": "Webhook Relay",
-            "description": "Webhook Relay Demo — Demonstrates Lexigram webhook pattern",
-        }
+    async def console(self, request: Request) -> FileResponse:
+        """The single-page console."""
+        return _view("webhook.html")
+
+    @get("/static/style.css")
+    async def stylesheet(self, request: Request) -> FileResponse:
+        return _static("style.css", "text/css")
+
+    @get("/static/app.js")
+    async def app_js(self, request: Request) -> FileResponse:
+        return _static("app.js", "text/javascript")
+
+    @get("/static/logo.png")
+    async def logo(self, request: Request) -> FileResponse:
+        return _static("logo.png", "image/png")
 
 
 __all__ = ["WebhookPageController"]

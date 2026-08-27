@@ -1,7 +1,16 @@
-"""Page controllers — serve HTML pages (if needed)."""
+"""Queue worker UI assets and static-serving routes.
+
+Convention followed: **Page controller pattern** — ``QueuePageController``
+serves static HTML/CSS/JS files.  The API controller handles all dynamic
+behavior.
+
+Exports:
+
+- ``QueuePageController`` — static file serving routes
+"""
 
 from __future__ import annotations
 
-from queueworker.controllers.api import QueueApiController
+from queueworker.ui.pages import QueuePageController
 
-__all__ = ["QueueApiController"]
+__all__ = ["QueuePageController"]

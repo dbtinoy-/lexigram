@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="utf-8">
+  <title>Webhook Relay</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<nav class="demo-nav">
+  <a href="/" class="nav-brand"><img src="/static/logo.png" alt="" class="nav-logo"> Lexigram</a>
+  <span class="nav-demo">Webhook Relay</span>
+  <div class="nav-links">
+    <a href="https://lexigram.dev">Docs</a>
+    <a href="https://github.com/dbtinoy-/lexigram">GitHub</a>
+  </div>
+</nav>
+
+  <header>
+    <div class="logo-header"><img src="/static/logo.png" alt="Lexigram"><h1>Webhook Relay</h1></div>
+    <p class="muted">Webhook Relay Demo — Demonstrates Lexigram webhook pattern</p>
+  </header>
+  <main>
+    <section id="send-panel">
+      <h2>Send Webhook</h2>
+      <div>
+        <select id="event-type" style="border:1px solid var(--border); border-radius:6px; padding:.4rem;">
+          <option value="order.created">order.created</option>
+          <option value="payment.received">payment.received</option>
+          <option value="user.registered">user.registered</option>
+        </select>
+        <button id="btn-send" class="accent">Send</button>
+      </div>
+    </section>
+
+    <section id="events-panel">
+      <h2>Recent Events</h2>
+      <div id="events-list"></div>
+    </section>
+
+    <section id="log-panel">
+      <h2>Activity Log</h2>
+      <div id="log"></div>
+    </section>
+  </main>
+  <script src="/static/app.js"></script>
+  <div class="demo-footer">Powered by <a href="https://lexigram.dev">Lexigram</a></div>
+</body>
+</html>

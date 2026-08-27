@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="utf-8">
+  <title>Content Generator</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<nav class="demo-nav">
+  <a href="/" class="nav-brand"><img src="/static/logo.png" alt="" class="nav-logo"> Lexigram</a>
+  <span class="nav-demo">LLM Router</span>
+  <div class="nav-links">
+    <a href="https://lexigram.dev">Docs</a>
+    <a href="https://github.com/dbtinoy-/lexigram">GitHub</a>
+  </div>
+</nav>
+
+  <header>
+    <div class="logo-header"><img src="/static/logo.png" alt="Lexigram"><h1>Content Generator</h1></div>
+    <p class="muted">LLM Router Demo — Demonstrates Lexigram LLM client pattern</p>
+  </header>
+  <main>
+    <section id="generator-panel">
+      <h2>Generate Content</h2>
+      <div>
+        <label for="style-select">Style:</label>
+        <select id="style-select">
+          <option value="description">Description</option>
+          <option value="casual">Casual</option>
+          <option value="technical">Technical</option>
+        </select>
+        <button id="btn-generate" class="accent">Generate</button>
+      </div>
+      <pre id="output" style="margin-top:.75rem; min-height:60px;"></pre>
+    </section>
+
+    <section id="extract-panel">
+      <h2>Extract Product</h2>
+      <div>
+        <textarea id="extract-input" rows="3" style="width:100%; border:1px solid var(--border); border-radius:6px; padding:.5rem;" placeholder="Paste LLM output to extract product info..."></textarea>
+        <button id="btn-extract" style="margin-top:.5rem;">Extract</button>
+      </div>
+      <pre id="extract-output" style="margin-top:.75rem; min-height:40px;"></pre>
+    </section>
+
+    <section id="log-panel">
+      <h2>Activity Log</h2>
+      <div id="log"></div>
+    </section>
+  </main>
+  <script src="/static/app.js"></script>
+  <div class="demo-footer">Powered by <a href="https://lexigram.dev">Lexigram</a></div>
+</body>
+</html>
