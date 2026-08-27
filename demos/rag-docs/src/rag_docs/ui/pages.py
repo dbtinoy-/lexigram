@@ -56,5 +56,9 @@ class DocsPageController(Controller):
         """Vanilla-JS client (no build step)."""
         return _static("app.js", "text/javascript")
 
+    @get("/static/logo.png")
+    async def logo(self, request: Request) -> FileResponse:
+        return _static("logo.png", "image/png")
+
 
 __all__ = ["DocsPageController"]

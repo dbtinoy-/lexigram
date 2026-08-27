@@ -58,5 +58,9 @@ class ChatPageController(Controller):
     async def app_js(self, request: Request) -> FileResponse:
         return _static("app.js", "text/javascript")
 
+    @get("/static/logo.png")
+    async def logo(self, request: Request) -> FileResponse:
+        return _static("logo.png", "image/png")
+
 
 __all__ = ["ChatPageController"]
