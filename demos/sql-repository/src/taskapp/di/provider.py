@@ -82,60 +82,22 @@ class TaskProvider(Provider):
         This method runs AFTER all providers have registered.
         Resolution is safe — all bindings are in place.
         """
+        from taskapp.repository.fixtures import PROJECTS, TASKS, USERS
+
         cfg = await container.resolve(TaskAppConfig)
 
-        # In-memory stores for the demo
         # In production, replace with lexigram-sql repositories:
         #   from lexigram_sql import SQLRepository
         #   users_repo = SQLRepository(UserModel, db_provider)
-        users_store: dict[int, dict] = {
-            1: {
-                "id": 1,
-                "name": "Alice",
-                "email": "alice@example.com",
-                "role": "admin",
-            },
-            2: {"id": 2, "name": "Bob", "email": "bob@example.com", "role": "member"},
-        }
-        projects_store: dict[int, dict] = {
-            1: {"id": 1, "name": "Website Redesign", "owner_id": 1, "status": "active"},
-            2: {"id": 2, "name": "Mobile App", "owner_id": 2, "status": "active"},
-        }
-        tasks_store: dict[int, dict] = {
-            1: {
-                "id": 1,
-                "title": "Design homepage",
-                "project_id": 1,
-                "assignee_id": 1,
-                "status": "todo",
-                "priority": 0,
-            },
-            2: {
-                "id": 2,
-                "title": "Implement auth",
-                "project_id": 1,
-                "assignee_id": 2,
-                "status": "in_progress",
-                "priority": 1,
-            },
-            3: {
-                "id": 3,
-                "title": "Build UI components",
-                "project_id": 2,
-                "assignee_id": 1,
-                "status": "todo",
-                "priority": 0,
-            },
-        }
 
         # Bind the wired controller — the router resolves this for
         # every request, so per-request resolution reuses the same instance.
         container.bind(
             TasksApiController,
             TasksApiController(
-                users_store=users_store,
-                projects_store=projects_store,
-                tasks_store=tasks_store,
+                users_store=dict(USERS),
+                projects_store=dict(PROJECTS),
+                tasks_store=dict(TASKS),
             ),
         )
 

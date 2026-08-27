@@ -30,6 +30,8 @@ class TaskAppConfig(BaseConfig):
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="ignore")
     config_section: ClassVar[str | None] = "task_app"
+    name: str = "task_app"
+    enabled: bool = True
 
     project_name: str = Field(
         default="Task Manager",
