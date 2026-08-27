@@ -33,6 +33,7 @@ web:
   server:
     host: 127.0.0.1       # bind address (0.0.0.0 for external access)
     port: 7000             # listen port
+    backend: uvicorn       # uvicorn required — hub uses fleet mounts (in-process)
     # workers: 1           # uvicorn workers (1 = single process)
     # reload: false        # auto-reload on file changes (dev only)
     # debug: false         # enable debug mode

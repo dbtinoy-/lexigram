@@ -104,14 +104,37 @@ def _to_import_string(app: Any) -> str | None:
     """Derive an import string (``module:attr``) from an ASGI app instance.
 
     Granian requires a string import path for multiprocessing workers.
+    We look for a ``create_app`` factory in the caller's frame module,
+    because Granian needs to call a factory (with ``factory=True``) to
+    create the app in each worker process.
     """
     try:
+        # Walk the call stack to find the caller's module that has create_app
+        import inspect
+
+        frame = inspect.currentframe()
+        try:
+            # Walk up to 10 frames looking for a module with create_app
+            caller_frame = frame
+            for _ in range(10):
+                caller_frame = caller_frame.f_back
+                if caller_frame is None:
+                    break
+                caller_module = caller_frame.f_globals.get("__name__")
+                if caller_module and caller_module != __name__:
+                    try:
+                        mod = __import__(caller_module, fromlist=[caller_module.rsplit(".", 1)[-1]])
+                        if hasattr(mod, "create_app") and callable(getattr(mod, "create_app")):
+                            return f"{caller_module}:create_app"
+                    except ImportError:
+                        continue
+        finally:
+            del frame
+
+        # Fallback: class module
         module = app.__class__.__module__
         if module == "builtins" or module.startswith("starlette."):
             return None
-        for candidate in ("app", "application", "asgi"):
-            if hasattr(app.__class__, candidate):
-                return f"{module}:{candidate}"
         return f"{module}:{app.__class__.__name__}"
     except (AttributeError, TypeError):
         return None
@@ -154,25 +177,28 @@ def run_server(
         loop = None
 
     if loop is not None:
-        # Sync function called from async context — run the async dispatcher
-        # in a new thread with its own event loop so it actually blocks.
-        import concurrent.futures
+        # Sync function called from async context.
+        # Granian needs the main thread for signal handling, so we spawn it
+        # as a subprocess (like gunicorn).  Uvicorn works fine in a thread.
+        backend = _resolve_backend(app)
+        if host is None or port is None:
+            host, port = _resolve_web_config(app, host, port)
 
-        def _thread_target() -> None:
-            new_loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(new_loop)
-            try:
-                new_loop.run_until_complete(
-                    _run_in_loop(new_loop, app, host, port, **kwargs)
+        if backend == "granian":
+            import_str = _to_import_string(app) if not isinstance(app, str) else app
+            if import_str is None:
+                logger.warning(
+                    "granian_fallback_uvicorn",
+                    reason="could not derive import string from app instance",
                 )
-            finally:
-                new_loop.close()
-
-        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-            future = pool.submit(_thread_target)
-            # Block the calling coroutine until the server thread finishes
-            # (i.e. until the server is stopped by a signal).
-            future.result()
+                _run_uvicorn_via_thread(app, host, port, **kwargs)
+            else:
+                filtered = {k: v for k, v in kwargs.items() if k in _GRANIAN_ACCEPTED}
+                _run_granian(import_str, host, port, **filtered)
+        elif backend == "gunicorn":
+            _run_gunicorn(app, host, port, **kwargs)
+        else:
+            _run_uvicorn_via_thread(app, host, port, **kwargs)
     else:
         _run_sync(app, host, port, **kwargs)
 
@@ -194,14 +220,14 @@ async def _run_in_loop(
         return
 
     if backend == "granian":
+        if host is None or port is None:
+            host, port = _resolve_web_config(app, host, port)
         import_str = _to_import_string(app) if not isinstance(app, str) else app
         if import_str is None:
             logger.warning(
                 "granian_fallback_uvicorn",
                 reason="could not derive import string from app instance",
             )
-            if host is None or port is None:
-                host, port = _resolve_web_config(app, host, port)
             await _run_uvicorn_async(app, host, port, **kwargs)
         else:
             filtered = {k: v for k, v in kwargs.items() if k in _GRANIAN_ACCEPTED}
@@ -290,6 +316,7 @@ def _run_granian(
         address=host,
         port=port,
         interface=Interfaces.ASGI,
+        factory=True,
         **kwargs,
     )
     server.serve()
@@ -325,6 +352,33 @@ async def _run_uvicorn_async(
     config = uvicorn.Config(app, host=host, port=port, **kwargs)
     server = uvicorn.Server(config)
     await server.serve()
+
+
+def _run_uvicorn_via_thread(
+    app: Any,
+    host: str,
+    port: int,
+    **kwargs: Any,
+) -> None:
+    """Run Uvicorn in a background thread (for async-context callers)."""
+    import concurrent.futures
+    import uvicorn
+
+    logger.info("starting_uvicorn_server", host=host, port=port, kwargs=kwargs)
+
+    def _serve() -> None:
+        config = uvicorn.Config(app, host=host, port=port, **kwargs)
+        server = uvicorn.Server(config)
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            loop.run_until_complete(server.serve())
+        finally:
+            loop.close()
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+        future = pool.submit(_serve)
+        future.result()
 
 
 def _run_gunicorn(
