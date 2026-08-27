@@ -14,7 +14,7 @@ function log(msg, cls) {
 
 async function loadUsers() {
   try {
-    const res = await fetch("/api/users");
+    const res = await fetch("/api/tasks/users");
     const data = await res.json();
     $("users-list").innerHTML = data.map(function(u) {
       return '<div style="padding:.4rem 0;border-bottom:1px solid var(--border)">' + u.name + ' &lt;' + u.email + '&gt; <span style="color:var(--ink-dim)">(' + u.role + ')</span></div>';
@@ -25,7 +25,7 @@ async function loadUsers() {
 
 async function loadProjects() {
   try {
-    const res = await fetch("/api/projects");
+    const res = await fetch("/api/tasks/projects");
     const data = await res.json();
     $("projects-list").innerHTML = data.map(function(p) {
       return '<div style="padding:.4rem 0;border-bottom:1px solid var(--border)">' + p.name + ' <span style="color:var(--ink-dim)">(' + p.status + ')</span></div>';
@@ -36,7 +36,7 @@ async function loadProjects() {
 
 async function loadTasks() {
   try {
-    const res = await fetch("/api/tasks");
+    const res = await fetch("/api/tasks/tasks");
     const data = await res.json();
     $("tasks-list").innerHTML = data.map(function(t) {
       return '<div style="padding:.4rem 0;border-bottom:1px solid var(--border)">' + t.title + ' <span style="color:var(--ink-dim)">(' + t.status + ')</span></div>';
