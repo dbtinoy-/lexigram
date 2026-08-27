@@ -37,7 +37,7 @@ window.WebSocket.prototype=W.prototype}
 document.addEventListener("click",function(e){
 var a=e.target&&e.target.closest&&e.target.closest("a");
 if(a){var h=a.getAttribute("href");
-if(h&&h.charAt(0)==="/"&&h.charAt(1)!=="/")a.setAttribute("href",B+h)}},true);
+if(h&&h.charAt(0)==="/"&&h.charAt(1)!=="/"&&!a.classList.contains("nav-brand"))a.setAttribute("href",B+h)}},true);
 document.addEventListener("submit",function(e){
 var f=e.target;if(f){var a=f.getAttribute("action");
 if(a&&a.charAt(0)==="/"&&a.charAt(1)!=="/")f.setAttribute("action",B+a)}},true);
