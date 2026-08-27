@@ -21,7 +21,7 @@ class TasksPageController(Controller):
         """Home page."""
         return {
             "title": "Task Manager",
-            "description": "SQL Repository Demo — teaches lexigram-sql",
+            "description": "SQL Repository Demo — Demonstrates lexigram-sql",
         }
 
 

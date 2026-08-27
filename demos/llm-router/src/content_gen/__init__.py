@@ -1,4 +1,4 @@
-"""Content generation demo — teaches Lexigram LLM client pattern."""
+"""Content generation demo — Demonstrates Lexigram LLM client pattern."""
 
 from __future__ import annotations
 

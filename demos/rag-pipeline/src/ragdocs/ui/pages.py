@@ -17,7 +17,7 @@ class RagPageController(Controller):
         """Home page."""
         return {
             "title": "RAG Pipeline",
-            "description": "RAG Pipeline Demo — teaches Lexigram RAG pipeline pattern",
+            "description": "RAG Pipeline Demo — Demonstrates Lexigram RAG pipeline pattern",
         }
 
 

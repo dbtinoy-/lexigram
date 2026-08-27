@@ -1,4 +1,4 @@
-"""Monitor stack demo — teaches Lexigram monitoring pattern."""
+"""Monitor stack demo — Demonstrates Lexigram monitoring pattern."""
 
 from __future__ import annotations
 

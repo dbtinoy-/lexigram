@@ -1,31 +1,95 @@
-# ╔═══════════════════════════════════════════════════════════════════════════╗
-# ║                    RAG Pipeline Demo — Full Reference                   ║
-# ║                                                                         ║
-# ║  Teaches: Lexigram RAG pipeline pattern with in-memory vector store,    ║
-# ║           document ingestion, retrieval, and synthesis.                 ║
-# ║                                                                         ║
-# ║  LEARNING PATH:                                                         ║
-# ║    1. application.yaml   — you are here (configuration)                 ║
-# ║    2. src/ragdocs/app.py — composition root (wiring)                    ║
-# ║    3. src/ragdocs/di/provider.py — provider lifecycle                   ║
-# ║    4. src/ragdocs/services/ — RAG pipeline patterns                     ║
-# ║    5. tests/ — real composition root, no mocks                          ║
-# ╚═══════════════════════════════════════════════════════════════════════════╝
+# ══════════════════════════════════════════════════════════════════════════════
+# RAG Pipeline Demo — Complete Configuration Reference
+# ══════════════════════════════════════════════════════════════════════════════
+#
+# Every configuration key available for this demo.
+# Uncommented lines are the values we override; commented lines show
+# defaults.  Each section maps 1:1 to a typed config model — the
+# framework validates your yaml against it at boot time.
+#
+# DEMO FOCUS: RAG pipeline with in-memory vector store, document
+# ingestion, retrieval, and context synthesis.  Demonstrates the
+# full RAG lifecycle without requiring external vector databases.
+#
+# LEARNING PATH:
+#   1. web:        HTTP server, security, CSRF
+#   2. ragdocs:    Vector store dimension, chunk size, top-k retrieval
+#
+# For full reference see:
+#   - Lexigram Web:       packages/lexigram-web/src/lexigram/web/config/
+#   - Lexigram AI RAG:    experimental/ai/lexigram-ai-rag/
+#   - Demo config:        demos/rag-pipeline/src/ragdocs/config.py
+# ══════════════════════════════════════════════════════════════════════════════
 
 
 # ── Web ──────────────────────────────────────────────────────────────────────
+# Lexigram Web auto-configures Starlette, OpenAPI, CORS, CSRF, and
+# rate limiting from this single section.  The WebModule reads it
+# automatically via config_key="web" / config_model=WebConfig.
+# ─────────────────────────────────────────────────────────────────────────────
 web:
+  # ── Server ─────────────────────────────────────────────────────────────────
   server:
-    host: 127.0.0.1
-    port: 8000
+    host: 127.0.0.1       # bind address (0.0.0.0 for external access)
+    port: 8000             # listen port
+    # workers: 1           # uvicorn workers (1 = single process)
+    # reload: false        # auto-reload on file changes (dev only)
+    # debug: false         # enable debug mode
+
+  # ── Security ───────────────────────────────────────────────────────────────
   security:
+    # ── CSRF ───────────────────────────────────────────────────────────────
+    # Disabled here because the demo posts JSON from the browser console.
     csrf:
-      enabled: false
+      enabled: false                    # disable for JSON-only playground
+      # cookie_name: csrf_token
+      # header_name: X-CSRF-Token
+      # cookie_secure: true
+      # cookie_httponly: true
+      # cookie_samesite: Lax
+      # token_length: 32
+      # token_ttl: 3600
+      # excluded_paths: []
+
+    # ── CORS ───────────────────────────────────────────────────────────────
+    # cors:
+    #   enabled: true
+    #   allowed_origins:
+    #     - http://localhost:8000        # this demo
+    #   allow_methods: [GET, POST, PUT, DELETE, PATCH, OPTIONS]
+    #   allow_headers: ["*"]
+    #   allow_credentials: false
+    #   max_age: 600
+
+  # ── Rate Limiting ──────────────────────────────────────────────────────────
+  # rate_limit:
+  #   enabled: true
+  #   default_limit: 100
+  #   default_window: 60
+  #   whitelist_ips: []
+  #   storage_backend: memory
 
 
-# ── Demo ────────────────────────────────────────────────────────────────────
+# ── RAG Docs ─────────────────────────────────────────────────────────────────
+# Demo-specific settings for the RAG pipeline demo.  The
+# RagDocsProvider reads this section automatically via
+# config_key="ragdocs" / config_model=RagDocsConfig.
+#
+# This demo uses an in-memory vector store to demonstrate the full
+# RAG lifecycle without requiring an external vector database like
+# Pinecone or Weaviate.  In production, replace with lexigram-ai-rag's
+# backend.
+#
+# The RAG pipeline consists of:
+#   1. Document ingestion — chunk and store documents
+#   2. Query retrieval — find relevant documents
+#   3. Context synthesis — format retrieved documents for LLM context
+# ─────────────────────────────────────────────────────────────────────────────
 ragdocs:
-  collection_name: "documents"
-  embedding_dimension: 128
-  chunk_size: 500
-  top_k: 5
+  collection_name: "documents"         # vector collection name
+  embedding_dimension: 128             # embedding vector dimension
+  chunk_size: 500                      # document chunk size in characters
+  top_k: 5                             # number of results to retrieve
+  # similarity_threshold: 0.7          # minimum similarity score
+  # max_results: 10                    # maximum results per query
+  # embedding_model: "default"         # embedding model name

@@ -1,4 +1,4 @@
-"""Webhook relay demo — teaches Lexigram webhook pattern."""
+"""Webhook relay demo — Demonstrates Lexigram webhook pattern."""
 
 from __future__ import annotations
 

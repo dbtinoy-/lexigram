@@ -1,31 +1,94 @@
-# ╔═══════════════════════════════════════════════════════════════════════════╗
-# ║                   Webhook Relay Demo — Full Reference                   ║
-# ║                                                                         ║
-# ║  Teaches: Lexigram webhook pattern with HMAC signing, payload           ║
-# ║           validation, and relay routing.                                ║
-# ║                                                                         ║
-# ║  LEARNING PATH:                                                         ║
-# ║    1. application.yaml   — you are here (configuration)                 ║
-# ║    2. src/webhookrelay/app.py — composition root (wiring)               ║
-# ║    3. src/webhookrelay/di/provider.py — provider lifecycle              ║
-# ║    4. src/webhookrelay/services/ — webhook processing patterns          ║
-# ║    5. tests/ — real composition root, no mocks                          ║
-# ╚═══════════════════════════════════════════════════════════════════════════╝
+# ══════════════════════════════════════════════════════════════════════════════
+# Webhook Relay Demo — Complete Configuration Reference
+# ══════════════════════════════════════════════════════════════════════════════
+#
+# Every configuration key available for this demo.
+# Uncommented lines are the values we override; commented lines show
+# defaults.  Each section maps 1:1 to a typed config model — the
+# framework validates your yaml against it at boot time.
+#
+# DEMO FOCUS: Webhook pattern with HMAC signing, payload validation,
+# and relay routing.  Demonstrates secure webhook processing without
+# requiring external webhook services.
+#
+# LEARNING PATH:
+#   1. web:        HTTP server, security, CSRF
+#   2. webhookrelay: Secret key, signature header, payload size, retries
+#
+# For full reference see:
+#   - Lexigram Web:       packages/lexigram-web/src/lexigram/web/config/
+#   - Lexigram Webhook:   packages/lexigram-webhook/
+#   - Demo config:        demos/webhook-relay/src/webhookrelay/config.py
+# ══════════════════════════════════════════════════════════════════════════════
 
 
 # ── Web ──────────────────────────────────────────────────────────────────────
+# Lexigram Web auto-configures Starlette, OpenAPI, CORS, CSRF, and
+# rate limiting from this single section.  The WebModule reads it
+# automatically via config_key="web" / config_model=WebConfig.
+# ─────────────────────────────────────────────────────────────────────────────
 web:
+  # ── Server ─────────────────────────────────────────────────────────────────
   server:
-    host: 127.0.0.1
-    port: 8000
+    host: 127.0.0.1       # bind address (0.0.0.0 for external access)
+    port: 8000             # listen port
+    # workers: 1           # uvicorn workers (1 = single process)
+    # reload: false        # auto-reload on file changes (dev only)
+    # debug: false         # enable debug mode
+
+  # ── Security ───────────────────────────────────────────────────────────────
   security:
+    # ── CSRF ───────────────────────────────────────────────────────────────
+    # Disabled here because the demo posts JSON from the browser console.
     csrf:
-      enabled: false
+      enabled: false                    # disable for JSON-only playground
+      # cookie_name: csrf_token
+      # header_name: X-CSRF-Token
+      # cookie_secure: true
+      # cookie_httponly: true
+      # cookie_samesite: Lax
+      # token_length: 32
+      # token_ttl: 3600
+      # excluded_paths: []
+
+    # ── CORS ───────────────────────────────────────────────────────────────
+    # cors:
+    #   enabled: true
+    #   allowed_origins:
+    #     - http://localhost:8000        # this demo
+    #   allow_methods: [GET, POST, PUT, DELETE, PATCH, OPTIONS]
+    #   allow_headers: ["*"]
+    #   allow_credentials: false
+    #   max_age: 600
+
+  # ── Rate Limiting ──────────────────────────────────────────────────────────
+  # rate_limit:
+  #   enabled: true
+  #   default_limit: 100
+  #   default_window: 60
+  #   whitelist_ips: []
+  #   storage_backend: memory
 
 
-# ── Demo ────────────────────────────────────────────────────────────────────
+# ── Webhook Relay ────────────────────────────────────────────────────────────
+# Demo-specific settings for the webhook relay demo.  The
+# WebhookRelayProvider reads this section automatically via
+# config_key="webhookrelay" / config_model=WebhookRelayConfig.
+#
+# This demo uses HMAC-SHA256 signing to verify webhook payloads.
+# The secret key is used to generate and verify signatures.  In
+# production, use a secure secret management system.
+#
+# The webhook relay consists of:
+#   1. Payload validation — verify HMAC signature and size
+#   2. Event routing — route events to registered handlers
+#   3. Event logging — log all processed events
+# ─────────────────────────────────────────────────────────────────────────────
 webhookrelay:
-  secret_key: "demo-secret-key-for-hmac-signing"
-  signature_header: "X-Hub-Signature-256"
-  max_payload_size: 1048576
-  retry_count: 3
+  secret_key: "demo-secret-key-for-hmac-signing"  # HMAC signing secret
+  signature_header: "X-Hub-Signature-256"          # signature header name
+  max_payload_size: 1048576                         # max payload size (1 MiB)
+  retry_count: 3                                    # retry attempts
+  # event_timeout: 30                               # event processing timeout
+  # log_events: true                                # log all events
+  # allowed_sources: ["shopify", "github", "stripe"] # allowed webhook sources

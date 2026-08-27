@@ -17,7 +17,7 @@ class WebhookPageController(Controller):
         """Home page."""
         return {
             "title": "Webhook Relay",
-            "description": "Webhook Relay Demo — teaches Lexigram webhook pattern",
+            "description": "Webhook Relay Demo — Demonstrates Lexigram webhook pattern",
         }
 
 

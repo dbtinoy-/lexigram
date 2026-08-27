@@ -30,6 +30,9 @@ class TasksApiController(Controller):
 
     Delegates to in-memory stores for business logic.  Returns dicts
     that the framework serialises to JSON.
+
+    The controller receives its stores via constructor injection —
+    the provider wires them during ``boot()``.
     """
 
     prefix = "/api/tasks"
@@ -48,12 +51,19 @@ class TasksApiController(Controller):
         self._next_task_id = max(self._tasks.keys(), default=0) + 1
 
     # ── Users ─────────────────────────────────────────────────────────────
+    # User management endpoints — CRUD operations on the users store.
+    # In production, replace with a repository pattern:
+    #   user = await self._users_repo.create(UserCreate(**body))
+    # ─────────────────────────────────────────────────────────────────────
 
     @post("/users")
     async def create_user(self, body: dict[str, Any]) -> dict[str, Any]:
         """Create a new user.
 
         Body: ``{"name": "Alice", "email": "alice@example.com", "role": "admin"}``
+
+        Returns:
+            ``{"user": {"id": 1, "name": "Alice", ...}}``
         """
         name = body.get("name", "")
         email = body.get("email", "")
@@ -95,12 +105,18 @@ class TasksApiController(Controller):
         return {"deleted": True}
 
     # ── Projects ──────────────────────────────────────────────────────────
+    # Project management endpoints — CRUD operations on the projects store.
+    # Projects are owned by users and contain tasks.
+    # ─────────────────────────────────────────────────────────────────────
 
     @post("/projects")
     async def create_project(self, body: dict[str, Any]) -> dict[str, Any]:
         """Create a new project.
 
         Body: ``{"name": "Website", "owner_id": 1}``
+
+        Returns:
+            ``{"project": {"id": 1, "name": "Website", ...}}``
         """
         name = body.get("name", "")
         owner_id = body.get("owner_id", 0)
@@ -142,12 +158,18 @@ class TasksApiController(Controller):
         return {"deleted": True}
 
     # ── Tasks ─────────────────────────────────────────────────────────────
+    # Task management endpoints — CRUD operations on the tasks store.
+    # Tasks belong to projects and can be assigned to users.
+    # ─────────────────────────────────────────────────────────────────────
 
     @post("/tasks")
     async def create_task(self, body: dict[str, Any]) -> dict[str, Any]:
         """Create a new task.
 
         Body: ``{"title": "Design homepage", "project_id": 1, "assignee_id": 1}``
+
+        Returns:
+            ``{"task": {"id": 1, "title": "Design homepage", ...}}``
         """
         title = body.get("title", "")
         project_id = body.get("project_id", 0)
@@ -189,6 +211,8 @@ class TasksApiController(Controller):
         """Update a task's status.
 
         Body: ``{"status": "in_progress"}``
+
+        Valid statuses: ``todo``, ``in_progress``, ``done``
         """
         task = self._tasks.get(task_id)
         if task is None:

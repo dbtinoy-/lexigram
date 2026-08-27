@@ -1,4 +1,4 @@
-"""Queue worker demo — teaches Lexigram queue pattern."""
+"""Queue worker demo — Demonstrates Lexigram queue pattern."""
 
 from __future__ import annotations
 

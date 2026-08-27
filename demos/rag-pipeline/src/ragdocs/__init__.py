@@ -1,4 +1,4 @@
-"""RAG pipeline demo — teaches Lexigram RAG pipeline pattern."""
+"""RAG pipeline demo — Demonstrates Lexigram RAG pipeline pattern."""
 
 from __future__ import annotations
 

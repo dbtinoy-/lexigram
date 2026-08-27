@@ -17,7 +17,7 @@ class ContentPageController(Controller):
         """Home page."""
         return {
             "title": "Content Generator",
-            "description": "LLM Router Demo — teaches Lexigram LLM client pattern",
+            "description": "LLM Router Demo — Demonstrates Lexigram LLM client pattern",
         }
 
 

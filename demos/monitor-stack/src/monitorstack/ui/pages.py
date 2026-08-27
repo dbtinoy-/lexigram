@@ -17,7 +17,7 @@ class MonitorPageController(Controller):
         """Home page."""
         return {
             "title": "Monitor Stack",
-            "description": "Monitor Stack Demo — teaches Lexigram monitoring pattern",
+            "description": "Monitor Stack Demo — Demonstrates Lexigram monitoring pattern",
         }
 
 

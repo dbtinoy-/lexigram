@@ -1,4 +1,4 @@
-"""Task management demo — teaches Lexigram provider pattern with in-memory stores."""
+"""Task management demo — Demonstrates Lexigram provider pattern with in-memory stores."""
 
 from __future__ import annotations
 

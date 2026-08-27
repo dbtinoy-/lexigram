@@ -17,7 +17,7 @@ class QueuePageController(Controller):
         """Home page."""
         return {
             "title": "Queue Worker",
-            "description": "Queue Worker Demo — teaches Lexigram queue pattern",
+            "description": "Queue Worker Demo — Demonstrates Lexigram queue pattern",
         }
 
 

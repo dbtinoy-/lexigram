@@ -1,35 +1,104 @@
-# ╔═══════════════════════════════════════════════════════════════════════════╗
-# ║                     SQL Repository Demo — Full Reference                 ║
-# ║                                                                         ║
-# ║  Teaches: Lexigram provider pattern with in-memory stores,              ║
-# ║           CRUD operations, and the DI lifecycle.                        ║
-# ║                                                                         ║
-# ║  LEARNING PATH:                                                         ║
-# ║    1. application.yaml   — you are here (configuration)                 ║
-# ║    2. src/taskapp/app.py — composition root (wiring)                    ║
-# ║    3. src/taskapp/di/provider.py — provider lifecycle                   ║
-# ║    4. src/taskapp/controllers/api.py — HTTP surface                     ║
-# ║    5. tests/ — real composition root, no mocks                          ║
-# ╚═══════════════════════════════════════════════════════════════════════════╝
+# ══════════════════════════════════════════════════════════════════════════════
+# SQL Repository Demo — Complete Configuration Reference
+# ══════════════════════════════════════════════════════════════════════════════
+#
+# Every configuration key available for this demo.
+# Uncommented lines are the values we override; commented lines show
+# defaults.  Each section maps 1:1 to a typed config model — the
+# framework validates your yaml against it at boot time.
+#
+# DEMO FOCUS: Provider pattern with in-memory stores, CRUD operations,
+# and the DI lifecycle.  Demonstrates how to wire services into the
+# container and expose them over HTTP.
+#
+# LEARNING PATH:
+#   1. web:        HTTP server, security, CSRF
+#   2. task_app:   Task management settings
+#
+# For full reference see:
+#   - Lexigram Web:       packages/lexigram-web/src/lexigram/web/config/
+#   - Demo config:        demos/sql-repository/src/taskapp/config.py
+# ══════════════════════════════════════════════════════════════════════════════
 
 
 # ── Web ──────────────────────────────────────────────────────────────────────
 # Lexigram Web auto-configures Starlette, OpenAPI, CORS, CSRF, and
-# rate limiting from this single section.
+# rate limiting from this single section.  The WebModule reads it
+# automatically via config_key="web" / config_model=WebConfig.
 # ─────────────────────────────────────────────────────────────────────────────
 web:
+  # ── Server ─────────────────────────────────────────────────────────────────
   server:
-    host: 127.0.0.1
-    port: 8000
+    host: 127.0.0.1       # bind address (0.0.0.0 for external access)
+    port: 8000             # listen port
+    # workers: 1           # uvicorn workers (1 = single process)
+    # reload: false        # auto-reload on file changes (dev only)
+    # debug: false         # enable debug mode
+
+  # ── Security ───────────────────────────────────────────────────────────────
   security:
+    # ── CSRF ───────────────────────────────────────────────────────────────
+    # Disabled here because the demo posts JSON from the browser console.
     csrf:
-      enabled: false
+      enabled: false                    # disable for JSON-only playground
+      # cookie_name: csrf_token
+      # header_name: X-CSRF-Token
+      # cookie_secure: true
+      # cookie_httponly: true
+      # cookie_samesite: Lax
+      # token_length: 32
+      # token_ttl: 3600
+      # excluded_paths: []
+
+    # ── CORS ───────────────────────────────────────────────────────────────
+    # cors:
+    #   enabled: true
+    #   allowed_origins:
+    #     - http://localhost:8000        # this demo
+    #   allow_methods: [GET, POST, PUT, DELETE, PATCH, OPTIONS]
+    #   allow_headers: ["*"]
+    #   allow_credentials: false
+    #   max_age: 600
+
+    # ── Headers ─────────────────────────────────────────────────────────────
+    # custom_headers:
+    #   x-content-type-options: nosniff
+    #   x-frame-options: DENY
+    #   x-xss-protection: "1; mode=block"
+    # referrer_policy: strict-origin-when-cross-origin
+
+  # ── Rate Limiting ──────────────────────────────────────────────────────────
+  # rate_limit:
+  #   enabled: true
+  #   default_limit: 100
+  #   default_window: 60
+  #   whitelist_ips: []
+  #   storage_backend: memory
+
+  # ── Misc ───────────────────────────────────────────────────────────────────
+  # openapi_title: API
+  # openapi_version: "1.0.0"
+  # openapi_url: /openapi.json
+  # swagger_ui_url: /docs
+  # redoc_url: /redoc
+  # compression_enabled: true
+  # template_directory: templates
+  # enable_auth: false
+  # max_body_size: 10485760            # 10 MiB
 
 
-# ── Demo ────────────────────────────────────────────────────────────────────
+# ── Task App ─────────────────────────────────────────────────────────────────
 # Demo-specific settings for the task management demo.  The
 # TaskProvider reads this section automatically via config_key="task_app" /
 # config_model=TaskAppConfig.
+#
+# This demo uses in-memory stores to demonstrate the provider pattern
+# without requiring an external database.  In production, you would
+# replace these with lexigram-sql repositories backed by SQLite or
+# PostgreSQL.
 # ─────────────────────────────────────────────────────────────────────────────
 task_app:
-  project_name: "Task Manager"
+  project_name: "Task Manager"         # display name for the project
+  # max_users: 100                     # maximum number of users
+  # max_projects: 50                   # maximum number of projects
+  # max_tasks_per_project: 200         # maximum tasks per project

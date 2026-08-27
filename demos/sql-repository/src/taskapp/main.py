@@ -14,6 +14,6 @@ def serve() -> None:
 
 async def _async_serve() -> None:
     app = create_app()
-    from lexigram.web.server import run_server_async
+    from lexigram.web.server import run_server
 
-    await run_server_async(app)
+    run_server(app)
