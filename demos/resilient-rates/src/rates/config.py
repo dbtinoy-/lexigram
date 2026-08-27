@@ -17,6 +17,7 @@ from dataclasses import dataclass
 from typing import ClassVar
 
 from lexigram.config import BaseConfig
+from lexigram.contracts.core.config import Environment
 from lexigram.validation import Field
 
 
@@ -27,6 +28,7 @@ class RatesConfig(BaseConfig):
     config_section: ClassVar[str] = "demo"
     name: str = "demo"
     enabled: bool = True
+    env: Environment | None = Field(None, description="Deployment environment")
 
     upstream_scenario: str = Field(
         "healthy",

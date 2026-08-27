@@ -12,7 +12,8 @@ from dataclasses import dataclass
 from typing import ClassVar
 
 from lexigram.config import BaseConfig
-from lexigram.validation import Field
+from lexigram.contracts.core.config import Environment
+from lexigram.validation import ConfigDict, Field
 
 
 @dataclass(init=False)
@@ -22,6 +23,7 @@ class RealtimeConfig(BaseConfig):
     config_section: ClassVar[str] = "demo"
     name: str = "demo"
     enabled: bool = True
+    env: Environment | None = Field(None, description="Deployment environment")
 
     heartbeat_interval_seconds: float = Field(
         15.0, description="Delay between synthetic heartbeat events"

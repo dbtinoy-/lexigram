@@ -1,13 +1,14 @@
 <!DOCTYPE html>
 <html>
   <head>
+  <link rel="icon" href="/static/icon.png" type="image/png" />
   <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Realtime Console</title>
     <link rel="stylesheet" href="/static/style.css" />
   </head>
   <body>
 <nav class="demo-nav">
-  <a href="/" class="nav-brand"><img src="/static/logo.png" alt="" class="nav-logo"> Lexigram</a>
+  <a href="/" class="nav-brand">Lexigram</a>
   <span class="nav-demo">Realtime Monitor</span>
   <div class="nav-links">
     <a href="https://lexigram.dev">Docs</a>
@@ -16,9 +17,12 @@
 </nav>
 
     <div class="wrap">
+      <header>
+        <h1>Realtime Console</h1>
+        <p class="muted">Live telemetry streaming dashboard</p>
+      </header>
       <div class="topbar">
         <div class="conn">
-          <div class="logo-header"><h1 class="accent">Realtime Console</h1></div>
           <div class="conn">
             <span class="dot" id="conn-dot"></span>
             <span id="conn-label">Connecting…</span>
