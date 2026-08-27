@@ -29,7 +29,9 @@ class MonitorStackConfig(BaseConfig):
     """
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="ignore")
-    config_section: ClassVar[str | None] = "monitorstack"
+    config_section: ClassVar[str] = "monitorstack"
+    name: str = "monitorstack"
+    enabled: bool = True
 
     service_name: str = Field(
         default="demo-service",

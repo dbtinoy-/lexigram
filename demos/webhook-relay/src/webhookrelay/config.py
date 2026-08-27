@@ -29,7 +29,9 @@ class WebhookRelayConfig(BaseConfig):
     """
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="ignore")
-    config_section: ClassVar[str | None] = "webhookrelay"
+    config_section: ClassVar[str] = "webhookrelay"
+    name: str = "webhookrelay"
+    enabled: bool = True
 
     secret_key: str = Field(
         default="demo-secret-key",

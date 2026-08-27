@@ -98,7 +98,9 @@ class AuthWebConfig(BaseConfig):
         },
     )
 
-    config_section: ClassVar[str | None] = "auth_web"
+    config_section: ClassVar[str] = "auth_web"
+    name: str = "auth_web"
+    enabled: bool = True
 
     password_reset: PasswordResetConfig = Field(
         default_factory=PasswordResetConfig,

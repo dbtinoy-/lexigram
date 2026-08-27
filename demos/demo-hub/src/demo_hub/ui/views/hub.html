@@ -8,20 +8,19 @@
 </head>
 <body>
   <header>
-    <img src="/static/logo.png" alt="" class="logo">
     <div>
       <h1>Lexigram Live Demos</h1>
       <p class="sandbox">Sandbox &mdash; in-memory state resets often; auth consoles use seeded demo credentials.</p>
     </div>
     <div id="filters">
       <button data-f="all" class="active">All</button>
-      <button data-f="capability">Capability</button>
-      <button data-f="auth">Auth</button>
+      <button data-f="standard">Standard</button>
+      <button data-f="multi-module">Multi-module</button>
     </div>
   </header>
 
   <main>
-    <div id="cards" class="grid"></div>
+    <div id="cards"></div>
   </main>
 
   <div id="modal-overlay" class="modal-overlay hidden">

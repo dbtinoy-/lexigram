@@ -25,21 +25,33 @@ function card(s) {
   const infoBtn = s.kind === "web"
     ? `<button class="info-btn" data-slug="${s.slug}" data-name="${s.name.replace(/"/g, "&quot;")}" title="About this demo">&#9432;</button>`
     : "";
-  return `<div class="card-wrap ${filter !== "all" && !matchFilter(s) ? "hidden" : ""}">
+  return `<div class="card-wrap ${filter !== "all" && s.group !== filter ? "hidden" : ""}">
     <a class="card" href="${href}"${err}>
       ${dot(s)}<h3>${s.name}</h3><p>${s.blurb}</p>
       ${port}</a>
     ${infoBtn}</div>`;
 }
 
-const CAPABILITY = new Set(["realtime-monitor","resilient-rates","event-driven-orders",
-  "rag-docs","support-agent","memory-chat","ai-guardrails","prompt-lab","feedback-loop"]);
-function matchFilter(s) {
-  return filter === "capability" ? CAPABILITY.has(s.slug) : !CAPABILITY.has(s.slug);
-}
-
 function render(services) {
-  $("cards").innerHTML = services.map(card).join("");
+  /* Group cards by group, preserving registry order within each group. */
+  const groups = {};
+  for (const s of services) {
+    const g = s.group || "standard";
+    if (!groups[g]) groups[g] = [];
+    groups[g].push(s);
+  }
+
+  const groupLabels = { "standard": "Standard", "multi-module": "Multi-module" };
+  let html = "";
+  for (const [key, items] of Object.entries(groups)) {
+    if (filter !== "all" && key !== filter) continue;
+    const label = groupLabels[key] || key;
+    html += `<div class="group-section"><h2 class="group-title">${label}</h2>`;
+    html += `<div class="grid">`;
+    html += items.map(card).join("");
+    html += `</div></div>`;
+  }
+  $("cards").innerHTML = html;
   document.querySelectorAll(".info-btn").forEach((btn) =>
     btn.addEventListener("click", (e) => {
       e.preventDefault();

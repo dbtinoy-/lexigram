@@ -29,7 +29,9 @@ class RagDocsConfig(BaseConfig):
     """
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="ignore")
-    config_section: ClassVar[str | None] = "ragdocs"
+    config_section: ClassVar[str] = "ragdocs"
+    name: str = "ragdocs"
+    enabled: bool = True
 
     collection_name: str = Field(
         default="documents",

@@ -120,7 +120,7 @@ class ConciergeService:
         """Everything stored about one owner (empty snapshot if unknown).
 
         Returns semantic triples and recent episodic entries — the two
-        memory tiers the demo teaches.
+        memory tiers the demo Demonstrates.
         """
         triples = [list(t) for t in await self._repo.facts_for(owner)]
         recent = await self._repo.recent(owner)

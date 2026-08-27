@@ -14,21 +14,29 @@
     <a href="https://github.com/dbtinoy-/lexigram">GitHub</a>
   </div>
 </nav>
+<div class="wrap">
 
-  <div class="logo-header"><img src="/static/logo.png" alt="Lexigram"><h1 class="accent">Register</h1></div>
+  <div class="logo-header"><h1 class="accent">Register</h1></div>
+  <p class="auth-desc">Create a new account</p>
   <div class="card">
     <p id="error" class="error"></p>
     <form id="register-form">
-      <input name="name" placeholder="name" minlength="3" required />
-      <input name="email" type="email" placeholder="email" required />
-      <input name="password" type="password" placeholder="password (8+ chars, mixed case)" required />
-      <input name="confirm_password" type="password" placeholder="confirm password" required />
+      <label for="reg-name">Name</label>
+      <input id="reg-name" name="name" placeholder="name" minlength="3" required />
+      <label for="reg-email">Email</label>
+      <input id="reg-email" name="email" type="email" placeholder="email" required />
+      <label for="reg-password">Password</label>
+      <input id="reg-password" name="password" type="password" placeholder="password (8+ chars, mixed case)" required />
+      <label for="reg-confirm">Confirm password</label>
+      <input id="reg-confirm" name="confirm_password" type="password" placeholder="confirm password" required />
       <button type="submit">Create account</button>
     </form>
-    <p class="muted">Already registered? <a href="/login">Log in</a></p>
+    <div class="auth-footer"><p class="muted">Already registered? <a href="/login">Log in</a></p></div>
   </div>
+
   <script src="/static/app.js"></script>
   <div class="demo-footer">Powered by <a href="https://lexigram.dev">Lexigram</a></div>
+</div>
   <script>
     document.getElementById("register-form").addEventListener("submit", async (event) => {
       event.preventDefault();

@@ -18,6 +18,8 @@ class DemoService:
         port: Port used when the demo runs standalone (informational only —
             embedded mode serves everything from the hub's own port).
         kind: ``web`` for live consoles, ``cli`` for offline entries.
+        group: Top-level grouping — ``standard`` (single-package) or
+            ``multi-module`` (multi-package composition).
         blurb: One-line description for the card grid.
         demo_dir: Directory under ``demos/`` containing this demo.
         app_path: Dotted path of the demo's ``app`` module exposing
@@ -29,6 +31,7 @@ class DemoService:
     name: str
     port: int
     kind: str
+    group: str
     blurb: str
     demo_dir: str = ""
     app_path: str = ""
@@ -61,6 +64,7 @@ class ServiceRegistry:
                 "Realtime Monitor",
                 7071,
                 "web",
+                "standard",
                 "SSE replay + WebSocket operator channel",
                 "realtime-monitor",
                 "ops_console.app",
@@ -71,6 +75,7 @@ class ServiceRegistry:
                 "Resilient Rates",
                 7073,
                 "web",
+                "standard",
                 "Cache-aside + resilience pipeline with stale fallback",
                 "resilient-rates",
                 "rates.app",
@@ -81,6 +86,7 @@ class ServiceRegistry:
                 "Event-Driven Orders",
                 7074,
                 "web",
+                "standard",
                 "CQRS lifecycle with transactional outbox",
                 "event-driven-orders",
                 "orders.app",
@@ -91,6 +97,7 @@ class ServiceRegistry:
                 "RAG Docs",
                 7075,
                 "web",
+                "standard",
                 "Cited answers over docs — no LLM, BLAKE2b embedder",
                 "rag-docs",
                 "rag_docs.app",
@@ -101,6 +108,7 @@ class ServiceRegistry:
                 "Support Agent",
                 8082,
                 "web",
+                "standard",
                 "ReAct agent with scripted LLM + tools",
                 "support-agent",
                 "support_agent.app",
@@ -111,6 +119,7 @@ class ServiceRegistry:
                 "Memory Chat",
                 8083,
                 "web",
+                "standard",
                 "Episodic + semantic memory — zero LLM, template responder",
                 "memory-chat",
                 "memory_chat.app",
@@ -121,6 +130,7 @@ class ServiceRegistry:
                 "AI Guardrails",
                 8084,
                 "web",
+                "standard",
                 "Guards, budgets, audit — canned replies, no LLM",
                 "ai-guardrails",
                 "guard_gate.app",
@@ -131,6 +141,7 @@ class ServiceRegistry:
                 "Prompt Lab",
                 8085,
                 "web",
+                "standard",
                 "Prompt versioning with deterministic A/B — zero LLM",
                 "prompt-lab",
                 "prompt_lab.app",
@@ -141,6 +152,7 @@ class ServiceRegistry:
                 "Feedback Loop",
                 8086,
                 "web",
+                "standard",
                 "Ratings → regression — no model call, canned Q&A",
                 "feedback-loop",
                 "feedback_loop.app",
@@ -151,6 +163,7 @@ class ServiceRegistry:
                 "Auth Web",
                 8081,
                 "web",
+                "standard",
                 "Cookie sessions, JWT claims, lockout",
                 "auth-web",
                 "auth_web.app",
@@ -161,6 +174,7 @@ class ServiceRegistry:
                 "Auth RBAC",
                 8090,
                 "web",
+                "standard",
                 "Permission matrix with live authorize()",
                 "auth-rbac",
                 "rbac_console.app",
@@ -171,6 +185,7 @@ class ServiceRegistry:
                 "Auth API Keys",
                 8091,
                 "web",
+                "standard",
                 "Scoped machine keys, instant revocation",
                 "auth-apikeys",
                 "apikey_console.app",
@@ -181,6 +196,7 @@ class ServiceRegistry:
                 "Auth MFA",
                 8092,
                 "web",
+                "standard",
                 "TOTP challenge flow with backup codes",
                 "auth-mfa",
                 "mfa_console.app",
@@ -221,6 +237,7 @@ class ServiceRegistry:
                     "name": svc.name,
                     "port": svc.port,
                     "kind": svc.kind,
+                    "group": svc.group,
                     "blurb": svc.blurb,
                     "status": status,
                     "error": failures.get(svc.slug),

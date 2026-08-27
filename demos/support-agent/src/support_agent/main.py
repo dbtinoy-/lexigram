@@ -27,14 +27,14 @@ async def serve() -> None:
     register → freeze → boot (seeding happens here) → server start.
     The ``finally`` block ensures ``stop()`` runs even on errors.
     """
-    from lexigram.web.server.runner import run_server_async
+    from lexigram.web.server.runner import run_server
 
     app = create_app()
     await app.start()
     try:
-        # run_server_async reads host/port from application.yaml by default;
+        # run_server reads host/port from application.yaml by default;
         # pass explicit kwargs to override (e.g. during tests).
-        await run_server_async(app)
+        run_server(app)
     finally:
         await app.stop()
 

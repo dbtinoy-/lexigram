@@ -20,6 +20,8 @@ class RealtimeConfig(BaseConfig):
     """Typed ``demo:`` section of the realtime monitor application.yaml."""
 
     config_section: ClassVar[str] = "demo"
+    name: str = "demo"
+    enabled: bool = True
 
     heartbeat_interval_seconds: float = Field(
         15.0, description="Delay between synthetic heartbeat events"

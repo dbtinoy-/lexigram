@@ -91,7 +91,7 @@ class ConciergeApiController(Controller):
         """Snapshot of everything stored about one owner.
 
         Returns semantic triples (subject/predicate/object) and recent
-        episodic entries — the two memory tiers the demo teaches.
+        episodic entries — the two memory tiers the demo Demonstrates.
         """
         snapshot = await self._concierge.get_facts(request.path_params["owner"])
         return JSONResponse(

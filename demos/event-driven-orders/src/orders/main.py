@@ -29,12 +29,12 @@ logger = get_logger(__name__)
 
 async def serve() -> None:
     """Boot once and serve until interrupted; stop cleanly afterwards."""
-    from lexigram.web.server.runner import run_server_async
+    from lexigram.web.server.runner import run_server
 
     app = create_app()
     await app.start()
     try:
-        await run_server_async(app)
+        run_server(app)
     finally:
         await app.stop()
 

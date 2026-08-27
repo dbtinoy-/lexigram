@@ -39,7 +39,7 @@ async def app() -> AsyncIterator[Starlette]:
     register() all providers → freeze container → boot() all providers.
 
     We resolve WebProvider to get the underlying Starlette instance
-    for httpx transport.  In production, run_server_async handles this.
+    for httpx transport.  In production, run_server handles this.
     """
     application = create_app()
     await application.start()

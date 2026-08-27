@@ -15,14 +15,17 @@
     <a href="https://github.com/dbtinoy-/lexigram">GitHub</a>
   </div>
 </nav>
+<div class="wrap">
 
-  <div class="logo-header"><img src="/static/logo.png" alt="Lexigram"><h1 class="accent">Permission matrix</h1></div>
+  <div class="logo-header"><h1 class="accent">Permission matrix</h1></div>
+  <p class="auth-desc">Live permission grid showing role capabilities</p>
   <nav>
     <a href="#" id="logout">Log out</a>
     <span id="who" class="chip"></span>
   </nav>
+<div class="wrap">
   <div class="card">
-    <div class="row"><strong>Live grid — computed via authorize()</strong></div>
+    <div class="card-header"><strong>Live grid — computed via authorize()</strong></div>
     <p id="error" class="error"></p>
     <table>
       <thead><tr><th>required permission</th><th>viewer</th><th>editor</th><th>admin</th></tr></thead>
@@ -31,7 +34,7 @@
     <p class="muted">admin bypasses every check (role-name bypass); editor inherits viewer.</p>
   </div>
   <div class="card">
-    <div class="row"><strong>Try a verdict</strong></div>
+    <div class="card-header"><strong>Try a verdict</strong></div>
     <form id="try-form">
       <select id="try-role">
         <option value="viewer">viewer</option>
@@ -45,16 +48,17 @@
     <pre id="verdict" class="muted"></pre>
   </div>
   <div class="card">
-    <div class="row"><strong>Articles</strong>
+    <div class="card-header"><strong>Articles</strong></div>
       <form id="create-form" style="display:flex;gap:0.5rem">
         <input id="new-title" placeholder="new title" required />
         <button type="submit">Create</button>
       </form>
-    </div>
     <ul id="article-list"></ul>
   </div>
+
   <script src="/static/app.js"></script>
   <div class="demo-footer">Powered by <a href="https://lexigram.dev">Lexigram</a></div>
+</div>
   <script src="/static/matrix.js"></script>
 </body>
 </html>

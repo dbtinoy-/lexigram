@@ -14,13 +14,17 @@
     <a href="https://github.com/dbtinoy-/lexigram">GitHub</a>
   </div>
 </nav>
+<div class="wrap">
 
-  <div class="logo-header"><img src="/static/logo.png" alt="Lexigram"><h1 class="accent">auth-web</h1></div>
+  <div class="logo-header"><h1 class="accent">auth-web</h1></div>
+  <p class="auth-desc">Checking session…</p>
   <div class="card">
     <p id="error" class="muted">Checking session…</p>
   </div>
+
   <script src="/static/app.js"></script>
   <div class="demo-footer">Powered by <a href="https://lexigram.dev">Lexigram</a></div>
+</div>
   <script>
     (async () => {
       const me = await api("/api/me");

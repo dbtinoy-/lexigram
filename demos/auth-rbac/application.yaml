@@ -27,11 +27,13 @@
 # ─────────────────────────────────────────────────────────────────────────────
 web:
   # ── Server ─────────────────────────────────────────────────────────────────
-  # Binds the uvicorn / gunicorn process.
+  # Binds the ASGI server process.  The `backend` field selects which
+  # server runs — Granian (Rust, production) or Uvicorn (dev/test).
   server:
+    backend: granian          # ASGI backend: granian | uvicorn | hypercorn | gunicorn
     host: 127.0.0.1       # bind address (0.0.0.0 for external access)
     port: 8001             # listen port
-    # workers: 1           # uvicorn workers (1 = single process)
+    # workers: 1           # worker processes (1 = single process)
     # reload: false        # auto-reload on file changes (dev only)
     # debug: false         # enable debug mode
 

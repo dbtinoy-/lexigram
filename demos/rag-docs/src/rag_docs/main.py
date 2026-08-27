@@ -34,7 +34,7 @@ async def serve() -> None:
     """Boot once and serve until interrupted; stop cleanly afterwards."""
     from lexigram.app.base import Application
     from lexigram.web.di.provider import WebProvider
-    from lexigram.web.server.runner import run_server_async
+    from lexigram.web.server.runner import run_server
 
     async with Application.boot(
         name="rag-docs",
@@ -44,7 +44,7 @@ async def serve() -> None:
         web = await app.container.resolve(WebProvider)
         server = web.config.server
         logger.info("server.listening", host=server.host, port=server.port)
-        await run_server_async(web.starlette, host=server.host, port=server.port)
+        run_server(web.starlette, host=server.host, port=server.port)
 
 
 def main() -> int:

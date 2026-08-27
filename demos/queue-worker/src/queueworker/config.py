@@ -29,7 +29,9 @@ class QueueWorkerConfig(BaseConfig):
     """
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="ignore")
-    config_section: ClassVar[str | None] = "queueworker"
+    config_section: ClassVar[str] = "queueworker"
+    name: str = "queueworker"
+    enabled: bool = True
 
     queue_name: str = Field(
         default="tasks",

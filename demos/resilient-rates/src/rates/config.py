@@ -25,6 +25,8 @@ class RatesConfig(BaseConfig):
     """Typed ``demo:`` section of the resilient-rates application.yaml."""
 
     config_section: ClassVar[str] = "demo"
+    name: str = "demo"
+    enabled: bool = True
 
     upstream_scenario: str = Field(
         "healthy",

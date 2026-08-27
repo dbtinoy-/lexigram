@@ -6,22 +6,33 @@
   --error: #dc2626; --ok: #16a34a; --radius: 8px;
 }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-body { height: 100vh; overflow: hidden; display: flex; flex-direction: column; align-items: center;
+body { height: 100vh; overflow: hidden; display: flex; flex-direction: column;
+  padding: 0 2rem;
   background: var(--bg); color: var(--ink);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
-h1.accent { color: var(--accent); margin: 2rem 0 1rem; font-size: 1.3rem; }
-nav { margin-bottom: 1rem; display: flex; align-items: center; gap: 1rem; }
-body > nav ~ .card nav a, body > nav ~ nav a { color: var(--ink-dim); text-decoration: none; }
-body > nav ~ .card nav a:hover, body > nav ~ nav a:hover { color: var(--accent); }
-.chip { color: var(--accent); font-weight: 600; }
+
+/* ── Auth shell ────────────────────────────────────────────────────────────── */
+
+/* ── Logo + heading ────────────────────────────────────────────────────────── */
+.logo-header { display: flex; align-items: center; justify-content: center;
+  gap: .6rem; margin: 2rem 0 .5rem; }
+.logo-header img { width: 28px; height: 28px; }
+h1.accent { color: var(--accent); font-size: 1.3rem; text-align: center; }
+.auth-desc { text-align: center; color: var(--ink-dim); font-size: .9rem;
+  margin: .25rem 0 1.5rem; }
+
+/* ── Card ──────────────────────────────────────────────────────────────────── */
 .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
-  padding: 1.25rem 1.5rem; width: min(560px, 92vw); margin-bottom: 1rem; overflow-y: auto;
+  padding: 1.25rem 1.5rem; margin-bottom: 1rem;
   box-shadow: 0 1px 3px rgba(0,0,0,.04); }
-table { width: 100%; border-collapse: collapse; }
-th, td { text-align: left; padding: 0.4rem 0.6rem; border-bottom: 1px solid var(--border); }
-th { font-weight: 600; color: var(--ink-dim); font-size: .75rem; text-transform: uppercase; }
-td.ok { color: var(--ok); font-weight: 600; }
-td.error { color: var(--error); font-weight: 600; }
+.card-header { display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: .75rem; }
+.card-header strong { font-size: .85rem; }
+.card-header .chip { font-size: .8rem; }
+
+/* ── Form ──────────────────────────────────────────────────────────────────── */
+form { display: flex; flex-direction: column; gap: 0.6rem; }
+label { font-size: .85rem; color: var(--ink-dim); font-weight: 500; }
 input, select { background: var(--surface); color: var(--ink); border: 1px solid var(--border);
   border-radius: 6px; padding: 0.45rem 0.7rem; font-family: inherit; }
 input:focus, select:focus { outline: none; border-color: var(--accent); }
@@ -29,23 +40,54 @@ button { background: var(--accent); color: #fff; font-weight: 600; border: none;
   border-radius: 6px; padding: 0.45rem 0.9rem; cursor: pointer; font-family: inherit; }
 button:hover { filter: brightness(1.1); }
 button.secondary { background: var(--surface2); color: var(--ink); border: 1px solid var(--border); }
+
+/* ── Status ────────────────────────────────────────────────────────────────── */
 .error { color: var(--error); }
 .ok { color: var(--ok); }
 .muted { color: var(--ink-dim); }
+.chip { color: var(--accent); font-weight: 600; }
+.status-bar { padding: .6rem .85rem; border-radius: 6px; font-size: .85rem;
+  margin-bottom: .75rem; }
+.status-bar.info { background: var(--accent-bg); color: var(--accent); }
+.status-bar.error { background: rgba(220,38,38,.06); color: var(--error); }
+.status-bar.ok { background: rgba(22,163,74,.06); color: var(--ok); }
+
+/* ── Footer actions ────────────────────────────────────────────────────────── */
+.auth-footer { margin-top: .75rem; padding-top: .75rem; border-top: 1px solid var(--border);
+  text-align: center; font-size: .85rem; color: var(--ink-dim); }
+.auth-footer a { color: var(--accent); text-decoration: none; }
+.auth-footer a:hover { text-decoration: underline; }
+
+/* ── Data display ──────────────────────────────────────────────────────────── */
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 0.4rem 0.6rem; border-bottom: 1px solid var(--border); }
+th { font-weight: 600; color: var(--ink-dim); font-size: .75rem; text-transform: uppercase; }
+td.ok { color: var(--ok); font-weight: 600; }
+td.error { color: var(--error); font-weight: 600; }
 code { color: var(--accent); }
-form { display: flex; flex-direction: column; gap: 0.6rem; }
+pre { white-space: pre-wrap; word-break: break-all; font-size: .85rem; }
 .row { display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
 ul { list-style: none; padding: 0; margin: 0.5rem 0 0; }
-pre { white-space: pre-wrap; word-break: break-all; }
-.logo-header { display: flex; align-items: center; gap: .6rem; margin: 1.5rem 0 .5rem; }
-.logo-header img { width: 28px; height: 28px; }
+
+/* ── Persona buttons ───────────────────────────────────────────────────────── */
+.persona-list { display: flex; flex-direction: column; gap: .5rem; }
+.persona-list button { width: 100%; text-align: left; padding: .65rem 1rem;
+  font-size: .9rem; display: flex; justify-content: space-between; align-items: center; }
+.persona-list .persona-role { font-size: .75rem; color: var(--ink-dim); font-weight: 400; }
+
+/* ── In-card nav ───────────────────────────────────────────────────────────── */
+.card nav { display: flex; gap: 1rem; margin-top: .75rem; }
+.card nav a { color: var(--ink-dim); text-decoration: none; font-size: .85rem; }
+.card nav a:hover { color: var(--accent); }
+
+/* ── Demo footer ───────────────────────────────────────────────────────────── */
 .demo-footer { position: fixed; bottom: 0; left: 0; right: 0; padding: .5rem 1.25rem;
   background: var(--surface); border-top: 1px solid var(--border); display: flex;
   align-items: center; gap: .4rem; font-size: .75rem; color: var(--ink-dim); z-index: 50; }
 .demo-footer a { color: var(--accent); text-decoration: none; }
 .demo-footer a:hover { text-decoration: underline; }
 
-/* Demo navigation bar */
+/* ── Demo navigation bar ───────────────────────────────────────────────────── */
 .demo-nav { display: flex; align-items: center; align-self: stretch; gap: .75rem; padding: .5rem 1.25rem;
   background: var(--surface); border-bottom: 1px solid var(--border); font-size: .85rem; }
 .nav-brand { display: flex; align-items: center; gap: .4rem; color: var(--ink); text-decoration: none; font-weight: 600; }

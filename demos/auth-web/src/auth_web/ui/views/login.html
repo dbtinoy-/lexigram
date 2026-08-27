@@ -14,19 +14,25 @@
     <a href="https://github.com/dbtinoy-/lexigram">GitHub</a>
   </div>
 </nav>
+<div class="wrap">
 
-  <div class="logo-header"><img src="/static/logo.png" alt="Lexigram"><h1 class="accent">Log in</h1></div>
+  <div class="logo-header"><h1 class="accent">Log in</h1></div>
+  <p class="auth-desc">Sign in to your account</p>
   <div class="card">
     <p id="error" class="error"></p>
     <form id="login-form">
-      <input name="email" type="email" placeholder="email" required />
-      <input name="password" type="password" placeholder="password" required />
+      <label for="login-email">Email</label>
+      <input id="login-email" name="email" type="email" placeholder="email" required />
+      <label for="login-password">Password</label>
+      <input id="login-password" name="password" type="password" placeholder="password" required />
       <button type="submit">Log in</button>
     </form>
-    <p class="muted">Need an account? <a href="/register">Register</a></p>
+    <div class="auth-footer"><p class="muted">Need an account? <a href="/register">Register</a></p></div>
   </div>
+
   <script src="/static/app.js"></script>
   <div class="demo-footer">Powered by <a href="https://lexigram.dev">Lexigram</a></div>
+</div>
   <script>
     document.getElementById("login-form").addEventListener("submit", async (event) => {
       event.preventDefault();

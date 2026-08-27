@@ -73,7 +73,7 @@ demos/auth-web/
 │   │   └── seed.py            # DemoSeedService (reads AuthConfig.users from yaml)
 │   ├── ui/                   # views/*.html + static/app.js, style.css
 │   ├── app.py                # Composition root (build_modules, build_providers, create_app)
-│   └── main.py               # uvicorn boot (run_server_async)
+│   └── main.py               # ASGI boot (run_server)
 ├── application.yaml          # Runtime config (web + auth sections)
 └── tests/                    # end-to-end API flow tests (httpx ASGI transport)
 ```

@@ -24,16 +24,16 @@ logger = get_logger(__name__)
 
 async def serve() -> None:
     """Boot and serve until interrupted."""
-    from lexigram.web.server.runner import run_server_async
+    from lexigram.web.server.runner import run_server
 
     # Lazy import of the server runner. The web module's
-    # run_server_async reads host/port from application.yaml by default.
+    # run_server reads host/port from application.yaml by default.
     app = create_app()
     await app.start()
     try:
-        # run_server_async reads host/port from application.yaml by default;
+        # run_server reads host/port from application.yaml by default;
         # pass explicit kwargs to override (e.g. during tests).
-        await run_server_async(app)
+        run_server(app)
     finally:
         await app.stop()
 

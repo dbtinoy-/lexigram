@@ -26,19 +26,19 @@ logger = get_logger(__name__)
 async def serve() -> None:
     """Boot and serve until interrupted.
 
-    run_server_async reads host/port from application.yaml
+    run_server reads host/port from application.yaml
     (web: section).  The try/finally ensures clean shutdown even on
     SIGINT.  In production, you'd add health checks and graceful
     drain here.
     """
-    from lexigram.web.server.runner import run_server_async
+    from lexigram.web.server.runner import run_server
 
     app = create_app()
     await app.start()
     try:
-        # host/port auto-consumed from application.yaml by run_server_async
-        # await run_server_async(app, host="0.0.0.0", port=9000)  # manual override
-        await run_server_async(app)
+        # host/port auto-consumed from application.yaml by run_server
+        # run_server(app, host="0.0.0.0", port=9000)  # manual override
+        run_server(app)
     finally:
         await app.stop()
 

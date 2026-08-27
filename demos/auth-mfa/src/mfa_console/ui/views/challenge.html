@@ -15,16 +15,21 @@
     <a href="https://github.com/dbtinoy-/lexigram">GitHub</a>
   </div>
 </nav>
+<div class="wrap">
 
-  <div class="logo-header"><img src="/static/logo.png" alt="Lexigram"><h1 class="accent">Two-factor verification</h1></div>
-  <div class="card">
-    <p id="error" class="error"></p>
-    <p class="muted">Enter the 6-digit code from your authenticator (or a backup code).</p>
-    <form id="challenge-form">
-      <input name="code" inputmode="numeric" pattern="[0-9]*" placeholder="123456" required />
-      <button type="submit">Verify</button>
-    </form>
+    <div class="logo-header"><h1 class="accent">Two-factor verification</h1></div>
+    <p class="auth-desc">Enter the 6-digit code from your authenticator app</p>
+    <div class="card">
+      <p id="error" class="error"></p>
+      <p class="muted">Enter the 6-digit code from your authenticator (or a backup code).</p>
+      <form id="challenge-form">
+        <label for="code">Authentication code</label>
+        <input id="code" name="code" inputmode="numeric" pattern="[0-9]*" placeholder="123456" required />
+        <button type="submit">Verify</button>
+      </form>
+    </div>
   </div>
+
   <script src="/static/app.js"></script>
   <div class="demo-footer">Powered by <a href="https://lexigram.dev">Lexigram</a></div>
   <script>

@@ -29,7 +29,7 @@ class ContentGenConfig(BaseConfig):
     """
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="ignore")
-    config_section: ClassVar[str | None] = "content_gen"
+    config_section: ClassVar[str] = "content_gen"
     name: str = "content_gen"
     enabled: bool = True
 

@@ -12,7 +12,7 @@ concrete class.  Swap this file for a vector-database implementation and
 nothing else changes.
 
 Each method maps 1:1 to one contract method — the facade adds no logic,
-just convenience.  This is intentional: the demo teaches memory *usage*,
+just convenience.  This is intentional: the demo Demonstrates memory *usage*,
 not abstraction over abstraction.
 """
 

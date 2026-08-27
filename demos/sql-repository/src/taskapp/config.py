@@ -29,7 +29,7 @@ class TaskAppConfig(BaseConfig):
     """
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="ignore")
-    config_section: ClassVar[str | None] = "task_app"
+    config_section: ClassVar[str] = "task_app"
     name: str = "task_app"
     enabled: bool = True
 

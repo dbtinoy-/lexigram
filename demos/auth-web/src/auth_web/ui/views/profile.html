@@ -14,17 +14,20 @@
     <a href="https://github.com/dbtinoy-/lexigram">GitHub</a>
   </div>
 </nav>
+<div class="wrap">
 
-  <div class="logo-header"><img src="/static/logo.png" alt="Lexigram"><h1 class="accent">Profile</h1></div>
+  <div class="logo-header"><h1 class="accent">Profile</h1></div>
+  <p class="auth-desc">Your account details and sessions</p>
   <div class="card" id="identity">
+    <div class="card-header"><strong>Identity</strong></div>
     <p class="muted">Loading…</p>
   </div>
   <div class="card">
-    <div class="row"><strong>Token claims</strong></div>
+    <div class="card-header"><strong>Token claims</strong></div>
     <pre id="claims" class="muted"></pre>
   </div>
   <div class="card">
-    <div class="row"><strong>Active sessions</strong></div>
+    <div class="card-header"><strong>Active sessions</strong></div>
     <table>
       <thead><tr><th>Session</th><th>Expires</th><th></th></tr></thead>
       <tbody id="sessions"></tbody>
@@ -34,6 +37,9 @@
     <a href="/password">Change password</a>
     <a href="#" id="logout">Log out</a>
   </nav>
+<div class="wrap">
+</div>
+
   <script src="/static/app.js"></script>
   <div class="demo-footer">Powered by <a href="https://lexigram.dev">Lexigram</a></div>
   <script>
@@ -49,6 +55,7 @@
         return;
       }
       document.getElementById("identity").innerHTML =
+        `<div class="card-header"><strong>Identity</strong></div>` +
         `<div class="row"><span>${profile.body.user.name}</span>` +
         `<span class="muted">${profile.body.user.email}</span></div>` +
         `<div class="muted">roles: ${profile.body.claims.roles.join(", ") || "—"}</div>`;
