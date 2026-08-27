@@ -14,6 +14,8 @@ import os
 from pathlib import Path
 import sys
 
+import pytest
+
 _DEMO_ROOT = Path(__file__).resolve().parent
 
 # Lexigram discovers application.yaml from cwd — pin it so tests work
@@ -21,3 +23,9 @@ _DEMO_ROOT = Path(__file__).resolve().parent
 os.chdir(_DEMO_ROOT)
 # Add src/ to sys.path so ``from rag_docs...`` resolves in tests.
 sys.path.insert(0, str(_DEMO_ROOT / "src"))
+
+
+@pytest.fixture(autouse=True)
+def _ensure_cwd() -> None:
+    """Pin cwd to the demo root before every test."""
+    os.chdir(_DEMO_ROOT)

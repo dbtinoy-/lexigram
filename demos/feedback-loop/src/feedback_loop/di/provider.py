@@ -66,7 +66,7 @@ class LoopProvider(Provider):
         collector = await container.resolve(FeedbackCollector)
         try:
             tracker = await container.resolve(ExperimentTrackerProtocol)
-        except Exception:  # noqa: BLE001 - evaluation module may be absent
+        except LookupError:
             tracker = None
 
         self._service = LoopService(

@@ -50,6 +50,7 @@ from __future__ import annotations
 
 from lexigram.app.base import Application
 from lexigram.config.main import LexigramConfig
+from lexigram.di.provider import Provider
 from lexigram.web.module import WebModule
 from ops_console.controllers.api import ConsoleController
 from ops_console.controllers.operator import OperatorHandler
@@ -78,7 +79,7 @@ def build_modules() -> list[object]:
     ]
 
 
-def build_providers() -> list[object]:
+def build_providers() -> list[Provider]:
     """Imperative services owned by this demo.
 
     A Provider is Lexigram's unit of lifecycle management: ``register()``

@@ -37,7 +37,6 @@ th { font-weight: 600; color: var(--ink-dim); font-size: .72rem; text-transform:
 .demo-footer { position: fixed; bottom: 0; left: 0; right: 0; padding: .5rem 1.25rem;
   background: var(--surface); border-top: 1px solid var(--border); display: flex;
   align-items: center; gap: .4rem; font-size: .75rem; color: var(--ink-dim); z-index: 50; }
-.demo-footer .footer-logo { width: 14px; height: 14px; }
 .demo-footer a { color: var(--accent); text-decoration: none; }
 .demo-footer a:hover { text-decoration: underline; }
 body { padding-bottom: 2rem; }

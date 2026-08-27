@@ -5,6 +5,8 @@ Re-exports key symbols so callers can import from the package root:
     from prompt_lab.repository import TEMPLATES, CASES, VARIANT_LABELS
 """
 
+from __future__ import annotations
+
 from prompt_lab.repository.cases import CASES, CRITERIA, Case
 from prompt_lab.repository.responders import RESPONDERS
 from prompt_lab.repository.templates import TEMPLATES, VARIANT_LABELS

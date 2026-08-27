@@ -40,6 +40,8 @@ Run with ``uv run python -m rag_docs``.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from lexigram.app.base import Application  # Application = the bootable object
 from lexigram.config.main import LexigramConfig
 from lexigram.di.provider import Provider  # base class for your DI registrations
@@ -107,7 +109,5 @@ def create_app(
     app.add_providers(build_providers(docs_dir))
     return app
 
-
-from pathlib import Path  # noqa: E402 — placed after class to avoid circular
 
 __all__ = ["build_modules", "build_providers", "create_app"]

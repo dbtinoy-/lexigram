@@ -10,11 +10,19 @@ excluded from the monorepo aggregate test run (see root ``pyproject.toml``
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 import sys
 
-sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
+import pytest
 
-import os  # noqa: E402
+_DEMO_ROOT = Path(__file__).resolve().parent
 
-os.chdir(Path(__file__).resolve().parent)
+sys.path.insert(0, str(_DEMO_ROOT / "src"))
+os.chdir(_DEMO_ROOT)
+
+
+@pytest.fixture(autouse=True)
+def _ensure_cwd() -> None:
+    """Pin cwd to the demo root before every test."""
+    os.chdir(_DEMO_ROOT)
