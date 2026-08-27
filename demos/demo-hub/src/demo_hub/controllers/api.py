@@ -69,9 +69,11 @@ class HubApiController(Controller):
         for svc in self._registry.services:
             if svc.slug == slug:
                 readme = svc.read_readme()
-                return JSONResponse({
-                    "slug": svc.slug,
-                    "name": svc.name,
-                    "readme": readme or f"# {svc.name}\n\nNo README available.",
-                })
+                return JSONResponse(
+                    {
+                        "slug": svc.slug,
+                        "name": svc.name,
+                        "readme": readme or f"# {svc.name}\n\nNo README available.",
+                    }
+                )
         return JSONResponse({"error": f"Demo {slug!r} not found"}, status_code=404)

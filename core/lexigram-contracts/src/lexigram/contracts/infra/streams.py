@@ -83,7 +83,9 @@ class _StreamOk(Result[T, E]):
         return cast("Result[Any, E]", self)
 
     def filter(self, predicate: Callable[[T], bool], error: E) -> Result[T, E]:
-        return self if predicate(self._value) else cast("Result[T, E]", _StreamErr(error))
+        return (
+            self if predicate(self._value) else cast("Result[T, E]", _StreamErr(error))
+        )
 
     def ok_or(self, default: U) -> T | U:
         return self._value

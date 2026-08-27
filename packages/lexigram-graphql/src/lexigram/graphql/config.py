@@ -344,9 +344,7 @@ class GraphQLConfig(BaseConfig):
 
     # Environment - used for environment-specific behavior
     # Set via GRAPHQL__ENV or LEX_ENV env var
-    env: Environment | None = Field(
-        default=None, description="Deployment environment"
-    )
+    env: Environment | None = Field(default=None, description="Deployment environment")
 
     # OAuth Identity Resolution - resolve external OAuth IDs to internal UUIDs
     enable_identity_resolution: bool = False

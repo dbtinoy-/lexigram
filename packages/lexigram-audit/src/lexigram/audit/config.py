@@ -7,8 +7,8 @@ from typing import ClassVar, cast
 
 from lexigram.audit import constants as const
 from lexigram.config.base import BaseConfig
-from lexigram.contracts.core.config import Environment
 from lexigram.contracts.audit import RetentionPolicy
+from lexigram.contracts.core.config import Environment
 from lexigram.validation import ConfigDict, Field
 
 __all__ = ["AuditConfig"]

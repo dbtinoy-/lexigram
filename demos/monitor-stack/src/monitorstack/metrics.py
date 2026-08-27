@@ -26,19 +26,25 @@ class InMemoryMetrics:
         self._histograms: dict[str, list[float]] = {}
         self._points: list[MetricPoint] = []
 
-    def increment(self, name: str, value: float = 1.0, tags: dict[str, str] | None = None) -> None:
+    def increment(
+        self, name: str, value: float = 1.0, tags: dict[str, str] | None = None
+    ) -> None:
         """Increment a counter."""
         key = self._make_key(name, tags)
         self._counters[key] = self._counters.get(key, 0) + value
         self._points.append(MetricPoint(name=name, value=value, tags=tags or {}))
 
-    def set_gauge(self, name: str, value: float, tags: dict[str, str] | None = None) -> None:
+    def set_gauge(
+        self, name: str, value: float, tags: dict[str, str] | None = None
+    ) -> None:
         """Set a gauge value."""
         key = self._make_key(name, tags)
         self._gauges[key] = value
         self._points.append(MetricPoint(name=name, value=value, tags=tags or {}))
 
-    def record_histogram(self, name: str, value: float, tags: dict[str, str] | None = None) -> None:
+    def record_histogram(
+        self, name: str, value: float, tags: dict[str, str] | None = None
+    ) -> None:
         """Record a histogram value."""
         key = self._make_key(name, tags)
         if key not in self._histograms:
@@ -56,7 +62,9 @@ class InMemoryMetrics:
         key = self._make_key(name, tags)
         return self._gauges.get(key, 0.0)
 
-    def get_histogram(self, name: str, tags: dict[str, str] | None = None) -> dict[str, float]:
+    def get_histogram(
+        self, name: str, tags: dict[str, str] | None = None
+    ) -> dict[str, float]:
         """Get histogram statistics."""
         key = self._make_key(name, tags)
         values = self._histograms.get(key, [])

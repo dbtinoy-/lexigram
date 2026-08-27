@@ -102,7 +102,9 @@ class RagDocsProvider(Provider):
         # every request, so per-request resolution reuses the same instance.
         container.bind(
             RagApiController,
-            RagApiController(vector_store=vector_store, chunker=chunker, retriever=retriever),
+            RagApiController(
+                vector_store=vector_store, chunker=chunker, retriever=retriever
+            ),
         )
 
     async def health_check(self, timeout: float = 5.0) -> HealthCheckResult:

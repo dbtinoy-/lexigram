@@ -28,7 +28,9 @@ class Tracer:
         self._metrics = metrics
         self._spans: list[TraceSpan] = []
 
-    def start_span(self, name: str, attributes: dict[str, Any] | None = None) -> TraceSpan:
+    def start_span(
+        self, name: str, attributes: dict[str, Any] | None = None
+    ) -> TraceSpan:
         """Start a new trace span."""
         span = TraceSpan(name=name, attributes=attributes or {})
         self._spans.append(span)

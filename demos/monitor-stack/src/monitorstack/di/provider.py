@@ -105,7 +105,9 @@ class MonitorStackProvider(Provider):
         # every request, so per-request resolution reuses the same instance.
         container.bind(
             MonitorApiController,
-            MonitorApiController(health_checker=health_checker, tracer=tracer, metrics=metrics),
+            MonitorApiController(
+                health_checker=health_checker, tracer=tracer, metrics=metrics
+            ),
         )
 
     async def health_check(self, timeout: float = 5.0) -> HealthCheckResult:

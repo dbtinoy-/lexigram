@@ -58,8 +58,7 @@ def rewrite_html(body: bytes, base: str) -> bytes:
         body = shim + body
     body = _ATTR_RE.sub(lambda m: m.group(1) + m.group(2) + base.encode() + b"/", body)
     body = _NAV_BRAND_RE.sub(lambda m: m.group(1) + b"/" + m.group(2), body)
-    body = _NAV_BRAND_RE2.sub(lambda m: m.group(1) + b"/" + m.group(2), body)
-    return body
+    return _NAV_BRAND_RE2.sub(lambda m: m.group(1) + b"/" + m.group(2), body)
 
 
 def rewrite_js(body: bytes, base: str) -> bytes:

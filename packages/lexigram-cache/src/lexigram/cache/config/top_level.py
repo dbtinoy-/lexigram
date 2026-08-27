@@ -8,7 +8,6 @@ from typing import Any, ClassVar, cast
 from lexigram.cache import constants as const
 from lexigram.cache.config.backends import CacheBackendConfig, RedisBackendConfig
 from lexigram.cache.config.service import CacheServiceConfig
-from lexigram.cache.types import BackendType
 from lexigram.config import BaseConfig
 from lexigram.contracts.core.config import Environment
 from lexigram.validation import (

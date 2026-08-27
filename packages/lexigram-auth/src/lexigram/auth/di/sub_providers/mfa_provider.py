@@ -3,6 +3,7 @@
 Follows the sub-provider pattern (like TokenProvider, SessionProvider):
 receives AuthConfig via constructor, no config_key/config_model.
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Annotated, Any

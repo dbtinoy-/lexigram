@@ -10,37 +10,39 @@ from lexigram.logging import get_logger
 logger = get_logger(__name__)
 
 # Granian kwargs accepted by the Python API (address/port/interface handled separately).
-_GRANIAN_ACCEPTED: frozenset[str] = frozenset({
-    "workers",
-    "threads",
-    "blocking_threads",
-    "runtime_threads",
-    "runtime_blocking_threads",
-    "backlog",
-    "backpressure",
-    "loop",
-    "task_impl",
-    "log_level",
-    "log_config",
-    "access_log",
-    "access_log_fmt",
-    "ssl_certificate",
-    "ssl_keyfile",
-    "ssl_keyfile_password",
-    "ssl_ca",
-    "ssl_crl",
-    "ssl_client_verify",
-    "url_path_prefix",
-    "factory",
-    "reload",
-    "reload_paths",
-    "reload_ignore_dirs",
-    "reload_ignore_patterns",
-    "respawn_failed_workers",
-    "respawn_interval",
-    "pid_file",
-    "path_prefix",
-})
+_GRANIAN_ACCEPTED: frozenset[str] = frozenset(
+    {
+        "workers",
+        "threads",
+        "blocking_threads",
+        "runtime_threads",
+        "runtime_blocking_threads",
+        "backlog",
+        "backpressure",
+        "loop",
+        "task_impl",
+        "log_level",
+        "log_config",
+        "access_log",
+        "access_log_fmt",
+        "ssl_certificate",
+        "ssl_keyfile",
+        "ssl_keyfile_password",
+        "ssl_ca",
+        "ssl_crl",
+        "ssl_client_verify",
+        "url_path_prefix",
+        "factory",
+        "reload",
+        "reload_paths",
+        "reload_ignore_dirs",
+        "reload_ignore_patterns",
+        "respawn_failed_workers",
+        "respawn_interval",
+        "pid_file",
+        "path_prefix",
+    }
+)
 
 # Auto-preference order when no backend is configured.
 _PREFERRED_BACKENDS: tuple[str, ...] = ("granian", "uvicorn")
@@ -57,6 +59,7 @@ def _resolve_backend(app: Any) -> str:
     if config is not None:
         try:
             from lexigram.web.config import WebConfig
+
             web = config.get_section("web", WebConfig)
             requested = web.server.backend
             if _is_available(requested):
@@ -76,24 +79,28 @@ def _is_available(name: str) -> bool:
     if name == "granian":
         try:
             import granian  # noqa: F401
+
             return True
         except ImportError:
             return False
     if name == "uvicorn":
         try:
             import uvicorn  # noqa: F401
+
             return True
         except ImportError:
             return False
     if name == "hypercorn":
         try:
             import hypercorn  # noqa: F401
+
             return True
         except ImportError:
             return False
     if name == "gunicorn":
         try:
             import gunicorn  # noqa: F401
+
             return True
         except ImportError:
             return False
@@ -123,8 +130,10 @@ def _to_import_string(app: Any) -> str | None:
                 caller_module = caller_frame.f_globals.get("__name__")
                 if caller_module and caller_module != __name__:
                     try:
-                        mod = __import__(caller_module, fromlist=[caller_module.rsplit(".", 1)[-1]])
-                        if hasattr(mod, "create_app") and callable(getattr(mod, "create_app")):
+                        mod = __import__(
+                            caller_module, fromlist=[caller_module.rsplit(".", 1)[-1]]
+                        )
+                        if hasattr(mod, "create_app") and callable(mod.create_app):
                             return f"{caller_module}:create_app"
                     except ImportError:
                         continue
@@ -289,6 +298,7 @@ def _resolve_web_config(
         return host or "127.0.0.1", int(port or 8000)
     try:
         from lexigram.web.config import WebConfig
+
         web = config.get_section("web", WebConfig)
         return host or web.server.host, int(port or web.server.port)
     except Exception:
@@ -362,6 +372,7 @@ def _run_uvicorn_via_thread(
 ) -> None:
     """Run Uvicorn in a background thread (for async-context callers)."""
     import concurrent.futures
+
     import uvicorn
 
     logger.info("starting_uvicorn_server", host=host, port=port, kwargs=kwargs)
@@ -407,7 +418,9 @@ def _run_gunicorn(
         if import_str:
             cmd.append(import_str)
         else:
-            logger.warning("gunicorn_fallback_uvicorn", reason="could not derive import string")
+            logger.warning(
+                "gunicorn_fallback_uvicorn", reason="could not derive import string"
+            )
             _run_uvicorn(app, host, port, **kwargs)
             return
 

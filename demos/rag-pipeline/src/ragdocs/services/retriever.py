@@ -15,12 +15,16 @@ class Retriever:
         self._vector_store = vector_store
         self._top_k = top_k
 
-    async def retrieve(self, query: str, top_k: int | None = None) -> list[dict[str, Any]]:
+    async def retrieve(
+        self, query: str, top_k: int | None = None
+    ) -> list[dict[str, Any]]:
         """Retrieve relevant documents for a query."""
         k = top_k or self._top_k
         return await self._vector_store.search(query, top_k=k)
 
-    async def retrieve_with_context(self, query: str, top_k: int | None = None) -> dict[str, Any]:
+    async def retrieve_with_context(
+        self, query: str, top_k: int | None = None
+    ) -> dict[str, Any]:
         """Retrieve documents and format them as context."""
         results = await self.retrieve(query, top_k)
 

@@ -20,7 +20,12 @@ class RagApiController(Controller):
 
     prefix = "/api/rag"
 
-    def __init__(self, vector_store: object = None, chunker: object = None, retriever: object = None) -> None:
+    def __init__(
+        self,
+        vector_store: object = None,
+        chunker: object = None,
+        retriever: object = None,
+    ) -> None:
         self._vector_store = vector_store
         self._chunker = chunker
         self._retriever = retriever

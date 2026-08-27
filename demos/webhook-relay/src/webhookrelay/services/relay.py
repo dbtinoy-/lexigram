@@ -33,7 +33,9 @@ class WebhookRelay:
         """Register a route for an event type."""
         self._routes[event_type] = handler
 
-    async def relay(self, event_type: str, payload: dict[str, Any], source: str = "unknown") -> dict[str, Any]:
+    async def relay(
+        self, event_type: str, payload: dict[str, Any], source: str = "unknown"
+    ) -> dict[str, Any]:
         """Relay a webhook event."""
         event_id = f"evt_{len(self._events) + 1}"
         event = WebhookEvent(

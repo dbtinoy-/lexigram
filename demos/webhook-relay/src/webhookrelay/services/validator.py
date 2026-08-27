@@ -19,7 +19,9 @@ class WebhookValidator:
         """Validate payload size is within limits."""
         return len(payload) <= self._max_payload_size
 
-    def validate_signature(self, payload: bytes, signature: str | None) -> dict[str, Any]:
+    def validate_signature(
+        self, payload: bytes, signature: str | None
+    ) -> dict[str, Any]:
         """Validate webhook signature."""
         if not signature:
             return {"valid": False, "error": "Missing signature header"}

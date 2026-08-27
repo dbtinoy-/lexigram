@@ -24,7 +24,9 @@ class InMemoryVectorStore:
         self._dimension = dimension
         self._documents: dict[str, Document] = {}
 
-    async def add(self, content: str, metadata: dict[str, Any] | None = None) -> Document:
+    async def add(
+        self, content: str, metadata: dict[str, Any] | None = None
+    ) -> Document:
         """Add a document to the store."""
         doc_id = hashlib.sha256(content.encode()).hexdigest()[:16]
         embedding = self._generate_embedding(content)
@@ -50,12 +52,14 @@ class InMemoryVectorStore:
 
         results = []
         for doc, score in scores[:top_k]:
-            results.append({
-                "id": doc.id,
-                "content": doc.content,
-                "metadata": doc.metadata,
-                "score": score,
-            })
+            results.append(
+                {
+                    "id": doc.id,
+                    "content": doc.content,
+                    "metadata": doc.metadata,
+                    "score": score,
+                }
+            )
         return results
 
     async def get(self, doc_id: str) -> Document | None:

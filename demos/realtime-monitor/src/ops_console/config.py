@@ -13,7 +13,7 @@ from typing import ClassVar
 
 from lexigram.config import BaseConfig
 from lexigram.contracts.core.config import Environment
-from lexigram.validation import ConfigDict, Field
+from lexigram.validation import Field
 
 
 @dataclass(init=False)

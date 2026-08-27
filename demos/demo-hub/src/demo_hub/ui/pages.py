@@ -42,8 +42,6 @@ class HubPageController(Controller):
     async def app_js(self, request: Request) -> FileResponse:
         return _static("app.js", "text/javascript")
 
-
-
     @get("/static/logo.png")
     async def logo(self, request: Request) -> FileResponse:
         return _static("logo.png", "image/png")
@@ -51,5 +49,6 @@ class HubPageController(Controller):
     @get("/static/icon.png")
     async def icon(self, request: Request) -> FileResponse:
         return _static("icon.png", "image/png")
+
 
 __all__ = ["HubPageController"]

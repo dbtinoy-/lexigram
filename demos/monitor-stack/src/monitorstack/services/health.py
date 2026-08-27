@@ -52,15 +52,20 @@ class HealthChecker:
                 results.append(result)
                 if result.status == HealthStatus.UNHEALTHY:
                     overall_status = HealthStatus.UNHEALTHY
-                elif result.status == HealthStatus.DEGRADED and overall_status == HealthStatus.HEALTHY:
+                elif (
+                    result.status == HealthStatus.DEGRADED
+                    and overall_status == HealthStatus.HEALTHY
+                ):
                     overall_status = HealthStatus.DEGRADED
             except Exception as e:
-                results.append(HealthCheckResult(
-                    component=name,
-                    status=HealthStatus.UNHEALTHY,
-                    message=str(e),
-                    timestamp=datetime.now(UTC).isoformat(),
-                ))
+                results.append(
+                    HealthCheckResult(
+                        component=name,
+                        status=HealthStatus.UNHEALTHY,
+                        message=str(e),
+                        timestamp=datetime.now(UTC).isoformat(),
+                    )
+                )
                 overall_status = HealthStatus.UNHEALTHY
 
         self._metrics.increment("health_checks_total")

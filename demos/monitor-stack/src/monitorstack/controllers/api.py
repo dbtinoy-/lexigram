@@ -20,7 +20,12 @@ class MonitorApiController(Controller):
 
     prefix = "/api/monitor"
 
-    def __init__(self, health_checker: object = None, tracer: object = None, metrics: object = None) -> None:
+    def __init__(
+        self,
+        health_checker: object = None,
+        tracer: object = None,
+        metrics: object = None,
+    ) -> None:
         self._health_checker = health_checker
         self._tracer = tracer
         self._metrics = metrics
@@ -50,6 +55,7 @@ class MonitorApiController(Controller):
         span = self._tracer.start_span(name, attributes)
         # Simulate some work
         import asyncio
+
         await asyncio.sleep(0.01)
         self._tracer.end_span(span)
 

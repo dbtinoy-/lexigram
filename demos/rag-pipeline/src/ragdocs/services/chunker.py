@@ -14,7 +14,9 @@ class DocumentChunker:
     def __init__(self, chunk_size: int = 500) -> None:
         self._chunk_size = chunk_size
 
-    def chunk(self, content: str, metadata: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+    def chunk(
+        self, content: str, metadata: dict[str, Any] | None = None
+    ) -> list[dict[str, Any]]:
         """Split content into chunks."""
         chunks = []
         words = content.split()
@@ -24,13 +26,15 @@ class DocumentChunker:
         for word in words:
             word_length = len(word) + 1  # +1 for space
             if current_length + word_length > self._chunk_size and current_chunk:
-                chunks.append({
-                    "content": " ".join(current_chunk),
-                    "metadata": {
-                        **(metadata or {}),
-                        "chunk_index": len(chunks),
-                    },
-                })
+                chunks.append(
+                    {
+                        "content": " ".join(current_chunk),
+                        "metadata": {
+                            **(metadata or {}),
+                            "chunk_index": len(chunks),
+                        },
+                    }
+                )
                 current_chunk = []
                 current_length = 0
 
@@ -38,13 +42,15 @@ class DocumentChunker:
             current_length += word_length
 
         if current_chunk:
-            chunks.append({
-                "content": " ".join(current_chunk),
-                "metadata": {
-                    **(metadata or {}),
-                    "chunk_index": len(chunks),
-                },
-            })
+            chunks.append(
+                {
+                    "content": " ".join(current_chunk),
+                    "metadata": {
+                        **(metadata or {}),
+                        "chunk_index": len(chunks),
+                    },
+                }
+            )
 
         return chunks
 

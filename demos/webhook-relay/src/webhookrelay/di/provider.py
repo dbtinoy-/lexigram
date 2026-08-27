@@ -94,7 +94,9 @@ class WebhookRelayProvider(Provider):
         signer = HmacSigner(secret=cfg.secret_key)
 
         # Create the validator and relay
-        validator = WebhookValidator(signer=signer, max_payload_size=cfg.max_payload_size)
+        validator = WebhookValidator(
+            signer=signer, max_payload_size=cfg.max_payload_size
+        )
         relay = WebhookRelay()
 
         # Bind the wired controller — the router resolves this for

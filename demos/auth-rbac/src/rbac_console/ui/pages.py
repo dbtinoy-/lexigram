@@ -69,8 +69,6 @@ class PagesController(Controller):
     async def matrix_js(self, request: Request) -> FileResponse:
         return _static("matrix.js", "text/javascript")
 
-
-
     @get("/static/logo.png")
     async def logo(self, request: Request) -> FileResponse:
         return _static("logo.png", "image/png")
@@ -78,5 +76,6 @@ class PagesController(Controller):
     @get("/static/icon.png")
     async def icon(self, request: Request) -> FileResponse:
         return _static("icon.png", "image/png")
+
 
 __all__ = ["PagesController"]
