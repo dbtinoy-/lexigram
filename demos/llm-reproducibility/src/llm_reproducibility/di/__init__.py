@@ -1,1 +1,1 @@
-"""DI subpackage for the experiment demo."""
+"""DI package for the llm-reproducibility demo."""
