@@ -55,5 +55,9 @@ class PagesController(Controller):
     async def logo(self, request: Request) -> FileResponse:
         return _static("logo.png", "image/png")
 
+    @get("/static/keys.js")
+    async def keys_js(self, request: Request) -> FileResponse:
+        return _static("keys.js", "text/javascript")
+
 
 __all__ = ["PagesController"]
