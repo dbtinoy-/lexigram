@@ -8,9 +8,9 @@ registry_mod = pytest.importorskip("demo_hub.services.registry")
 subsite_mod = pytest.importorskip("demo_hub.subsite")
 
 
-def test_registry_lists_all_thirteen_live_services() -> None:
+def test_registry_lists_all_nineteen_live_services() -> None:
     registry = registry_mod.ServiceRegistry()
-    assert len(registry.web_services()) == 13
+    assert len(registry.web_services()) == 19
 
 
 def test_registry_ports_are_unique_and_known() -> None:

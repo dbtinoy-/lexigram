@@ -10,9 +10,9 @@ body { height: 100vh; overflow: hidden; background: var(--bg); color: var(--ink)
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
   display: flex; flex-direction: column; }
 .wrap { flex: 1; min-height: 0; overflow-y: auto; padding: 1rem 1.25rem 2rem; }
-header { margin-bottom: .75rem; }
-header h1 { color: var(--accent); font-size: 1.2rem; margin: 0; }
-header .muted { color: var(--ink-dim); font-size: .85rem; margin: .2rem 0 0; }
+header { padding: 1rem 1rem .4rem; display: flex; align-items: center; gap: .5rem; }
+header h1 { color: var(--accent); font-size: 1.2rem; }
+.muted { color: var(--ink-dim); font-size: .85rem; margin: .2rem 0 0; }
 .topbar { display: flex; align-items: center; gap: 1rem; padding: .75rem 0; margin-bottom: .75rem; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
 .conn { display: flex; flex-direction: column; gap: .3rem; }
 .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--ok); }
@@ -30,8 +30,7 @@ th { color: var(--ink-dim); font-size: .75rem; text-transform: uppercase; font-w
 .publish select { background: var(--surface); color: var(--ink); border: 1px solid var(--border); border-radius: 6px; padding: .4rem .5rem; font-family: inherit; }
 .accent { color: var(--accent); }
 .container { padding: 1.5rem 1rem; }
-h1 { color: var(--accent); margin-bottom: 1.2rem; font-size: 1.4rem; }
-.muted { color: var(--ink-dim); font-size: .85rem; margin-bottom: 1rem; }
+
 .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; margin-bottom: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,.04); }
 button { background: var(--accent); color: #fff; font-weight: 600; border: none; border-radius: 6px; padding: .45rem .9rem; cursor: pointer; font-family: inherit; }
 button:hover { filter: brightness(1.1); }
