@@ -45,6 +45,10 @@ if(a&&a.charAt(0)==="/"&&a.charAt(1)!=="/")f.setAttribute("action",B+a)}},true);
 </script>"""
 
 
+_NAV_BRAND_RE = re.compile(rb'(<a\b[^>]*class="nav-brand"[^>]*href=")/([^"]*")')
+_NAV_BRAND_RE2 = re.compile(rb'(<a\b[^>]*href=")[^"]*("[^>]*class="nav-brand")')
+
+
 def rewrite_html(body: bytes, base: str) -> bytes:
     """Rebase one HTML document so it loads correctly under ``base``."""
     shim = _SHIM_TMPL.replace("__BASE__", base).encode()
@@ -52,7 +56,10 @@ def rewrite_html(body: bytes, base: str) -> bytes:
         body = _HEAD_RE.sub(lambda m: m.group(1) + shim, body, count=1)
     else:
         body = shim + body
-    return _ATTR_RE.sub(lambda m: m.group(1) + m.group(2) + base.encode() + b"/", body)
+    body = _ATTR_RE.sub(lambda m: m.group(1) + m.group(2) + base.encode() + b"/", body)
+    body = _NAV_BRAND_RE.sub(lambda m: m.group(1) + b"/" + m.group(2), body)
+    body = _NAV_BRAND_RE2.sub(lambda m: m.group(1) + b"/" + m.group(2), body)
+    return body
 
 
 def rewrite_js(body: bytes, base: str) -> bytes:
