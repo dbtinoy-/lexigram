@@ -16,6 +16,15 @@
   (`make_run_id`); artifacts under `.runs/`
 - **Error analysis** — score mean/min/max + top failures from the tracker
 
+## How results are derived (no LLM)
+
+This demo uses **no language model**. A static `BOT` dictionary in
+`repository/bot.py` maps question keys to pre-written answer strings.
+`LoopService.ask()` looks up the key and returns the canned answer with a
+stable trace ID. Low-rated answers are promoted to a regression dataset and
+scored by `QAEvaluator` (keyword overlap). No model calls, no network —
+all outputs are deterministic.
+
 ## Layout — read it in this order
 
 Start at the composition root and follow the wiring outward.

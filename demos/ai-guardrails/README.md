@@ -17,6 +17,14 @@
   `budget_exceeded`) queryable from the resolved store
 - **Live toggle** — policy off bypasses gate, guards, and cost tracking
 
+## How results are derived (no LLM)
+
+This demo uses **no language model**. The `_canned()` function in
+`domain/guarded_assistant.py` echoes the (possibly redacted) input back in a
+fixed format: `"(demo reply) You asked about: {snippet}"`. The demo proves
+the guard pipeline, governance gates, and audit trail work — not LLM
+quality. All outputs are deterministic and byte-stable across runs.
+
 ## Lexigram patterns used
 
 | Pattern | Where | What to reuse |
