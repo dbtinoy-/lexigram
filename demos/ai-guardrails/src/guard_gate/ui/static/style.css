@@ -1,23 +1,45 @@
-/* Guardrails playground theme */
-:root { --bg:#141018; --panel:#201a28; --ink:#eee4f4; --ok:#7fd18b; --warn:#ffd166; --bad:#ff7a7a; }
-* { box-sizing:border-box; }
-body { margin:0; font-family:system-ui,sans-serif; background:var(--bg); color:var(--ink); }
-header h1 { font-size:1.15rem; margin:.6rem 1rem; }
-main { display:flex; gap:1rem; padding:0 1rem 1rem; }
-#console { flex:1; background:var(--panel); border-radius:8px; padding:1rem; }
-aside { width:300px; background:var(--panel); border-radius:8px; padding:.75rem; }
-.row { display:flex; gap:.5rem; align-items:center; margin:.35rem 0; flex-wrap:wrap; }
-#acts button, #ask-form button { background:#2b2338; color:var(--ink); border:1px solid #46395c;
-  border-radius:6px; padding:.35rem .7rem; cursor:pointer; }
-#ask-form { display:flex; gap:.5rem; margin:.75rem 0; }
-#text { flex:1; padding:.45rem .6rem; border-radius:6px; border:1px solid #46395c;
-  background:#120e18; color:var(--ink); }
-.badge { padding:.1rem .5rem; border-radius:999px; font-size:.75rem; }
-.badge.ok { background:var(--ok); color:#0c1710; }
-.badge.redact { background:var(--warn); color:#241d05; }
-.badge.block { background:var(--bad); color:#2a0808; }
-.hidden { display:none; }
-.muted { color:#9b8fae; font-size:.85rem; }
-#error { color:var(--bad); }
-table { width:100%; font-size:.8rem; border-collapse:collapse; }
-th, td { text-align:left; padding:.25rem .4rem; border-bottom:1px solid #372c49; }
+/* Guardrails playground — Lexigram light theme */
+:root {
+  --bg: #f8f9fa; --surface: #ffffff; --surface2: #f1f3f5;
+  --border: #e1e4e8; --ink: #1a1d21; --ink-dim: #6b7280;
+  --accent: #65a30d; --accent-light: #ecfccb; --accent-bg: rgba(101,163,13,.06);
+  --ok: #16a34a; --ok-bg: rgba(22,163,74,.08);
+  --warn: #d97706; --warn-bg: rgba(217,119,6,.06);
+  --bad: #dc2626; --bad-bg: rgba(220,38,38,.06);
+  --radius: 8px;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  background: var(--bg); color: var(--ink); line-height: 1.5; }
+header { display: flex; align-items: center; gap: .75rem; padding: .75rem 1.25rem;
+  background: var(--surface); border-bottom: 1px solid var(--border); }
+header .logo { width: 28px; height: 28px; flex-shrink: 0; }
+header h1 { font-size: 1.05rem; font-weight: 600; margin: 0; }
+.muted { color: var(--ink-dim); font-size: .8rem; }
+main { display: flex; gap: 1rem; padding: 1rem 1.25rem; }
+#console { flex: 1; background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; padding: 1rem; }
+aside { width: 280px; background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; padding: .75rem; }
+.row { display: flex; gap: .5rem; align-items: center; margin: .35rem 0; flex-wrap: wrap; }
+label { font-size: .85rem; display: flex; align-items: center; gap: .4rem; cursor: pointer; }
+#acts button, #ask-form button { background: var(--surface2); color: var(--ink);
+  border: 1px solid var(--border); border-radius: 6px; padding: .35rem .7rem;
+  cursor: pointer; font-size: .82rem; font-weight: 500; transition: all .12s; }
+#acts button:hover, #ask-form button:hover { border-color: var(--accent); background: var(--accent-bg); }
+#ask-form { display: flex; gap: .5rem; margin: .75rem 0; }
+#text { flex: 1; padding: .45rem .6rem; border-radius: 6px; border: 1px solid var(--border);
+  background: var(--surface); color: var(--ink); font-size: .85rem; }
+#text:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px var(--accent-bg); }
+select { padding: .4rem .55rem; border-radius: 6px; border: 1px solid var(--border);
+  background: var(--surface); color: var(--ink); font-size: .82rem; }
+.badge { padding: .15rem .5rem; border-radius: 999px; font-size: .72rem; font-weight: 600; }
+.badge.ok { background: var(--ok-bg); color: var(--ok); }
+.badge.redact { background: var(--warn-bg); color: var(--warn); }
+.badge.block { background: var(--bad-bg); color: var(--bad); }
+.hidden { display: none; }
+table { width: 100%; font-size: .8rem; border-collapse: collapse; }
+th, td { text-align: left; padding: .3rem .45rem; border-bottom: 1px solid var(--border); }
+th { font-weight: 600; color: var(--ink-dim); font-size: .72rem; text-transform: uppercase; letter-spacing: .03em; }
+h2 { font-size: .75rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em;
+  color: var(--ink-dim); margin-bottom: .5rem; }
