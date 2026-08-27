@@ -334,3 +334,69 @@ class TestAsyncValidator:
 
         result = await v.validate({"name": "John"})
         assert result.is_err()
+
+
+class TestValidationConfigWiring:
+    """stop_on_first_error / coerce_types (ValidationConfig fields)."""
+
+    def test_stop_on_first_error_stops_after_first_field(self) -> None:
+        """With stop_on_first_error, only the first failing field is reported."""
+        v = (
+            ValidatorImpl(stop_on_first_error=True)
+            .rule(
+                "a",
+                Required(),
+            )
+            .rule("b", Required())
+        )
+        result = v.validate({})
+        assert result.is_err()
+        errors = result.unwrap_err().errors
+        assert [e.field for e in errors] == ["a"]
+
+    def test_default_collects_all_errors(self) -> None:
+        """Default behaviour collects errors from every failing field."""
+        v = ValidatorImpl().rule("a", Required()).rule("b", Required())
+        result = v.validate({})
+        assert result.is_err()
+        errors = result.unwrap_err().errors
+        assert {e.field for e in errors} == {"a", "b"}
+
+    def test_coerce_types_coerces_object_attributes(self) -> None:
+        """coerce_types=True coerces str values against the object's annotations."""
+
+        @dataclass
+        class Person:
+            age: int
+            name: str
+
+        from lexigram.validation.rules import one_of
+
+        v = ValidatorImpl(coerce_types=True).rule("age", one_of(42))
+        person = Person(age="42", name="Ann")  # type: ignore[arg-type]
+        result = v.validate_object(person)
+        assert result.is_ok()  # "42" coerced to 42 via the annotation
+
+    def test_coerce_types_default_off_leaves_values_untouched(self) -> None:
+        """Without coerce_types, non-conforming values fail their rules."""
+        from lexigram.validation.rules import one_of
+
+        v = ValidatorImpl().rule("age", one_of(42))
+        person = type("P", (), {"age": "42", "__annotations__": {"age": int}})()
+        result = v.validate_object(person)
+        assert result.is_err()  # "42" left as str -> not in {42}
+
+    @pytest.mark.asyncio
+    async def test_async_stop_on_first_error(self) -> None:
+        """AsyncValidator honours stop_on_first_error too."""
+        v = (
+            AsyncValidator(stop_on_first_error=True)
+            .rule(
+                "a",
+                Required(),
+            )
+            .rule("b", Required())
+        )
+        result = await v.validate({})
+        assert result.is_err()
+        assert [e.field for e in result.unwrap_err().errors] == ["a"]

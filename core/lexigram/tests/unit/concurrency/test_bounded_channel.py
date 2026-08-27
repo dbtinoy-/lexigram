@@ -8,6 +8,15 @@ from lexigram.concurrency.channels.channel import BoundedChannel
 from lexigram.concurrency.exceptions import ChannelClosedError, ChannelFullError
 
 
+@pytest.fixture(autouse=True)
+def _reset_channel_default_capacity() -> None:
+    """Isolate tests from BoundedChannel.configure() (e.g. booted providers)."""
+    previous = BoundedChannel._default_capacity
+    BoundedChannel._default_capacity = 0
+    yield
+    BoundedChannel._default_capacity = previous
+
+
 class TestBoundedChannelInit:
     """Tests for BoundedChannel initialization."""
 
@@ -179,3 +188,16 @@ class TestChannelExceptions:
         """Test ChannelClosedError properties."""
         error = ChannelClosedError("closed")
         assert "closed" in str(error)
+
+
+class TestBoundedChannelConfigure:
+    """BoundedChannel.configure() sets the default for capacity-omitted channels."""
+
+    def test_configure_changes_default_only_for_omitted_capacity(self) -> None:
+        BoundedChannel.configure(7)
+        try:
+            assert BoundedChannel().capacity == 7
+            assert BoundedChannel(capacity=0).capacity == 0  # explicit 0 = unbounded
+            assert BoundedChannel(capacity=3).capacity == 3
+        finally:
+            BoundedChannel.configure(0)

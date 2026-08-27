@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import TYPE_CHECKING, Any
 
 from lexigram.contracts.core.health import (
@@ -23,12 +24,49 @@ class HealthProbeMixin:
     """
 
     if TYPE_CHECKING:
+        _config: Any
         _state: AppState
         name: str
         _orchestrator: Any
 
-    async def health_check(self, timeout: float = 5.0) -> AggregateHealthResult:
+    def _effective_timeout(self, timeout: float | None) -> float:
+        """Resolve the per-provider health-check timeout.
+
+        Precedence: explicit argument > ``AppConfig.health_check_timeout``
+        (``app`` section) > ``HealthConfig.check_timeout`` (``health``
+        section, whose default is :data:`DEFAULT_HEALTH_CHECK_TIMEOUT`).
+        """
+        if timeout is not None:
+            return timeout
+        cfg = self._config
+        app_value = cfg.get("app.health_check_timeout", None)
+        if app_value is not None:
+            return float(app_value)
+        return float(cfg.health.check_timeout)
+
+    def _apply_details_policy(
+        self, result: AggregateHealthResult
+    ) -> AggregateHealthResult:
+        """Scrub detailed error info when ``HealthConfig.include_details`` is False."""
+        if self._config.health.include_details:
+            return result
+        return AggregateHealthResult(
+            components=[
+                replace(
+                    component,
+                    message=None,
+                    error=None,
+                    details=None,
+                )
+                for component in result.components
+            ]
+        )
+
+    async def health_check(self, timeout: float | None = None) -> AggregateHealthResult:
         """Aggregate health check from all providers.
+
+        ``timeout`` (per provider, seconds) falls back to
+        ``AppConfig.health_check_timeout`` then ``HealthConfig.check_timeout``.
 
         Returns an :class:`~lexigram.contracts.core.health.AggregateHealthResult`
         whose ``status`` follows worst-case aggregation across all registered
@@ -36,19 +74,25 @@ class HealthProbeMixin:
         """
         from lexigram.app.base import AppState  # local: avoid circular import
 
+        timeout = self._effective_timeout(timeout)
+
         if self._state != AppState.RUNNING:
-            return AggregateHealthResult(
-                components=[
-                    HealthCheckResult(
-                        component=self.name,
-                        status=HealthStatus.UNHEALTHY,
-                        message=f"Application is {self._state.value}",
-                    )
-                ]
+            return self._apply_details_policy(
+                AggregateHealthResult(
+                    components=[
+                        HealthCheckResult(
+                            component=self.name,
+                            status=HealthStatus.UNHEALTHY,
+                            message=f"Application is {self._state.value}",
+                        )
+                    ]
+                )
             )
 
         raw: dict[str, Any] = await self._orchestrator.health_check(timeout)
-        return AggregateHealthResult(components=list(raw.values()))
+        return self._apply_details_policy(
+            AggregateHealthResult(components=list(raw.values()))
+        )
 
     def _probe_unavailable_result(
         self,
@@ -66,21 +110,31 @@ class HealthProbeMixin:
             ],
         )
 
-    async def liveness(self, timeout: float = 5.0) -> AggregateHealthResult:
+    async def liveness(self, timeout: float | None = None) -> AggregateHealthResult:
         """Run liveness checks for the application."""
         from lexigram.app.base import AppState  # local: avoid circular import
 
+        timeout = self._effective_timeout(timeout)
         if self._state != AppState.RUNNING:
-            return self._probe_unavailable_result(HealthCheckCategory.LIVENESS)
-        return await self._orchestrator.run_liveness(timeout)
+            return self._apply_details_policy(
+                self._probe_unavailable_result(HealthCheckCategory.LIVENESS)
+            )
+        return self._apply_details_policy(
+            await self._orchestrator.run_liveness(timeout)
+        )
 
-    async def readiness(self, timeout: float = 5.0) -> AggregateHealthResult:
+    async def readiness(self, timeout: float | None = None) -> AggregateHealthResult:
         """Run readiness checks for the application."""
         from lexigram.app.base import AppState  # local: avoid circular import
 
+        timeout = self._effective_timeout(timeout)
         if self._state != AppState.RUNNING:
-            return self._probe_unavailable_result(HealthCheckCategory.READINESS)
-        return await self._orchestrator.run_readiness(timeout)
+            return self._apply_details_policy(
+                self._probe_unavailable_result(HealthCheckCategory.READINESS)
+            )
+        return self._apply_details_policy(
+            await self._orchestrator.run_readiness(timeout)
+        )
 
 
 __all__ = ["HealthProbeMixin"]

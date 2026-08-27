@@ -14,6 +14,7 @@ from lexigram.contracts.core.di import (
     ContainerRegistrarProtocol,
     ContainerResolverProtocol,
 )
+from lexigram.contracts.exceptions import UnresolvableDependencyError
 from lexigram.contracts.exceptions.provider import ModuleVisibilityError
 from lexigram.di.container.container_introspection import ContainerIntrospectionMixin
 from lexigram.di.container.container_runtime import ContainerRuntimeMixin
@@ -67,9 +68,17 @@ class Container(
     _resolver_obj: ContainerResolverImpl
 
     def __init__(
-        self, parent: Container | None = None, testing_mode: bool = False
+        self,
+        parent: Container | None = None,
+        testing_mode: bool = False,
+        strict_mode: bool = False,
+        validate_on_register: bool = True,
     ) -> None:
         self._parent = parent
+        #: Raise on unresolved optional lookups (see :meth:`resolve_optional`).
+        self.strict_mode = strict_mode
+        #: Default for the ``validate`` argument of registration methods.
+        self.validate_on_register = validate_on_register
 
         # Core resolution infrastructure
         self._type_hint_resolver = TypeHintResolverImpl()
@@ -180,6 +189,13 @@ class Container(
         """
         if self.has(service_type):
             return await self.resolve(service_type)
+        if self.strict_mode:
+            name = getattr(service_type, "__name__", repr(service_type))
+            raise UnresolvableDependencyError(
+                f"'{name}' is not registered in the container and "
+                "strict_mode is enabled; register it or disable strict mode.",
+                dependency=name,
+            )
         return None
 
     @overload
@@ -244,9 +260,15 @@ class Container(
         self,
         service_type: type[T],
         factory: ServiceFactory[T],
-        validate: bool = True,
+        validate: bool | None = None,
     ) -> None:
-        """Register a transient service (new instance each resolution)."""
+        """Register a transient service (new instance each resolution).
+
+        ``validate=None`` (default) falls back to
+        :attr:`validate_on_register`.
+        """
+        if validate is None:
+            validate = self.validate_on_register
         self._registrar.transient(service_type, factory, validate=validate)
 
     @overload
@@ -297,11 +319,17 @@ class Container(
         self,
         service_type: type[T],
         factory: ServiceFactory[T],
-        validate: bool = True,
+        validate: bool | None = None,
         *,
         name: str | None = None,
     ) -> None:
-        """Register a scoped service (instance per scope)."""
+        """Register a scoped service (instance per scope).
+
+        ``validate=None`` (default) falls back to
+        :attr:`validate_on_register`.
+        """
+        if validate is None:
+            validate = self.validate_on_register
         self._registrar.scoped(service_type, factory, validate=validate, name=name)
 
     @property

@@ -16,14 +16,42 @@ from lexigram.di.extensions.interceptors import (
     wrap_with_interceptors,
 )
 from lexigram.di.resolution.descriptor import ServiceDescriptor, ServiceScope
+from lexigram.logging import get_logger
 
 if TYPE_CHECKING:
     from lexigram.di.protocols import InjectorProtocol
     from lexigram.di.resolution.registry import ServiceRegistry
 
+logger = get_logger(__name__)
+
 
 class ServiceResolver:
     """Resolves services from the registry with dependency injection."""
+
+    #: Maximum nested resolution depth before a depth error is raised.
+    #: ``0`` (default) disables the cap; set via :meth:`configure` from
+    #: ``DiConfig.max_resolution_depth`` at provider boot.
+    _max_resolution_depth: int = 0
+    #: When True, each successful resolution is logged at debug level.
+    #: Set via :meth:`configure` from ``DiConfig.debug_resolution``.
+    _debug_resolution: bool = False
+
+    @classmethod
+    def configure(
+        cls,
+        *,
+        max_resolution_depth: int = 0,
+        debug_resolution: bool = False,
+    ) -> None:
+        """Apply process-wide resolution settings (called at DI provider boot).
+
+        Args:
+            max_resolution_depth: Cap on nested resolution depth
+                (``0`` = unlimited).
+            debug_resolution: Log every resolved service at debug level.
+        """
+        cls._max_resolution_depth = max_resolution_depth
+        cls._debug_resolution = debug_resolution
 
     def __init__(
         self,
@@ -47,7 +75,13 @@ class ServiceResolver:
 
     async def resolve(self, service_type: object) -> Any:
         """Resolve a service by type."""
-        return await self._do_resolve(service_type)
+        instance = await self._do_resolve(service_type)
+        if self._debug_resolution:
+            logger.debug(
+                "di.resolution.resolved",
+                service=getattr(service_type, "__name__", repr(service_type)),
+            )
+        return instance
 
     def has(self, service_type: object) -> bool:
         """Check if registered."""
@@ -226,6 +260,12 @@ class ServiceResolver:
             cycle = [*stack, service_type]
             names = [getattr(cls, "__name__", repr(cls)) for cls in cycle]
             raise CircularDependencyError(" -> ".join(names))
+        if self._max_resolution_depth and len(stack) >= self._max_resolution_depth:
+            raise CircularDependencyError(
+                f"Resolution depth exceeded {self._max_resolution_depth} "
+                f"(current: {len(stack)}); possible circular or overly "
+                "deep dependency graph"
+            )
 
     # -- Annotated type unwrapping -----------------------------------------
 

@@ -49,14 +49,27 @@ class ConcurrencyProvider(Provider):
         container.singleton(TaskManagerProtocol, self._task_manager)
 
     async def boot(self, container: ContainerResolverProtocol) -> None:
-        """No boot-time work required for the concurrency module."""
+        """Apply ConcurrencyConfig settings at boot.
+
+        Wires ``default_channel_capacity`` into :class:`BoundedChannel`'s
+        default (channels created without an explicit capacity).
+        """
+        from lexigram.concurrency.channels import BoundedChannel
+
+        cfg: ConcurrencyConfig = self._concurrency_config or ConcurrencyConfig()
+        BoundedChannel.configure(cfg.default_channel_capacity)
 
     async def shutdown(self) -> None:
         """Gracefully shutdown managed concurrency services."""
         if self._task_manager is not None:
             await self._task_manager.shutdown_gracefully()
         if self._dispatcher is not None:
-            await self._dispatcher.shutdown(wait=True)
+            cfg = self._concurrency_config or ConcurrencyConfig()
+            await self._dispatcher.shutdown(
+                wait=True,
+                drain=True,
+                drain_timeout=cfg.dispatcher_shutdown_timeout,
+            )
 
     async def health_check(self, timeout: float = 5.0) -> HealthCheckResult:
         """Health check — always healthy (in-process only, no external backend).

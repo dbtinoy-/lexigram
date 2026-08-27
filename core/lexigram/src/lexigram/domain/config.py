@@ -16,14 +16,19 @@ class DomainConfig:
     """Domain subsystem configuration.
 
     Currently a minimal configuration with no required fields.
-    Reserved for future domain-level options (e.g. strict entity
-    immutability enforcement, custom ID generator registration).
+    Both fields below are **reserved**: they are accepted for forward
+    compatibility but have no runtime effect today (see per-field notes).
 
     Attributes:
-        strict_immutability: When True, value objects raise on mutation
-            attempts at runtime.  Defaults to False for compatibility.
-        id_prefix: Optional string prefix appended to auto-generated
-            entity IDs for namespacing.  Empty string disables prefixing.
+        strict_immutability: Reserved. Value objects are *already* frozen
+            dataclasses and raise ``FrozenInstanceError`` on mutation
+            unconditionally, so there is nothing for this flag to toggle.
+            Kept so a future entity-level strictness knob can land without
+            a breaking change.
+        id_prefix: Reserved. ID generation (and prefixing) lives in the
+            ``lexigram.identity`` subsystem, which has its own
+            ``IdentityConfig.prefix_map`` / ``PrefixedIdGenerator``; this
+            field is not read by any ID generator. Empty string = disabled.
     """
 
     strict_immutability: bool = False

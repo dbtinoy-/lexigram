@@ -36,14 +36,33 @@ class BoundedChannel(Generic[T]):
     that receivers automatically inherit the sender's OTel trace span.
     """
 
-    def __init__(self, capacity: int = 0) -> None:
+    #: Default capacity applied when ``capacity`` is omitted.  ``0`` means
+    #: unbounded (the historical default); set via :meth:`configure`, which
+    #: is invoked at boot from ``ConcurrencyConfig.default_channel_capacity``.
+    _default_capacity: int = 0
+
+    @classmethod
+    def configure(cls, default_capacity: int) -> None:
+        """Set the default capacity for channels created without one.
+
+        Args:
+            default_capacity: Capacity used when ``capacity`` is omitted
+                (``0`` = unbounded).  Existing channels are unaffected.
+        """
+        cls._default_capacity = int(default_capacity)
+
+    def __init__(self, capacity: int | None = None) -> None:
         """Initialize a bounded channel.
 
         Args:
-            capacity: Maximum queue size.  ``0`` means unbounded.
+            capacity: Maximum queue size.  ``0`` means unbounded; ``None``
+                (the default) uses the class default set by
+                :meth:`configure` (initially ``0`` = unbounded).
         """
-        self.capacity = capacity
-        self._queue: asyncio.Queue[_ContextualItem[T]] = asyncio.Queue(maxsize=capacity)
+        self.capacity = self._default_capacity if capacity is None else capacity
+        self._queue: asyncio.Queue[_ContextualItem[T]] = asyncio.Queue(
+            maxsize=self.capacity
+        )
         self._closed = False
         self._lock = asyncio.Lock()
 

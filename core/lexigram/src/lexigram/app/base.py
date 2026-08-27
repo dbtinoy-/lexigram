@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import asyncio
 from contextlib import asynccontextmanager
 from enum import StrEnum
 from pathlib import Path
 import sys
 from typing import TYPE_CHECKING, Any, TypeVar, cast
 
+from lexigram.app.constants import DEFAULT_SHUTDOWN_TIMEOUT
 from lexigram.app.exceptions import AppShutdownError
 from lexigram.app.health_probes import HealthProbeMixin
 from lexigram.app.invoker import Invoker
@@ -382,8 +384,20 @@ class Application(SecretsMixin, HealthProbeMixin):
 
         self._state = AppState.STOPPING
 
+        shutdown_timeout = float(
+            self._config.get("app.shutdown_timeout", DEFAULT_SHUTDOWN_TIMEOUT)
+        )
         try:
-            await self._lifecycle.shutdown()
+            await asyncio.wait_for(self._lifecycle.shutdown(), timeout=shutdown_timeout)
+        except TimeoutError:
+            self._logger.error(
+                "application.shutdown_timeout",
+                name=self.name,
+                timeout_seconds=shutdown_timeout,
+            )
+            raise AppShutdownError(
+                f"Application shutdown timed out after {shutdown_timeout:g}s: {self.name}"
+            ) from None
         except (RuntimeError, ExceptionGroup) as err:
             self._logger.exception(
                 "application.shutdown_error",
@@ -397,45 +411,24 @@ class Application(SecretsMixin, HealthProbeMixin):
     def _validate_config(self) -> None:
         """Validate configuration against the active environment.
 
-        Runs :meth:`validate_for_environment
-        <lexigram.contracts.core.config.ConfigProtocol.validate_for_environment>`
-        on the root config and collects all returned
-        :class:`~lexigram.contracts.core.config.ConfigIssue` entries.
-
-        - ``severity="warning"`` issues are logged.
-        - ``severity="error"`` issues (e.g. ``debug=True`` in production)
-          abort the boot with :class:`ConfigurationError`.
-
-        Raises:
-            ConfigurationError: When hard validation constraints are violated.
+        Delegates to :func:`lexigram.app.config_validation.validate_app_config`;
+        error-severity issues (e.g. ``debug=True`` in production) abort the
+        boot with :class:`ConfigurationError`.
         """
-        from lexigram.config.lib.validation import validate_all_configs
-        from lexigram.contracts.exceptions.config import ConfigurationError
+        from lexigram.app.config_validation import validate_app_config
 
-        issues = validate_all_configs([self._config])
-        for issue in issues:
-            if issue.severity != "error":
-                self._logger.warning(
-                    "config.validation.issue",
-                    field=issue.field,
-                    message=issue.message,
-                    suggestion=issue.suggestion,
-                )
-        errors = [issue for issue in issues if issue.severity == "error"]
-        if errors:
-            details = "; ".join(f"{i.field}: {i.message}" for i in errors)
-            hints = "; ".join(i.suggestion for i in errors if i.suggestion)
-            raise ConfigurationError(
-                f"Configuration validation failed — refusing to start: {details}"
-                + (f" ({hints})" if hints else ""),
-                issues=list(issues),
-            )
+        validate_app_config(self._config, self._logger)
 
-    async def startup_check(self, timeout: float = 5.0) -> AggregateHealthResult:
+    async def startup_check(
+        self, timeout: float | None = None
+    ) -> AggregateHealthResult:
         """Run startup checks for the application."""
+        timeout = self._effective_timeout(timeout)
         if self._state != AppState.RUNNING:
-            return self._probe_unavailable_result(HealthCheckCategory.STARTUP)
-        return await self._orchestrator.run_startup(timeout)
+            return self._apply_details_policy(
+                self._probe_unavailable_result(HealthCheckCategory.STARTUP)
+            )
+        return self._apply_details_policy(await self._orchestrator.run_startup(timeout))
 
     # -- Convenience -------------------------------------------------------
 

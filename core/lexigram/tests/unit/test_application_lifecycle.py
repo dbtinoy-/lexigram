@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -177,3 +177,45 @@ class TestApplicationDelegatesToLifecycle:
             await app.stop()
 
             mock_shutdown.assert_awaited_once()
+
+
+class TestApplicationShutdownTimeout:
+    """Application.stop should bound shutdown via AppConfig.shutdown_timeout."""
+
+    @pytest.mark.asyncio
+    async def test_stop_raises_when_shutdown_exceeds_timeout(self) -> None:
+        """A shutdown exceeding the configured timeout aborts with AppShutdownError."""
+        import asyncio
+
+        from lexigram.app.exceptions import AppShutdownError
+        from lexigram.config import LexigramConfig
+
+        app = Application()
+        app._state = AppState.RUNNING
+        app._config = LexigramConfig(app={"shutdown_timeout": 0.05})
+
+        async def slow_shutdown() -> None:
+            await asyncio.sleep(5)
+
+        with patch.object(app._lifecycle, "shutdown", new=slow_shutdown):
+            with pytest.raises(AppShutdownError, match="timed out"):
+                await app.stop()
+
+        assert app._state == AppState.STOPPED
+
+    @pytest.mark.asyncio
+    async def test_stop_within_timeout_succeeds(self) -> None:
+        """A fast shutdown is unaffected by the timeout bound."""
+        from lexigram.config import LexigramConfig
+
+        app = Application()
+        app._state = AppState.RUNNING
+        app._config = LexigramConfig(app={"shutdown_timeout": 30.0})
+
+        with patch.object(
+            app._lifecycle, "shutdown", new_callable=AsyncMock
+        ) as mock_shutdown:
+            await app.stop()
+
+        mock_shutdown.assert_awaited_once()
+        assert app._state == AppState.STOPPED

@@ -32,6 +32,9 @@ class PoolConfig:
         task_queue_size: Size of the task queue (>= 1).
         worker_ttl: Worker time-to-live in seconds (>= 0).
         enable_metrics: Whether to enable metrics collection.
+            Reserved: no WorkerPool implementation exists yet (the dispatcher
+            uses raw ThreadPoolExecutors); the flag will gate pool metrics
+            when worker pools land.
     """
 
     min_size: int = 1
@@ -95,8 +98,11 @@ class DispatcherConfig:
     Attributes:
         max_concurrent_tasks: Maximum number of concurrent tasks (>= 1).
         queue_timeout: Queue timeout in seconds (>= 0).
-        retry_failed_tasks: Whether to retry failed tasks.
-        max_retries: Maximum number of retries (>= 0).
+        retry_failed_tasks: Reserved: DispatcherImpl propagates task
+            exceptions today (retrying non-idempotent tasks silently would be
+            unsafe); will gate automatic retries when implemented.
+        max_retries: Maximum number of retries (>= 0); only meaningful
+            together with retry_failed_tasks (see above).
         pool: Worker pool configuration.
         cpu_pool: CPU-bound thread pool configuration.
         io_pool: I/O-bound thread pool configuration.
@@ -147,13 +153,19 @@ class ConcurrencyConfig:
     """Async concurrency primitives and task management configuration."""
 
     default_channel_capacity: int = DEFAULT_CHANNEL_CAPACITY
-    # consumed by: BoundedChannel.__init__ default capacity
+    # consumed by: ConcurrencyProvider.boot() -> BoundedChannel.configure();
+    #   channels created without an explicit capacity pick this up (explicit
+    #   ``capacity=0`` still means unbounded).
     default_semaphore_timeout: float = DEFAULT_SEMAPHORE_TIMEOUT
-    # consumed by: Semaphore default acquisition timeout
+    # reserved: core dispatch uses ``asyncio.Semaphore`` with no default
+    #   acquisition timeout; applying one would convert unbounded waits in
+    #   saturated batch workloads into timeouts. Wire when a dedicated
+    #   Semaphore primitive lands.
     worker_threads: int = DEFAULT_WORKER_THREADS
     # consumed by: thread pool executor in ConcurrencyProvider.register()
     dispatcher_shutdown_timeout: float = DEFAULT_DISPATCHER_SHUTDOWN_TIMEOUT
-    # consumed by: Dispatcher.stop() drain timeout
+    # consumed by: ConcurrencyProvider.shutdown() -> Dispatcher.shutdown(
+    #   drain=True, drain_timeout=...)
 
 
 __all__ = [

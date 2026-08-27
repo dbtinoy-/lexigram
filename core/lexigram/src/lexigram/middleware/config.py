@@ -38,7 +38,12 @@ class MiddlewareConfig(BaseConfig):
     )
     correlation_header: str = Field(
         default=DEFAULT_CORRELATION_HEADER,
-        description="HTTP header name used by CorrelationIdMiddleware.",
+        description=(
+            "Conventional HTTP header name carrying the correlation ID "
+            "(X-Correlation-Id). Edge/transport layers map it to/from the "
+            "'correlation_id' context attribute set by "
+            "CorrelationIdMiddleware; core middleware reads no HTTP headers."
+        ),
     )
     default_timeout: float = Field(
         default=30.0,

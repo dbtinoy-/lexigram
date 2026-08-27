@@ -172,6 +172,71 @@ class MiddlewareRegistry(Registry[str, tuple[int, Any]]):
         registry.register("timing", TimingMiddleware(), priority=90)
         return registry
 
+    @classmethod
+    def with_resilience(
+        cls,
+        config: MiddlewareConfig | None = None,
+        catch: type[Exception] | tuple[type[Exception], ...] = (
+            ConnectionError,
+            TimeoutError,
+        ),
+    ) -> MiddlewareRegistry:
+        """Defaults plus resilience middlewares built from *config*.
+
+        Every ``MiddlewareConfig`` resilience field has a consumer here:
+        ``default_retry_count``/``default_retry_delay`` -> RetryMiddleware,
+        ``circuit_failure_threshold``/``circuit_recovery_timeout`` ->
+        CircuitBreakerMiddleware, ``rate_limit_max_requests``/
+        ``rate_limit_window`` -> RateLimiterMiddleware,
+        ``default_timeout`` -> TimeoutMiddleware.
+
+        Args:
+            config: Middleware defaults; falls back to ``MiddlewareConfig()``.
+            catch: Exceptions RetryMiddleware retries (connection-level by
+                default; widen deliberately, e.g. to ``Exception``).
+        """
+        from lexigram.middleware.builtins.resilience import (
+            CircuitBreakerMiddleware,
+            RateLimiterMiddleware,
+            RetryMiddleware,
+            TimeoutMiddleware,
+        )
+        from lexigram.middleware.config import MiddlewareConfig
+
+        cfg = config or MiddlewareConfig()
+        registry = cls.with_defaults()
+        registry.register(
+            "retry",
+            RetryMiddleware(
+                catch,
+                max_retries=cfg.default_retry_count,
+                delay=cfg.default_retry_delay,
+            ),
+            priority=30,
+        )
+        registry.register(
+            "circuit_breaker",
+            CircuitBreakerMiddleware(
+                failure_threshold=cfg.circuit_failure_threshold,
+                recovery_timeout=cfg.circuit_recovery_timeout,
+            ),
+            priority=40,
+        )
+        registry.register(
+            "rate_limiter",
+            RateLimiterMiddleware(
+                max_requests=cfg.rate_limit_max_requests,
+                window_seconds=cfg.rate_limit_window,
+            ),
+            priority=50,
+        )
+        registry.register(
+            "timeout",
+            TimeoutMiddleware(timeout=cfg.default_timeout),
+            priority=60,
+        )
+        return registry
+
     def __repr__(self) -> str:
         entries = [(name, entry[0]) for name, entry in self._items.items()]
         parts = ", ".join(
