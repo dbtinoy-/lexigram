@@ -1,0 +1,32 @@
+# ╔═══════════════════════════════════════════════════════════════════════════╗
+# ║                      LLM Router Demo — Full Reference                   ║
+# ║                                                                         ║
+# ║  Teaches: Lexigram LLM client pattern with ScriptedLLMClient for        ║
+# ║           deterministic testing and multi-provider routing.             ║
+# ║                                                                         ║
+# ║  LEARNING PATH:                                                         ║
+# ║    1. application.yaml   — you are here (configuration)                 ║
+# ║    2. src/content_gen/app.py — composition root (wiring)                ║
+# ║    3. src/content_gen/di/provider.py — provider lifecycle               ║
+# ║    4. src/content_gen/services/ — LLM usage patterns                    ║
+# ║    5. src/content_gen/repository/scripted_llm.py — test stand-in        ║
+# ║    6. tests/ — deterministic testing without real LLM calls             ║
+# ╚═══════════════════════════════════════════════════════════════════════════╝
+
+
+# ── Web ──────────────────────────────────────────────────────────────────────
+web:
+  server:
+    host: 127.0.0.1
+    port: 8000
+  security:
+    csrf:
+      enabled: false
+
+
+# ── Demo ────────────────────────────────────────────────────────────────────
+# Demo-specific settings for the content generation demo.
+# ─────────────────────────────────────────────────────────────────────────────
+content_gen:
+  default_style: "professional"
+  max_retries: 3
