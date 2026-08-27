@@ -180,13 +180,13 @@ latest `main` run); each job has a local one-liner:
 #### current status (0.1.x — Alpha)
 - Alpha; public APIs may change before 1.0
 - ~50 open-source packages (MIT)
-- 32,966 tests across 54 packages — all passing
+- 31,000+ tests across 54 packages — all passing
 - Aggregate coverage: 75.6% (target: 80%)
 
 #### short term (Q2 2026)
-- [x] Extended AI capabilities — AI subsystem packages (agents, guard, memory, rag, …) — `done` (17 packages, all passing)
+- [x] Extended AI capabilities — AI subsystem packages (agents, guard, memory, rag, …) — `done`
 - [x] Reactive state and event wiring — streams, subjects, operators, retry, end-event signaling — `done`
-- [x] Demos — runnable demo apps covering agents, memory, guardrails, resilience and more — `in progres` (15 demos, all with tests)
+- [x] Demos — runnable demo apps covering agents, memory, guardrails, resilience and more — `extending`
 - [ ] Additional backend support — `not started`
 
 #### medium term (Q3-Q4 2026)
