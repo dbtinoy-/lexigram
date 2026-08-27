@@ -115,7 +115,7 @@ docs = [
 # Security extras — opt-in deps for lexigram.security.* implementations
 # HTML sanitization requires nh3 (Rust-based); encryption requires cryptography.
 security = [
-    "nh3>=0.3.4",
+    "nh3>=0.3.7",
     "cryptography>=41.0.0",
 ]
 
