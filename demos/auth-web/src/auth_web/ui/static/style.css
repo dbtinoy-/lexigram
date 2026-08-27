@@ -7,24 +7,13 @@
 }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 body { height: 100vh; overflow: hidden; display: flex; flex-direction: column;
-  padding: 0 2rem;
   background: var(--bg); color: var(--ink);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
 
 /* ── Auth shell: scrollable area between nav and footer ───────────────────── */
 
 /* ── Logo + heading ───────────────────────────────────────────────────────── */
-.logo-header { display: flex; align-items: center; justify-content: center;
-  gap: .6rem; margin: 2rem 0 .5rem; }
-.logo-header img { width: 28px; height: 28px; }
-h1.accent { color: var(--accent); font-size: 1.3rem; text-align: center; }
-.auth-desc { text-align: center; color: var(--ink-dim); font-size: .9rem;
-  margin: .25rem 0 1.5rem; }
-
 /* ── Card ──────────────────────────────────────────────────────────────────── */
-.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
-  padding: 1.5rem 2rem; margin-bottom: 1rem;
-  box-shadow: 0 1px 3px rgba(0,0,0,.04); }
 .card-header { display: flex; justify-content: space-between; align-items: center;
   margin-bottom: .75rem; }
 .card-header strong { font-size: .85rem; }
@@ -42,21 +31,13 @@ button:hover { filter: brightness(1.1); }
 button.secondary { background: var(--surface2); color: var(--ink); border: 1px solid var(--border); }
 
 /* ── Status ────────────────────────────────────────────────────────────────── */
-.error { color: var(--error); }
 .ok { color: var(--ok); }
-.muted { color: var(--ink-dim); }
 .status-bar { padding: .6rem .85rem; border-radius: 6px; font-size: .85rem;
   margin-bottom: .75rem; }
 .status-bar.info { background: var(--accent-bg); color: var(--accent); }
-.status-bar.error { background: rgba(220,38,38,.06); color: var(--error); }
-.status-bar.ok { background: rgba(22,163,74,.06); color: var(--ok); }
+.status-bar.status-bar.ok { background: rgba(22,163,74,.06); color: var(--ok); }
 
 /* ── Footer actions (links at bottom of card) ──────────────────────────────── */
-.auth-footer { margin-top: .75rem; padding-top: .75rem; border-top: 1px solid var(--border);
-  text-align: center; font-size: .85rem; color: var(--ink-dim); }
-.auth-footer a { color: var(--accent); text-decoration: none; }
-.auth-footer a:hover { text-decoration: underline; }
-
 /* ── Data display ──────────────────────────────────────────────────────────── */
 table { width: 100%; border-collapse: collapse; }
 th, td { text-align: left; padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--border); }
@@ -79,12 +60,36 @@ ul { list-style: none; padding: 0; }
 .demo-footer a:hover { text-decoration: underline; }
 
 /* ── Demo navigation bar ───────────────────────────────────────────────────── */
-.demo-nav { display: flex; align-items: center; align-self: stretch; gap: .75rem; padding: .5rem 1.25rem;
-  background: var(--surface); border-bottom: 1px solid var(--border); font-size: .85rem; }
-.nav-brand { display: flex; align-items: center; gap: .4rem; color: var(--ink); text-decoration: none; font-weight: 600; }
+.demo-nav { display: flex; align-items: center; gap: .75rem; padding: .5rem 1.25rem;
+  background: var(--surface); border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.nav-brand { color: var(--ink); text-decoration: none; font-weight: 600; }
 .nav-brand:hover { color: var(--accent); }
-.nav-logo { width: 18px; height: 18px; }
-.nav-demo { color: var(--ink-dim); }
-.nav-links { margin-left: auto; display: flex; gap: 1rem; }
+.nav-demo { margin-left: .5rem; color: var(--ink-dim); font-size: .85rem; font-weight: 500; }
+.nav-links { margin-left: auto; display: flex; gap: 1rem; font-size: .85rem; }
 .nav-links a { color: var(--ink-dim); text-decoration: none; }
 .nav-links a:hover { color: var(--accent); }
+
+
+/* ── Auth shell: consistent across all auth demos ───────────────────────── */
+.auth-shell { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.auth-content { flex: 1; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; padding: 2rem 1.5rem; max-width: 560px; margin: 0 auto; width: 100%; }
+.auth-desc { color: var(--ink-dim); font-size: 1rem; text-align: center; margin-bottom: 1.75rem; }
+.auth-footer { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border);
+  text-align: center; font-size: .85rem; }
+.auth-footer a { color: var(--accent); text-decoration: none; }
+.auth-footer a:hover { text-decoration: underline; }
+
+
+h1 { font-size: 1.5rem; text-align: center; margin: 0 0 .75rem; font-weight: 600; color: var(--accent); }
+
+/* ── Card ──────────────────────────────────────────────────────────────── */
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 1.5rem; width: 100%; }
+.card label { display: block; margin-bottom: .35rem; font-size: .9rem; font-weight: 500; color: var(--ink); }
+.card input { width: 100%; padding: .65rem .85rem; border: 1px solid var(--border); border-radius: 6px; font-size: 1rem; font-family: inherit; margin-bottom: 1rem; background: var(--bg); }
+.card input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-bg); }
+.card button { width: 100%; padding: .7rem; border: none; border-radius: 6px; background: var(--accent); color: #fff; font-weight: 600; font-size: 1rem; cursor: pointer; transition: opacity .15s; margin-top: .25rem; }
+.card button:hover { opacity: .9; }
+.error { color: var(--error); font-size: .85rem; margin-bottom: .75rem; display: none; }
+.muted { color: var(--ink-dim); font-size: .85rem; }

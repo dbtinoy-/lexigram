@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head>
+  <link rel="icon" href="/static/icon.png" type="image/png" />
   <meta charset="utf-8" />
   <title>auth-web</title>
   <link rel="stylesheet" href="/static/style.css" />
@@ -14,7 +15,8 @@
     <a href="https://github.com/dbtinoy-/lexigram">GitHub</a>
   </div>
 </nav>
-<div class="wrap">
+<main class="auth-shell">
+<div class="auth-content">
 
   <div class="logo-header"><h1 class="accent">auth-web</h1></div>
   <p class="auth-desc">Checking session…</p>
@@ -31,5 +33,7 @@
       window.location.href = me.ok ? "/profile" : "/login";
     })();
   </script>
+</div>
+</main>
 </body>
 </html>

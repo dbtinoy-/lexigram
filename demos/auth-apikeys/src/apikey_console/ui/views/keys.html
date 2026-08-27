@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head>
+  <link rel="icon" href="/static/icon.png" type="image/png" />
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta charset="utf-8" />
   <title>API keys — apikeys-console</title>
@@ -8,16 +9,17 @@
 </head>
 <body data-page="keys">
 <nav class="demo-nav">
-  <a href="/" class="nav-brand"><img src="/static/logo.png" alt="" class="nav-logo"> Lexigram</a>
+  <a href="/" class="nav-brand">Lexigram</a>
   <span class="nav-demo">Auth API Keys</span>
   <div class="nav-links">
     <a href="https://lexigram.dev">Docs</a>
     <a href="https://github.com/dbtinoy-/lexigram">GitHub</a>
   </div>
 </nav>
-<div class="wrap">
+<main class="auth-shell">
+<div class="auth-content">
 
-    <div class="logo-header"><h1 class="accent">API keys</h1></div>
+    <h1 class="accent">API keys</h1>
     <p class="auth-desc">Manage machine-to-machine credentials</p>
 
     <div class="card raw-key-box" id="raw-key-box" style="display:none">
@@ -46,8 +48,8 @@
     </div>
 
     <nav class="auth-footer"><a href="#" id="logout">Log out</a></nav>
-<div class="wrap">
-  </div>
+</div>
+</main>
 
 <script src="/static/app.js"></script>
 <div class="demo-footer">Powered by <a href="https://lexigram.dev">Lexigram</a></div>

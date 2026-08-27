@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head>
+  <link rel="icon" href="/static/icon.png" type="image/png" />
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta charset="utf-8" />
   <title>Log in — mfa-console</title>
@@ -15,7 +16,8 @@
     <a href="https://github.com/dbtinoy-/lexigram">GitHub</a>
   </div>
 </nav>
-<div class="wrap">
+<main class="auth-shell">
+<div class="auth-content">
 
     <div class="logo-header"><h1 class="accent">Log in</h1></div>
     <p class="auth-desc">Sign in with multi-factor authentication</p>
@@ -53,5 +55,7 @@
       window.location.href = result.body.mfa_required ? "/challenge" : "/profile";
     });
   </script>
+</div>
+</main>
 </body>
 </html>

@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head>
+  <link rel="icon" href="/static/icon.png" type="image/png" />
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta charset="utf-8" />
   <title>Log in — rbac-console</title>
@@ -8,16 +9,17 @@
 </head>
 <body data-page="login">
 <nav class="demo-nav">
-  <a href="/" class="nav-brand"><img src="/static/logo.png" alt="" class="nav-logo"> Lexigram</a>
+  <a href="/" class="nav-brand">Lexigram</a>
   <span class="nav-demo">Auth RBAC</span>
   <div class="nav-links">
     <a href="https://lexigram.dev">Docs</a>
     <a href="https://github.com/dbtinoy-/lexigram">GitHub</a>
   </div>
 </nav>
-<div class="wrap">
+<main class="auth-shell">
+<div class="auth-content">
 
-  <div class="logo-header"><h1 class="accent">Pick a persona</h1></div>
+  <h1 class="accent">Pick a persona</h1>
   <p class="auth-desc">Select a role to explore permission-based access control</p>
   <div class="card">
     <p id="error" class="error"></p>
@@ -58,5 +60,7 @@
     }
     loadPersonas();
   </script>
+</div>
+</main>
 </body>
 </html>

@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import ClassVar, cast
 
 from lexigram.config import BaseConfig
+from lexigram.contracts.core.config import Environment
 from lexigram.validation import ConfigDict, Field
 
 
@@ -101,6 +102,7 @@ class AuthWebConfig(BaseConfig):
     config_section: ClassVar[str] = "auth_web"
     name: str = "auth_web"
     enabled: bool = True
+    env: Environment | None = Field(None, description="Deployment environment")
 
     password_reset: PasswordResetConfig = Field(
         default_factory=PasswordResetConfig,
