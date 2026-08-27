@@ -1,0 +1,30 @@
+# ╔═══════════════════════════════════════════════════════════════════════════╗
+# ║                     Queue Worker Demo — Full Reference                  ║
+# ║                                                                         ║
+# ║  Teaches: Lexigram queue pattern with in-memory backend,                ║
+# ║           message consumers, and background task processing.            ║
+# ║                                                                         ║
+# ║  LEARNING PATH:                                                         ║
+# ║    1. application.yaml   — you are here (configuration)                 ║
+# ║    2. src/queueworker/app.py — composition root (wiring)                ║
+# ║    3. src/queueworker/di/provider.py — provider lifecycle               ║
+# ║    4. src/queueworker/services/ — message processing patterns           ║
+# ║    5. tests/ — real composition root, no mocks                          ║
+# ╚═══════════════════════════════════════════════════════════════════════════╝
+
+
+# ── Web ──────────────────────────────────────────────────────────────────────
+web:
+  server:
+    host: 127.0.0.1
+    port: 8000
+  security:
+    csrf:
+      enabled: false
+
+
+# ── Demo ────────────────────────────────────────────────────────────────────
+queueworker:
+  queue_name: "tasks"
+  max_retries: 3
+  batch_size: 10
