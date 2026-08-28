@@ -86,7 +86,12 @@ class MigrationScheduler:
                 name=f"migration_job_{job_id}",
             )
         else:
-            # Schedule for later
+            # Schedule for later.  Naive run_at values are assumed to be
+            # UTC (the package convention) so the documented
+            # ``datetime.now() + timedelta(...)`` usage does not raise
+            # on the naive-vs-aware subtraction.
+            if run_at.tzinfo is None:
+                run_at = run_at.replace(tzinfo=UTC)
             delay = (run_at - datetime.now(UTC)).total_seconds()
             if delay > 0:
                 self._task_manager.create_background_task(
