@@ -79,6 +79,7 @@ class Fleet:
         """
         self._ensure_import_paths()
         for svc in self._registry.web_services():
+            child_app: Application | None = None
             try:
                 module = importlib.import_module(svc.app_path)
                 child_config = self._load_child_config(svc)
@@ -95,6 +96,15 @@ class Fleet:
                 self._apps[svc.slug] = child_app
                 logger.info("fleet_child_mounted", slug=svc.slug)
             except Exception as exc:  # noqa: BLE001 - isolate child faults
+                if child_app is not None and self._apps.get(svc.slug) is not child_app:
+                    try:
+                        await child_app.stop()
+                    except Exception as cleanup_exc:  # noqa: BLE001
+                        logger.warning(
+                            "fleet_child_cleanup_failed",
+                            slug=svc.slug,
+                            error=str(cleanup_exc),
+                        )
                 self._failures[svc.slug] = f"{type(exc).__name__}: {exc}"
                 logger.error("fleet_child_failed", slug=svc.slug, error=str(exc))
 
