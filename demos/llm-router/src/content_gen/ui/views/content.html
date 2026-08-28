@@ -12,8 +12,8 @@
   <a href="/" class="nav-brand">Lexigram</a>
   <span class="nav-demo">LLM Router</span>
   <div class="nav-links">
-    <a href="https://lexigram.dev">Docs</a>
-    <a href="https://github.com/dbtinoy-/lexigram">GitHub</a>
+    <a href="https://lexigram.dev" target="_blank" rel="noopener">Docs</a>
+    <a href="https://github.com/dbtinoy-/lexigram" target="_blank" rel="noopener">GitHub</a>
   </div>
 </nav>
 
@@ -24,25 +24,27 @@
   <main>
     <section id="generator-panel">
       <h2>Generate Content</h2>
-      <div>
-        <label for="style-select">Style:</label>
+      <form id="generate-form">
+        <label for="style-select">Style</label>
         <select id="style-select">
           <option value="description">Description</option>
           <option value="casual">Casual</option>
           <option value="technical">Technical</option>
         </select>
-        <button id="btn-generate" class="accent">Generate</button>
-      </div>
-      <pre id="output"></pre>
+        <button type="submit" id="btn-generate" class="accent">Generate</button>
+      </form>
+      <pre id="output" aria-live="polite"></pre>
     </section>
 
     <section id="extract-panel">
       <h2>Extract Product</h2>
-      <div>
-        <textarea id="extract-input" rows="3" placeholder="Paste LLM output to extract product info..."></textarea>
-        <button id="btn-extract" style="margin-top:.5rem;">Extract</button>
-      </div>
-      <pre id="extract-output"></pre>
+      <form id="extract-form">
+        <label for="extract-input">Product description</label>
+        <textarea id="extract-input" rows="3" placeholder="Paste a product description..." required></textarea>
+        <button type="submit" id="btn-extract">Extract</button>
+      </form>
+      <pre id="extract-output" aria-live="polite"></pre>
+      <p id="error" class="error hidden" role="alert"></p>
     </section>
 
     <section id="log-panel">
@@ -51,6 +53,6 @@
     </section>
   </main>
   <script src="/static/app.js"></script>
-  <div class="demo-footer">Powered by <a href="https://lexigram.dev">Lexigram</a></div>
+  <div class="demo-footer">Powered by <a href="https://lexigram.dev" target="_blank" rel="noopener">Lexigram</a></div>
 </body>
 </html>

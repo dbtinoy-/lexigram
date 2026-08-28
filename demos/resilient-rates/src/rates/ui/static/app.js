@@ -80,7 +80,8 @@ async function fetchAll() {
 async function refreshStats() {
   try {
     const res = await fetch("/stats");
-    const s = await res.json();
+    const s = await res.json().catch(() => ({}));
+    if (!res.ok || s.error) throw new Error(s.error || `HTTP ${res.status}`);
     $("s-hits").textContent = s.hits;
     $("s-misses").textContent = s.misses;
     $("s-upstream").textContent = s.upstream_calls;
@@ -90,8 +91,12 @@ async function refreshStats() {
 }
 
 async function setScenario(name) {
+  const buttons = [...document.querySelectorAll("#scenarios button")];
+  buttons.forEach((button) => { button.disabled = true; });
   try {
-    await fetch("/scenario/" + name, { method: "POST" });
+    const response = await fetch("/scenario/" + name, { method: "POST" });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok || body.error) throw new Error(body.error || `HTTP ${response.status}`);
     scenario = name;
     document.querySelectorAll("#scenarios button").forEach((b) => {
       b.classList.toggle("active", b.dataset.scenario === name);
@@ -99,16 +104,26 @@ async function setScenario(name) {
     log("scenario &rarr; " + name);
   } catch (e) {
     log("scenario change failed: " + e.message, "log-error");
+  } finally {
+    buttons.forEach((button) => { button.disabled = false; });
   }
 }
 
 async function clearCache() {
+  const button = $("clear-cache");
+  button.disabled = true;
+  button.textContent = "Clearing…";
   try {
-    await fetch("/cache/clear", { method: "POST" });
+    const response = await fetch("/cache/clear", { method: "POST" });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok || body.error) throw new Error(body.error || `HTTP ${response.status}`);
     log("cache cleared");
     await fetchAll();
   } catch (e) {
     log("clear failed: " + e.message, "log-error");
+  } finally {
+    button.disabled = false;
+    button.textContent = "Clear cache";
   }
 }
 
@@ -169,7 +184,7 @@ function buildCards() {
       '<div class="pair-source"></div>' +
       '<div class="pair-time"></div>' +
       '<div class="pair-error hidden"></div>' +
-      '<button>Fetch</button>';
+      '<button type="button">Fetch</button>';
     div.querySelector("button").addEventListener("click", () => fetchPair(pair));
     container.appendChild(div);
   });

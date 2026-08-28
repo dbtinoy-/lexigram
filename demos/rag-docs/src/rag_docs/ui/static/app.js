@@ -32,8 +32,8 @@ function renderHistory() {
   list.innerHTML = history
     .map(
       (h) =>
-        `<li data-q="${h.question.replace(/"/g, "&quot;")}" data-s="${h.strategy}">` +
-        `<span class="strategy-tag">${h.strategy}</span>${h.question}</li>`
+        `<li data-q="${escapeHtml(h.question).replace(/"/g, "&quot;")}" data-s="${escapeHtml(h.strategy)}">` +
+        `<span class="strategy-tag">${escapeHtml(h.strategy)}</span>${escapeHtml(h.question)}</li>`
     )
     .join("");
   list.querySelectorAll("li").forEach((li) => {

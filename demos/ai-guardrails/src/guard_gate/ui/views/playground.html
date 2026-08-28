@@ -12,8 +12,8 @@
   <a href="/" class="nav-brand">Lexigram</a>
   <span class="nav-demo">AI Guardrails</span>
   <div class="nav-links">
-    <a href="https://lexigram.dev">Docs</a>
-    <a href="https://github.com/dbtinoy-/lexigram">GitHub</a>
+    <a href="https://lexigram.dev" target="_blank" rel="noopener">Docs</a>
+    <a href="https://github.com/dbtinoy-/lexigram" target="_blank" rel="noopener">GitHub</a>
   </div>
 </nav>
 
@@ -27,11 +27,11 @@
         <label>Protection <input type="checkbox" id="policy-toggle" checked></label>
       </div>
       <div id="acts">
-        <button data-act="injection">Injection</button>
-        <button data-act="pii">PII</button>
-        <button data-act="length">Oversize</button>
-        <button data-act="model">Restricted model</button>
-        <button data-act="budget">Drain budget</button>
+        <button type="button" data-act="injection">Injection</button>
+        <button type="button" data-act="pii">PII</button>
+        <button type="button" data-act="length">Oversize</button>
+        <button type="button" data-act="model">Restricted model</button>
+        <button type="button" data-act="budget">Drain budget</button>
       </div>
       <form id="ask-form">
         <input id="text" type="text" autocomplete="off"
@@ -43,7 +43,7 @@
         <button type="submit">Ask</button>
       </form>
       <div id="outcomes"></div>
-      <p id="error" class="hidden"></p>
+      <p id="error" class="hidden" role="alert"></p>
     </section>
     <aside>
       <h2>Budget</h2>
