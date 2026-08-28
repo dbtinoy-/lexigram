@@ -219,8 +219,9 @@ async def test_guarded_route_succeeds_without_rules() -> None:
         assert response.status_code == 200
 
 
-async def test_guarded_route_succeeds_without_container() -> None:
+async def test_guarded_route_fails_closed_without_container() -> None:
+    """No container at all -> auth cannot be proven opted out -> 503."""
     guarded = _with_auth_guard(_echo_handler)
     for _ in range(2):
         response = await guarded(_make_request())
-        assert response.status_code == 200
+        assert response.status_code == 503

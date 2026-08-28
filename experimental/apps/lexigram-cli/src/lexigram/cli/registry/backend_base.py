@@ -73,3 +73,21 @@ class DatabaseBackend(abc.ABC):
     def supports_restore(self) -> bool:
         """Check if restore is supported."""
         return self.get_client_binary() is not None
+
+    def subprocess_env(self, params: dict[str, Any]) -> dict[str, str]:
+        """Environment for child processes launched from built commands.
+
+        Backends whose client tools accept credentials via environment
+        variables (e.g. ``MYSQL_PWD``) override this so secrets never
+        appear in the child's argv, where any local user could read them
+        via ``ps``.
+
+        Args:
+            params: Connection parameters (may include ``password``).
+
+        Returns:
+            The environment dict to pass to ``subprocess``.
+        """
+        import os
+
+        return dict(os.environ)

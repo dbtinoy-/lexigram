@@ -1,0 +1,15 @@
+{
+  "packages/lexigram-auth/src/lexigram/auth/models/session.py": [
+    "datetimes, else ``datetime.now()``."
+  ],
+  "packages/lexigram-events/src/lexigram/events/schema/migration/scheduler.py": [
+    "run_at=datetime.now() + timedelta(hours=1),",
+    "# ``datetime.now() + timedelta(...)`` usage does not raise"
+  ],
+  "experimental/apps/lexigram-admin/src/lexigram/admin/ui/filters/base.py": [
+    ">>> DateFilter(\"created\").default(lambda: datetime.now() - timedelta(days=30))"
+  ],
+  "experimental/apps/lexigram-admin/src/lexigram/admin/ui/organisms/table/views/calendar.py": [
+    "now = datetime.datetime.now()"
+  ]
+}

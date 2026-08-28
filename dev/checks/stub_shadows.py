@@ -88,16 +88,29 @@ def _import_workspace_packages() -> None:
     logging.disable(logging.CRITICAL)
     # Module import side effects (structlog lines) write to stdout; keep the
     # gate's report clean by swallowing everything emitted during discovery.
+    # stderr is redirected too: scaffold templates shipped under
+    # lexigram.cli.templates contain Jinja2 syntax and raise SyntaxError on
+    # import — pkgutil.walk_packages would otherwise re-raise it and crash
+    # the gate (see the onerror handler below).
     import contextlib
     import io
 
-    with contextlib.redirect_stdout(io.StringIO()):
+    def _ignore(name: str) -> None:
+        # Unimportable modules are not shadows; template scaffolds (Jinja2
+        # ``{{ }}`` syntax in .py files) and optional-dep modules land here.
+        return None
+
+    with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(
+        io.StringIO()
+    ):
         for name in ROOT_PACKAGES:
             try:
                 package = importlib.import_module(name)
             except ImportError:
                 continue
-            for module in pkgutil.walk_packages(package.__path__, prefix=name + "."):
+            for module in pkgutil.walk_packages(
+                package.__path__, prefix=name + ".", onerror=_ignore
+            ):
                 try:
                     importlib.import_module(module.name)
                 except Exception:  # noqa: BLE001 — unimportable modules are not shadows

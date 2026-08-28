@@ -89,7 +89,7 @@ When a host binds a `RelayChannelStoreProtocol`, the `DurableChannelLoader` reco
 | `max_upstream_retries` | `0` | Retries across other channels after a retryable upstream failure |
 | `load_balancing` | `"deterministic"` | `"deterministic"` or `"weighted"` channel tie-breaking |
 | `job_ttl_seconds` | `3600` | Eviction age for job-relay records on next poll |
-| `require_auth` | `False` | Require a bound `RelayAuthVerifierProtocol` on relay routes |
+| `require_auth` | `True` | Require a bound `RelayAuthVerifierProtocol` on relay routes; when no config is registered (or no container is available) the guard fails closed with `503 AUTH_REQUIRED_BUT_UNBOUND` rather than passing through |
 | `rate_limits` | `{}` | Per-model `{"max", "window_seconds"}` budgets |
 | `auto_disable_on_failures` | `False` | Take a channel out of service on consecutive failures |
 | `failover_failure_threshold` | `3` | Consecutive failures that disable a channel |

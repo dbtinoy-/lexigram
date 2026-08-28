@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -82,8 +82,8 @@ class MongoDBOAuthIdentityStore(OAuthIdentityStore):
             user_id=user_id,
             provider=provider,
             provider_user_id=provider_user_id,
-            created_at=datetime.now(),
-            updated_at=datetime.now(),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
         )
 
         doc = await self._doc_from_identity(identity)

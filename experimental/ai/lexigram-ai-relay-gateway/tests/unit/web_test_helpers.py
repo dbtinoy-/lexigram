@@ -5,6 +5,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 from typing import Any
 
+from lexigram.ai.relay.gateway.config import RelayGatewayConfig
 from lexigram.contracts.ai.relay import (
     RelayGatewayError,
     RelayGatewayProtocol,
@@ -12,6 +13,19 @@ from lexigram.contracts.ai.relay import (
     RelayGatewayResult,
 )
 from lexigram.contracts.core.result import Ok, Result
+
+
+class _AuthOptOutContainer:
+    """Container proving ``require_auth=False`` so route-behavior tests
+    exercise handlers without the auth guard interfering."""
+
+    async def resolve_optional(self, service_type: type[Any]) -> Any | None:
+        if service_type is RelayGatewayConfig:
+            return RelayGatewayConfig(require_auth=False)
+        return None
+
+
+_AUTH_OPT_OUT_CONTAINER = _AuthOptOutContainer()
 
 
 class FakeGateway(RelayGatewayProtocol):
@@ -123,9 +137,10 @@ class FakeRequest:
         user: dict[str, Any] | None = None,
         path_params: dict[str, str] | None = None,
         headers: dict[str, str] | None = None,
+        container: Any | None = _AUTH_OPT_OUT_CONTAINER,
     ) -> None:
         self._body = body
-        self.state = SimpleNamespace(request_id=request_id, user=user, container=None)
+        self.state = SimpleNamespace(request_id=request_id, user=user, container=container)
         self.path_params = path_params if path_params is not None else {}
         self.method = "POST"
         self.headers: dict[str, str] = headers if headers is not None else {}
