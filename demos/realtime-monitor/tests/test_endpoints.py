@@ -78,6 +78,8 @@ def test_dashboard_page_renders(client: TestClient) -> None:
     assert "Realtime Console" in response.text
     assert "src=\"/static/dashboard.js\"" in response.text
     assert "href=\"/static/style.css\"" in response.text
+    assert 'id="publish-form"' in response.text
+    assert 'id="publish-status"' in response.text
 
 
 def test_stats_endpoint_reports_live_counts(client: TestClient) -> None:

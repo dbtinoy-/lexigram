@@ -38,7 +38,8 @@ An FX rate desk that survives a hostile upstream:
 - **Stale fallback** — upstream failing? Serve the last known-good quote
   while retries exhaust or the circuit is open
 - **Deterministic** — seeded random-walk quotes make failures reproducible
-- **Five-act walkthrough** — `uv run python -m rates demo`
+- **Five-act walkthrough** — the browser's **Run 5-Act Demo** control drives
+  all resilience acts with live feedback
 
 ### [event-driven-orders](event-driven-orders/) — CQRS & event sourcing
 
@@ -52,8 +53,8 @@ A full order lifecycle driven by messages:
 - **Notification side effects** — customer-notification handlers subscribed
   on the event bus next to the read-model projection
 - **Transactional outbox** — inspect and flush pending publishes
-- **CLI-first** — `uv run python -m orders place "Alice" --item "SKU-1,2,9.99"`
-  or watch the whole lifecycle via `uv run python -m orders demo`
+- **Browser-first lifecycle** — place, pay, ship, flush the outbox, or run
+  the complete lifecycle from the order console
 
 ### [realtime-monitor](realtime-monitor/) — realtime web console
 
@@ -79,7 +80,7 @@ Retrieval-augmented answers from the framework's documentation:
   registry, no if/elif dispatch
 - **In-memory vector store** — chunked markdown upserted at boot
 - **Cited answers** — extractive synthesis with `[n] path#chunk`
-  citations via `uv run python -m rag_docs demo`
+  citations, plus a browser-guided three-question demo
 
 ### [support-agent](support-agent/) — tool-calling ReAct agent
 
@@ -130,7 +131,8 @@ Close the quality loop without a model call:
 - **Low ratings promote** — ≤2-rated exchanges become eval samples
 - **Real harness runs** — QA-scored, tracked under seeded run ids
 - **Error analysis** — mean/min/max scores and top failing cases printed
-- **Web console + CLI** — rate from the browser or drive the loop via seven subcommands (`serve` boots :8086)
+- **Web console** — ask, rate, inspect stats, and run regressions directly
+  from the browser (`python -m feedback_loop` boots :8086)
 
 ### [auth-web](auth-web/) — browser account lifecycle
 
@@ -235,19 +237,17 @@ Secure webhook processing without an external webhook service:
 (cd demos/demo-hub && PYTHONPATH=src uv run python -m demo_hub)                 # fleet console (:7000)
 
 # ── standalone mode: any demo on its own port ─────────────────────
-PYTHONPATH=demos/resilient-rates/src uv run python -m rates serve            # resilience REST API (:7073)
-PYTHONPATH=demos/event-driven-orders/src uv run python -m orders demo        # full CQRS order lifecycle
-PYTHONPATH=demos/event-driven-orders/src uv run python -m orders serve       # same lifecycle as REST API (:7074)
-curl -X POST localhost:7073/scenario/down   # …then watch retry/breaker react
-PYTHONPATH=demos/support-agent/src uv run python -m support_agent            # agent console (:8082)
-PYTHONPATH=demos/memory-chat/src uv run python -m memory_chat                # memory chat (:8083)
-PYTHONPATH=demos/ai-guardrails/src uv run python -m guard_gate               # guardrails playground (:8084)
-PYTHONPATH=demos/prompt-lab/src uv run python -m prompt_lab                  # prompt lab (:8085)
-PYTHONPATH=demos/feedback-loop/src uv run python -m feedback_loop demo       # ratings → regression loop
-PYTHONPATH=demos/feedback-loop/src uv run python -m feedback_loop serve      # same loop as web console (:8086)
-PYTHONPATH=demos/rag-docs/src uv run python -m rag_docs demo                 # cited answers from our own docs
-PYTHONPATH=demos/rag-docs/src uv run python -m rag_docs serve                # same corpus as an ask API (:7075)
-PYTHONPATH=demos/realtime-monitor/src uv run python -m ops_console           # realtime dashboard server (:7071)
+# The hub is the recommended first glance; these commands are for local
+# development when one console needs to run by itself.
+PYTHONPATH=demos/resilient-rates/src uv run python -m rates                 # rate desk (:7073)
+PYTHONPATH=demos/event-driven-orders/src uv run python -m orders            # order console (:7074)
+PYTHONPATH=demos/support-agent/src uv run python -m support_agent           # agent console (:8082)
+PYTHONPATH=demos/memory-chat/src uv run python -m memory_chat               # memory chat (:8083)
+PYTHONPATH=demos/ai-guardrails/src uv run python -m guard_gate              # guardrails playground (:8084)
+PYTHONPATH=demos/prompt-lab/src uv run python -m prompt_lab                # prompt lab (:8085)
+PYTHONPATH=demos/feedback-loop/src uv run python -m feedback_loop           # feedback loop (:8086)
+PYTHONPATH=demos/rag-docs/src uv run python -m rag_docs                    # RAG docs console (:7075)
+PYTHONPATH=demos/realtime-monitor/src uv run python -m ops_console          # realtime dashboard (:7071)
 
 # ── auth consoles ─────────────────────────────────────────────────
 PYTHONPATH=demos/auth-web/src uv run python -m auth_web                      # account lifecycle (:8081)

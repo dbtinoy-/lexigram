@@ -47,7 +47,7 @@ class HubApiController(Controller):
         """Return every demo plus its embedded-fleet boot state.
 
         The response is a list of service snapshots, each containing:
-        slug, name, port, status (up/down/cli), capabilities, and auth.
+        slug, name, port, status (up/down), capabilities, and auth.
 
         Return type uses ``Result[T, E]`` — the web pipeline maps Err
         types to HTTP status codes automatically.

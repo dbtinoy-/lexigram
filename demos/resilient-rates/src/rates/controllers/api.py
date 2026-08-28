@@ -147,9 +147,9 @@ class RatesApiController(Controller):
     async def run_demo(self) -> bool:
         """Run the five-act guided walkthrough and return whether it completed.
 
-        Keeping the walkthrough separate from its HTTP adapter lets the
-        standalone ``python -m rates demo`` command exercise the exact same
-        flow as the browser without starting a server.
+        Keeping the walkthrough in the controller gives the browser console a
+        single endpoint for the exact same guided flow as the individual
+        rate-desk controls.
 
         Acts:
 

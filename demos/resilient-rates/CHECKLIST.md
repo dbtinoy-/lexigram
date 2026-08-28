@@ -20,7 +20,7 @@ Demo: `resilient-rates` · Port: `7073` · Reviewed: `2026-08-25` (Wave 0 Task A
 ## Code standards
 
 - [x] `grep -rn "print(" src/` → zero hits
-- [x] Walkthrough/CLI narration uses `get_logger` structured events
+- [x] Walkthrough narration uses `get_logger` structured events
 - [x] Wall-clock via `lexigram.primitives.clock`; ids via identity ambient;
       digests via hashing ambient
 - [x] Deterministic scripted randomness annotated `# deterministic-by-design`
