@@ -40,3 +40,15 @@ The hub embeds this console at `/demos/approval-flow/`.
 | POST | `/api/workflow/policy` | Run an ApprovalChain policy preview |
 | POST | `/api/workflow/retry` | Retry a rejected flow |
 | POST | `/api/workflow/rollback` | Compensate an approved flow |
+
+## Lexigram Concepts
+
+| Concept | How it's used |
+|---------|---------------|
+| Provider Pattern | `ApprovalFlowProvider` registers services and wires the controller in DI |
+| Dependency Injection | `ApprovalFlowApiController` receives `ApprovalFlowService` via constructor |
+| State Machine | `StateMachine` + `State` + `Transition` drive approval flow (draft → manager_review → finance_review → approved/rejected) |
+| Approval Chain | `ApprovalChain` with `ApprovalStep` gates runs a multi-step policy preview independently of the state machine |
+| Module Pattern | `WorkflowModule` and `WebModule` compose the application with declared exports |
+| Web Controllers | `Controller` with `@get`/`@post` decorators exposes the demo API |
+| Health Checks | `ApprovalFlowProvider.health_check()` reports readiness status |

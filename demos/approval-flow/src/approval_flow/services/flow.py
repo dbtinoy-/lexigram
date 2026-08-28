@@ -88,6 +88,7 @@ class ApprovalFlowService:
         return build_approval_state_machine()
 
     def snapshot(self) -> dict[str, Any]:
+        """Return the current workflow state, history, and available events."""
         state = self._machine.current_state
         return {
             "request": self._request,
@@ -102,6 +103,7 @@ class ApprovalFlowService:
     async def create_request(
         self, title: str, amount: int, owner: str
     ) -> dict[str, Any]:
+        """Initialize a new purchase request and reset the state machine."""
         title = title.strip()
         if not title:
             raise ValueError("Request title is required")
@@ -116,6 +118,7 @@ class ApprovalFlowService:
         return self.snapshot()
 
     async def transition(self, event: str, actor: str) -> dict[str, Any]:
+        """Apply a workflow event, record it in history, and return the snapshot."""
         state_before = self._machine.current_state
         if not self._machine.can_transition(event):
             raise StateError(event, state_before)

@@ -34,11 +34,13 @@ class ArtifactVaultProvider(Provider):
         self._service: ArtifactVaultService | None = None
 
     async def register(self, container: ContainerRegistrarProtocol) -> None:
+        """Bind the artifact-vault config and API controller to the container."""
         cfg = self.config or ArtifactVaultConfig()
         container.singleton(ArtifactVaultConfig, instance=cfg)
         container.singleton(ArtifactVaultApiController, ArtifactVaultApiController)
 
     async def boot(self, container: ContainerResolverProtocol) -> None:
+        """Resolve dependencies, seed the store, and wire the vault service."""
         store = await container.resolve(BlobStoreProtocol)
         config = await container.resolve(ArtifactVaultConfig)
         service = ArtifactVaultService(store, config)
@@ -49,6 +51,7 @@ class ArtifactVaultProvider(Provider):
         )
 
     async def health_check(self, timeout: float = 5.0) -> HealthCheckResult:
+        """Return readiness status by delegating to the vault service."""
         if self._service is None:
             return HealthCheckResult(
                 component=self.name,

@@ -35,11 +35,13 @@ class ReleaseControlProvider(Provider):
         self._service: ReleaseControlService | None = None
 
     async def register(self, container: ContainerRegistrarProtocol) -> None:
+        """Bind the release-control config and API controller to the container."""
         cfg = self.config or ReleaseControlConfig()
         container.singleton(ReleaseControlConfig, instance=cfg)
         container.singleton(ReleaseControlApiController, ReleaseControlApiController)
 
     async def boot(self, container: ContainerResolverProtocol) -> None:
+        """Resolve the FlagManager and wire the release control service."""
         manager = await container.resolve(FlagManager)
         feature_config = await container.resolve(FeatureFlagsConfig)
         config = await container.resolve(ReleaseControlConfig)
@@ -50,6 +52,7 @@ class ReleaseControlProvider(Provider):
         )
 
     async def health_check(self, timeout: float = 5.0) -> HealthCheckResult:
+        """Return readiness status based on whether the service has booted."""
         return HealthCheckResult(
             component=self.name,
             status=HealthStatus.HEALTHY if self._service else HealthStatus.UNHEALTHY,

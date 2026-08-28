@@ -4,18 +4,34 @@ version: 0.1.0
 description: Binary artifact storage with content-addressable uploads and access tracking
 # ────────────────────────────────────────────────────────────────────────────
 # Artifact Vault — deterministic offline object-storage playground
+# ── Web Server ─────────────────────────────────────────────────────────────
 web:
   server:
+    # Bind address — 0.0.0.0 exposes on all interfaces for container use
     host: 0.0.0.0
+    # Port the demo listens on — matches the hub's demo iframe expectation
     port: 8101
+  # ── Security ───────────────────────────────────────────────────────────
   security:
     csrf:
+      # Disabled because this demo is a single-page console with no
+      # cross-origin form submission; enable for production deploys
       enabled: false
+# ── Storage ───────────────────────────────────────────────────────────────
 storage:
+  # Activates the Lexigram StorageModule wiring
   enabled: true
+  # Default blob driver — "memory" keeps the demo fully offline;
+  # swap to "file" or a cloud driver for persistent storage
   default_driver: memory
   service:
+    # Maximum upload size in MB — enforced by ArtifactVaultService;
+    # kept small to avoid unbounded in-memory growth
     max_file_size_mb: 1
+# ── Artifact Vault ────────────────────────────────────────────────────────
 artifact_vault:
+  # Enables the ArtifactVaultProvider lifecycle hook
   enabled: true
+  # On boot, seeds a docs/welcome.txt artifact so the console is
+  # immediately interactive without a manual upload step
   seed_welcome_artifact: true

@@ -14,6 +14,7 @@ from lexigram.workflow.module import WorkflowModule
 
 
 def build_modules() -> list[object]:
+    """Build the Lexigram modules required by the approval flow demo."""
     return [
         WorkflowModule.configure(state_machine=build_approval_state_machine()),
         WebModule.configure(
@@ -23,10 +24,12 @@ def build_modules() -> list[object]:
 
 
 def build_providers() -> list[Provider]:
+    """Build the DI providers for the approval flow demo."""
     return [ApprovalFlowProvider()]
 
 
 def create_app(config: LexigramConfig | None = None) -> Application:
+    """Create and configure the approval flow application."""
     app = Application(name="approval-flow", config=config)
     app.add_modules(build_modules())
     app.add_providers(build_providers())

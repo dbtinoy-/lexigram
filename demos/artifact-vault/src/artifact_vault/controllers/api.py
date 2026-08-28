@@ -18,11 +18,13 @@ class ArtifactVaultApiController(Controller):
 
     @get("")
     async def list_artifacts(self, prefix: str = "") -> dict[str, Any]:
+        """List all artifacts, optionally filtered by a path prefix."""
         artifacts = await self._service.list(prefix)
         return {"count": len(artifacts), "artifacts": artifacts}
 
     @post("/upload")
     async def upload(self, body: dict[str, Any]) -> dict[str, Any]:
+        """Upload a new artifact with name, content, and content type."""
         try:
             artifact = await self._service.upload(
                 str(body.get("name", "")),
@@ -36,6 +38,7 @@ class ArtifactVaultApiController(Controller):
 
     @get("/content/{name:path}")
     async def content(self, name: str) -> dict[str, Any]:
+        """Download and return the raw content of an artifact."""
         try:
             return await self._service.content(name)
         except Exception as exc:  # backend not-found is rendered as a small API error
@@ -43,6 +46,7 @@ class ArtifactVaultApiController(Controller):
 
     @get("/access/{name:path}")
     async def access(self, name: str) -> dict[str, Any]:
+        """Show public and presigned URL access information for an artifact."""
         try:
             return await self._service.access(name)
         except Exception as exc:
@@ -50,6 +54,7 @@ class ArtifactVaultApiController(Controller):
 
     @delete("/{name:path}")
     async def delete_artifact(self, name: str) -> dict[str, Any]:
+        """Delete an artifact by name."""
         try:
             await self._service.delete(name)
             return {"ok": True, "deleted": name}
@@ -58,6 +63,7 @@ class ArtifactVaultApiController(Controller):
 
     @get("/health")
     async def health(self) -> dict[str, Any]:
+        """Return the health status of the underlying blob store."""
         return await self._service.health()
 
 

@@ -2,39 +2,70 @@
 name: feature-flags
 version: 0.1.0
 description: Feature flag evaluation with percentage rollouts and environment targeting
-# ────────────────────────────────────────────────────────────────────────────
-# Release Control Lab — deterministic, offline feature flag playground
+
+# ── Server ──────────────────────────────────────────────────────────────────
+# Embedded web server for the browser-first release control console.
 web:
   server:
-    host: 0.0.0.0
-    port: 8099
+    host: 0.0.0.0                 # Bind address; 0.0.0.0 exposes on all interfaces
+    port: 8099                    # Local port for the demo dashboard
   security:
     csrf:
-      enabled: false
+      enabled: false              # CSRF disabled — offline lab only, no production traffic
+
+# ── Feature Flags ───────────────────────────────────────────────────────────
+# Master switch and evaluation defaults consumed by FeatureFlagsModule.
 features:
-  enabled: true
-  cache_ttl: 15
-  default_enabled: false
+  enabled: true                   # Global kill-switch; when false all flags resolve to off
+  cache_ttl: 15                   # Seconds to cache flag evaluations in-process before
+                                  # re-evaluating from the provider; prevents redundant work
+                                  # on rapid sequential requests while staying fresh enough
+                                  # for quick rollouts
+  default_enabled: false          # Fallback when a flag is missing or has no explicit
+                                  # enabled state — conservative default ensures unknown
+                                  # flags stay off until intentionally opted in
+
+  # ── Flag Definitions ────────────────────────────────────────────────────
+  # Each key is a flag name registered with FlagManager at boot time.
   initial_flags:
+
+    # ── new_checkout ──────────────────────────────────────────────────────
+    # Percentage-based gradual rollout. Exactly 50 % of users (determined
+    # deterministically by hashing user_id + flag name) receive the new
+    # checkout experience; the other 50 % sees the legacy flow.
     new_checkout:
-      type: percentage
-      enabled: true
-      percentage: 50
+      type: percentage            # Evaluation strategy — percentage rollout
+      enabled: true               # Master toggle for this specific flag
+      percentage: 50              # Rollout fraction (0-100); deterministic per user
       description: Gradual rollout for the new checkout experience
+
+    # ── search_experiment ─────────────────────────────────────────────────
+    # Variant / A/B test flag. Users are split 50/50 between the
+    # "control" (legacy ranking) and "ranked" (new algorithm) variants.
+    # The variant is deterministic given the same user_id + flag name.
     search_experiment:
-      type: variant
-      enabled: true
+      type: variant               # Evaluation strategy — multi-variant A/B test
+      enabled: true               # Master toggle for this specific flag
       variants:
-        control: 50
-        ranked: 50
-      default_variant: control
+        control: 50               # Weight for the control variant (legacy ranking)
+        ranked: 50                # Weight for the challenger variant (new algorithm)
+      default_variant: control    # Fallback variant when hashing yields no match
       description: Deterministic A/B search ranking experiment
+
+    # ── ai_assistant ──────────────────────────────────────────────────────
+    # User-attribute targeting rule. The flag resolves to true only when
+    # the evaluated user's attributes contain plan = pro. Free-tier users
+    # always see this flag as off — no percentage split, just a hard gate.
     ai_assistant:
-      type: user_attribute
-      enabled: true
+      type: user_attribute        # Evaluation strategy — match user attributes
+      enabled: true               # Master toggle for this specific flag
       user_attributes:
-        plan: pro
+        plan: pro                 # Required attribute; all listed pairs must match
       description: Available only to users on the pro plan
+
+# ── Release Control ─────────────────────────────────────────────────────────
+# Application-level defaults for the release desk UI and audit trail.
 release_control:
-  enabled: true
-  default_actor: release-operator
+  enabled: true                   # Toggle the browser-facing release console
+  default_actor: release-operator # Actor label recorded in audit log when the UI
+                                  # does not supply an explicit actor name

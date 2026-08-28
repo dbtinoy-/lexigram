@@ -13,6 +13,7 @@ from lexigram.web.module import WebModule
 
 
 def build_modules() -> list[object]:
+    """Build the Lexigram modules required by the artifact vault demo."""
     return [
         StorageModule.configure(),
         WebModule.configure(
@@ -22,10 +23,12 @@ def build_modules() -> list[object]:
 
 
 def build_providers() -> list[Provider]:
+    """Build the DI providers for the artifact vault demo."""
     return [ArtifactVaultProvider()]
 
 
 def create_app(config: LexigramConfig | None = None) -> Application:
+    """Create and configure the artifact vault application."""
     app = Application(name="artifact-vault", config=config)
     app.add_modules(build_modules())
     app.add_providers(build_providers())
