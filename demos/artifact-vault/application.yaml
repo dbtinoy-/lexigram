@@ -1,37 +1,177 @@
 # ── Metadata ────────────────────────────────────────────────────────────────
 name: artifact-vault
 version: 0.1.0
-description: Binary artifact storage with content-addressable uploads and access tracking
+description: Storage-abstraction demo with blob store backends
 # ────────────────────────────────────────────────────────────────────────────
-# Artifact Vault — deterministic offline object-storage playground
-# ── Web Server ─────────────────────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
+# Artifact Vault Demo — Complete Configuration Reference
+# ══════════════════════════════════════════════════════════════════════════════
+#
+# Every configuration key available for this demo.
+# Uncommented lines are the values we override; commented lines show
+# defaults.  Each section maps 1:1 to a typed config model — the
+# framework validates your yaml against it at boot time.
+#
+# DEMO FOCUS: File storage abstraction via BlobStoreProtocol.  Upload,
+# list, download, and delete files using pluggable storage backends
+# (local, S3, GCS, Azure, R2).  Ships with an in-memory seed artifact.
+#
+# LEARNING PATH:
+#   1. web:          HTTP server, security, CSRF
+#   2. storage:      Blob store backends, operation limits
+#   3. artifact_vault: Demo-specific seed data and labels
+#
+# For full reference see:
+#   - Lexigram Web:      packages/lexigram-web/src/lexigram/web/config/
+#   - Lexigram Storage:  packages/lexigram-storage/src/lexigram/storage/config.py
+# ══════════════════════════════════════════════════════════════════════════════
+
+
+# ── Web ──────────────────────────────────────────────────────────────────────
+# Lexigram Web auto-configures Starlette, OpenAPI, CORS, CSRF, and
+# rate limiting from this single section.  The WebModule reads it
+# automatically via config_key="web" / config_model=WebConfig.
+#
+# The orchestrator calls get_section("web", WebConfig) and injects
+# the result into WebProvider.config before register() runs.
+# ─────────────────────────────────────────────────────────────────────────────
 web:
+  # ── Server ─────────────────────────────────────────────────────────────────
   server:
-    # Bind address — 0.0.0.0 exposes on all interfaces for container use
-    host: 0.0.0.0
-    # Port the demo listens on — matches the hub's demo iframe expectation
-    port: 8101
-  # ── Security ───────────────────────────────────────────────────────────
+    # backend: granian          # ASGI backend: granian | uvicorn | hypercorn | gunicorn
+    host: 0.0.0.0               # bind address (0.0.0.0 for external access)
+    port: 8100                  # listen port
+    # workers: 1               # worker processes (1 = single process)
+    # reload: false            # auto-reload on file changes (dev only)
+    # debug: false             # enable debug mode
+
+  # ── Security ───────────────────────────────────────────────────────────────
   security:
+    # enabled: true                    # master switch for security subsystem
+
+    # ── CSRF ───────────────────────────────────────────────────────────────
+    # Disabled here because the demo posts JSON from the browser console.
     csrf:
-      # Disabled because this demo is a single-page console with no
-      # cross-origin form submission; enable for production deploys
-      enabled: false
-# ── Storage ───────────────────────────────────────────────────────────────
+      enabled: false                    # disable for JSON-only playground
+      # cookie_name: csrf_token
+      # header_name: X-CSRF-Token
+      # cookie_secure: true
+      # cookie_httponly: true
+      # cookie_samesite: Lax
+      # token_length: 32
+      # token_ttl: 3600
+      # excluded_paths: []
+
+    # ── CORS ───────────────────────────────────────────────────────────────
+    # cors:
+    #   enabled: true
+    #   allowed_origins:
+    #     - http://localhost:8100       # this demo
+    #   allow_methods: [GET, POST, PUT, DELETE, PATCH, OPTIONS]
+    #   allow_headers: ["*"]
+    #   allow_credentials: false
+    #   max_age: 600
+
+    # ── Headers ─────────────────────────────────────────────────────────────
+    # custom_headers:
+    #   x-content-type-options: nosniff
+    #   x-frame-options: DENY
+    #   x-xss-protection: "1; mode=block"
+    # referrer_policy: strict-origin-when-cross-origin
+
+  # ── Rate Limiting ──────────────────────────────────────────────────────────
+  # rate_limit:
+  #   enabled: false
+  #   default_limit: 100
+  #   default_window: 60
+  #   whitelist_ips: []
+  #   storage_backend: memory
+
+  # ── Misc ───────────────────────────────────────────────────────────────────
+  # openapi_title: API
+  # openapi_version: "1.0.0"
+  # openapi_url: /openapi.json
+  # swagger_ui_url: /docs
+  # redoc_url: /redoc
+  # compression_enabled: true
+  # template_directory: templates
+  # enable_auth: false
+  # max_body_size: 10485760            # 10 MiB
+
+
+# ── Storage ──────────────────────────────────────────────────────────────────
+# Lexigram Storage provides a pluggable blob-store abstraction via
+# BlobStoreProtocol.  The StorageModule reads this section automatically
+# via config_key="storage" / config_model=StorageConfig.
+#
+# Supports local disk, S3, GCS, Azure Blob, Cloudflare R2, and in-memory
+# backends.  The demo uses the local default.
+# ─────────────────────────────────────────────────────────────────────────────
 storage:
-  # Activates the Lexigram StorageModule wiring
-  enabled: true
-  # Default blob driver — "memory" keeps the demo fully offline;
-  # swap to "file" or a cloud driver for persistent storage
-  default_driver: memory
+  name: storage                     # storage subsystem identifier
+  enabled: true                     # toggle the storage provider
+  # default_driver: local          # default backend: local | s3 | gcs | azure | r2 | memory
+  # health_check_timeout: 5.0      # timeout for health checks (seconds)
+
+  # ── Service Limits ─────────────────────────────────────────────────────────
   service:
-    # Maximum upload size in MB — enforced by ArtifactVaultService;
-    # kept small to avoid unbounded in-memory growth
-    max_file_size_mb: 1
-# ── Artifact Vault ────────────────────────────────────────────────────────
+    max_file_size_mb: 10            # maximum upload size (MiB)
+    allowed_mime_types:             # accepted MIME types for uploads
+      - application/octet-stream
+      - text/plain
+      - application/pdf
+      - application/json
+      - text/markdown
+
+  # ── Local Driver ───────────────────────────────────────────────────────────
+  # Used when default_driver=local.
+  # local:
+  #   root_dir: ./storage           # filesystem root for artifacts
+  #   base_url: http://localhost:8000/storage   # public URL prefix
+
+  # ── S3 Driver ──────────────────────────────────────────────────────────────
+  # s3:
+  #   bucket: my-bucket             # S3 bucket name
+  #   region: us-east-1            # AWS region
+  #   access_key: ${AWS_ACCESS_KEY_ID}        # set via env
+  #   secret_key: ${AWS_SECRET_ACCESS_KEY}    # set via env
+  #   endpoint_url: null            # custom endpoint (e.g. MinIO)
+  #   public_url: null              # public CDN URL
+  #   encryption:
+  #     enabled: false
+  #     type: AES256                # encryption type: AES256 | aws:kms | gcs:cmek
+
+  # ── GCS Driver ─────────────────────────────────────────────────────────────
+  # gcs:
+  #   bucket: my-bucket
+  #   project_id: my-project
+  #   credentials_path: null
+  #   encryption:
+  #     enabled: false
+  #     type: AES256
+
+  # ── Azure Driver ───────────────────────────────────────────────────────────
+  # azure:
+  #   account_name: mystorageaccount
+  #   account_key: ${AZURE_ACCOUNT_KEY}
+  #   container: artifacts
+
+  # ── R2 Driver ──────────────────────────────────────────────────────────────
+  # r2:
+  #   bucket: my-bucket
+  #   access_key: ${R2_ACCESS_KEY_ID}
+  #   secret_key: ${R2_SECRET_ACCESS_KEY}
+  #   endpoint_url: https://<account_id>.r2.cloudflarestorage.com
+  #   public_url: null
+  #   region: auto
+
+
+# ── Artifact Vault ───────────────────────────────────────────────────────────
+# Demo-specific settings that seed the vault with a welcome artifact.
+# Consumed by ArtifactVaultConfig (config_section="artifact_vault").
+# ─────────────────────────────────────────────────────────────────────────────
 artifact_vault:
-  # Enables the ArtifactVaultProvider lifecycle hook
-  enabled: true
-  # On boot, seeds a docs/welcome.txt artifact so the console is
-  # immediately interactive without a manual upload step
-  seed_welcome_artifact: true
+  enabled: true                     # toggle the provider and controller
+  name: artifact-vault              # display label
+  env: demo                         # environment tag
+  seed_welcome_artifact: true       # create a welcome.txt on first load

@@ -1,32 +1,271 @@
 # ── Metadata ────────────────────────────────────────────────────────────────
 name: event-timeline
 version: 0.1.0
-description: Event sourcing timeline with replay, projection, and audit trail
+description: Event-sourced timeline viewer with stream replay
 # ────────────────────────────────────────────────────────────────────────────
-# Events Timeline / Replay Lab — offline lexigram-events contract
+# ══════════════════════════════════════════════════════════════════════════════
+# Event Timeline Demo — Complete Configuration Reference
+# ══════════════════════════════════════════════════════════════════════════════
+#
+# Every configuration key available for this demo.
+# Uncommented lines are the values we override; commented lines show
+# defaults.  Each section maps 1:1 to a typed config model — the
+# framework validates your yaml against it at boot time.
+#
+# DEMO FOCUS: Event-sourced timeline of domain events.  Append events to
+# a stream, replay history, and inspect the full audit trail via the
+# EventsModule's in-memory event store.
+#
+# LEARNING PATH:
+#   1. web:          HTTP server, security, CSRF
+#   2. events:       Event store, bus, command/query bus, middleware
+#   3. timeline_lab: Demo-specific stream and actor defaults
+#
+# For full reference see:
+#   - Lexigram Web:     packages/lexigram-web/src/lexigram/web/config/
+#   - Lexigram Events:  packages/lexigram-events/src/lexigram/events/config.py
+# ══════════════════════════════════════════════════════════════════════════════
+
+
+# ── Web ──────────────────────────────────────────────────────────────────────
+# Lexigram Web auto-configures Starlette, OpenAPI, CORS, CSRF, and
+# rate limiting from this single section.  The WebModule reads it
+# automatically via config_key="web" / config_model=WebConfig.
+#
+# The orchestrator calls get_section("web", WebConfig) and injects
+# the result into WebProvider.config before register() runs.
+# ─────────────────────────────────────────────────────────────────────────────
 web:
+  # ── Server ─────────────────────────────────────────────────────────────────
   server:
-    host: 0.0.0.0
-    port: 8102
+    # backend: granian          # ASGI backend: granian | uvicorn | hypercorn | gunicorn
+    host: 0.0.0.0               # bind address (0.0.0.0 for external access)
+    port: 8100                  # listen port
+    # workers: 1               # worker processes (1 = single process)
+    # reload: false            # auto-reload on file changes (dev only)
+    # debug: false             # enable debug mode
+
+  # ── Security ───────────────────────────────────────────────────────────────
   security:
+    # enabled: true                    # master switch for security subsystem
+
+    # ── CSRF ───────────────────────────────────────────────────────────────
+    # Disabled here because the demo posts JSON from the browser console.
     csrf:
-      enabled: false
+      enabled: false                    # disable for JSON-only playground
+      # cookie_name: csrf_token
+      # header_name: X-CSRF-Token
+      # cookie_secure: true
+      # cookie_httponly: true
+      # cookie_samesite: Lax
+      # token_length: 32
+      # token_ttl: 3600
+      # excluded_paths: []
 
+    # ── CORS ───────────────────────────────────────────────────────────────
+    # cors:
+    #   enabled: true
+    #   allowed_origins:
+    #     - http://localhost:8100       # this demo
+    #   allow_methods: [GET, POST, PUT, DELETE, PATCH, OPTIONS]
+    #   allow_headers: ["*"]
+    #   allow_credentials: false
+    #   max_age: 600
+
+    # ── Headers ─────────────────────────────────────────────────────────────
+    # custom_headers:
+    #   x-content-type-options: nosniff
+    #   x-frame-options: DENY
+    #   x-xss-protection: "1; mode=block"
+    # referrer_policy: strict-origin-when-cross-origin
+
+  # ── Rate Limiting ──────────────────────────────────────────────────────────
+  # rate_limit:
+  #   enabled: false
+  #   default_limit: 100
+  #   default_window: 60
+  #   whitelist_ips: []
+  #   storage_backend: memory
+
+  # ── Misc ───────────────────────────────────────────────────────────────────
+  # openapi_title: API
+  # openapi_version: "1.0.0"
+  # openapi_url: /openapi.json
+  # swagger_ui_url: /docs
+  # redoc_url: /redoc
+  # compression_enabled: true
+  # template_directory: templates
+  # enable_auth: false
+  # max_body_size: 10485760            # 10 MiB
+
+
+# ── Events ───────────────────────────────────────────────────────────────────
+# Lexigram Events provides an event-driven architecture with in-memory
+# event store, command/query buses, projections, sagas, and streaming.
+# The EventsModule reads this section automatically via
+# config_key="events" / config_model=EventsConfig.
+#
+# This demo uses the in-memory event store (MEMORY backend) for
+# simplicity.  For production, switch to PostgreSQL, MongoDB, or
+# SQLite for persistence.
+# ─────────────────────────────────────────────────────────────────────────────
 events:
-  enabled: true
-  event_store_backend: memory
-  memory:
-    max_events_per_stream: 10000
-    enable_snapshots: false
-  event_bus:
-    # Keep the two handlers deterministic while still exercising fan-out.
-    parallel_dispatch: false
-    continue_on_error: true
-    retry_failed_handlers: true
-    max_handler_retries: 3
-    max_queue_per_subscriber: 100
+  name: events                     # subsystem identifier
+  enabled: true                     # toggle the events provider
+  # event_store_backend: memory    # backend: memory | postgres | mongodb | sqlite
+  # debug: false                   # enable debug logging for events
 
+  # ── In-Memory Store ────────────────────────────────────────────────────────
+  # Used when event_store_backend=memory.
+  memory:
+    max_events_per_stream: 500      # per-stream cap (default: 10000; lowered for demo)
+    enable_snapshots: true          # allow snapshot creation
+
+  # ── Postgres Store ─────────────────────────────────────────────────────────
+  # postgres:
+  #   dsn: postgresql://user:pass@localhost:5432/events
+  #   pool_min_size: 5
+  #   pool_max_size: 20
+  #   command_timeout: 60
+  #   events_table: events
+  #   snapshots_table: snapshots
+  #   auto_create_tables: true
+
+  # ── MongoDB Store ──────────────────────────────────────────────────────────
+  # mongodb:
+  #   connection_string: mongodb://localhost:27017/events
+  #   database_name: events
+  #   events_collection: domain_events
+  #   snapshots_collection: snapshots
+  #   max_pool_size: 10
+  #   server_selection_timeout: 30000
+
+  # ── SQLite Store ───────────────────────────────────────────────────────────
+  # sqlite:
+  #   database: ./events.db
+  #   pragmas: {}
+  #   wal_mode: true
+  #   journal_mode: WAL
+
+  # ── Snapshots ──────────────────────────────────────────────────────────────
+  # snapshots:
+  #   enabled: true
+  #   strategy: EVENT_COUNT         # strategy: EVENT_COUNT | TIME
+  #   event_count_threshold: 100
+  #   time_threshold_seconds: 3600
+  #   max_snapshots_per_aggregate: 5
+
+  # ── Command Bus ────────────────────────────────────────────────────────────
+  # command_bus:
+  #   max_retries: 3
+  #   retry_delay_seconds: 1.0
+  #   timeout_seconds: 30
+  #   enable_validation: true
+  #   enable_logging: true
+  #   enable_metrics: true
+
+  # ── Query Bus ──────────────────────────────────────────────────────────────
+  # query_bus:
+  #   timeout_seconds: 30
+  #   enable_logging: true
+  #   enable_metrics: true
+
+  # ── Event Bus ──────────────────────────────────────────────────────────────
+  event_bus:
+    max_concurrent_handlers: 5     # concurrent event handlers (default: 10; lowered for demo)
+    # handler_timeout_seconds: 30
+    # retry_failed_handlers: true
+    # max_handler_retries: 3
+    # enable_dead_letter: true
+    # allow_no_handlers: true
+    # parallel_dispatch: true
+    # continue_on_error: true
+    # max_queue_per_subscriber: 1000
+
+  # ── Projections ────────────────────────────────────────────────────────────
+  # projection:
+  #   checkpoint_interval: 100
+  #   batch_size: 100
+  #   max_catch_up_events: 10000
+  #   rebuild_batch_size: 1000
+  #   enable_parallel_projections: true
+
+  # ── Sagas ──────────────────────────────────────────────────────────────────
+  # saga:
+  #   default_timeout_seconds: 300
+  #   max_retries_per_step: 3
+  #   retry_delay_seconds: 1.0
+  #   enable_compensation: true
+  #   persist_state: true
+  #   cleanup_completed_after_hours: 24
+
+  # ── Streaming ──────────────────────────────────────────────────────────────
+  # streaming:
+  #   buffer_size: 1000
+  #   batch_size: 100
+  #   poll_interval_ms: 100
+  #   max_subscribers: 100
+  #   enable_websocket: true
+  #   websocket_ping_interval: 30
+
+  # ── Middleware ──────────────────────────────────────────────────────────────
+  # logging_middleware:
+  #   enabled: true
+  #   log_level: INFO
+  #   include_payload: false
+  #   max_payload_length: 1000
+
+  # validation_middleware:
+  #   enabled: true
+  #   strict_mode: true
+
+  # transaction_middleware:
+  #   enabled: true
+  #   isolation_level: READ_COMMITTED
+  #   timeout_seconds: 30
+
+  # retry_middleware:
+  #   enabled: true
+  #   max_retries: 3
+  #   initial_delay_seconds: 0.1
+  #   max_delay_seconds: 10
+  #   exponential_base: 2.0
+
+  # metrics_middleware:
+  #   enabled: true
+  #   prefix: events
+  #   include_histograms: true
+  #   histogram_buckets: [0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0]
+
+  # ── External Transports ────────────────────────────────────────────────────
+  # rabbitmq:
+  #   url: amqp://guest:guest@localhost:5672/
+  #   exchange_name: events
+  #   queue_prefix: events
+  #   prefetch_count: 10
+  #   durable: true
+  #   timeout: 30
+  #   reconnect_attempts: 3
+  #   reconnect_delay: 1.0
+  #   enable_logging: true
+
+  # kafka:
+  #   bootstrap_servers: localhost:9092
+  #   topic_prefix: events
+  #   consumer_group: events-consumers
+  #   auto_offset_reset: earliest
+  #   enable_auto_commit: true
+  #   timeout: 30
+  #   reconnect_attempts: 3
+  #   reconnect_delay: 1.0
+  #   enable_logging: true
+
+
+# ── Timeline Lab ─────────────────────────────────────────────────────────────
+# Demo-specific settings for the timeline viewer.
+# Consumed by TimelineLabConfig (config_section="timeline_lab").
+# ─────────────────────────────────────────────────────────────────────────────
 timeline_lab:
-  enabled: true
-  stream_id: checkout-demo
-  default_actor: browser-operator
+  enabled: true                     # toggle the provider and controller
+  stream_id: demo-stream            # default stream name for the viewer
+  default_actor: demo-user          # actor label when none specified
