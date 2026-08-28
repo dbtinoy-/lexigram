@@ -27,14 +27,16 @@ pytest.importorskip("aiohttp.test_utils")
 _GOOD_AUDIO = base64.b64encode(b"\0" * 4096).decode()
 
 
-def _fake_madmom() -> ModuleType:
+def _fake_madmom(beat_timestamps: np.ndarray | None = None) -> ModuleType:
     """Minimal madmom stand-in whose processors return fixed arrays."""
+    if beat_timestamps is None:
+        beat_timestamps = np.array([0.5, 1.0, 1.5, 2.0])
     fake = ModuleType("madmom", "fake madmom for env-gating tests")
     fake.features = ModuleType("madmom.features")
     fake.features.beats = ModuleType("madmom.features.beats")
     processor = MagicMock(return_value=np.zeros(200))
     fake.features.beats.RNNBeatProcessor = MagicMock(return_value=processor)
-    tracker = MagicMock(return_value=np.array([0.5, 1.0, 1.5, 2.0]))
+    tracker = MagicMock(return_value=beat_timestamps)
     fake.features.beats.DBNBeatTrackingProcessor = MagicMock(return_value=tracker)
     return fake
 
@@ -64,7 +66,8 @@ async def _noop_startup(app: web.Application) -> None:
 def test_madmom_server_caps_body_size() -> None:
     from lexigram.multimedia.beat.servers.madmom_server import MAX_BODY_BYTES
 
-    assert isinstance(MAX_BODY_BYTES, int) and MAX_BODY_BYTES >= 64 * 1024 * 1024
+    assert isinstance(MAX_BODY_BYTES, int)
+    assert MAX_BODY_BYTES >= 64 * 1024 * 1024
 
 
 async def test_madmom_rejects_oversized_decoded_audio(
@@ -138,3 +141,33 @@ async def test_madmom_analyze_returns_200_when_madmom_available(
     assert resp.status == 200
     assert body["tempo_bpm"] > 0
     assert len(body["beat_timestamps"]) > 1
+
+
+@pytest.mark.parametrize(
+    "timestamps",
+    [
+        # Identical timestamps -> all intervals are 0 -> mean_interval == 0.
+        np.array([1.0, 1.0, 1.0, 1.0]),
+        # Decreasing timestamps -> all intervals are negative -> mean < 0.
+        np.array([2.0, 1.5, 1.0, 0.5]),
+        # Single beat -> no intervals at all -> guard skips the division.
+        np.array([1.0]),
+    ],
+)
+async def test_madmom_analyze_returns_zero_tempo_for_degenerate_beats(
+    aiohttp_client: Any,
+    monkeypatch: pytest.MonkeyPatch,
+    timestamps: np.ndarray,
+) -> None:
+    """Degenerate beat timestamps must not 500: tempo falls back to 0.0."""
+    from lexigram.multimedia.beat.servers import madmom_server
+
+    monkeypatch.setattr(madmom_server, "_processor", None)
+    with patch.dict(sys.modules, {"madmom": _fake_madmom(timestamps)}):
+        client = await aiohttp_client(madmom_server.build_app())
+        resp = await client.post("/analyze", json={"audio_bytes": _GOOD_AUDIO})
+        body = await resp.json()
+
+    assert resp.status == 200
+    assert body["tempo_bpm"] == 0.0
+    assert len(body["beat_timestamps"]) == len(timestamps)
