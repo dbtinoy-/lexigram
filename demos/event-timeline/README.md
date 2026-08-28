@@ -33,6 +33,15 @@ Or run the focused contract tests:
 The standalone port is `8102`. The demo is also listed in Demo Hub as
 `/demos/event-timeline/`.
 
+## API Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/events` | Return the current event-store history and delivery observations |
+| GET | `/api/events/health` | Return offline readiness details and component health |
+| POST | `/api/events/publish` | Append and publish one of the lab's three event actions (`open`, `approve`, `fail`) |
+| POST | `/api/events/replay` | Replay the stored event history without appending new events |
+
 ## What to look for
 
 1. Publish several events and note that stream versions and global sequence
@@ -47,3 +56,18 @@ The standalone port is `8102`. The demo is also listed in Demo Hub as
 4. After a failure probe, the readiness panel becomes degraded and exposes the
    bus's retained asynchronous dispatch error count; successful publication
    remains an enqueue result by design.
+
+## Lexigram Concepts
+
+| Concept | How it's used |
+|---------|---------------|
+| Event Sourcing | `EventStoreProtocol` append/read maintains an immutable event history for the `checkout-demo` stream |
+| Domain Events | `TimelineEvent` extends the framework `Event` base class as a frozen dataclass with action, note, and stream metadata |
+| Event Bus | `EventBusProtocol.publish()` routes events to subscribers; enqueue semantics with optional `flush()` for deterministic delivery |
+| Event Subscribers | `event_bus.subscribe(TimelineEvent, ...)` registers two handlers: `record_delivery` for projections and `failure_probe` for retry visibility |
+| Event Replay | `EventReplayProtocol.replay_events()` replays stored history through subscribers without appending duplicates |
+| Event Diagnostics | `EventBusDiagnosticsProtocol.dispatch_errors` exposes bus-level async dispatch error counts for health reporting |
+| Result Pattern | `Result[T, E]` from `lexigram.result` wraps publish outcomes — `Ok` for enqueued, `Err` for rejected |
+| Provider Pattern | `TimelineLabProvider` extends `Provider` with `register()`, `boot()`, `shutdown()`, and `health_check()` lifecycle hooks |
+| Dependency Injection | Container `register()` binds types; `boot()` resolves `EventBusProtocol` and `EventStoreProtocol` and wires subscribers |
+| Health Checks | `HealthCheckResult` with `HealthStatus` reports provider wiring state; component-level health via optional `health_check()` protocol |

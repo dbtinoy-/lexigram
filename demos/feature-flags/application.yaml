@@ -1,3 +1,8 @@
+# ── Metadata ────────────────────────────────────────────────────────────────
+name: feature-flags
+version: 0.1.0
+description: Feature flag evaluation with percentage rollouts and environment targeting
+# ────────────────────────────────────────────────────────────────────────────
 # Release Control Lab — deterministic, offline feature flag playground
 web:
   server:
