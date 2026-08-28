@@ -1,9 +1,12 @@
 """Database seeder for {{ model_name }}."""
 
+from __future__ import annotations
+
 from datetime import datetime, timezone
 from typing import Any
 
-from lexigram.sql import UnitOfWork
+from lexigram.contracts import DatabaseProviderProtocol
+from lexigram.sql import SimpleUnitOfWork
 
 
 SEED_DATA: list[dict[str, Any]] = [
@@ -11,43 +14,36 @@ SEED_DATA: list[dict[str, Any]] = [
         {%- for field in fields %}
         "{{ field.name }}": {{ field.sample_value }},
         {%- endfor %}
+        "created_at": datetime.now(timezone.utc),
+        "updated_at": datetime.now(timezone.utc),
     },
 ]
 
 
-async def run(provider: Any) -> None:
-    async with UnitOfWork(provider) as uow:
-        existing = await uow.execute(
-            "SELECT COUNT(*) as count FROM {{ table_name }}",
-        )
-        if existing.rows and existing.rows[0]["count"] > 0:
-            return
+class {{ model_name }}Entity:
+    """Row entity for the ``{{ table_name }}`` table."""
 
+    __table_name__ = "{{ table_name }}"
+
+    def __init__(self, **data: Any) -> None:
+        """Populate row attributes from *data*."""
+        for key, value in data.items():
+            setattr(self, key, value)
+
+
+async def run(provider: DatabaseProviderProtocol) -> None:
+    """Insert seed data idempotently.
+
+    Args:
+        provider: Database provider used to execute the seed transaction.
+    """
+    result = await provider.execute_query(
+        "SELECT COUNT(*) AS count FROM {{ table_name }}",
+    )
+    if result.rows and result.rows[0].get("count", 0) > 0:
+        return
+
+    async with SimpleUnitOfWork(provider) as uow:
         for data in SEED_DATA:
-            await uow.execute(
-                """
-                INSERT INTO {{ table_name }} (
-                    {%- for field in fields %}
-                    {{ field.name }},
-                    {%- endfor %}
-                    created_at,
-                    updated_at
-                ) VALUES (
-                    {%- for field in fields %}
-                    :{{ field.name }},
-                    {%- endfor %}
-                    :created_at,
-                    :updated_at
-                )
-                """,
-                {
-                    **data,
-                    "created_at": datetime.now(timezone.utc),
-                    "updated_at": datetime.now(timezone.utc),
-                },
-            )
-
+            uow.register_new({{ model_name }}Entity(**data))
         await uow.commit()
-
-
-__all__ = ["run", "SEED_DATA"]
