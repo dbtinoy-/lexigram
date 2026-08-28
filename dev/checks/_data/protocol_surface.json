@@ -733,6 +733,7 @@
   "lexigram.contracts.core.concurrency_protocols.ChannelProtocol": [
     "close",
     "closed",
+    "is_empty",
     "receive",
     "send"
   ],
@@ -1294,6 +1295,10 @@
   "lexigram.contracts.events.protocols.domain.DomainEventPublisherProtocol": [
     "publish"
   ],
+  "lexigram.contracts.events.protocols.domain.EventBusDiagnosticsProtocol": [
+    "clear_dispatch_errors",
+    "dispatch_errors"
+  ],
   "lexigram.contracts.events.protocols.domain.EventBusProtocol": [
     "publish",
     "subscribe",
@@ -1322,6 +1327,9 @@
   ],
   "lexigram.contracts.events.protocols.store.AggregateFactoryProtocol": [
     "create"
+  ],
+  "lexigram.contracts.events.protocols.store.EventReplayProtocol": [
+    "replay_events"
   ],
   "lexigram.contracts.events.protocols.store.EventSourcedReadRepositoryProtocol": [
     "exists",

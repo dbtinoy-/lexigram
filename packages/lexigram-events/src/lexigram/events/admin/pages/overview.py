@@ -37,7 +37,11 @@ class EventsOverviewPage:
                 subscriber_count = "N/A"
 
             try:
-                dispatch_errors = getattr(self._event_bus, "_dispatch_errors", None)
+                dispatch_errors = getattr(self._event_bus, "dispatch_errors", None)
+                if dispatch_errors is None:
+                    # Backward compatibility for custom buses predating the
+                    # public diagnostics property.
+                    dispatch_errors = getattr(self._event_bus, "_dispatch_errors", None)
                 error_count = len(dispatch_errors) if dispatch_errors is not None else 0
             except Exception:
                 error_count = "N/A"
