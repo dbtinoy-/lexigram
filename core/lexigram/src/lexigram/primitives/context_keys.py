@@ -12,7 +12,7 @@ from typing import Any, Generic, TypeVar
 T = TypeVar("T")
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True)
 class ContextKey(Generic[T]):
     """Immutable, typed key for context-variable access (pure data)."""
 

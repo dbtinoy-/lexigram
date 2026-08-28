@@ -35,6 +35,9 @@ async def _bootstrap_migration_runner() -> tuple[Any, Any, Any]:
 
         container = Container()
         provider = DBDIProvider(config=db_url)
+        # Same skip as _bootstrap_db_provider: the provider holds an explicit
+        # DatabaseConfig; the bare CLI container has no LexigramConfig.
+        provider._config_from_factory = True  # noqa: SLF001 — bootstrap flag, mirrors Provider.from_config()
         orchestrator = ProviderOrchestrator(container)
         orchestrator.add(provider)
         await orchestrator.boot_all(container)
@@ -82,9 +85,12 @@ async def _bootstrap_db_provider() -> tuple[Any, Any]:
         container = Container()
         provider = DatabaseProvider(config=db_url)
         # Satisfy the orchestrator's config-injection phase: the provider
-        # already holds an explicit DatabaseConfig, so LexigramConfig lookup
-        # (unavailable in this bare CLI container) must be skipped.
-        provider.config = DatabaseConfig.from_url(db_url)
+        # already holds an explicit DatabaseConfig (parsed from DATABASE_URL
+        # in __init__), so the LexigramConfig lookup — unavailable in this
+        # bare CLI container — must be skipped.  `from_config()` marks the
+        # same flag; we mark it here because the constructor already parsed
+        # the URL into the provider's explicit config.
+        provider._config_from_factory = True  # noqa: SLF001 — bootstrap flag, mirrors Provider.from_config()
         orchestrator = ProviderOrchestrator(container)
         orchestrator.add(provider)
         await orchestrator.boot_all(container)

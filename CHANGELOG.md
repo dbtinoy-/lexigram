@@ -14,12 +14,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `lexigram-web` `PermissionGuard` now requires **all** listed permissions by default; `require_all=False` opts into the previous any-of behavior.
 - `lexigram-auth` `use_guards` / `require_auth` / `require_admin` now fail closed with a `ValueError` when no request context can be discovered instead of silently running the handler unguarded.
 - Local `make ci` / `make test-cov` coverage gate aligned with CI at a 70% floor.
+- Workspace version alignment: all 54 packages now carry `0.1.5007` (was a mix of `0.1.5003`–`0.1.5006`); `uv.lock` regenerated.
 
 ### Fixed
+- `lexigram-ai-relay-gateway` auth guard now **fails closed** when the gateway is unconfigured: `require_auth` defaults to `True`, so a missing container or missing `RelayGatewayConfig` returns `503 AUTH_REQUIRED_BUT_UNBOUND` instead of silently passing requests through. The guard also falls back to the mount-time container (matching the contributor's service resolvers) when no request-scoped container is attached.
+- `lexigram-multimedia` `InMemoryIdempotencyStoreFallback` now honors TTLs (monotonic-clock expiry, mirroring `lexigram-resilience`'s store): idempotency windows close after their TTL and the dict no longer grows without bound.
+- `lexigram-multimedia-beat` reference server: `lexigram-beat-madmom-serve` now binds loopback only (the unauthenticated `/analyze` endpoint runs CPU-heavy processing), and tempo computation no longer divides by zero on degenerate beat output.
+- MySQL credentials are no longer passed in the child argv (`-p<password>` readable by any local user via `ps`): the CLI registry now uses `MYSQL_PWD` via `DatabaseBackend.subprocess_env()` for shell, backup, and restore commands.
+- Admin bulk delete/purge now honors the resource's per-record `can_delete` hook (mirroring the single-record delete path); the `POST /{resource}/bulk` route previously bulk-deleted records without consulting it.
+- `APIKey.is_active()` no longer crashes with `TypeError` on aware-UTC timestamps (SQL-backed keys): naive values are assumed UTC, matching the rest of the auth package.
+- `MigrationScheduler.schedule_migration()` accepts naive `run_at` values (its documented `datetime.now() + timedelta(...)` usage) without raising on the naive-vs-aware subtraction.
+- CLI database bootstrap no longer crashes with `LEX_ERR_CFG_001` when run outside a full framework container: the bare-CLI providers are marked config-from-factory so the orchestrator skips the `LexigramConfig` lookup (`lexigram db setup` / direct migration runner paths).
+- `lexigram-cli` `ConfigManager.save()` no longer drops unset (`None`) fields incorrectly: the `tomli_w` path raised `TypeError` on `None`, and the manual TOML fallback wrote the corrupting string `"None"`; omitted keys now fall back to their defaults on load.
+- `lexigram-multimedia-video` and CLI registry tests no longer depend on runner binaries (`ffmpeg`/`psql`/`mysql` on `PATH`) — availability is patched so tests are deterministic.
 - `lexigram-sql` `QueryEngine` now returns normalized `list[dict]` rows and correct scalar values against real backends (`aiosqlite`, `asyncpg`, `aiomysql`) instead of assuming a driver result exposes `.fetchall()` / dict rows.
 - `ConnectionProtocol` now reflects the actual `DatabaseConnection` surface (`execute`/`execute_many`/`fetch_one`/`fetch_all`/`close`).
 - CLI migration command formatting passes the locked ruff format gate.
 - README `in progres` typos.
+- Import-boundary enforcement repaired: `dev/checks/lint_imports.py` now works with grimp 3.13 (`determine_package_directories` API) and both it and the import-depth gate run in CI; `lexigram.graphql` no longer imports `lexigram.security` (SHA-256 cache keys now use stdlib `hashlib`).
+- `lexigram.contracts.ai.relay.dto.items` moved up one level so the relay DTO family stays within the 6-segment import-depth gate (`openai_responses` still re-exports `ResponsesItem`).
 
 ## [0.1.3] — 2026-08-19
 

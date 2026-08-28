@@ -103,12 +103,18 @@ def request(
     headers: dict[str, str] | None = None,
     path_params: dict[str, Any] | None = None,
 ) -> SimpleNamespace:
-    """A minimal request double the endpoints can handle."""
+    """A minimal request double the endpoints can handle.
+
+    The container is auth-opted-out so these route-behavior tests run
+    without the auth guard interfering (see web_test_helpers).
+    """
+    from web_test_helpers import _AUTH_OPT_OUT_CONTAINER
+
     return SimpleNamespace(
         headers=headers or {},
         query_params={},
         path_params=path_params or {},
-        state=SimpleNamespace(request_id="req-1", container=None),
+        state=SimpleNamespace(request_id="req-1", container=_AUTH_OPT_OUT_CONTAINER),
     )
 
 

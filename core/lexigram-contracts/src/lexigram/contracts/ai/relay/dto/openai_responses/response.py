@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from lexigram.contracts.ai.relay.dto.common import require_field
-from lexigram.contracts.ai.relay.dto.openai_responses.items import ResponsesItem
+from lexigram.contracts.ai.relay.dto.items import ResponsesItem
 
 
 @dataclass(frozen=True)

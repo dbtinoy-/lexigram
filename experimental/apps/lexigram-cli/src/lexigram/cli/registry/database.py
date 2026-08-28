@@ -234,6 +234,18 @@ class MySQLBackend(DatabaseBackend):
     def get_client_binary(self) -> str | None:
         return shutil.which("mysql")
 
+    def subprocess_env(self, params: dict[str, Any]) -> dict[str, str]:
+        """Pass the MySQL password via ``MYSQL_PWD`` instead of argv.
+
+        ``-p<password>`` is visible to every local user through ``ps``;
+        the environment of the child process is only readable by the
+        same user.
+        """
+        env = super().subprocess_env(params)
+        if params.get("password"):
+            env["MYSQL_PWD"] = str(params["password"])
+        return env
+
     def build_shell_command(self, params: dict[str, Any]) -> list[str]:
         binary = self.get_client_binary()
         if not binary:
@@ -242,8 +254,6 @@ class MySQLBackend(DatabaseBackend):
         cmd = [binary]
         if params.get("user"):
             cmd.extend(["-u", params["user"]])
-        if params.get("password"):
-            cmd.extend(["-p" + params["password"]])
         if params.get("host"):
             cmd.extend(["-h", params["host"]])
         if params.get("port"):
@@ -285,8 +295,6 @@ class MySQLBackend(DatabaseBackend):
         cmd = ["mysqldump"]
         if params.get("user"):
             cmd.extend(["-u", params["user"]])
-        if params.get("password"):
-            cmd.extend(["-p" + params["password"]])
         if params.get("host"):
             cmd.extend(["-h", params["host"]])
         # --result-file avoids shell redirection for the output
@@ -310,8 +318,6 @@ class MySQLBackend(DatabaseBackend):
         cmd = ["mysql"]
         if params.get("user"):
             cmd.extend(["-u", params["user"]])
-        if params.get("password"):
-            cmd.extend(["-p" + params["password"]])
         if params.get("host"):
             cmd.extend(["-h", params["host"]])
         cmd.append(params.get("database", "mysql"))
@@ -443,7 +449,11 @@ class DatabaseConnection:
         """Open the native database shell."""
         cmd = self.backend.build_shell_command(self.params)
         try:
-            subprocess.run(cmd, check=False)  # noqa: S603 — registry-built argv list
+            subprocess.run(  # noqa: S603 — registry-built argv list
+                cmd,
+                check=False,
+                env=self.backend.subprocess_env(self.params),
+            )
         except OSError as e:
             raise RuntimeError(f"Failed to open shell: {e}") from e
 

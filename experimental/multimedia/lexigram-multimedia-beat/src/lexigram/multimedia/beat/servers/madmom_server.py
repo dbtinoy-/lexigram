@@ -67,15 +67,12 @@ async def handle_analyze(request: web.Request) -> web.Response:
         tracker = madmom.features.beats.DBNBeatTrackingProcessor(fps=100)
         beat_timestamps = tracker(activations).tolist()
 
-    tempo_bpm = (
-        60.0
-        / (
-            sum(b2 - b1 for b1, b2 in itertools.pairwise(beat_timestamps))
-            / max(len(beat_timestamps) - 1, 1)
-        )
-        if len(beat_timestamps) > 1
-        else 0.0
-    )
+    tempo_bpm = 0.0
+    if len(beat_timestamps) > 1:
+        intervals = [b2 - b1 for b1, b2 in itertools.pairwise(beat_timestamps)]
+        mean_interval = sum(intervals) / len(intervals)
+        if mean_interval > 0:
+            tempo_bpm = 60.0 / mean_interval
 
     return web.json_response(
         {"tempo_bpm": tempo_bpm, "beat_timestamps": beat_timestamps}
@@ -99,7 +96,11 @@ def build_app() -> web.Application:
 
 
 def main() -> None:
-    web.run_app(build_app(), port=5600)
+    # Loopback only: /analyze is unauthenticated and runs CPU-heavy
+    # processing, so the reference server must not be reachable from
+    # other hosts by default.  Deployments needing remote access should
+    # front it with an authenticated reverse proxy and bind explicitly.
+    web.run_app(build_app(), host="127.0.0.1", port=5600)
 
 
 if __name__ == "__main__":

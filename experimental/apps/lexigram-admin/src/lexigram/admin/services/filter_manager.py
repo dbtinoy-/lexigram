@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import UTC
 import inspect
 from typing import Any
 from urllib.parse import parse_qs, urlencode
@@ -248,7 +249,7 @@ class FilterManager:
             user_id=user_id,
             is_default=is_default,
             is_shared=is_shared,
-            created_at=datetime.now().isoformat(),
+            created_at=datetime.now(UTC).isoformat(),
         )
 
         # Generate preset key

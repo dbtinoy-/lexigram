@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, Any, cast
 from lexigram.contracts.data.identifiers import Column, Table
 from lexigram.logging import get_logger
 from lexigram.primitives import clock as ambient_clock
+from lexigram.serialization import dumps
 from lexigram.sql import DeleteResult, InsertResult, QueryResult, UpdateResult
 from lexigram.sql.exceptions import (
     DatabaseConnectionError,
@@ -25,6 +26,28 @@ logger = get_logger(__name__)
 
 if TYPE_CHECKING:
     import types
+
+
+def _serialize_param(value: Any) -> Any:
+    """Encode JSON-shaped values for driver binding.
+
+    Generic CRUD payloads routinely carry JSON-shaped values — scope
+    lists, metadata dicts, message payloads — which relational drivers
+    cannot bind as Python ``dict``/``list`` objects.  They are encoded
+    to JSON text (matching the JSONB/TEXT columns the framework stores
+    declare).  All other value types pass through unchanged.
+
+    Args:
+        value: Value about to be bound to a driver parameter.
+
+    Returns:
+        The value unchanged, or its JSON text encoding when it is a
+        ``dict`` or ``list``.
+    """
+    if isinstance(value, (dict, list)):
+        encoded = dumps(value)
+        return encoded.decode("utf-8") if isinstance(encoded, bytes) else encoded
+    return value
 
 
 @dataclass
@@ -118,7 +141,7 @@ class CrudOperations(ABC):
         safe_columns = ", ".join(str(Column(c)) for c in data)
         columns = safe_columns
         placeholders = ", ".join("?" for _ in data)
-        values = list(data.values())
+        values = [_serialize_param(v) for v in data.values()]
 
         sql = f"INSERT INTO {safe_table} ({columns}) VALUES ({placeholders})"  # noqa: S608 -- safe_table/columns are Table()/Column() quoted identifiers, values parameterized
 
@@ -153,7 +176,7 @@ class CrudOperations(ABC):
         """Execute an UPDATE operation"""
         safe_table = Table(table)
         set_clause = ", ".join(f"{Column(k)} = ?" for k in data)
-        values = list(data.values())
+        values = [_serialize_param(v) for v in data.values()]
 
         sql = f"UPDATE {safe_table} SET {set_clause} WHERE {where_clause}"  # noqa: S608 -- safe_table/set_clause are Table()/Column() quoted; where_clause built by repo mixins from validated identifiers
 

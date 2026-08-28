@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from lexigram import serialization as json
@@ -126,8 +126,8 @@ class SQLUserStore:
             "permissions": permissions or [],
             "previous_passwords": [],
             "profile": profile or {},
-            "created_at": datetime.now(),
-            "updated_at": datetime.now(),
+            "created_at": datetime.now(UTC),
+            "updated_at": datetime.now(UTC),
         }
 
         await self.db_provider.execute_insert("users", payload)
@@ -176,7 +176,7 @@ class SQLUserStore:
             "profile": user.profile,
             "last_login_at": user.last_login_at,
             "login_count": user.login_count,
-            "updated_at": datetime.now(),
+            "updated_at": datetime.now(UTC),
         }
 
         await self.db_provider.execute_update(
@@ -262,7 +262,7 @@ class SQLUserStore:
         payload = {
             "hashed_password": creds.hashed_password,
             "previous_passwords": creds.previous_hashes,
-            "updated_at": datetime.now(),
+            "updated_at": datetime.now(UTC),
         }
         await self.db_provider.execute_update(
             "users",
