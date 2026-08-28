@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from lexigram.contracts.admin import StatContent
+from lexigram.contracts.admin import MessageContent, StatContent
 from lexigram.contracts.admin.errors import WidgetNotFoundError
 from lexigram.contracts.admin.types import WidgetParams, WidgetViewModel
 from lexigram.contracts.admin.widget_protocols import WidgetHandlerProtocol
@@ -25,15 +25,11 @@ class TestEventsAdminContributor:
 
     @pytest.fixture
     def mock_throughput_handler(self) -> MagicMock:
-        """Mock EventsThroughputWidgetHandler returning StatContent."""
+        """Mock EventsThroughputWidgetHandler returning MessageContent."""
         handler = MagicMock(spec=WidgetHandlerProtocol)
         handler.get_data = AsyncMock(
             return_value=Ok(
-                StatContent(
-                    stats=(
-                        # A MagicMock content is enough to prove pass-through.
-                    )
-                )
+                MessageContent(text="stub", tone="default")
             )
         )
         return handler
@@ -84,14 +80,14 @@ class TestEventsAdminContributor:
         booted_contributor: EventsAdminContributor,
         mock_throughput_handler: MagicMock,
     ) -> None:
-        """Render events_throughput widget passes StatContent through."""
+        """Render events_throughput widget passes MessageContent through."""
         result = await booted_contributor.render_widget(
             "events_throughput", WidgetParams()
         )
         assert result.is_ok()
         vm = result.unwrap()
         assert isinstance(vm, WidgetViewModel)
-        assert isinstance(vm.content, StatContent)
+        assert isinstance(vm.content, MessageContent)
         mock_throughput_handler.get_data.assert_awaited_once()
 
     @pytest.mark.asyncio
