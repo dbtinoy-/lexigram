@@ -38,6 +38,8 @@ class DemoService:
     readme_path: str = ""
     check_path: str = "/"
     errors: list[str] = field(default_factory=list)
+    capabilities: tuple[str, ...] = ()
+    featured: bool = False
 
     @property
     def is_hostable(self) -> bool:
@@ -267,6 +269,46 @@ class ServiceRegistry:
                 "webhook-relay",
                 "webhookrelay.app",
                 "webhook-relay/README.md",
+                capabilities=("subscriptions", "HMAC", "webhooks"),
+            ),
+            DemoService(
+                "feature-flags",
+                "Release Control Lab",
+                8099,
+                "web",
+                "standard",
+                "Feature rollouts, variants, overrides, and audit history",
+                "feature-flags",
+                "release_control.app",
+                "feature-flags/README.md",
+                capabilities=("feature flags", "variants", "runtime overrides"),
+                featured=True,
+            ),
+            DemoService(
+                "approval-flow",
+                "Approval Flow",
+                8100,
+                "web",
+                "standard",
+                "State-machine approvals with retry and compensation",
+                "approval-flow",
+                "approval_flow.app",
+                "approval-flow/README.md",
+                capabilities=("state machine", "approval gates", "history"),
+                featured=True,
+            ),
+            DemoService(
+                "artifact-vault",
+                "Artifact Vault",
+                8101,
+                "web",
+                "standard",
+                "Browser object storage with metadata and previews",
+                "artifact-vault",
+                "artifact_vault.app",
+                "artifact-vault/README.md",
+                capabilities=("blob storage", "metadata", "offline"),
+                featured=True,
             ),
         ]
 
@@ -299,6 +341,8 @@ class ServiceRegistry:
                     "kind": svc.kind,
                     "group": svc.group,
                     "blurb": svc.blurb,
+                    "capabilities": list(svc.capabilities),
+                    "featured": svc.featured,
                     "status": status,
                     "error": failures.get(svc.slug),
                 }
