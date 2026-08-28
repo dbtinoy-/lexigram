@@ -8,7 +8,7 @@ from lexigram.ai.session.config import SessionConfig
 from lexigram.ai.session.context.pruner import RelevanceContextPruner
 from lexigram.ai.session.context.session_context import SessionContext
 from lexigram.ai.session.manager import SessionCleanupScheduler, SessionManagerImpl
-from lexigram.ai.session.stores.in_memory import InMemorySessionStore
+from lexigram.ai.session.stores.registry import SessionStoreRegistry
 from lexigram.contracts.ai.session import (
     ContextPrunerProtocol,
     SessionContextProtocol,
@@ -71,23 +71,19 @@ class SessionProvider(Provider):
             logger.info("session_disabled", reason="SessionConfig.enabled=False")
             return
 
-        if self._config.backend == "in_memory":
-            container.singleton(SessionStoreProtocol, instance=InMemorySessionStore())
-        elif self._config.backend == "cache":
-            from lexigram.ai.session.stores.cache import CacheSessionStore
-
-            container.singleton(SessionStoreProtocol, factory=CacheSessionStore)
-        elif self._config.backend == "database":
-            from lexigram.ai.session.stores.database import DatabaseSessionStore
-
-            container.singleton(SessionStoreProtocol, factory=DatabaseSessionStore)
-        else:
+        binding = SessionStoreRegistry.with_defaults().create_store(
+            self._config.backend
+        )
+        if binding.backend != self._config.backend:
             logger.warning(
                 "unknown_session_backend",
                 backend=self._config.backend,
-                fallback="in_memory",
+                fallback=binding.backend,
             )
-            container.singleton(SessionStoreProtocol, instance=InMemorySessionStore())
+        if binding.as_factory:
+            container.singleton(SessionStoreProtocol, factory=binding.store)
+        else:
+            container.singleton(SessionStoreProtocol, instance=binding.store)
 
         container.singleton(SessionManagerProtocol, factory=SessionManagerImpl)
         container.singleton(SessionCleanupScheduler, factory=SessionCleanupScheduler)
