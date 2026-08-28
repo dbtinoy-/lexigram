@@ -61,6 +61,12 @@ _SPECS: tuple[tuple[str, str, str, str], ...] = (
         "lexigram.web.cli.generators.interceptor:InterceptorGenerator",
         "src/interceptors",
     ),
+    (
+        "error",
+        "Generate a custom HTTP error",
+        "lexigram.web.cli.generators.error:ErrorGenerator",
+        "src/errors",
+    ),
 )
 
 _OPTIONS: dict[str, tuple[GeneratorOption, ...]] = {
@@ -83,6 +89,23 @@ _OPTIONS: dict[str, tuple[GeneratorOption, ...]] = {
         ),
     ),
     "interceptor": (),
+    "error": (
+        GeneratorOption(
+            name="status_code",
+            type_hint="int",
+            description="HTTP status code of the error",
+        ),
+        GeneratorOption(
+            name="code",
+            type_hint="str",
+            description="Machine-readable error code",
+        ),
+        GeneratorOption(
+            name="error_code",
+            type_hint="str",
+            description="Registry error code (LEX_ERR_WEB_...)",
+        ),
+    ),
 }
 
 # Titles that make() cannot derive exactly.

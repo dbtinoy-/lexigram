@@ -8,6 +8,7 @@ import pytest
 from lexigram.contracts.cli.protocols import CliContributorProtocol
 from lexigram.web.cli.contributor import WebCliContributor
 from lexigram.web.cli.generators.controller import ControllerGenerator
+from lexigram.web.cli.generators.error import ErrorGenerator
 from lexigram.web.cli.generators.exception_filter import ExceptionFilterGenerator
 from lexigram.web.cli.generators.interceptor import InterceptorGenerator
 from lexigram.web.cli.generators.resource import ResourceGenerator
@@ -32,6 +33,7 @@ def test_web_contributor_exposes_expected_generators() -> None:
         "websocket",
         "exception_filter",
         "interceptor",
+        "error",
     }
 
 
@@ -49,6 +51,7 @@ def test_web_contributor_paths_are_package_local() -> None:
         "lexigram.web.cli.generators.websocket:WebSocketHandlerGenerator",
         "lexigram.web.cli.generators.exception_filter:ExceptionFilterGenerator",
         "lexigram.web.cli.generators.interceptor:InterceptorGenerator",
+        "lexigram.web.cli.generators.error:ErrorGenerator",
     }
 
 
@@ -74,6 +77,13 @@ def test_interceptor_generator_defaults() -> None:
     assert generator.default_output_dir == "src/interceptors"
 
 
+def test_error_generator_defaults() -> None:
+    generator = ErrorGenerator()
+
+    assert generator.name == "error"
+    assert generator.default_output_dir == "src/errors"
+
+
 def test_resource_generator_uses_package_local_controller() -> None:
     generator = ResourceGenerator()
 
@@ -91,6 +101,7 @@ def test_resource_generator_uses_package_local_controller() -> None:
         ("websocket", "src/websocket"),
         ("exception_filter", "src/filters"),
         ("interceptor", "src/interceptors"),
+        ("error", "src/errors"),
     ],
 )
 def test_web_generator_defaults(name: str, default_output_dir: str) -> None:
