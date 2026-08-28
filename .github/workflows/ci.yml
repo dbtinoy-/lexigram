@@ -145,6 +145,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # Map group names to actual tier-root paths
+          case "${{ matrix.group }}" in
+            ai)           TESTDIR="experimental/ai" ;;
+            multimedia)   TESTDIR="experimental/multimedia" ;;
+            apps)         TESTDIR="experimental/apps" ;;
+            *)            TESTDIR="${{ matrix.group }}" ;;
+          esac
           # DESELECT, re-keyed on tier-root paths: runs root at the tier root,
           # so node ids are <tier>/<package>/tests/...
           case "${{ matrix.group }}" in
@@ -155,7 +162,7 @@ jobs:
               DESELECT=""
               ;;
           esac
-          uv run pytest -q -m "not integration" --no-cov "${{ matrix.group }}" $DESELECT
+          uv run pytest -q -m "not integration" --no-cov "$TESTDIR" $DESELECT
 
   integration:
     name: Integration scenarios (postgres + redis)
