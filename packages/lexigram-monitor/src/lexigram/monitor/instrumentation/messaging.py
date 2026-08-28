@@ -13,9 +13,9 @@ from typing import Any
 from lexigram.logging import get_logger
 
 try:
-    from opentelemetry import metrics, trace  # type: ignore[import-not-found]
-    from opentelemetry.propagate import inject  # type: ignore[import-not-found]
-    from opentelemetry.trace import Span, StatusCode  # type: ignore[import-not-found]
+    from opentelemetry import metrics, trace
+    from opentelemetry.propagate import inject
+    from opentelemetry.trace import Span, StatusCode
 
     _opentelemetry_available = True
 except (ImportError, NameError):
