@@ -33,11 +33,15 @@ PromHistogram: Any = None
 start_http_server: Any = None
 
 try:
-    from prometheus_client import Counter as PromCounter
-    from prometheus_client import Gauge as PromGauge
-    from prometheus_client import Histogram as PromHistogram
-    from prometheus_client import start_http_server
+    from prometheus_client import Counter as _PC  # noqa: N814
+    from prometheus_client import Gauge as _PG  # noqa: N814
+    from prometheus_client import Histogram as _PH  # noqa: N814
+    from prometheus_client import start_http_server as _SHS  # noqa: N812
 
+    PromCounter = _PC
+    PromGauge = _PG
+    PromHistogram = _PH
+    start_http_server = _SHS
     HAS_PROMETHEUS = True
 except ImportError:
     HAS_PROMETHEUS = False

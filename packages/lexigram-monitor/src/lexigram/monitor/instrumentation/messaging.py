@@ -13,9 +13,9 @@ from typing import Any
 from lexigram.logging import get_logger
 
 try:
-    from opentelemetry import metrics, trace
-    from opentelemetry.propagate import inject
-    from opentelemetry.trace import Span, StatusCode
+    from opentelemetry import metrics, trace  # type: ignore[import-not-found]
+    from opentelemetry.propagate import inject  # type: ignore[import-not-found]
+    from opentelemetry.trace import Span, StatusCode  # type: ignore[import-not-found]
 
     _opentelemetry_available = True
 except (ImportError, NameError):
@@ -81,7 +81,7 @@ except (ImportError, NameError):
         },
     )()
     inject = _dummy_inject
-    StatusCode = type("StatusCode", (), {"OK": 0, "ERROR": 2})()  # type: ignore[misc]
+    StatusCode = type("StatusCode", (), {"OK": 0, "ERROR": 2})()
 
 logger = get_logger(__name__)
 _OTEL_INSTALL_HINT = "pip install lexigram-monitor[otel]"
@@ -134,7 +134,7 @@ async def trace_publish(
             hint=_OTEL_INSTALL_HINT,
             detail="message publishing tracing disabled",
         )
-        yield _DummySpan()  # type: ignore[misc]
+        yield _DummySpan()
         return
     start_time = time.time()
     span_name = f"publish {message_type}"
@@ -209,7 +209,7 @@ async def trace_consume(
             hint=_OTEL_INSTALL_HINT,
             detail="message consuming tracing disabled",
         )
-        yield _DummySpan()  # type: ignore[misc]
+        yield _DummySpan()
         return
     start_time = time.time()
     span_name = f"consume {message_type}"

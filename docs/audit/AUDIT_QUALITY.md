@@ -7,60 +7,47 @@
 ## Summary
 
 - Tool checks run: 2
-- Passing tools: 0
-- Failing tools: 2
+- Passing tools: 1
+- Failing tools: 1
 - Packages counted: 54
-- Total mypy errors: 95
-- Packages with errors: 12
+- Total mypy errors: 33
+- Packages with errors: 7
 
 ## Tool Results
 
 | Tool | Status | Exit Code | Duration | Command |
 |------|--------|-----------|----------|---------|
-| `Ruff` | **FAIL** | 1 | 346 ms | `uv run ruff check .` |
-| `Mypy` | **FAIL** | 1 | 142900 ms | `uv run mypy src/ (per-package across 54 packages)` |
+| `Ruff` | **PASS** | 0 | 230 ms | `uv run ruff check .` |
+| `Mypy` | **FAIL** | 1 | 76156 ms | `uv run mypy src/ (per-package across 54 packages)` |
 
 ### Ruff
 
-- Status: **FAIL**
-- Exit code: `1`
-- Duration: `346 ms`
+- Status: **PASS**
+- Exit code: `0`
+- Duration: `230 ms`
 - Command: `uv run ruff check .`
 - Output snippet:
 
 ```text
-F401 [*] `lexigram.contracts.admin.StatContent` imported but unused
- --> packages/lexigram-events/src/lexigram/events/admin/handlers/events_throughput.py:7:54
-  |
-5 | from typing import TYPE_CHECKING
-6 |
-7 | from lexigram.contracts.admin import MessageContent, StatContent, Tone, WidgetParams
-  |                                                      ^^^^^^^^^^^
-8 | from lexigram.contracts.admin.errors import AdminError
-...
+All checks passed!
 ```
 
 ### Mypy
 
 - Status: **FAIL**
 - Exit code: `1`
-- Duration: `142900 ms`
+- Duration: `76156 ms`
 - Command: `uv run mypy src/ (per-package across 54 packages)`
 - Output snippet:
 
 ```text
-[lexigram] 7 errors
-[lexigram-admin] 4 errors
+[lexigram-admin] 2 errors
 [lexigram-ai-mcp] 2 errors
-[lexigram-cache] 6 errors
-[lexigram-cli] 2 errors
-[lexigram-events] 2 errors
-[lexigram-graphql] 3 errors
-[lexigram-monitor] 50 errors
-[lexigram-resilience] 1 errors
-[lexigram-search] 2 errors
+[lexigram-cache] 1 errors
+[lexigram-monitor] 18 errors
 [lexigram-sql] 1 errors
-[lexigram-web] 15 errors
+[lexigram-testing] 2 errors
+[lexigram-web] 7 errors
 ```
 
 ### Mypy Error Breakdown
@@ -69,31 +56,24 @@ F401 [*] `lexigram.contracts.admin.StatContent` imported but unused
 
 | Code | Count | Description |
 |------|-------|-------------|
-| `unused-ignore` | 28 | Unused type: ignore comment |
-| `import-not-found` | 25 | Type checking error |
-| `arg-type` | 13 | Argument type mismatch |
-| `no-redef` | 12 | Name already defined |
-| `no-any-return` | 8 | Function returns Any when specific type declared |
-| `import-untyped` | 4 | Type checking error |
-| `attr-defined` | 3 | Attribute not defined on type |
-| `unreachable` | 3 | Type checking error |
+| `unused-ignore` | 15 | Unused type: ignore comment |
+| `import-not-found` | 11 | Type checking error |
 | `name-defined` | 2 | Type checking error |
-| `union-attr` | 1 | Type checking error |
+| `unreachable` | 2 | Type checking error |
+| `assignment` | 2 | Type checking error |
+| `truthy-function` | 1 | Type checking error |
 
 #### By Package (Top 10)
 
 | Package | Errors |
 |---------|--------|
-| `lexigram-monitor` | 50 |
-| `lexigram-web` | 15 |
-| `lexigram` | 7 |
-| `lexigram-cache` | 6 |
-| `lexigram-admin` | 4 |
-| `lexigram-graphql` | 3 |
+| `lexigram-monitor` | 18 |
+| `lexigram-web` | 7 |
+| `lexigram-admin` | 2 |
 | `lexigram-ai-mcp` | 2 |
-| `lexigram-cli` | 2 |
-| `lexigram-events` | 2 |
-| `lexigram-search` | 2 |
+| `lexigram-testing` | 2 |
+| `lexigram-cache` | 1 |
+| `lexigram-sql` | 1 |
 
 ## Package Metrics
 

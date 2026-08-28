@@ -20,8 +20,10 @@ from typing import Any
 from lexigram.logging import get_logger
 
 try:
-    from opentelemetry import metrics, trace
-    from opentelemetry.semconv.trace import SpanAttributes
+    from opentelemetry import metrics, trace  # type: ignore[import-not-found]
+    from opentelemetry.semconv.trace import (
+        SpanAttributes,  # type: ignore[import-not-found]
+    )
 
     _opentelemetry_available = True
 except (ImportError, NameError):
@@ -72,7 +74,7 @@ except (ImportError, NameError):
         (),
         {"get_tracer": lambda *_: _DummyTracer()},
     )()
-    SpanAttributes = type("SpanAttributes", (), {})()  # type: ignore[misc]
+    SpanAttributes = type("SpanAttributes", (), {})()
 
 logger = get_logger(__name__)
 _OTEL_INSTALL_HINT = "pip install lexigram-monitor[otel]"

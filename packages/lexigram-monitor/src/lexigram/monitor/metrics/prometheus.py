@@ -18,7 +18,7 @@ from __future__ import annotations
 from typing import Any
 
 try:
-    from prometheus_client import (
+    from prometheus_client import (  # type: ignore[import-not-found]
         CONTENT_TYPE_LATEST,
         CollectorRegistry,
         Counter,
@@ -28,13 +28,13 @@ try:
         generate_latest,
     )
 except ImportError:
-    CollectorRegistry = None  # type: ignore[misc,assignment]
-    Counter = None  # type: ignore[misc,assignment]
-    Gauge = None  # type: ignore[misc,assignment]
-    Histogram = None  # type: ignore[misc,assignment]
-    Summary = None  # type: ignore[misc,assignment]
+    CollectorRegistry = None
+    Counter = None
+    Gauge = None
+    Histogram = None
+    Summary = None
 
-    def generate_latest() -> bytes:  # type: ignore[misc]
+    def generate_latest() -> bytes:
         return b""
 
     CONTENT_TYPE_LATEST = "text/plain"
@@ -120,11 +120,11 @@ class PrometheusExporter:
         """Export all metrics in Prometheus format."""
         if not bool(self.registry) or not bool(generate_latest):
             return b""
-        return generate_latest(self.registry)  # type: ignore[arg-type]
+        return bytes(generate_latest(self.registry))
 
     @property
     def content_type(self) -> str:
-        return CONTENT_TYPE_LATEST
+        return str(CONTENT_TYPE_LATEST)
 
 
 exporter = PrometheusExporter()

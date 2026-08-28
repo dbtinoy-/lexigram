@@ -150,8 +150,6 @@ class QueryEngine:
         if isinstance(first, dict):
             # Prefer the conventional "count" key, otherwise first column.
             return first.get("count", next(iter(first.values())))
-        if isinstance(first, (tuple, list)) and first:
-            return first[0]
         return first
 
 

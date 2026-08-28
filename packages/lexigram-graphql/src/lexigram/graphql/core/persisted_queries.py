@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any, Protocol, runtime_checkable
 
-from lexigram import hashing  # type: ignore[attr-defined]
+from lexigram import hashing
 from lexigram.logging import get_logger
 from lexigram.primitives import clock as ambient_clock
 

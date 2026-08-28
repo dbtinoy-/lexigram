@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from lexigram import hashing  # type: ignore[attr-defined]
+from lexigram import hashing
 
 
 @dataclass

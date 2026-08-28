@@ -43,7 +43,9 @@ class ConsoleTracingExporterHandler:
         Returns:
             A ConsoleSpanExporter instance.
         """
-        from opentelemetry.sdk.trace.export import ConsoleSpanExporter
+        from opentelemetry.sdk.trace.export import (
+            ConsoleSpanExporter,  # type: ignore[import-not-found]
+        )
 
         return ConsoleSpanExporter()
 
@@ -122,7 +124,9 @@ class ConsoleMetricsExporterHandler:
         Returns:
             A ConsoleMetricExporter instance.
         """
-        from opentelemetry.sdk.metrics.export import ConsoleMetricExporter
+        from opentelemetry.sdk.metrics.export import (
+            ConsoleMetricExporter,  # type: ignore[import-not-found]
+        )
 
         return ConsoleMetricExporter()
 

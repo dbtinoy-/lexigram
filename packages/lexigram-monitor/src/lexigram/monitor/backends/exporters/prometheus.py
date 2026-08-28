@@ -21,11 +21,15 @@ PromHistogram: Any = None
 CollectorRegistry: Any = None
 HAS_PROMETHEUS = False
 try:
-    from prometheus_client import CollectorRegistry
-    from prometheus_client import Counter as PromCounter
-    from prometheus_client import Gauge as PromGauge
-    from prometheus_client import Histogram as PromHistogram
+    from prometheus_client import CollectorRegistry as _CR  # noqa: N814
+    from prometheus_client import Counter as _PC  # noqa: N814
+    from prometheus_client import Gauge as _PG  # noqa: N814
+    from prometheus_client import Histogram as _PH  # noqa: N814
 
+    CollectorRegistry = _CR
+    PromCounter = _PC
+    PromGauge = _PG
+    PromHistogram = _PH
     HAS_PROMETHEUS = True
 except ImportError:  # pragma: no cover - optional dependency
     HAS_PROMETHEUS = False

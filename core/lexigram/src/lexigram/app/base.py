@@ -139,7 +139,7 @@ class Application(SecretsMixin, HealthProbeMixin):
     @property
     def providers(self) -> list[Provider]:
         """Get all registered providers."""
-        return self._orchestrator.providers
+        return list(self._orchestrator.providers)
 
     # -- Secrets registration ----------------------------------------------
 

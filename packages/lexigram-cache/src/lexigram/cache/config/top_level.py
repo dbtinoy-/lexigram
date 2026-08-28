@@ -64,7 +64,7 @@ class CacheConfig(BaseConfig):
         """Block insecure cache configurations in production."""
         if self.environment == Environment.PRODUCTION:
             for backend in self.backends:
-                if isinstance(backend, RedisBackendConfig):
+                if isinstance(backend, RedisBackendConfig):  # type: ignore[unreachable]
                     if (
                         backend.password
                         and backend.password.lower() in const.INSECURE_PASSWORDS

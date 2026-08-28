@@ -47,9 +47,9 @@ class SnapshotMismatchError(AssertionError):
         actual_str = json.dumps(actual, indent=2, default=str)
         # Handle both bytes and string serialization
         if isinstance(expected_str, bytes):
-            expected_str = str(expected_str.decode("utf-8"))  # type: ignore[assignment]
+            expected_str = expected_str.decode("utf-8")
         if isinstance(actual_str, bytes):
-            actual_str = str(actual_str.decode("utf-8"))  # type: ignore[assignment]
+            actual_str = actual_str.decode("utf-8")
         super().__init__(
             f"Snapshot mismatch for '{name}'.\n"
             f"Expected: {expected_str}\n"  # type: ignore[str-bytes-safe]
