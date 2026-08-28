@@ -2,17 +2,70 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 import secrets
 import string
+from typing import Any
 
 from lexigram.auth.authn.security import PasswordHasher
 from lexigram.auth.models.apikey import APIKey
 from lexigram.contracts.auth import APIKeyRepositoryProtocol
 from lexigram.di.decorators import inject
 from lexigram.logging import get_logger
+from lexigram.serialization import loads
 
 logger = get_logger(__name__)
+
+
+def _coerce_scopes(value: Any) -> list[str]:
+    """Normalise a stored scope value back into a list of strings.
+
+    SQL repositories persist ``scopes`` as JSON text, while in-memory
+    repositories keep native lists; callers expect ``list[str]`` either way.
+
+    Args:
+        value: Raw scope value from a repository row.
+
+    Returns:
+        The scope list, or ``[]`` when the value is absent or unparsable.
+    """
+    if isinstance(value, str):
+        try:
+            parsed = loads(value)
+        except (TypeError, ValueError):
+            return []
+        return list(parsed) if isinstance(parsed, list) else []
+    return list(value or [])
+
+
+def _coerce_utc(value: Any) -> datetime | None:
+    """Normalise a stored timestamp to an aware UTC datetime.
+
+    Drivers return timestamps in different shapes: aware datetimes on
+    Postgres ``TIMESTAMPTZ``, ISO-8601 text on SQLite, and naive values
+    from in-memory repositories.  Expiry comparisons require a single
+    aware representation, so naive values are assumed to be UTC (the
+    convention used everywhere else in this package).
+
+    Args:
+        value: Raw timestamp from a repository row.
+
+    Returns:
+        Aware UTC datetime, or ``None`` when the value is absent or
+        cannot be parsed.
+    """
+    if value is None:
+        return None
+    if isinstance(value, str):
+        try:
+            value = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError:
+            return None
+    if isinstance(value, datetime):
+        if value.tzinfo is None:
+            return value.replace(tzinfo=UTC)
+        return value.astimezone(UTC)
+    return None
 
 
 @inject
@@ -75,7 +128,7 @@ class APIKeyManager:
 
         expires_at: datetime | None = None
         if expires_days:
-            expires_at = datetime.now() + timedelta(days=expires_days)
+            expires_at = datetime.now(UTC) + timedelta(days=expires_days)
 
         payload = {
             "name": name,
@@ -84,6 +137,8 @@ class APIKeyManager:
             "user_id": user_id,
             "scopes": scopes or [],
             "expires_at": expires_at,
+            "created_at": datetime.now(UTC),
+            "updated_at": datetime.now(UTC),
         }
 
         key_id = await self._repo.insert(payload)
@@ -96,8 +151,8 @@ class APIKeyManager:
             user_id=user_id,
             scopes=scopes or [],
             expires_at=expires_at,
-            created_at=datetime.now(),
-            updated_at=datetime.now(),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
         )
 
         logger.info("Created API key for user %s: %s", user_id, name)
@@ -125,8 +180,8 @@ class APIKeyManager:
 
         for row in rows:
             if await PasswordHasher().verify(raw_key, row["key_hash"]):
-                expires_at = row.get("expires_at")
-                if expires_at and expires_at < datetime.now():
+                expires_at = _coerce_utc(row.get("expires_at"))
+                if expires_at and expires_at < datetime.now(UTC):
                     logger.warning("Expired API key attempt: %s", row["id"])
                     continue
 
@@ -138,12 +193,12 @@ class APIKeyManager:
                     key_hash=row["key_hash"],
                     prefix=row["prefix"],
                     user_id=str(row["user_id"]),
-                    scopes=row["scopes"],
+                    scopes=_coerce_scopes(row.get("scopes")),
                     expires_at=expires_at,
-                    last_used_at=datetime.now(),
+                    last_used_at=datetime.now(UTC),
                     last_used_ip=ip_address,
-                    created_at=row["created_at"],
-                    updated_at=row["updated_at"],
+                    created_at=_coerce_utc(row.get("created_at")),
+                    updated_at=_coerce_utc(row.get("updated_at")),
                 )
 
         return None
@@ -180,12 +235,12 @@ class APIKeyManager:
                 key_hash=row["key_hash"],
                 prefix=row["prefix"],
                 user_id=str(row["user_id"]),
-                scopes=row["scopes"],
-                expires_at=row.get("expires_at"),
-                last_used_at=row.get("last_used_at"),
+                scopes=_coerce_scopes(row.get("scopes")),
+                expires_at=_coerce_utc(row.get("expires_at")),
+                last_used_at=_coerce_utc(row.get("last_used_at")),
                 last_used_ip=row.get("last_used_ip"),
-                created_at=row["created_at"],
-                updated_at=row["updated_at"],
+                created_at=_coerce_utc(row.get("created_at")),
+                updated_at=_coerce_utc(row.get("updated_at")),
             )
             for row in rows
         ]

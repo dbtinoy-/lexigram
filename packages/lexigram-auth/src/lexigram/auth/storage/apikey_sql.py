@@ -8,6 +8,7 @@ from ``lexigram-contracts`` — never on this concrete class directly.
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
+import uuid
 
 from lexigram.logging import get_logger
 
@@ -43,13 +44,17 @@ class APIKeySqlRepository:
 
         Args:
             payload: Field/value mapping (name, key_hash, prefix, user_id,
-                scopes, expires_at, …).
+                scopes, expires_at, …).  When the payload carries no ``id``,
+                one is generated here so rows are addressable by the
+                returned key id (mirrors the in-memory repository contract).
 
         Returns:
-            The opaque key identifier returned by the store.
+            The opaque key identifier for the new row.
         """
-        result = await self._db.execute_insert(self._TABLE, payload)
-        return str(result)
+        row = dict(payload)
+        row.setdefault("id", str(uuid.uuid4()))
+        await self._db.execute_insert(self._TABLE, row)
+        return str(row["id"])
 
     async def find_by_prefix(self, prefix: str) -> list[dict[str, Any]]:
         """Return all active (non-revoked) rows matching the display prefix.
@@ -73,7 +78,7 @@ class APIKeySqlRepository:
         """
         sql = (
             f"UPDATE {self._TABLE} "  # noqa: S608 — table name is constant class attr "api_keys", never user input
-            "SET last_used_at = NOW(), last_used_ip = ? "
+            "SET last_used_at = CURRENT_TIMESTAMP, last_used_ip = ? "
             "WHERE id = ?"
         )
         await self._db.execute(sql, [ip_address, key_id])
@@ -86,7 +91,7 @@ class APIKeySqlRepository:
         """
         sql = (
             f"UPDATE {self._TABLE} "  # noqa: S608 — table name is constant class attr "api_keys", never user input
-            "SET revoked_at = NOW(), updated_at = NOW() "
+            "SET revoked_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP "
             "WHERE id = ?"
         )
         await self._db.execute(sql, [key_id])
