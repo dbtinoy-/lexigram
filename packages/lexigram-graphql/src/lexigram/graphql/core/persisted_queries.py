@@ -309,6 +309,12 @@ class APQHandler:
         }
 
 
+_STORE_FACTORIES: dict[str, type[PersistedQueryStore]] = {
+    "memory": InMemoryPersistedQueryStore,
+    "redis": RedisPersistedQueryStore,
+}
+
+
 # Default APQ handler factory
 def create_apq_handler(
     store_type: str = "memory",
@@ -322,16 +328,15 @@ def create_apq_handler(
 
     Returns:
         Configured APQHandler.
+
+    Raises:
+        ValueError: If *store_type* is not a registered store type.
     """
-    store: PersistedQueryStore
-    if store_type == "memory":
-        store = InMemoryPersistedQueryStore(**kwargs)
-    elif store_type == "redis":
-        store = RedisPersistedQueryStore(**kwargs)
-    else:
+    store_cls = _STORE_FACTORIES.get(store_type)
+    if store_cls is None:
         raise ValueError(f"Unknown APQ store type: {store_type}")
 
-    return APQHandler(store=store)
+    return APQHandler(store=store_cls(**kwargs))
 
 
 __all__ = [
