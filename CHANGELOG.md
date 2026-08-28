@@ -10,17 +10,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - `ai-evaluation` guide documenting the LLM evaluation and reproducibility subsystem — evaluators, harness, seed-stable experiment tracking, digest-verified checkpoints, ablations, and error analysis.
 
-### Changed
-- `lexigram-web` `PermissionGuard` now requires **all** listed permissions by default; `require_all=False` opts into the previous any-of behavior.
-- `lexigram-auth` `use_guards` / `require_auth` / `require_admin` now fail closed with a `ValueError` when no request context can be discovered instead of silently running the handler unguarded.
-- Local `make ci` / `make test-cov` coverage gate aligned with CI at a 70% floor.
-
-### Fixed
-- `lexigram-sql` `QueryEngine` now returns normalized `list[dict]` rows and correct scalar values against real backends (`aiosqlite`, `asyncpg`, `aiomysql`) instead of assuming a driver result exposes `.fetchall()` / dict rows.
-- `ConnectionProtocol` now reflects the actual `DatabaseConnection` surface (`execute`/`execute_many`/`fetch_one`/`fetch_all`/`close`).
-- CLI migration command formatting passes the locked ruff format gate.
-- README `in progres` typos.
-
 ## [0.1.3] — 2026-08-19
 
 ### Added

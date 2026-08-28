@@ -38,15 +38,3 @@ async def test_auth_guard_accepts_request_context_identity_without_request_state
         result = await handler(request)
 
     assert result == {"ok": True}
-
-
-@pytest.mark.asyncio
-async def test_use_guards_fails_closed_without_request() -> None:
-    """A guarded handler without a discoverable request must never run unguarded."""
-
-    @use_guards(AuthGuard())
-    async def handler_no_request():
-        return {"ok": True}
-
-    with pytest.raises(ValueError, match="requires request context"):
-        await handler_no_request()

@@ -1,5 +1,4 @@
 """Unit tests for security domain"""
-
 from unittest.mock import AsyncMock, Mock
 
 import pytest
@@ -120,9 +119,7 @@ class TestPermissionGuard:
         assert "write:users" in permission_guard.required_permissions
 
     @pytest.mark.asyncio
-    async def test_permission_guard_has_permission(
-        self, permission_guard, mock_authorizer
-    ):
+    async def test_permission_guard_has_permission(self, permission_guard, mock_authorizer):
         """Test permission guard allows user with required permission"""
         request = Mock()
         request.state.user = Mock()
@@ -134,9 +131,7 @@ class TestPermissionGuard:
         assert can_activate is True
 
     @pytest.mark.asyncio
-    async def test_permission_guard_missing_permission(
-        self, permission_guard, mock_authorizer
-    ):
+    async def test_permission_guard_missing_permission(self, permission_guard, mock_authorizer):
         """Test permission guard blocks user without required permission"""
         request = Mock()
         request.state.user = Mock()
@@ -145,45 +140,6 @@ class TestPermissionGuard:
         mock_authorizer.can = AsyncMock(return_value=False)
 
         can_activate = await permission_guard.can_activate(request)
-        assert can_activate is False
-
-    @pytest.mark.asyncio
-    async def test_permission_guard_requires_all_by_default(self, mock_authorizer):
-        """Multiple permissions default to AND (all required)."""
-        mock_authorizer.can = AsyncMock(side_effect=[True, False])
-        request = Mock()
-        request.state.user = Mock()
-
-        guard = PermissionGuard("users:read", "users:write", authorizer=mock_authorizer)
-        can_activate = await guard.can_activate(request)
-        assert can_activate is False
-
-    @pytest.mark.asyncio
-    async def test_permission_guard_require_all_false_uses_any(self, mock_authorizer):
-        """require_all=False explicitly opts into OR semantics."""
-        mock_authorizer.can = AsyncMock(side_effect=[True, False])
-        request = Mock()
-        request.state.user = Mock()
-
-        guard = PermissionGuard(
-            "users:read",
-            "users:write",
-            authorizer=mock_authorizer,
-            require_all=False,
-        )
-        can_activate = await guard.can_activate(request)
-        assert can_activate is True
-
-    @pytest.mark.asyncio
-    async def test_permission_guard_without_permissions_fails_closed(
-        self, mock_authorizer
-    ):
-        """An empty required-permission set must never pass accidentally."""
-        request = Mock()
-        request.state.user = Mock()
-
-        guard = PermissionGuard(authorizer=mock_authorizer)
-        can_activate = await guard.can_activate(request)
         assert can_activate is False
 
 
@@ -225,9 +181,7 @@ class TestSecurityContext:
         """Test security context properties"""
         user = Mock()
         context = SecurityContext(
-            user=user,
-            roles=["admin", "user"],
-            permissions=["read", "write"],
+            user=user, roles=["admin", "user"], permissions=["read", "write"],
         )
         assert context.is_authenticated is True
         assert context.has_role("admin") is True

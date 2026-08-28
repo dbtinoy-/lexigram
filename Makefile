@@ -91,7 +91,7 @@ test-fast:  ## Run tests, stop on first failure
 
 .PHONY: test-cov
 test-cov:  ## Run tests with coverage report
-	$(PYTEST) --tb=short --cov --cov-report=html --cov-fail-under=70
+	$(PYTEST) --tb=short --cov --cov-report=html --cov-fail-under=80
 
 .PHONY: test-unit
 test-unit:  ## Run only unit tests (exclude integration / e2e)
@@ -104,7 +104,7 @@ ci:  ## Full CI pipeline: lint + type-check + tests with coverage gate
 	  && $(MYPY) $(CORE_SRC) \
 	  && cd $(WEB_DIR) && $(MYPY) src/lexigram/web
 	for p in $(TYPED_PKGS); do (cd $$p && $(MYPY) src) || exit 1; done
-	$(PYTEST) --tb=short --cov-fail-under=70
+	$(PYTEST) --tb=short --cov-fail-under=80
 	$(MAKE) check-demos
 
 .PHONY: guard
