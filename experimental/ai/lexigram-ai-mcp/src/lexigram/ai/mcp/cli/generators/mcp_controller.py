@@ -6,10 +6,11 @@ from pathlib import Path
 from typing import Any
 
 from lexigram.codegen.base import GenerationResult, GeneratorBase
+from lexigram.contracts.cli.generators import resolve_options
 
 
 class MCPControllerGenerator(GeneratorBase):
-    """Generates an MCPController class with @tool, @resource, and @prompt examples.
+    """Generate an MCPController class with @tool, @resource, and @prompt examples.
 
     Usage::
 
@@ -21,44 +22,36 @@ class MCPControllerGenerator(GeneratorBase):
     """
 
     name = "mcp-controller"
+    description = "Generate an MCP controller with tools, resources, and prompts"
+    default_output_dir = "src/mcp"
 
-    def __init__(self, output_dir: str = "src") -> None:
-        super().__init__(
-            output_dir=output_dir,
-            template_root=Path(__file__).parent.parent / "templates",
-        )
+    def __init__(self, output_dir: str | Path = "src/mcp") -> None:
+        super().__init__(output_dir=output_dir)
 
     def generate(
         self,
         name: str,
+        *,
         dry_run: bool = False,
         force: bool = False,
-        **_kwargs: Any,
+        **options: Any,
     ) -> GenerationResult:
         """Generate an MCPController file.
 
         Args:
             name: Controller name, e.g. ``"DataTools"`` or ``"user_service"``.
                   File name is derived from this.
-            dry_run: When ``True``, compute output paths without writing.
-            force: When ``True``, overwrite an existing file.
+            dry_run: Compute output paths without writing.
+            force: Overwrite an existing file.
 
         Returns:
-            ``GenerationResult`` with paths of created/skipped files.
+            ``GenerationResult`` with created/skipped/overwritten paths.
         """
-        result = GenerationResult()
         module_name = self._to_snake_case(name).removesuffix("_controller")
         class_name = self._to_pascal_case(module_name)
         # Strip trailing "Controller" from the class name if present
         if class_name.endswith("Controller"):
             class_name = class_name[: -len("Controller")]
-
-        file_name = f"{module_name}_controller.py"
-        file_path = self.output_dir / file_name
-
-        if file_path.exists() and not force:
-            result.files_skipped.append(file_path)
-            return result
 
         # Build a URI-friendly resource name (simple pluralisation)
         resource_name = module_name.replace("_", " ")
@@ -73,14 +66,10 @@ class MCPControllerGenerator(GeneratorBase):
             "resource_uri": f"{module_name}://",
         }
 
-        template = self.env.get_template("mcp_controller.py.jinja2")
-        content = template.render(**context)
+        content = self.render_template("mcp_controller.py.jinja2", context)
+        file_path = self.output_dir / f"{module_name}_controller.py"
+        self.stage(file_path, content)
+        return self.finalize(self.commit(resolve_options(dry_run=dry_run, force=force)))
 
-        if not dry_run:
-            self.output_dir.mkdir(parents=True, exist_ok=True)
-            file_path.write_text(content)
-            result.files_created.append(file_path)
-        else:
-            result.files_created.append(file_path)
 
-        return result
+__all__ = ["MCPControllerGenerator"]
