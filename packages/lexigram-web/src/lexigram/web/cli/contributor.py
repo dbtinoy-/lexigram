@@ -49,6 +49,12 @@ _SPECS: tuple[tuple[str, str, str, str], ...] = (
         "lexigram.web.cli.generators.websocket:WebSocketHandlerGenerator",
         "src/websocket",
     ),
+    (
+        "exception_filter",
+        "Generate a web exception filter",
+        "lexigram.web.cli.generators.exception_filter:ExceptionFilterGenerator",
+        "src/filters",
+    ),
 )
 
 _OPTIONS: dict[str, tuple[GeneratorOption, ...]] = {
@@ -58,6 +64,18 @@ _OPTIONS: dict[str, tuple[GeneratorOption, ...]] = {
         GeneratorOption(name="doc", type_hint="str", description="Class docstring"),
     ),
     "resource": (_FIELDS_OPTION,),
+    "exception_filter": (
+        GeneratorOption(
+            name="exception_type",
+            type_hint="str",
+            description="Exception class name the filter handles",
+        ),
+        GeneratorOption(
+            name="status_code",
+            type_hint="int",
+            description="HTTP status code used in the default error response",
+        ),
+    ),
 }
 
 # Titles that make() cannot derive exactly.
