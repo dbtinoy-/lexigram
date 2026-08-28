@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Workspace version alignment: all 54 packages now carry `0.1.5007` (was a mix of `0.1.5003`–`0.1.5006`); `uv.lock` regenerated.
 
 ### Fixed
+- `lexigram-ai-relay-gateway` auth guard now **fails closed** when the gateway is unconfigured: `require_auth` defaults to `True`, so a missing container or missing `RelayGatewayConfig` returns `503 AUTH_REQUIRED_BUT_UNBOUND` instead of silently passing requests through. The guard also falls back to the mount-time container (matching the contributor's service resolvers) when no request-scoped container is attached.
 - `lexigram-multimedia` `InMemoryIdempotencyStoreFallback` now honors TTLs (monotonic-clock expiry, mirroring `lexigram-resilience`'s store): idempotency windows close after their TTL and the dict no longer grows without bound.
 - `lexigram-multimedia-beat` reference server: `lexigram-beat-madmom-serve` now binds loopback only (the unauthenticated `/analyze` endpoint runs CPU-heavy processing), and tempo computation no longer divides by zero on degenerate beat output.
 - MySQL credentials are no longer passed in the child argv (`-p<password>` readable by any local user via `ps`): the CLI registry now uses `MYSQL_PWD` via `DatabaseBackend.subprocess_env()` for shell, backup, and restore commands.

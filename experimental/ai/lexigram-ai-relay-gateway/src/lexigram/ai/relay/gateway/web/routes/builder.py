@@ -3,6 +3,7 @@ from __future__ import annotations
 """Route assembly for the relay gateway web layer."""
 
 from functools import partial
+from typing import Any
 
 from starlette.routing import Route
 
@@ -47,6 +48,7 @@ def build_routes(
     resolve_job_passthrough: ResolveJobPassthrough | None = None,
     resolve_model_catalog: ResolveModelCatalog | None = None,
     resolve_health: ResolveRelayHealth | None = None,
+    fallback_container: Any | None = None,
 ) -> list[Route]:
     """Build the relay POST routes bound to gateway resolvers.
 
@@ -72,6 +74,10 @@ def build_routes(
             unauthenticated ``GET /health`` route is appended.  The
             health route is intentionally not auth-guarded: probe
             traffic cannot present tenant credentials.
+        fallback_container: Mount-time DI container used by the auth
+            guard when no request-scoped container is attached to
+            ``request.state``; mirrors the contributor's resolver
+            fallback.  ``None`` keeps the previous behavior.
 
     Returns:
         One ``Route`` per inbound relay format, in ``RELAY_ROUTE_PATHS``
@@ -81,7 +87,9 @@ def build_routes(
     routes = [
         Route(
             path,
-            _with_auth_guard(partial(relay_endpoint, source, resolve_gateway)),
+            _with_auth_guard(
+                partial(relay_endpoint, source, resolve_gateway), fallback_container
+            ),
             methods=["POST"],
         )
         for path, source in _ROUTE_TABLE
@@ -91,7 +99,8 @@ def build_routes(
             Route(
                 path,
                 _with_auth_guard(
-                    partial(passthrough_endpoint, kind, resolve_passthrough)
+                    partial(passthrough_endpoint, kind, resolve_passthrough),
+                    fallback_container,
                 ),
                 methods=["POST"],
             )
@@ -100,7 +109,10 @@ def build_routes(
         routes.extend(
             Route(
                 path,
-                _with_auth_guard(partial(_AUDIO_HANDLERS[kind], resolve_passthrough)),
+                _with_auth_guard(
+                    partial(_AUDIO_HANDLERS[kind], resolve_passthrough),
+                    fallback_container,
+                ),
                 methods=["POST"],
             )
             for path, kind in AUDIO_ROUTE_TABLE
@@ -108,7 +120,7 @@ def build_routes(
         guarded_image_routes = [
             Route(
                 route.path,
-                _with_auth_guard(route.endpoint),
+                _with_auth_guard(route.endpoint, fallback_container),
                 methods=route.methods or ["POST"],
             )
             for route in build_image_routes(resolve_passthrough)
@@ -119,7 +131,8 @@ def build_routes(
             Route(
                 path,
                 _with_auth_guard(
-                    partial(job_submit_endpoint, kind, resolve_job_passthrough)
+                    partial(job_submit_endpoint, kind, resolve_job_passthrough),
+                    fallback_container,
                 ),
                 methods=["POST"],
             )
@@ -129,7 +142,8 @@ def build_routes(
             Route(
                 _JOB_STATUS_PATH,
                 _with_auth_guard(
-                    partial(job_status_endpoint, kind, resolve_job_passthrough)
+                    partial(job_status_endpoint, kind, resolve_job_passthrough),
+                    fallback_container,
                 ),
                 methods=["GET"],
             )
@@ -140,7 +154,8 @@ def build_routes(
             Route(
                 "/v1beta/models",
                 _with_auth_guard(
-                    partial(models_endpoint, RelayFormat.GEMINI, resolve_model_catalog)
+                    partial(models_endpoint, RelayFormat.GEMINI, resolve_model_catalog),
+                    fallback_container,
                 ),
                 methods=["GET"],
             )
@@ -148,7 +163,10 @@ def build_routes(
         routes.append(
             Route(
                 "/v1/models",
-                _with_auth_guard(partial(models_endpoint, None, resolve_model_catalog)),
+                _with_auth_guard(
+                    partial(models_endpoint, None, resolve_model_catalog),
+                    fallback_container,
+                ),
                 methods=["GET"],
             )
         )
@@ -156,7 +174,8 @@ def build_routes(
             Route(
                 "/v1beta/models/{model}",
                 _with_auth_guard(
-                    partial(model_detail_endpoint, True, resolve_model_catalog)
+                    partial(model_detail_endpoint, True, resolve_model_catalog),
+                    fallback_container,
                 ),
                 methods=["GET"],
             )
@@ -165,7 +184,8 @@ def build_routes(
             Route(
                 "/v1/models/{model}",
                 _with_auth_guard(
-                    partial(model_detail_endpoint, False, resolve_model_catalog)
+                    partial(model_detail_endpoint, False, resolve_model_catalog),
+                    fallback_container,
                 ),
                 methods=["GET"],
             )
