@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 from lexigram.contracts.tenancy.protocols import TenantResolverProtocol
 
 
@@ -44,6 +46,46 @@ class ResolverRegistry:
         return len(self._resolvers)
 
     @classmethod
+    def _resolver_factories(
+        cls,
+        header_name: str,
+        subdomain_pattern: str | None,
+        path_pattern: str | None,
+        jwt_claim_key: str,
+    ) -> dict[str, Callable[[], TenantResolverProtocol]]:
+        """Build the name-to-factory dispatch map for the built-in resolvers.
+
+        ``subdomain`` and ``path`` are only selectable when their pattern is
+        provided, matching the historical ``from_config`` semantics.
+
+        Args:
+            header_name: Header name for the header resolver.
+            subdomain_pattern: Base domain for the subdomain resolver.
+            path_pattern: Path pattern for the path resolver.
+            jwt_claim_key: Claim key for the JWT-claim resolver.
+
+        Returns:
+            Mapping of resolver name to a zero-arg factory producing that
+            resolver, configured with the given options.
+        """
+        from lexigram.tenancy.resolution.header import HeaderTenantResolver
+        from lexigram.tenancy.resolution.jwt_claim import JWTClaimTenantResolver
+        from lexigram.tenancy.resolution.path import PathTenantResolver
+        from lexigram.tenancy.resolution.subdomain import SubdomainTenantResolver
+
+        factories: dict[str, Callable[[], TenantResolverProtocol]] = {
+            "jwt_claim": lambda: JWTClaimTenantResolver(claim_key=jwt_claim_key),
+            "header": lambda: HeaderTenantResolver(header_name=header_name),
+        }
+        if subdomain_pattern:
+            factories["subdomain"] = lambda: SubdomainTenantResolver(
+                base_domain=subdomain_pattern
+            )
+        if path_pattern:
+            factories["path"] = lambda: PathTenantResolver(path_pattern=path_pattern)
+        return factories
+
+    @classmethod
     def from_config(
         cls,
         resolver_names: list[str],
@@ -67,23 +109,17 @@ class ResolverRegistry:
         Returns:
             A populated :class:`ResolverRegistry`.
         """
-        from lexigram.tenancy.resolution.header import HeaderTenantResolver
-        from lexigram.tenancy.resolution.jwt_claim import JWTClaimTenantResolver
-        from lexigram.tenancy.resolution.path import PathTenantResolver
-        from lexigram.tenancy.resolution.subdomain import SubdomainTenantResolver
-
         registry = cls()
+        factories = cls._resolver_factories(
+            header_name=header_name,
+            subdomain_pattern=subdomain_pattern,
+            path_pattern=path_pattern,
+            jwt_claim_key=jwt_claim_key,
+        )
         for name in resolver_names:
-            if name == "jwt_claim":
-                registry.register(JWTClaimTenantResolver(claim_key=jwt_claim_key))
-            elif name == "header":
-                registry.register(HeaderTenantResolver(header_name=header_name))
-            elif name == "subdomain" and subdomain_pattern:
-                registry.register(
-                    SubdomainTenantResolver(base_domain=subdomain_pattern)
-                )
-            elif name == "path" and path_pattern:
-                registry.register(PathTenantResolver(path_pattern=path_pattern))
+            factory = factories.get(name)
+            if factory is not None:
+                registry.register(factory())
         return registry
 
 
