@@ -101,6 +101,10 @@ class EventReplayProtocol(Protocol):
     ) -> int:
         """Replay matching events through an async handler.
 
+        Args:
+            since: Optional exclusive timestamp checkpoint; an event at the
+                checkpoint is not replayed.
+
         Returns:
             Number of events successfully delivered to the handler.
         """

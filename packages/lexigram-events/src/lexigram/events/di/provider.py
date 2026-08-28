@@ -290,6 +290,22 @@ class EventsProvider(Provider):
         stores, _, _ = self._ensure_composed()
         await stores.setup(container)
 
+    @staticmethod
+    def _health_payload(result: Any) -> dict[str, Any]:
+        """Normalize health result implementations to JSON-safe dictionaries."""
+        if isinstance(result, dict):
+            return result
+
+        for method_name in ("to_dict", "model_dump"):
+            serializer = getattr(result, method_name, None)
+            if callable(serializer):
+                payload = serializer()
+                if isinstance(payload, dict):
+                    return payload
+
+        status = getattr(result, "status", HealthStatus.UNKNOWN)
+        return {"status": getattr(status, "value", str(status))}
+
     async def health_check(self, timeout: float = 5.0) -> HealthCheckResult:
         """Aggregate health across stores and buses."""
         start = time.time()
@@ -299,15 +315,15 @@ class EventsProvider(Provider):
 
         stores, buses, _ = self._ensure_composed()
 
-        bus_health = await buses.health_check()
-        details["components"].update(bus_health)
+        bus_health = await buses.health_check(timeout=timeout)
+        details["components"]["buses"] = self._health_payload(bus_health)
+        if bus_health.status != HealthStatus.HEALTHY:
+            overall = HealthStatus.DEGRADED
 
         if stores.event_store and hasattr(stores.event_store, "health_check"):
             try:
-                sh = await stores.event_store.health_check()
-                details["components"]["event_store"] = (
-                    sh.model_dump() if hasattr(sh, "model_dump") else sh
-                )
+                sh = await stores.event_store.health_check(timeout=timeout)
+                details["components"]["event_store"] = self._health_payload(sh)
                 if hasattr(sh, "status") and sh.status != HealthStatus.HEALTHY:
                     overall = HealthStatus.DEGRADED
             except (RuntimeError, OSError, AttributeError, LookupError) as exc:
@@ -319,6 +335,7 @@ class EventsProvider(Provider):
                 errors.append(f"EventStoreProtocol: {exc}")
         elif stores.event_store:
             details["components"]["event_store"] = {"status": "unknown"}
+            overall = HealthStatus.DEGRADED
 
         return HealthCheckResult(
             component="events",

@@ -29,6 +29,7 @@ from typing import (
     TypeVar,
 )
 
+from lexigram.contracts.core import HealthCheckResult, HealthStatus
 from lexigram.events.exceptions import HandlerNotFoundError
 from lexigram.events.messages.base import Message
 from lexigram.logging import get_logger
@@ -85,6 +86,18 @@ class Bus(ABC, Generic[TMessage, TResult]):
         """
         self._middlewares: list[MiddlewareFunc] = middlewares or []
         self._handlers: dict[type[TMessage], Any] = {}
+
+    async def health_check(self, timeout: float = 5.0) -> HealthCheckResult:
+        """Report readiness for a process-local bus with no external probe."""
+        _ = timeout
+        return HealthCheckResult(
+            component=self.__class__.__name__,
+            status=HealthStatus.HEALTHY,
+            details={
+                "handler_count": len(self._handlers),
+                "middleware_count": len(self._middlewares),
+            },
+        )
 
     def register(
         self,
