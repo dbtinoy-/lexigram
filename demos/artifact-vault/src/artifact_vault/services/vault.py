@@ -33,6 +33,7 @@ class ArtifactVaultService:
             )
 
     async def list(self, prefix: str = "") -> list[dict[str, Any]]:
+        """List all artifacts matching an optional path prefix."""
         items: list[dict[str, Any]] = []
         async for info in self._store.list(prefix):
             items.append(self._info(info))
@@ -41,6 +42,7 @@ class ArtifactVaultService:
     async def upload(
         self, name: str, content: str, content_type: str, owner: str
     ) -> dict[str, Any]:
+        """Upload a new artifact with validation and size limits."""
         path = self._safe_path(name)
         if not content:
             raise ValueError("Artifact content is required")
@@ -60,6 +62,7 @@ class ArtifactVaultService:
         return self._info(info)
 
     async def content(self, name: str) -> dict[str, Any]:
+        """Download and return the content of an artifact."""
         path = self._safe_path(name)
         info = await self._store.info(path)
         raw = await self._store.download(path)
@@ -70,6 +73,7 @@ class ArtifactVaultService:
         }
 
     async def delete(self, name: str) -> None:
+        """Delete an artifact from the blob store."""
         await self._store.delete(self._safe_path(name))
 
     async def access(self, name: str) -> dict[str, Any]:
@@ -95,6 +99,7 @@ class ArtifactVaultService:
         }
 
     async def health(self) -> dict[str, Any]:
+        """Check and return the blob store health status."""
         result = await self._store.health_check()
         return {"status": result.status.value, "details": result.details or {}}
 

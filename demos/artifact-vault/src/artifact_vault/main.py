@@ -8,6 +8,7 @@ from artifact_vault.app import create_app
 
 
 async def serve() -> None:
+    """Start the artifact vault server and block until shutdown."""
     from lexigram.web.server.runner import run_server
 
     app = create_app()
@@ -19,6 +20,7 @@ async def serve() -> None:
 
 
 def main() -> int:
+    """Entry point that runs the async server with graceful Ctrl-C handling."""
     try:
         asyncio.run(serve())
     except KeyboardInterrupt:

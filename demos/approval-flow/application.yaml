@@ -2,19 +2,37 @@
 name: approval-flow
 version: 0.1.0
 description: Deterministic purchase approval state machine with saga orchestration
-# ────────────────────────────────────────────────────────────────────────────
-# Approval Flow — deterministic purchase approval state machine
+
+# ── Web ─────────────────────────────────────────────────────────────────────
+# HTTP server and security settings for the demo UI and API.
 web:
   server:
-    host: 0.0.0.0
-    port: 8100
+    host: 0.0.0.0           # Listen on all interfaces
+    port: 8100               # Demo port (avoids conflict with other services)
   security:
     csrf:
-      enabled: false
+      enabled: false         # Disabled for local demo — no session-based auth
+
+# ── Workflow ────────────────────────────────────────────────────────────────
+# Workflow module configuration shared across approval steps.
 workflow:
+  # Maximum number of automatic retries when a pipeline step fails
+  # due to a transient error (network blip, timeout, etc.).
   retry_attempts: 1
+
+  # Hard ceiling in seconds for the entire approval pipeline.
+  # If the chain hasn't completed by then, the workflow aborts.
   pipeline_timeout: 30
+
+# ── Approval Flow ───────────────────────────────────────────────────────────
+# Demo-specific settings that seed the interactive approval request.
 approval_flow:
+  # Master switch — set to false to disable the provider and controller.
   enabled: true
+
+  # Title pre-filled in the browser on first load.
   initial_request: Purchase 24 laptops
+
+  # Dollar amount pre-filled in the browser on first load.
+  # Must be > 0 (enforced by the config dataclass validation).
   initial_amount: 24000

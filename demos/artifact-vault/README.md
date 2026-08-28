@@ -43,3 +43,14 @@ The hub embeds this console at `/demos/artifact-vault/`.
 | GET | `/api/artifacts/access/{name}` | Show URL and signed access support |
 | DELETE | `/api/artifacts/{name}` | Delete an object |
 | GET | `/api/artifacts/health` | Check the active storage backend |
+
+## Lexigram Concepts
+
+| Concept | How it's used |
+|---------|---------------|
+| Provider Pattern | `ArtifactVaultProvider` registers config and controller in DI during `register()`, resolves the blob store and binds the service in `boot()` |
+| Dependency Injection | `ArtifactVaultApiController` receives `ArtifactVaultService` via constructor; `ArtifactVaultService` receives `BlobStoreProtocol` and config |
+| Service Adapter | `ArtifactVaultService` wraps `BlobStoreProtocol` with domain-specific upload/list/content/delete/health operations |
+| Health Checks | Provider exposes `health_check()` returning `HealthCheckResult`; controller exposes `/api/artifacts/health` |
+| Seed Data | Demo boots with a `docs/welcome.txt` artifact for immediate browser interaction |
+| Web Controllers | `ArtifactVaultApiController` uses `@get`/`@post`/`@delete` decorators to define REST endpoints under `/api/artifacts` |

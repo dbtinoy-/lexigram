@@ -19,6 +19,7 @@ from release_control.ui.pages import ReleaseControlPageController
 
 
 def build_modules() -> list[object]:
+    """Build the Lexigram modules required by the release control demo."""
     return [
         FeatureFlagsModule.configure(),
         WebModule.configure(
@@ -28,10 +29,12 @@ def build_modules() -> list[object]:
 
 
 def build_providers() -> list[Provider]:
+    """Build the DI providers for the release control demo."""
     return [ReleaseControlProvider()]
 
 
 def create_app(config: LexigramConfig | None = None) -> Application:
+    """Create and configure the release control application."""
     app = Application(name="feature-flags", config=config)
     app.add_modules(build_modules())
     app.add_providers(build_providers())

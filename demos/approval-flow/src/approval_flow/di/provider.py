@@ -35,11 +35,13 @@ class ApprovalFlowProvider(Provider):
         self._service: ApprovalFlowService | None = None
 
     async def register(self, container: ContainerRegistrarProtocol) -> None:
+        """Bind the approval-flow config and API controller to the container."""
         cfg = self.config or ApprovalFlowConfig()
         container.singleton(ApprovalFlowConfig, instance=cfg)
         container.singleton(ApprovalFlowApiController, ApprovalFlowApiController)
 
     async def boot(self, container: ContainerResolverProtocol) -> None:
+        """Resolve dependencies and wire the approval flow service."""
         # Resolving the package provider makes the composition/lifecycle
         # relationship explicit: this app's service comes after WorkflowModule.
         await container.resolve(WorkflowProvider)
@@ -52,6 +54,7 @@ class ApprovalFlowProvider(Provider):
         )
 
     async def health_check(self, timeout: float = 5.0) -> HealthCheckResult:
+        """Return readiness status based on whether the service has booted."""
         return HealthCheckResult(
             component=self.name,
             status=HealthStatus.HEALTHY if self._service else HealthStatus.UNHEALTHY,

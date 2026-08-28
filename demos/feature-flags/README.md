@@ -39,3 +39,16 @@ The hub embeds this console at `/demos/feature-flags/`.
 | POST | `/api/flags/override/clear` | Return to provider control |
 | POST | `/api/flags/cache/clear` | Flush manager TTL results |
 | GET | `/api/flags/audit` | Inspect override history |
+
+## Lexigram Concepts
+
+| Concept | How it's used |
+|---------|---------------|
+| Provider Pattern | `ReleaseControlProvider` registers flag services and wires the `FlagManager` from `FeatureFlagsModule` into the container |
+| Dependency Injection | `ReleaseControlApiController` receives `ReleaseControlService` via constructor; the service receives `FlagManager`, `ReleaseControlConfig`, and `FeatureFlagsConfig` |
+| Feature Flags | Flags evaluated with percentage rollouts (`new_checkout`), variant A/B tests (`search_experiment`), and user-attribute targeting (`ai_assistant`) |
+| Caching | `FlagManager` caches flag evaluations in-process with a configurable TTL (`cache_ttl: 15`); the `/api/flags/cache/clear` endpoint flushes the cache on demand |
+| Audit Trail | Every runtime override is recorded as a `FlagAuditEntry` (flag name, actor, old/new value, timestamp) and exposed via `/api/flags/audit` |
+| Health Checks | `ReleaseControlProvider.health_check()` reports readiness based on whether the service was successfully booted |
+| Result Pattern | Service methods validate inputs and raise `ValueError` for unknown flags; the controller catches and returns error dicts |
+| Web Controllers | `ReleaseControlApiController` extends `Controller` with `@get`/`@post` route decorators under the `/api/flags` prefix |
