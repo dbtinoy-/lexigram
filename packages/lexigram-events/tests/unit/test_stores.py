@@ -450,6 +450,39 @@ class TestEventStoreReplay:
             assert ev.occurred_at > cutoff
 
     @pytest.mark.asyncio
+    async def test_replay_since_excludes_event_at_checkpoint(self) -> None:
+        """The exclusive replay checkpoint must not redeliver its boundary event."""
+        store = InMemoryEventStore()
+        aggregate_id = uuid4()
+        cutoff = datetime(2026, 8, 28, 8, 0, 0, tzinfo=UTC)
+
+        class TestEvent(DomainEvent):
+            value: int
+
+        await store.append(
+            str(aggregate_id),
+            [
+                TestEvent(aggregate_id=aggregate_id, value=1, occurred_at=cutoff),
+                TestEvent(
+                    aggregate_id=aggregate_id,
+                    value=2,
+                    occurred_at=cutoff + timedelta(seconds=1),
+                ),
+            ],
+            expected_version=0,
+        )
+
+        received: list[DomainEvent] = []
+
+        async def handler(event: DomainEvent) -> None:
+            received.append(event)
+
+        count = await store.replay_events(handler, since=cutoff)
+
+        assert count == 1
+        assert [event.value for event in received] == [2]
+
+    @pytest.mark.asyncio
     async def test_replay_returns_zero_on_empty_store(self) -> None:
         """Replaying an empty store returns 0 events handled."""
         store = InMemoryEventStore()

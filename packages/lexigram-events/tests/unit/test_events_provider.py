@@ -26,7 +26,9 @@ class _RecordingContainer:
     def transient(self, contract: type, factory: object, **kwargs: object) -> None:
         self.bindings[contract] = factory
 
-    def singleton(self, contract: type, implementation: object, **kwargs: object) -> None:
+    def singleton(
+        self, contract: type, implementation: object, **kwargs: object
+    ) -> None:
         self.bindings[contract] = implementation
 
     def has(self, contract: type) -> bool:
@@ -106,6 +108,23 @@ class TestEventsProviderLifecycle:
         await prov.shutdown()
 
     @pytest.mark.asyncio
+    async def test_health_check_returns_json_safe_component_results(self) -> None:
+        """Health aggregation serializes buses and the in-memory store."""
+        prov = EventsProvider()
+        container = _RecordingContainer()
+        await prov.register(container)
+
+        result = await prov.health_check()
+        payload = result.to_dict()
+        components = payload["details"]["components"]
+
+        assert result.is_healthy()
+        assert components["buses"]["status"] == "healthy"
+        assert components["buses"]["details"]["event_bus"]["status"] == "healthy"
+        assert components["event_store"]["status"] == "healthy"
+        assert components["event_store"]["details"]["backend"] == "memory"
+
+    @pytest.mark.asyncio
     async def test_register_binds_store_and_bus_contracts(self) -> None:
         """Register binds concrete components and contract-boundary protocols."""
         prov = EventsProvider()
@@ -148,7 +167,7 @@ class TestEventsProviderLifecycle:
     @pytest.mark.asyncio
     async def test_boot_wires_optional_tracer_into_buses(self) -> None:
         """Boot should resolve optional tracer and wire it into buses.
-        
+
         This test verifies that:
         1. EventsProvider.boot() awaits resolve_optional(TracerProtocol)
         2. The resolved tracer is passed to BusSubProvider.set_tracer(...)
@@ -156,13 +175,14 @@ class TestEventsProviderLifecycle:
         from lexigram.testing.fakes import FakeTracer
 
         prov = EventsProvider()
-        
+
         # Create a mock container that returns a tracer
         tracer = FakeTracer()
-        
+
         class _TracingContainer(_RecordingContainer):
             async def resolve_optional(self, contract_type):
                 from lexigram.contracts.observability.tracing import TracerProtocol
+
                 if contract_type is TracerProtocol:
                     return tracer
                 return None
