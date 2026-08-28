@@ -105,3 +105,17 @@ footer .sep { margin: 0 .5rem; color: var(--muted); }
 .nav-links { margin-left: auto; display: flex; gap: 1rem; font-size: .85rem; }
 .nav-links a { color: var(--ink-dim); text-decoration: none; }
 .nav-links a:hover { color: var(--accent); }
+
+.hub-status { color: var(--muted); font-size: .82rem; margin: 0 0 .75rem; }
+.hub-status.error { color: var(--red, #dc2626); }
+button:focus-visible, a:focus-visible { outline: 3px solid rgba(101, 163, 13, .35); outline-offset: 2px; }
+@media (max-width: 720px) {
+  header { padding: .85rem .9rem .7rem; align-items: flex-start; }
+  header > div:first-child { flex: 1 1 100%; }
+  #filters { width: 100%; margin-left: 0; overflow-x: auto; }
+  #filters button { flex: 1; white-space: nowrap; }
+  main { padding: .75rem .9rem 1.25rem; }
+  .grid, .group-section .grid { grid-template-columns: 1fr; }
+  footer { padding: .75rem .9rem; gap: .5rem; flex-wrap: wrap; }
+  .footer-links { flex-wrap: wrap; }
+}

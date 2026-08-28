@@ -12,8 +12,8 @@
   <a href="/" class="nav-brand">Lexigram</a>
   <span class="nav-demo">RAG Docs</span>
   <div class="nav-links">
-    <a href="https://lexigram.dev">Docs</a>
-    <a href="https://github.com/dbtinoy-/lexigram">GitHub</a>
+    <a href="https://lexigram.dev" target="_blank" rel="noopener">Docs</a>
+    <a href="https://github.com/dbtinoy-/lexigram" target="_blank" rel="noopener">GitHub</a>
   </div>
 </nav>
 
@@ -26,9 +26,11 @@
     <aside class="sidebar">
       <form id="ask-form" class="ask-form">
         <div class="input-wrap">
-          <textarea id="question" rows="2" placeholder="e.g. how do providers boot?"></textarea>
+          <label for="question" class="sr-only">Question</label>
+          <textarea id="question" rows="2" placeholder="e.g. how do providers boot?" required></textarea>
         </div>
         <div class="controls">
+          <label for="strategy" class="sr-only">Retrieval strategy</label>
           <select id="strategy">
             <option value="vector">vector</option>
             <option value="mmr">mmr</option>

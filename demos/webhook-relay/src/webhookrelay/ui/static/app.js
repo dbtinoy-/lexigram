@@ -2,44 +2,76 @@
 "use strict";
 
 const $ = (id) => document.getElementById(id);
+
 function ts() { return new Date().toLocaleTimeString(); }
 function log(msg, cls) {
   const el = document.createElement("div");
   el.className = "log-entry " + (cls || "");
-  el.innerHTML = '<span class="log-time">' + ts() + "</span>" + msg;
+  el.textContent = `${ts()} ${msg}`;
   const logEl = $("log");
   logEl.prepend(el);
   if (logEl.children.length > 50) logEl.lastChild.remove();
 }
 
+function showError(message) {
+  const error = $("error");
+  error.textContent = message;
+  error.classList.toggle("hidden", !message);
+}
+
+async function readResponse(response) {
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || data.error) {
+    throw new Error(data.error || `HTTP ${response.status}`);
+  }
+  return data;
+}
+
 async function refreshEvents() {
   try {
     const res = await fetch("/api/webhook/events");
-    const data = await res.json();
-    $("events-list").innerHTML = (data || []).map(function(e) {
-      return '<div style="padding:.4rem 0;border-bottom:1px solid var(--border)">' +
-        '<strong>' + (e.type || e.event) + '</strong> ' +
-        '<span style="color:var(--ink-dim)">' + (e.timestamp || "") + '</span></div>';
-    }).join("") || "<p>No events yet.</p>";
-  } catch (_) { /* ignore */ }
+    const data = await readResponse(res);
+    const events = data.events || [];
+    $("events-list").innerHTML = events.map(function(event) {
+      return `<article class="event-row"><strong>${escapeHtml(event.event_type || event.type || "event")}</strong>` +
+        `<span>${escapeHtml(event.status || "")}</span>` +
+        `<time>${escapeHtml(event.timestamp || "")}</time></article>`;
+    }).join("") || "<p class=\"muted\">No events yet.</p>";
+  } catch (e) {
+    log(`refresh failed: ${e.message}`, "log-error");
+    showError(`Events unavailable: ${e.message}`);
+  }
 }
 
-$("btn-send").addEventListener("click", async function() {
+async function send(event) {
+  event.preventDefault();
   const eventType = $("event-type").value;
   const btn = $("btn-send");
   btn.disabled = true;
+  showError("");
   try {
     const res = await fetch("/api/webhook/receive", {
       method: "POST",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({event_type: eventType, payload: {id: Date.now()}, source: "console"})
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ event_type: eventType, payload: { id: Date.now() }, source: "console" }),
     });
-    const data = await res.json();
-    log("sent webhook: " + eventType, "log-hit");
+    const data = await readResponse(res);
+    log(`sent ${eventType} (${data.status})`, "log-hit");
     await refreshEvents();
-  } catch (e) { log("send failed: " + e.message, "log-error"); }
-  finally { btn.disabled = false; }
-});
+  } catch (e) {
+    showError(e.message);
+    log(`send failed: ${e.message}`, "log-error");
+  } finally {
+    btn.disabled = false;
+  }
+}
 
+function escapeHtml(text) {
+  const element = document.createElement("div");
+  element.textContent = text;
+  return element.innerHTML;
+}
+
+$("send-form").addEventListener("submit", send);
 refreshEvents();
 setInterval(refreshEvents, 5000);

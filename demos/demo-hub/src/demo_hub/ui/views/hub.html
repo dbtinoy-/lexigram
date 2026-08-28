@@ -14,21 +14,22 @@
       <p class="sandbox">Sandbox &mdash; in-memory state resets often; auth consoles use seeded demo credentials.</p>
     </div>
     <div id="filters">
-      <button data-f="all" class="active">All</button>
-      <button data-f="standard">Standard</button>
-      <button data-f="multi-module">Multi-module</button>
+      <button type="button" data-f="all" class="active">All</button>
+      <button type="button" data-f="standard">Standard</button>
+      <button type="button" data-f="multi-module">Multi-module</button>
     </div>
   </header>
 
   <main>
+    <p id="hub-status" class="hub-status" role="status" aria-live="polite">Loading demos…</p>
     <div id="cards"></div>
   </main>
 
   <div id="modal-overlay" class="modal-overlay hidden">
-    <div class="modal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
       <div class="modal-header">
         <h2 id="modal-title"></h2>
-        <button id="modal-close" class="modal-close">&times;</button>
+        <button type="button" id="modal-close" class="modal-close" aria-label="Close demo information">&times;</button>
       </div>
       <div id="modal-body" class="modal-body"></div>
     </div>
@@ -41,7 +42,7 @@
     <div class="footer-links">
       <a href="https://docs.lexigram.dev" target="_blank" rel="noopener">Docs</a>
       <span class="sep">&middot;</span>
-      <a href="https://github.com/dbtinoy/lexigram" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://github.com/dbtinoy-/lexigram" target="_blank" rel="noopener">GitHub</a>
       <span class="sep">&middot;</span>
       <a href="https://lexigram.dev" target="_blank" rel="noopener">lexigram.dev</a>
     </div>

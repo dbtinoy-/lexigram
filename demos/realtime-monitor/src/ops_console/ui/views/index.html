@@ -11,8 +11,8 @@
   <a href="/" class="nav-brand">Lexigram</a>
   <span class="nav-demo">Realtime Monitor</span>
   <div class="nav-links">
-    <a href="https://lexigram.dev">Docs</a>
-    <a href="https://github.com/dbtinoy-/lexigram">GitHub</a>
+    <a href="https://lexigram.dev" target="_blank" rel="noopener">Docs</a>
+    <a href="https://github.com/dbtinoy-/lexigram" target="_blank" rel="noopener">GitHub</a>
   </div>
 </nav>
 
@@ -34,15 +34,17 @@
       </div>
 
       <div class="toolbar">
+        <label class="sr-only" for="search">Search events</label>
         <input placeholder="Search events…" id="search" class="search" type="search" />
+        <label class="sr-only" for="filter-sev">Filter by severity</label>
         <select id="filter-sev">
           <option value="all">All severities</option>
           <option value="info">Info</option>
           <option value="warn">Warn</option>
           <option value="critical">Critical</option>
         </select>
-        <button id="pause">Pause</button>
-        <button id="clear">Clear feed</button>
+        <button type="button" id="pause">Pause</button>
+        <button type="button" id="clear">Clear feed</button>
       </div>
 
       <table>
@@ -60,18 +62,22 @@
       </table>
 
       <form class="publish" id="publish-form">
+        <label class="sr-only" for="msg">Event message</label>
         <input placeholder="Event message…" id="msg" required />
+        <label class="sr-only" for="src">Event source</label>
         <input placeholder="source" value="console" id="src" />
+        <label class="sr-only" for="sev">Event severity</label>
         <select id="sev">
           <option value="info">info</option>
           <option value="warn">warn</option>
           <option value="critical">critical</option>
         </select>
         <button type="submit" id="publish-btn">Publish</button>
+        <span id="publish-status" class="publish-status" role="status" aria-live="polite"></span>
       </form>
 
       <script src="/static/dashboard.js"></script>
-      <div class="demo-footer">Powered by <a href="https://lexigram.dev">Lexigram</a></div>
+      <div class="demo-footer">Powered by <a href="https://lexigram.dev" target="_blank" rel="noopener">Lexigram</a></div>
     </div>
   </body>
 </html>

@@ -12,8 +12,8 @@
   <a href="/" class="nav-brand">Lexigram</a>
   <span class="nav-demo">Support Agent</span>
   <div class="nav-links">
-    <a href="https://lexigram.dev">Docs</a>
-    <a href="https://github.com/dbtinoy-/lexigram">GitHub</a>
+    <a href="https://lexigram.dev" target="_blank" rel="noopener">Docs</a>
+    <a href="https://github.com/dbtinoy-/lexigram" target="_blank" rel="noopener">GitHub</a>
   </div>
 </nav>
 
@@ -28,12 +28,13 @@
     </aside>
     <section id="console">
       <div id="scenarios">
-        <button data-scenario="happy">Happy path</button>
-        <button data-scenario="multi_tool">Multi-tool</button>
-        <button data-scenario="failure">Failure</button>
+        <button type="button" data-scenario="happy">Happy path</button>
+        <button type="button" data-scenario="multi_tool">Multi-tool</button>
+        <button type="button" data-scenario="failure">Failure</button>
       </div>
       <form id="ask-form">
-        <input id="question" type="text" autocomplete="off"
+        <label class="sr-only" for="question">Support question</label>
+        <input id="question" type="text" autocomplete="off" required
                placeholder="Ask about order A-100, refunds, shipping&hellip;">
         <button type="submit">Ask</button>
       </form>
@@ -43,7 +44,7 @@
         <tbody></tbody>
       </table>
       <p id="meta" class="muted"></p>
-      <p id="error" class="hidden"></p>
+      <p id="error" class="hidden" role="alert"></p>
     </section>
   </main>
   <script src="/static/app.js"></script>

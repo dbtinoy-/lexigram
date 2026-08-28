@@ -25,7 +25,8 @@ function badge(status) {
 /* ── Orders ─────────────────────────────────────────────── */
 
 async function loadOrders() {
-  const res = await fetch("/orders");
+  try {
+    const res = await fetch("/orders");
   const rows = await res.json();
   const tbody = $("orders-table").querySelector("tbody");
   tbody.innerHTML = "";
@@ -39,9 +40,9 @@ async function loadOrders() {
     const shortId = r.order_id.substring(0, 8);
     let actions = "";
     if (r.status === "placed") {
-      actions = '<button class="action-btn pay" data-id="' + r.order_id + '" data-total="' + r.total + '">Pay</button>';
+      actions = '<button type="button" class="action-btn pay" data-id="' + r.order_id + '" data-total="' + r.total + '">Pay</button>';
     } else if (r.status === "paid") {
-      actions = '<button class="action-btn ship" data-id="' + r.order_id + '">Ship</button>';
+      actions = '<button type="button" class="action-btn ship" data-id="' + r.order_id + '">Ship</button>';
     }
     tr.innerHTML =
       "<td><code>" + shortId + "</code></td>" +
@@ -53,12 +54,17 @@ async function loadOrders() {
   });
 
   /* wire action buttons */
-  tbody.querySelectorAll(".action-btn.pay").forEach((btn) =>
-    btn.addEventListener("click", () => payOrder(btn.dataset.id, btn.dataset.total))
-  );
-  tbody.querySelectorAll(".action-btn.ship").forEach((btn) =>
-    btn.addEventListener("click", () => shipOrder(btn.dataset.id))
-  );
+    tbody.querySelectorAll(".action-btn.pay").forEach((btn) =>
+      btn.addEventListener("click", () => payOrder(btn.dataset.id, btn.dataset.total, btn))
+    );
+    tbody.querySelectorAll(".action-btn.ship").forEach((btn) =>
+      btn.addEventListener("click", () => shipOrder(btn.dataset.id, btn))
+    );
+  } catch (error) {
+    $("orders-error").textContent = `Could not load orders: ${error.message}`;
+    show("orders-error");
+    log("load orders failed: " + error.message, "log-err");
+  }
 }
 
 /* ── Place order ────────────────────────────────────────── */
@@ -104,6 +110,9 @@ async function placeOrder(event) {
     return;
   }
   const body = { customer: $("customer").value.trim(), items };
+  const submit = event.target.querySelector("button[type=submit]");
+  submit.disabled = true;
+  submit.textContent = "Placing…";
   try {
     const res = await fetch("/orders", {
       method: "POST",
@@ -125,12 +134,16 @@ async function placeOrder(event) {
   } catch (e) {
     $("place-error").textContent = e.message;
     show("place-error");
+  } finally {
+    submit.disabled = false;
+    submit.textContent = "Place Order";
   }
 }
 
 /* ── Pay / Ship ─────────────────────────────────────────── */
 
-async function payOrder(orderId, total) {
+async function payOrder(orderId, total, button) {
+  button.disabled = true;
   try {
     const res = await fetch("/orders/" + orderId + "/pay", {
       method: "POST",
@@ -146,10 +159,13 @@ async function payOrder(orderId, total) {
     await loadOrders();
   } catch (e) {
     log("pay error: " + e.message, "log-err");
+  } finally {
+    button.disabled = false;
   }
 }
 
-async function shipOrder(orderId) {
+async function shipOrder(orderId, button) {
+  button.disabled = true;
   try {
     const res = await fetch("/orders/" + orderId + "/ship", { method: "POST" });
     if (!res.ok) {
@@ -161,13 +177,16 @@ async function shipOrder(orderId) {
     await loadOrders();
   } catch (e) {
     log("ship error: " + e.message, "log-err");
+  } finally {
+    button.disabled = false;
   }
 }
 
 /* ── Outbox ─────────────────────────────────────────────── */
 
 async function loadOutbox() {
-  const res = await fetch("/outbox");
+  try {
+    const res = await fetch("/outbox");
   const rows = await res.json();
   const tbody = $("outbox-table").querySelector("tbody");
   tbody.innerHTML = "";
@@ -178,14 +197,22 @@ async function loadOutbox() {
   }
   hide("outbox-empty");
   show("outbox-table");
-  rows.forEach((r) => {
-    const tr = document.createElement("tr");
-    tr.innerHTML = "<td>" + r.event_type + "</td><td>" + r.status + "</td>";
-    tbody.appendChild(tr);
-  });
+    rows.forEach((r) => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = "<td>" + r.event_type + "</td><td>" + r.status + "</td>";
+      tbody.appendChild(tr);
+    });
+  } catch (error) {
+    $("outbox-error").textContent = `Could not load outbox: ${error.message}`;
+    show("outbox-error");
+    log("load outbox failed: " + error.message, "log-err");
+  }
 }
 
 async function flushOutbox() {
+  const button = $("flush-btn");
+  button.disabled = true;
+  button.textContent = "Flushing…";
   try {
     const res = await fetch("/outbox/flush", { method: "POST" });
     const data = await res.json();
@@ -198,6 +225,9 @@ async function flushOutbox() {
     await loadOrders();
   } catch (e) {
     log("flush error: " + e.message, "log-err");
+  } finally {
+    button.disabled = false;
+    button.textContent = "Flush Outbox";
   }
 }
 

@@ -13,20 +13,32 @@ function setActiveButton() {
   });
 }
 
+function showError(message) {
+  $("error").textContent = message;
+  show("error");
+}
+
 async function loadTools() {
   const res = await fetch("/api/tools");
-  const tools = await res.json();
+  const tools = await res.json().catch(() => ({}));
+  if (!res.ok || tools.error || tools.detail) throw new Error(tools.error || tools.detail || `HTTP ${res.status}`);
   $("tools").innerHTML = tools
-    .map((t) => `<li title="${t.description}"><code>${t.name}</code></li>`)
+    .map((t) => `<li title="${escapeHtml(t.description)}"><code>${escapeHtml(t.name)}</code></li>`)
     .join("");
+}
+
+function escapeHtml(text) {
+  const element = document.createElement("div");
+  element.textContent = String(text);
+  return element.innerHTML;
 }
 
 function row(step, call) {
   const outcome = call
-    ? `${call.tool_name} ${call.succeeded ? "ok" : `FAILED: ${call.error ?? ""}`}`
+    ? `${escapeHtml(call.tool_name)} ${call.succeeded ? "ok" : `FAILED: ${escapeHtml(call.error ?? "")}`}`
     : "";
-  return `<tr><td>${step.step_number}</td><td>${step.thought ?? ""}</td>` +
-         `<td>${step.action ?? ""}</td><td>${outcome}</td></tr>`;
+  return `<tr><td>${escapeHtml(step.step_number)}</td><td>${escapeHtml(step.thought ?? "")}</td>` +
+         `<td>${escapeHtml(step.action ?? "")}</td><td>${outcome}</td></tr>`;
 }
 
 function render(body) {
@@ -40,18 +52,25 @@ function render(body) {
 async function ask(event) {
   event.preventDefault();
   ["answer", "trace", "meta", "error"].forEach(hide);
-  const res = await fetch("/api/ask", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ question: $("question").value, scenario }),
-  });
-  if (!res.ok) {
-    const err = await res.json();
-    $("error").textContent = err.error ?? `HTTP ${res.status}`;
+  const submit = $("ask-form").querySelector("button[type=submit]");
+  submit.disabled = true;
+  try {
+    const res = await fetch("/api/ask", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question: $("question").value.trim(), scenario }),
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok || body.error || body.detail) {
+      throw new Error(body.error || body.detail || `HTTP ${res.status}`);
+    }
+    render(body);
+  } catch (error) {
+    $("error").textContent = error.message;
     show("error");
-    return;
+  } finally {
+    submit.disabled = false;
   }
-  render(await res.json());
 }
 
 document.querySelectorAll("#scenarios button").forEach((b) =>
@@ -61,4 +80,4 @@ document.querySelectorAll("#scenarios button").forEach((b) =>
   }));
 $("ask-form").addEventListener("submit", ask);
 setActiveButton();
-loadTools();
+loadTools().catch((error) => showError(`Tools unavailable: ${error.message}`));

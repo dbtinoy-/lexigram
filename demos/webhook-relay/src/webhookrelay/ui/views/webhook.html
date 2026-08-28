@@ -12,8 +12,8 @@
   <a href="/" class="nav-brand">Lexigram</a>
   <span class="nav-demo">Webhook Relay</span>
   <div class="nav-links">
-    <a href="https://lexigram.dev">Docs</a>
-    <a href="https://github.com/dbtinoy-/lexigram">GitHub</a>
+    <a href="https://lexigram.dev" target="_blank" rel="noopener">Docs</a>
+    <a href="https://github.com/dbtinoy-/lexigram" target="_blank" rel="noopener">GitHub</a>
   </div>
 </nav>
 
@@ -24,19 +24,23 @@
   <main>
     <section id="send-panel">
       <h2>Send Webhook</h2>
-      <div>
-        <select id="event-type">
-          <option value="order.created">order.created</option>
-          <option value="payment.received">payment.received</option>
-          <option value="user.registered">user.registered</option>
-        </select>
-        <button id="btn-send" class="accent">Send</button>
-      </div>
+      <form id="send-form">
+        <label for="event-type">Event type</label>
+        <div class="input-row">
+          <select id="event-type">
+            <option value="order.created">order.created</option>
+            <option value="payment.received">payment.received</option>
+            <option value="user.registered">user.registered</option>
+          </select>
+          <button type="submit" id="btn-send" class="accent">Send</button>
+        </div>
+      </form>
+      <p id="error" class="error hidden" role="alert"></p>
     </section>
 
     <section id="events-panel">
       <h2>Recent Events</h2>
-      <div id="events-list"></div>
+      <div id="events-list" aria-live="polite"></div>
     </section>
 
     <section id="log-panel">
@@ -45,6 +49,6 @@
     </section>
   </main>
   <script src="/static/app.js"></script>
-  <div class="demo-footer">Powered by <a href="https://lexigram.dev">Lexigram</a></div>
+  <div class="demo-footer">Powered by <a href="https://lexigram.dev" target="_blank" rel="noopener">Lexigram</a></div>
 </body>
 </html>

@@ -4,9 +4,22 @@ const $ = (id) => document.getElementById(id);
 let filter = "all";
 
 async function load() {
-  const res = await fetch("/api/status");
-  const { services } = await res.json();
-  render(services);
+  const status = $("hub-status");
+  try {
+    const res = await fetch("/api/status", { cache: "no-store" });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok || body.error) throw new Error(body.error || `HTTP ${res.status}`);
+    const services = body.services || [];
+    render(services);
+    status.textContent = `${services.length} demos · status refreshes automatically`;
+    status.className = "hub-status";
+  } catch (error) {
+    status.textContent = `Unable to load demo status: ${error.message}`;
+    status.className = "hub-status error";
+    if (!$("cards").children.length) {
+      $("cards").innerHTML = "<p class=\"modal-error\">Try refreshing the hub.</p>";
+    }
+  }
 }
 
 function dot(s) {
@@ -23,7 +36,7 @@ function card(s) {
     ? `<code>standalone :${s.port}</code>`
     : `<code>cli / notebook</code>`;
   const infoBtn = s.kind === "web"
-    ? `<button class="info-btn" data-slug="${s.slug}" data-name="${s.name.replace(/"/g, "&quot;")}" title="About this demo">&#9432;</button>`
+    ? `<button type="button" class="info-btn" data-slug="${s.slug}" data-name="${s.name.replace(/"/g, "&quot;")}" title="About this demo" aria-label="About ${s.name.replace(/"/g, "&quot;")}">&#9432;</button>`
     : "";
   return `<div class="card-wrap ${filter !== "all" && s.group !== filter ? "hidden" : ""}">
     <a class="card" href="${href}"${err}>
@@ -67,8 +80,12 @@ function openModal(slug, name) {
   $("modal-overlay").classList.remove("hidden");
   document.body.style.overflow = "hidden";
 
-  fetch(`/api/demo/${slug}/readme`)
-    .then((r) => r.json())
+  fetch(`/api/demo/${slug}/readme`, { cache: "no-store" })
+    .then(async (r) => {
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok || data.error) throw new Error(data.error || `HTTP ${r.status}`);
+      return data;
+    })
     .then((data) => {
       $("modal-body").innerHTML = renderMarkdown(data.readme || "No README available.");
     })

@@ -12,8 +12,8 @@
   <a href="/" class="nav-brand">Lexigram</a>
   <span class="nav-demo">Resilient Rates</span>
   <div class="nav-links">
-    <a href="https://lexigram.dev">Docs</a>
-    <a href="https://github.com/dbtinoy-/lexigram">GitHub</a>
+    <a href="https://lexigram.dev" target="_blank" rel="noopener">Docs</a>
+    <a href="https://github.com/dbtinoy-/lexigram" target="_blank" rel="noopener">GitHub</a>
   </div>
 </nav>
 
@@ -25,18 +25,18 @@
     <section id="controls">
       <h2>Upstream Health</h2>
       <div id="scenarios">
-        <button data-scenario="healthy" class="active">Healthy</button>
-        <button data-scenario="flaky">Flaky</button>
-        <button data-scenario="down">Down</button>
-        <button data-scenario="slow">Slow</button>
+        <button type="button" data-scenario="healthy" class="active">Healthy</button>
+        <button type="button" data-scenario="flaky">Flaky</button>
+        <button type="button" data-scenario="down">Down</button>
+        <button type="button" data-scenario="slow">Slow</button>
       </div>
-      <button id="clear-cache" class="danger">Clear Cache</button>
+      <button type="button" id="clear-cache" class="danger">Clear Cache</button>
     </section>
 
     <section id="actions">
       <h2>Actions</h2>
-      <button id="btn-stampede">Stampede (10 concurrent)</button>
-      <button id="btn-demo" class="accent">Run 5-Act Demo</button>
+      <button type="button" id="btn-stampede">Stampede (10 concurrent)</button>
+      <button type="button" id="btn-demo" class="accent">Run 5-Act Demo</button>
     </section>
 
     <section id="pairs">
@@ -61,6 +61,6 @@
     </section>
   </main>
   <script src="/static/app.js"></script>
-  <div class="demo-footer">Powered by <a href="https://lexigram.dev">Lexigram</a></div>
+  <div class="demo-footer">Powered by <a href="https://lexigram.dev" target="_blank" rel="noopener">Lexigram</a></div>
 </body>
 </html>
