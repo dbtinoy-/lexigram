@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from lexigram.codegen import FieldSpec, GenerationResult, GeneratorBase, parse_fields
+from lexigram.contracts.cli.generators import resolve_options
 
 _DEFAULT_FIELDS: tuple[FieldSpec, ...] = (
     FieldSpec(name="id", type="int", required=True),
@@ -14,12 +15,11 @@ _DEFAULT_FIELDS: tuple[FieldSpec, ...] = (
 
 
 class CacheRepositoryGenerator(GeneratorBase):
-    """Generator for creating cached repositories."""
+    """Generate a cached repository with cache-aside pattern."""
 
     name = "cache_repo"
     description = "Generate a cached repository with cache-aside pattern"
     default_output_dir = "src/repositories"
-    template_name = "cache_repository.py.jinja2"
 
     def __init__(self, output_dir: str | Path = "src/repositories") -> None:
         super().__init__(output_dir=output_dir)
@@ -28,30 +28,35 @@ class CacheRepositoryGenerator(GeneratorBase):
         self,
         name: str,
         *,
-        output_dir: str | Path | None = None,
         fields_str: str | None = None,
         dry_run: bool = False,
         force: bool = False,
         **options: Any,
     ) -> GenerationResult:
-        """Generate a cached repository."""
+        """Generate a cached repository.
+
+        Args:
+            name: Entity name (e.g. ``"Product"`` or ``"product"``).
+            fields_str: Optional ``name:type`` field list in parser syntax.
+            dry_run: Compute output paths without writing.
+            force: Overwrite an existing file.
+
+        Returns:
+            ``GenerationResult`` with created/skipped/overwritten paths.
+        """
         fields: list[FieldSpec] = (
             parse_fields(fields_str) if fields_str else list(_DEFAULT_FIELDS)
         )
-
-        if output_dir is not None:
-            self.output_dir = self._resolve_output_dir(Path(output_dir))
-        output_path = self.output_dir
         entity_name = self._to_pascal_case(name)
         repo_snake = self._to_snake_case(name)
-        file_path = output_path / f"{repo_snake}_repository.py"
+        file_path = self.output_dir / f"{repo_snake}_repository.py"
 
         pk_name, pk_type = self._derive_pk(fields)
         # Avoid shadowing the Python builtin 'id' in generated method signatures.
         pk_param = f"entity_{pk_name}" if pk_name == "id" else pk_name
 
         content = self.render_template(
-            self.template_name,
+            "cache_repository.py.jinja2",
             {
                 "entity_name": entity_name,
                 "repo_name_snake": repo_snake,
@@ -61,8 +66,8 @@ class CacheRepositoryGenerator(GeneratorBase):
                 "pk_param": pk_param,
             },
         )
-
-        return self.write_file(file_path, content, dry_run=dry_run, force=force)
+        self.stage(file_path, content)
+        return self.finalize(self.commit(resolve_options(dry_run=dry_run, force=force)))
 
     @staticmethod
     def _derive_pk(fields: list[FieldSpec]) -> tuple[str, str]:

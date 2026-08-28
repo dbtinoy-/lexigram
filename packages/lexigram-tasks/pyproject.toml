@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "lexigram-tasks"
-version = "0.1.5007"
+version = "0.1.5008"
 description = "Background task processing for Lexigram Framework - Scheduling, workers, and job queues"
 readme = "README.md"
 requires-python = ">=3.11"
