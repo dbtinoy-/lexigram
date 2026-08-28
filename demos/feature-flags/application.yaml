@@ -1,0 +1,19 @@
+# Release Control Lab — deterministic, offline feature flag playground
+web:
+  server:
+    host: 127.0.0.1
+    port: 8099
+  security:
+    csrf:
+      enabled: false
+features:
+  enabled: true
+  cache_ttl: 15
+  default_enabled: false
+  initial_flags:
+    new_checkout: true
+    search_experiment: true
+    ai_assistant: true
+release_control:
+  enabled: true
+  default_actor: release-operator

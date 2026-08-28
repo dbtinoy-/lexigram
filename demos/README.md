@@ -1,9 +1,9 @@
 # Demos
 
-> **Nineteen runnable, fully-gated demo apps** — each one is a living tutorial
+> **Twenty-two runnable, fully-gated demo apps** — each one is a living tutorial
 > for Lexigram, built on the editable framework packages in this repository:
-> a hub console plus eighteen capability and infrastructure demos, all
-> offline-deterministic and gated like the framework itself.
+> a hub console plus focused capability and infrastructure demos, all
+> web-first and deterministic where the domain allows it.
 
 ---
 
@@ -228,6 +228,30 @@ A browser-visible inbound webhook flow without an external receiver:
 - **HMAC-SHA256** — verify canonical raw payloads in constant time
 - **Accepted ledger** — keep the demo focused while making results visible
 
+### [feature-flags](feature-flags/) — Lexigram FeatureFlagsModule
+
+A release desk for controlled rollouts:
+
+- **Evaluation context** — deterministic percentage, variant, and user-attribute decisions
+- **Runtime controls** — force a flag on/off, clear overrides, and flush TTL cache
+- **Audit trail** — inspect the package-owned FlagManager override history
+
+### [approval-flow](approval-flow/) — Lexigram WorkflowModule
+
+An interactive purchase approval state machine:
+
+- **Approval gates** — manager and finance decisions through real StateMachine transitions
+- **ApprovalChain preview** — run an ALL policy without mutating the request
+- **Retry and compensation** — recover rejected or approved flows and inspect transition history
+
+### [artifact-vault](artifact-vault/) — Lexigram StorageModule
+
+A browser object-storage workbench using the memory driver:
+
+- **Upload and metadata** — content types, owner metadata, size, and ETag
+- **Preview and delete** — exercise list, info, download, and delete operations
+- **Honest access capabilities** — see public URL behavior and why memory has no presigned URL
+
 ---
 
 ## Running them
@@ -260,6 +284,9 @@ PYTHONPATH=demos/queue-worker/src uv run python -m queueworker              # qu
 PYTHONPATH=demos/rag-pipeline/src uv run python -m ragdocs                  # RAG pipeline (:8096)
 PYTHONPATH=demos/sql-repository/src uv run python -m taskapp               # SQL repository (:8097)
 PYTHONPATH=demos/webhook-relay/src uv run python -m webhookrelay           # webhook relay (:8098)
+PYTHONPATH=demos/feature-flags/src uv run python -m release_control     # release control (:8099)
+PYTHONPATH=demos/approval-flow/src uv run python -m approval_flow         # approval flow (:8100)
+PYTHONPATH=demos/artifact-vault/src uv run python -m artifact_vault       # artifact vault (:8101)
 
 make test-demos                                                              # every demo test suite
 ```

@@ -1,0 +1,15 @@
+# Approval Flow — deterministic purchase approval state machine
+web:
+  server:
+    host: 127.0.0.1
+    port: 8100
+  security:
+    csrf:
+      enabled: false
+workflow:
+  retry_attempts: 1
+  pipeline_timeout: 30
+approval_flow:
+  enabled: true
+  initial_request: Purchase 24 laptops
+  initial_amount: 24000
