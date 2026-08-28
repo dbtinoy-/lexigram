@@ -121,14 +121,28 @@ class RoleGuard(_GuardBase):
 
 
 class PermissionGuard(_GuardBase):
-    """GuardProtocol that requires specific permissions"""
+    """GuardProtocol that requires specific permissions.
 
-    def __init__(self, *permissions: str) -> None:
+    By default **all** permissions must be granted.  ``require_all=False``
+    opts into the previous any-of behavior explicitly.
+    """
+
+    def __init__(
+        self,
+        *permissions: str,
+        require_all: bool = True,
+    ) -> None:
         self.required_permissions = list(permissions)
+        self.require_all = require_all
 
     async def can_activate(self, context: GuardContext) -> bool:
         """Check if user has required permissions"""
         if not context.user:
+            return False
+
+        # A PermissionGuard without declared permissions protects nothing;
+        # fail closed.
+        if not self.required_permissions:
             return False
 
         # Import here to avoid circular imports
@@ -146,6 +160,16 @@ class PermissionGuard(_GuardBase):
                 await resolver.resolve(AuthProviderProtocol),
             )
 
+            def _has(permission: str) -> bool:
+                return bool(
+                    auth_provider.has_any_permission(
+                        cast("Any", context.user),
+                        [permission],
+                    )
+                )
+
+            if self.require_all:
+                return all(_has(p) for p in self.required_permissions)
             return bool(
                 auth_provider.has_any_permission(
                     cast("Any", context.user),
@@ -208,8 +232,12 @@ def use_guards(
                 request = kwargs["request"]
 
             if not request:
-                # If no request found, assume guard passes (for testing)
-                return await func(*args, **kwargs)
+                # Fail closed: a guarded handler without a discoverable request
+                # context must never run unguarded.
+                raise ValueError(
+                    "GuardProtocol requires request context. Ensure the handler "
+                    "declares 'request' as a parameter."
+                )
 
             # Always skip guards for OPTIONS requests (CORS preflight)
             if hasattr(request, "method") and request.method == "OPTIONS":
@@ -303,7 +331,10 @@ def require_auth() -> Callable[[Callable[..., Any]], Callable[..., Any]]:
                 request = kwargs["request"]
 
             if not request:
-                return await func(*args, **kwargs)
+                raise ValueError(
+                    "GuardProtocol requires request context. Ensure the handler "
+                    "declares 'request' as a parameter."
+                )
 
             if hasattr(request, "method") and request.method == "OPTIONS":
                 return await func(*args, **kwargs)
@@ -342,7 +373,10 @@ def require_admin() -> Callable[[Callable[..., Any]], Callable[..., Any]]:
                 request = kwargs["request"]
 
             if not request:
-                return await func(*args, **kwargs)
+                raise ValueError(
+                    "GuardProtocol requires request context. Ensure the handler "
+                    "declares 'request' as a parameter."
+                )
 
             if hasattr(request, "method") and request.method == "OPTIONS":
                 return await func(*args, **kwargs)
@@ -369,9 +403,16 @@ def require_role(*roles: str) -> Callable[[Callable[..., Any]], Callable[..., An
 
 def require_permission(
     *permissions: str,
+    require_all: bool = True,
 ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
-    """Decorator requiring specific permissions"""
-    return use_guards(PermissionGuard(*permissions))  # type: ignore[arg-type]
+    """Decorator requiring specific permissions.
+
+    ``require_all=True`` (default) requires every permission; pass
+    ``require_all=False`` to require any one of them.
+    """
+    return use_guards(
+        PermissionGuard(*permissions, require_all=require_all),  # type: ignore[arg-type]
+    )
 
 
 __all__ = [
