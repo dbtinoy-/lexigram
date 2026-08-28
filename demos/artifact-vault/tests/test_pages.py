@@ -10,6 +10,7 @@ async def test_console_explains_storage_flow(client: httpx.AsyncClient) -> None:
     assert response.status_code == 200
     assert "Artifact Vault" in response.text
     assert "Upload an artifact" in response.text
+    assert 'type="file"' in response.text
     assert "BlobStoreProtocol" in response.text
 
 
