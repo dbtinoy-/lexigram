@@ -55,6 +55,12 @@ _SPECS: tuple[tuple[str, str, str, str], ...] = (
         "lexigram.web.cli.generators.exception_filter:ExceptionFilterGenerator",
         "src/filters",
     ),
+    (
+        "interceptor",
+        "Generate a web request/response interceptor",
+        "lexigram.web.cli.generators.interceptor:InterceptorGenerator",
+        "src/interceptors",
+    ),
 )
 
 _OPTIONS: dict[str, tuple[GeneratorOption, ...]] = {
@@ -76,6 +82,7 @@ _OPTIONS: dict[str, tuple[GeneratorOption, ...]] = {
             description="HTTP status code used in the default error response",
         ),
     ),
+    "interceptor": (),
 }
 
 # Titles that make() cannot derive exactly.

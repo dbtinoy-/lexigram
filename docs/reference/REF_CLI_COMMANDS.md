@@ -64,6 +64,7 @@ lexigram
 │   └── webhook        Generate a webhook handler
 │   └── websocket      Generate a WebSocket handler
 │   └── exception_filter Generate a web exception filter
+│   └── interceptor      Generate a web request/response interceptor
 │   └── workflow_def   Generate a workflow definition with steps and transitions
 │   └── pipeline       Generate a pipeline with sequential processing stages
 │   └── saga_step      Generate a saga step with compensating transaction
@@ -157,7 +158,7 @@ lexigram
 
 ## Generator Inventory
 
-**Total: 44 generators**
+**Total: 45 generators**
 
 | Generator | Description |
 |-----------|-------------|
@@ -182,6 +183,7 @@ lexigram
 | `lexigram gen webhook` | Generate a webhook handler |
 | `lexigram gen websocket` | Generate a WebSocket handler |
 | `lexigram gen exception_filter` | Generate a web exception filter |
+| `lexigram gen interceptor` | Generate a web request/response interceptor |
 | `lexigram gen workflow_def` | Generate a workflow definition with steps and transitions |
 | `lexigram gen pipeline` | Generate a pipeline with sequential processing stages |
 | `lexigram gen saga_step` | Generate a saga step with compensating transaction |
