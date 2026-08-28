@@ -1,8 +1,9 @@
 """Composition root for Release Control Lab.
 
-This is a single-package niche demo: ``FeatureFlagsModule`` owns flag
-infrastructure and ``WebModule`` owns the HTTP surface. The local provider
-only adapts package-owned services for a visual release-operations console.
+This is a single-package niche demo: ``FeatureFlagsModule`` owns the rich
+flag definitions and evaluation infrastructure, while ``WebModule`` owns the
+HTTP surface. The application layer only presents those package-owned APIs in
+a visual release-operations console.
 """
 
 from __future__ import annotations

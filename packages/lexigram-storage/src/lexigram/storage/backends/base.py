@@ -45,12 +45,36 @@ class AbstractDriver(ABC, BlobStoreProtocol):
         guessed, _ = mimetypes.guess_type(path)
         return guessed or "application/octet-stream"
 
+    @staticmethod
+    def _normalize_upload_options(
+        content_type: UploadOptions | str | None,
+        options: dict[str, Any],
+    ) -> UploadOptions | None:
+        """Normalize the positional options form and keyword options.
+
+        ``UploadOptions`` is accepted as the third argument for parity with
+        the public storage contract. Explicit keyword options win when both
+        forms provide the same value.
+        """
+        if content_type is None and not options:
+            return None
+        if isinstance(content_type, UploadOptions):
+            normalized: dict[str, Any] = {
+                "content_type": content_type.content_type,
+                "public": content_type.public,
+                "metadata": content_type.metadata,
+                "cache_control": content_type.cache_control,
+            }
+            normalized.update(options)
+            return UploadOptions(**normalized)
+        return UploadOptions(content_type=content_type, **options)
+
     @abstractmethod
     async def upload(
         self,
         path: str,
         data: Uploadable,
-        content_type: str | None = None,
+        content_type: UploadOptions | str | None = None,
         **options: Any,
     ) -> FileInfo:
         """Upload *data* to *path* and return metadata about the stored file.

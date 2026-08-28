@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import ClassVar
+from typing import Any, ClassVar
 
 from lexigram.config.base import BaseConfig
 from lexigram.contracts.core.config import Environment
@@ -15,7 +15,10 @@ from lexigram.features.constants import (
 from lexigram.features.constants import (
     ENV_PREFIX as FLAG_ENV_PREFIX,
 )
+from lexigram.features.types import Flag
 from lexigram.validation import ConfigDict, Field
+
+FlagDefinition = bool | Flag | dict[str, Any]
 
 
 @dataclass(init=False)
@@ -54,10 +57,13 @@ class FeatureFlagsConfig(BaseConfig):
         default=FLAG_ENV_PREFIX,
         description="Env var prefix used by EnvProvider when reading flag values.",
     )
-    initial_flags: dict[str, bool] = Field(
+    initial_flags: dict[str, FlagDefinition] = Field(
         default_factory=dict,
-        description="Seed flags for the in-memory provider (name -> enabled).",
+        description=(
+            "Seed flags for the in-memory provider. Values may be booleans, "
+            "Flag objects, or flag-definition mappings."
+        ),
     )
 
 
-__all__ = ["FeatureFlagsConfig"]
+__all__ = ["FeatureFlagsConfig", "FlagDefinition"]

@@ -1,7 +1,7 @@
 # Release Control Lab — deterministic, offline feature flag playground
 web:
   server:
-    host: 127.0.0.1
+    host: 0.0.0.0
     port: 8099
   security:
     csrf:
@@ -11,9 +11,25 @@ features:
   cache_ttl: 15
   default_enabled: false
   initial_flags:
-    new_checkout: true
-    search_experiment: true
-    ai_assistant: true
+    new_checkout:
+      type: percentage
+      enabled: true
+      percentage: 50
+      description: Gradual rollout for the new checkout experience
+    search_experiment:
+      type: variant
+      enabled: true
+      variants:
+        control: 50
+        ranked: 50
+      default_variant: control
+      description: Deterministic A/B search ranking experiment
+    ai_assistant:
+      type: user_attribute
+      enabled: true
+      user_attributes:
+        plan: pro
+      description: Available only to users on the pro plan
 release_control:
   enabled: true
   default_actor: release-operator

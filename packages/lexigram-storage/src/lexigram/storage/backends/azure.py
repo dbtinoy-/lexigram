@@ -25,7 +25,7 @@ except ImportError:
     _AZURE_AVAILABLE = False
 
 from lexigram.contracts.core import HealthStatus
-from lexigram.contracts.infra.storage import FileInfo, Uploadable
+from lexigram.contracts.infra.storage import FileInfo, Uploadable, UploadOptions
 from lexigram.storage.backends._azure_helpers import (
     coerce_last_modified,
     is_blob_not_found,
@@ -117,7 +117,7 @@ class AzureDriver(AbstractDriver):
         self,
         path: str,
         data: Uploadable,
-        content_type: str | None = None,
+        content_type: UploadOptions | str | None = None,
         **options: Any,
     ) -> FileInfo:
         """Upload *data* to Azure Blob Storage at *path*.
@@ -136,7 +136,12 @@ class AzureDriver(AbstractDriver):
         """
         key = self._normalize_path(path)
         content = await to_bytes(data)
-        resolved_content_type = content_type if content_type else get_content_type(key)
+        upload_options = self._normalize_upload_options(content_type, options)
+        resolved_content_type = (
+            upload_options.content_type
+            if upload_options and upload_options.content_type
+            else get_content_type(key)
+        )
 
         try:
             from azure.storage.blob import (
@@ -148,7 +153,7 @@ class AzureDriver(AbstractDriver):
                 content,
                 overwrite=True,
                 content_settings=ContentSettings(content_type=resolved_content_type),
-                metadata=options.get("metadata") if options else None,
+                metadata=upload_options.metadata if upload_options else None,
             )
             logger.info(
                 "azure_upload_complete container=%s key=%s size=%d",
@@ -161,7 +166,7 @@ class AzureDriver(AbstractDriver):
                 size=len(content),
                 content_type=resolved_content_type,
                 last_modified=datetime.now(UTC),
-                metadata=options.get("metadata") if options else None,
+                metadata=upload_options.metadata if upload_options else None,
             )
         except Exception as exc:
             logger.exception(

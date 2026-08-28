@@ -100,6 +100,32 @@ class TestAbstractDriver:
         result = driver._resolve_content_type("image.png", UploadOptions())
         assert result == "image/png"
 
+    def test_normalize_upload_options_accepts_positional_options(self, driver):
+        """The third upload argument can carry metadata and cache settings."""
+        options = UploadOptions(
+            content_type="text/plain",
+            metadata={"Owner": "qa"},
+            cache_control="no-cache",
+        )
+
+        normalized = driver._normalize_upload_options(options, {"public": True})
+
+        assert normalized is not None
+        assert normalized.content_type == "text/plain"
+        assert normalized.metadata == {"owner": "qa"}
+        assert normalized.cache_control == "no-cache"
+        assert normalized.public is True
+
+    def test_normalize_upload_options_accepts_legacy_content_type(self, driver):
+        """The string content-type form remains compatible with old callers."""
+        normalized = driver._normalize_upload_options(
+            "application/json", {"metadata": {"source": "test"}}
+        )
+
+        assert normalized is not None
+        assert normalized.content_type == "application/json"
+        assert normalized.metadata == {"source": "test"}
+
     @pytest.mark.asyncio
     async def test_write_stream_default_implementation(self, driver):
         """write_stream should buffer and call upload by default."""

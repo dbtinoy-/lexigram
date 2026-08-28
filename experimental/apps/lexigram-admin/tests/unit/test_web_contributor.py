@@ -22,6 +22,13 @@ class _Resolver:
         return None
 
 
+class _MissingResolver:
+    async def resolve(self, token: object, *, bypass_visibility: bool = False) -> object | None:  # noqa: ARG002
+        from lexigram.contracts.exceptions import UnresolvableDependencyError
+
+        raise UnresolvableDependencyError("admin bundle is not registered")
+
+
 def test_admin_web_contributor_matches_protocol() -> None:
     from lexigram.admin.web import AdminWebContributor
 
@@ -46,6 +53,14 @@ async def test_admin_web_contributor_delegates_to_admin_bundle() -> None:
 
     assert ("admin_bundle", True) in resolver.calls
     admin_bundle.mount_to_app.assert_awaited_once_with(app, resolver)
+
+
+@pytest.mark.asyncio
+async def test_admin_web_contributor_skips_when_bundle_is_not_registered() -> None:
+    from lexigram.admin.web import AdminWebContributor
+
+    contributor = AdminWebContributor()
+    await contributor.mount_to_app(Starlette(), _MissingResolver())
 
 
 def test_admin_pyproject_declares_web_contributor_entry_point() -> None:

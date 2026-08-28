@@ -15,7 +15,7 @@ Config model: `FeatureFlagsConfig`
 | `cache_ttl` | `int` | `300` | `LEX_FEATURES__CACHE_TTL` | Cache TTL for flag evaluations (seconds; 0 = disabled) |
 | `default_enabled` | `bool` | `False` | `LEX_FEATURES__DEFAULT_ENABLED` | Default when flag not found |
 | `flag_env_prefix` | `str` | `"LEX_FLAG_"` | `LEX_FEATURES__FLAG_ENV_PREFIX` | Env prefix for `EnvProvider` |
-| `initial_flags` | `dict[str, bool]` | `{}` | `LEX_FEATURES__INITIAL_FLAGS` | Seed flags for `LocalProvider` |
+| `initial_flags` | `dict[str, bool | Flag | mapping]` | `{}` | `LEX_FEATURES__INITIAL_FLAGS` | Seed boolean or rich flag definitions for `LocalProvider` |
 
 ## Example YAML
 
@@ -28,8 +28,23 @@ features:
   initial_flags:
     new_checkout: true
     dark_mode: false
-    experimental_search: true
+    experimental_search:
+      type: percentage
+      enabled: true
+      percentage: 25
+    search_experiment:
+      type: variant
+      enabled: true
+      variants:
+        control: 50
+        ranked: 50
+      default_variant: control
 ```
+
+Each `initial_flags` value may be a legacy boolean, a `Flag` instance in
+Python configuration, or a YAML-friendly mapping with a `type`, `enabled`,
+and type-specific fields such as `percentage`, `user_attributes`, or
+`variants`.
 
 Env var override form:
 

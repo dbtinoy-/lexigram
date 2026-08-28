@@ -6,10 +6,9 @@ from dataclasses import asdict
 from datetime import UTC, datetime
 from typing import Any
 
-from lexigram.features.backends.local import LocalProvider
 from lexigram.features.config import FeatureFlagsConfig
 from lexigram.features.manager import FlagManager
-from lexigram.features.types import Flag, FlagContext, FlagType
+from lexigram.features.types import FlagContext
 from release_control.config import ReleaseControlConfig
 
 
@@ -33,38 +32,10 @@ class ReleaseControlService:
         self._config = config
         self._feature_config = feature_config
 
-        definitions = {
-            "new_checkout": Flag(
-                name="new_checkout",
-                type=FlagType.PERCENTAGE,
-                enabled=True,
-                percentage=50,
-                description="Gradual rollout for the new checkout experience",
-            ),
-            "search_experiment": Flag(
-                name="search_experiment",
-                type=FlagType.VARIANT,
-                enabled=True,
-                variants={"control": 50, "ranked": 50},
-                default_variant="control",
-                description="Deterministic A/B search ranking experiment",
-            ),
-            "ai_assistant": Flag(
-                name="ai_assistant",
-                type=FlagType.USER_ATTRIBUTE,
-                enabled=True,
-                user_attributes={"plan": "pro"},
-                description="Available only to users on the pro plan",
-            ),
-        }
-
-        # The package provider seeds the simple YAML flags. We add richer
-        # definitions through the public manager API so this demo can expose
-        # percentage, variant, and attribute evaluation in one screen.
-        for name, enabled in self._feature_config.initial_flags.items():
-            if name in definitions:
-                definitions[name].enabled = enabled
-        self._manager.add_provider(LocalProvider(definitions))
+        # Rich percentage, variant, and attribute definitions are seeded by
+        # FeatureFlagsModule from application.yaml. The demo only orchestrates
+        # the browser-facing release controls; flag evaluation remains entirely
+        # package-owned.
 
     @staticmethod
     def _context(user_id: str, plan: str) -> FlagContext:
@@ -130,13 +101,7 @@ class ReleaseControlService:
         resolved_actor = (
             actor or self._config.default_actor
         ).strip() or self._config.default_actor
-        # Call the concrete manager methods so the actor is retained for both
-        # directions; the package convenience method currently forwards the
-        # disable branch without its optional actor.
-        if enabled:
-            self._manager.enable(name, actor=resolved_actor)
-        else:
-            self._manager.disable(name, actor=resolved_actor)
+        self._manager.set_override(name, enabled, actor=resolved_actor)
 
     def clear_override(self, name: str) -> None:
         """Return a flag to its configured provider behavior."""
