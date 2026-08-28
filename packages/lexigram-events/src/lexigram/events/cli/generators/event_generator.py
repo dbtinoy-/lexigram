@@ -1,64 +1,70 @@
+"""Domain event generator for the events package."""
+
 from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
 
-from lexigram.codegen import parse_fields
-from lexigram.codegen.base import GenerationResult, GeneratorBase
+from lexigram.codegen import GenerationResult, GeneratorBase, parse_fields
+from lexigram.contracts.cli.generators import resolve_options
 
 
 class EventGenerator(GeneratorBase):
-    template_name = "event.py.jinja2"
+    """Generate a demo-aligned domain event dataclass.
 
-    def __init__(self, output_dir: str = "src/events") -> None:
-        super().__init__(
-            output_dir=output_dir,
-            template_root=Path(__file__).parent.parent / "templates",
-        )
+    The emitted module follows the convention demonstrated in
+    ``demos/event-driven-orders``: a frozen dataclass extending
+    :class:`~lexigram.contracts.domain.DomainEvent` plus a ``build_*``
+    helper that attaches aggregate context.
+    """
+
+    name = "event"
+    description = "Generate a domain event class"
+    default_output_dir = "src/events"
+
+    def __init__(self, output_dir: str | Path = "src/events") -> None:
+        super().__init__(output_dir=output_dir)
 
     def generate(
         self,
         name: str,
+        *,
         fields_str: str | None = None,
         doc: str | None = None,
         dry_run: bool = False,
         force: bool = False,
         **options: Any,
     ) -> GenerationResult:
-        result = GenerationResult()
-        event_name = self._to_snake_case(name)
-        file_path = self.output_dir / f"{event_name}_event.py"
+        """Generate a domain event module.
 
-        if file_path.exists() and not force:
-            result.files_skipped.append(file_path)
-            return result
+        Args:
+            name: Event name, e.g. ``"UserCreated"`` or ``"user_created"``.
+            fields_str: Optional ``name:type`` field list in parser syntax.
+            doc: Optional module docstring note.
+            dry_run: Compute output paths without writing.
+            force: Overwrite an existing file.
 
-        fields = parse_fields(fields_str or "")
-        resource_name = event_name
-        if resource_name.endswith("y"):
-            resource_name = resource_name[:-1] + "ies"
-        elif not resource_name.endswith("s"):
-            resource_name = resource_name + "s"
+        Returns:
+            ``GenerationResult`` with created/skipped/overwritten paths.
+        """
+        class_name = self._to_pascal_case(name).removesuffix("Event")
+        if not class_name:
+            class_name = self._to_pascal_case(name)
+        event_name = self._to_snake_case(class_name)
 
         context: dict[str, Any] = {
-            "name": name,
-            "class_name": name,
-            "resource_name": resource_name,
+            "class_name": class_name,
+            "event_name": event_name,
             "doc": doc,
             "fields": [
-                {"name": f.name, "type": f.type, "required": f.required} for f in fields
+                {"name": field.name, "type": field.type, "required": field.required}
+                for field in parse_fields(fields_str or "")
             ],
         }
+        content = self.render_template("event.py.jinja2", context)
+        file_path = self.output_dir / f"{event_name}_event.py"
+        self.stage(file_path, content)
+        return self.finalize(self.commit(resolve_options(dry_run=dry_run, force=force)))
 
-        template = self.env.get_template(self.template_name)
-        content = template.render(**context)
 
-        if not dry_run:
-            self.output_dir.mkdir(parents=True, exist_ok=True)
-            file_path.write_text(content)
-            if file_path.exists() and force:
-                result.files_overwritten.append(file_path)
-            else:
-                result.files_created.append(file_path)
-
-        return result
+__all__ = ["EventGenerator"]
