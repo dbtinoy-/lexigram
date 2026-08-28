@@ -43,6 +43,12 @@ _SPECS: tuple[tuple[str, str, str, str], ...] = (
         "lexigram.events.cli.generators.query_handler:QueryHandlerGenerator",
         "src/queries",
     ),
+    (
+        "projection",
+        "Generate an event projection for read models",
+        "lexigram.events.cli.generators.projection:ProjectionGenerator",
+        "src/projections",
+    ),
 )
 
 _GENERATOR_DEFINITIONS: tuple[GeneratorDefinition, ...] = tuple(

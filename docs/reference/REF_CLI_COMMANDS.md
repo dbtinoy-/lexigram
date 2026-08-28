@@ -78,6 +78,7 @@ lexigram
 │   └── event          Generate a domain event class
 │   └── command        Generate a CQRS command handler
 │   └── query          Generate a CQRS query handler
+│   └── projection       Generate an event projection for read models
 │   └── provider       Generate provider
 │   └── test           Generate test
 │   └── admin_action   Generate a custom admin action
@@ -159,7 +160,7 @@ lexigram
 
 ## Generator Inventory
 
-**Total: 46 generators**
+**Total: 47 generators**
 
 | Generator | Description |
 |-----------|-------------|
@@ -198,6 +199,7 @@ lexigram
 | `lexigram gen event` | Generate a domain event class |
 | `lexigram gen command` | Generate a CQRS command handler |
 | `lexigram gen query` | Generate a CQRS query handler |
+| `lexigram gen projection` | Generate an event projection for read models |
 | `lexigram gen provider` | Generate provider |
 | `lexigram gen test` | Generate test |
 | `lexigram gen admin_action` | Generate a custom admin action |
