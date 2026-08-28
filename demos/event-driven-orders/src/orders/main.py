@@ -27,6 +27,22 @@ from orders.app import create_app
 logger = get_logger(__name__)
 
 
+async def run_cli_demo() -> None:
+    """Run the full order lifecycle without starting an HTTP server."""
+    from orders.controllers import OrdersApiController
+
+    app = create_app()
+    await app.start()
+    try:
+        controller = await app.container.resolve(OrdersApiController)
+        result = await controller.run_demo()
+        if result.is_err():
+            raise RuntimeError(str(result.unwrap_err()))
+        logger.info("demo.complete", result=result.unwrap())
+    finally:
+        await app.stop()
+
+
 async def serve() -> None:
     """Boot once and serve until interrupted; stop cleanly afterwards."""
     from lexigram.web.server.runner import run_server
@@ -40,9 +56,14 @@ async def serve() -> None:
 
 
 def main() -> int:
-    """Sync wrapper: translate interrupts into a shell-friendly exit code."""
+    """Run the server, or the offline walkthrough when ``demo`` is passed."""
     try:
-        asyncio.run(serve())
+        if sys.argv[1:] == ["demo"]:
+            asyncio.run(run_cli_demo())
+        elif sys.argv[1:] in ([], ["serve"]):
+            asyncio.run(serve())
+        else:
+            raise SystemExit(f"unknown command: {sys.argv[1]}")
     except KeyboardInterrupt:
         return 130
     return 0

@@ -25,9 +25,39 @@ import asyncio
 import sys
 
 from lexigram.logging import get_logger
-from rag_docs.app import build_modules, build_providers
+from rag_docs.app import build_modules, build_providers, create_app
 
 logger = get_logger(__name__)
+
+
+async def run_cli_demo() -> None:
+    """Run the three deterministic retrieval questions without a server."""
+    from rag_docs.services import DocsAskService
+
+    questions = (
+        ("how do modules export services?", "vector"),
+        ("what do providers register?", "mmr"),
+        ("how does the outbox pattern work?", "vector"),
+    )
+    app = create_app()
+    await app.start()
+    try:
+        service = await app.container.resolve(DocsAskService)
+        for question, strategy in questions:
+            result = await service.ask(question, strategy=strategy)
+            if result.is_err():
+                raise RuntimeError(str(result.unwrap_err()))
+            answer = result.unwrap()
+            logger.info(
+                "demo.answer",
+                question=question,
+                strategy=strategy,
+                answer=answer.answer,
+                citations=list(answer.citations),
+            )
+        logger.info("demo.complete", questions=len(questions))
+    finally:
+        await app.stop()
 
 
 async def serve() -> None:
@@ -48,8 +78,14 @@ async def serve() -> None:
 
 
 def main() -> int:
+    """Run the server, or the offline walkthrough when ``demo`` is passed."""
     try:
-        asyncio.run(serve())
+        if sys.argv[1:] == ["demo"]:
+            asyncio.run(run_cli_demo())
+        elif sys.argv[1:] in ([], ["serve"]):
+            asyncio.run(serve())
+        else:
+            raise SystemExit(f"unknown command: {sys.argv[1]}")
     except KeyboardInterrupt:
         return 130
     return 0

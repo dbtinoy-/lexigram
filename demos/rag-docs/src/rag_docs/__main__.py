@@ -1,6 +1,7 @@
 """Module entry point.
 
-``python -m rag_docs`` → boot the app and serve the split-screen console.
+``python -m rag_docs`` boots the app and serves the split-screen console;
+``python -m rag_docs demo`` runs three cited questions and exits.
 """
 
 from __future__ import annotations

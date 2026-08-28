@@ -1,8 +1,8 @@
 # Demos
 
-> **Fifteen runnable, fully-gated demo apps** — each one is a living tutorial
+> **Nineteen runnable, fully-gated demo apps** — each one is a living tutorial
 > for Lexigram, built on the editable framework packages in this repository:
-> a hub console plus nine capability demos plus five auth consoles, all
+> a hub console plus eighteen capability and infrastructure demos, all
 > offline-deterministic and gated like the framework itself.
 
 ---
@@ -178,13 +178,61 @@ API-key management UI plus an `X-API-Key`-guarded JSON endpoint:
 - **Cookie + key side by side** — management needs a session, machines
   need a header
 
+### [llm-router](llm-router/) — deterministic LLM client patterns
+
+Content generation and structured extraction without an API key:
+
+- **Scripted client** — deterministic responses for repeatable tests
+- **Content generation** — style control and retry handling
+- **Structured extraction** — parse model output into typed product data
+
+### [monitor-stack](monitor-stack/) — observability without infrastructure
+
+An in-memory monitoring console:
+
+- **Health checks** — register and run service checks
+- **Metrics** — counters, gauges, and histograms
+- **Tracing** — timed request spans through injected services
+
+### [queue-worker](queue-worker/) — in-memory background processing
+
+Publish, consume, and process messages without a broker:
+
+- **Topic routing** — publish and consume from an in-memory queue
+- **Processing modes** — single-message and batch workflows
+- **Retry settings** — configure worker behavior through YAML
+
+### [rag-pipeline](rag-pipeline/) — the RAG lifecycle
+
+A complete retrieval pipeline without an external vector database:
+
+- **In-memory vectors** — cosine similarity search
+- **Chunking** — split documents into indexable pieces
+- **Context synthesis** — format retrieved material for generation
+
+### [sql-repository](sql-repository/) — provider-wired CRUD
+
+A task management API demonstrating the repository boundary:
+
+- **Provider lifecycle** — register stores, then initialize them at boot
+- **Thin controllers** — expose CRUD over the HTTP layer
+- **In-memory persistence** — deterministic and fully offline
+
+### [webhook-relay](webhook-relay/) — signed inbound events
+
+Secure webhook processing without an external webhook service:
+
+- **HMAC-SHA256** — sign and verify payloads
+- **Validation** — enforce signatures and size limits
+- **Relay routing** — dispatch events and record processing results
+
 ---
 
 ## Running them
 
 ```bash
 # ── hub: one port serves every demo ───────────────────────────────
-PYTHONPATH=demos/demo-hub/src uv run python -m demo_hub                      # fleet console (:7000)
+(cd demos/demo-hub && PYTHONPATH=src uv run python -m demo_hub)                 # fleet console (:7000)
 
 # ── standalone mode: any demo on its own port ─────────────────────
 PYTHONPATH=demos/resilient-rates/src uv run python -m rates serve            # resilience REST API (:7073)
@@ -206,6 +254,12 @@ PYTHONPATH=demos/auth-web/src uv run python -m auth_web                      # a
 PYTHONPATH=demos/auth-rbac/src uv run python -m rbac_console                 # permission matrix (:8090)
 PYTHONPATH=demos/auth-apikeys/src uv run python -m apikey_console            # machine auth keys (:8091)
 PYTHONPATH=demos/auth-mfa/src uv run python -m mfa_console                   # TOTP challenge (:8092)
+PYTHONPATH=demos/llm-router/src uv run python -m content_gen                # LLM client patterns (:8093)
+PYTHONPATH=demos/monitor-stack/src uv run python -m monitorstack             # observability (:8094)
+PYTHONPATH=demos/queue-worker/src uv run python -m queueworker              # queue worker (:8095)
+PYTHONPATH=demos/rag-pipeline/src uv run python -m ragdocs                  # RAG pipeline (:8096)
+PYTHONPATH=demos/sql-repository/src uv run python -m taskapp               # SQL repository (:8097)
+PYTHONPATH=demos/webhook-relay/src uv run python -m webhookrelay           # webhook relay (:8098)
 
 make test-demos                                                              # every demo test suite
 ```

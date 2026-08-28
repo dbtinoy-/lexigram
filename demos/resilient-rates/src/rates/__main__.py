@@ -1,6 +1,7 @@
 """Module entry point.
 
-``python -m rates`` boots the REST API and serves the rate desk UI.
+``python -m rates`` serves the rate desk UI; ``python -m rates demo`` runs
+an offline five-act walkthrough and exits.
 """
 
 from __future__ import annotations

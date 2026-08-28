@@ -43,10 +43,12 @@ deterministic seeded random-walk provider whose faults you script live.
 
 ```bash
 cd demos/resilient-rates
-PYTHONPATH=src uv run python -m rates
+PYTHONPATH=src uv run python -m rates              # start server
+PYTHONPATH=src uv run python -m rates demo         # offline five-act walkthrough
 ```
 
-Open `http://localhost:7073` for the rate desk console.
+Open `http://localhost:7073` for the rate desk console. The `demo` command
+runs the same five-act flow as `POST /demo` and exits without binding a port.
 
 ## Layout — read it in this order
 
