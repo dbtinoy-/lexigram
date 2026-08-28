@@ -1,3 +1,8 @@
+# ── Metadata ────────────────────────────────────────────────────────────────
+name: approval-flow
+version: 0.1.0
+description: Deterministic purchase approval state machine with saga orchestration
+# ────────────────────────────────────────────────────────────────────────────
 # Approval Flow — deterministic purchase approval state machine
 web:
   server:

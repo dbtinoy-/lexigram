@@ -1,3 +1,8 @@
+# ── Metadata ────────────────────────────────────────────────────────────────
+name: event-timeline
+version: 0.1.0
+description: Event sourcing timeline with replay, projection, and audit trail
+# ────────────────────────────────────────────────────────────────────────────
 # Events Timeline / Replay Lab — offline lexigram-events contract
 web:
   server:

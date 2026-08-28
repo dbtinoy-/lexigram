@@ -1,3 +1,8 @@
+# ── Metadata ────────────────────────────────────────────────────────────────
+name: artifact-vault
+version: 0.1.0
+description: Binary artifact storage with content-addressable uploads and access tracking
+# ────────────────────────────────────────────────────────────────────────────
 # Artifact Vault — deterministic offline object-storage playground
 web:
   server:
