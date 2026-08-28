@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Workspace version alignment: all 54 packages now carry `0.1.5007` (was a mix of `0.1.5003`–`0.1.5006`); `uv.lock` regenerated.
 
 ### Fixed
+- MySQL credentials are no longer passed in the child argv (`-p<password>` readable by any local user via `ps`): the CLI registry now uses `MYSQL_PWD` via `DatabaseBackend.subprocess_env()` for shell, backup, and restore commands.
+- Admin bulk delete/purge now honors the resource's per-record `can_delete` hook (mirroring the single-record delete path); the `POST /{resource}/bulk` route previously bulk-deleted records without consulting it.
 - `APIKey.is_active()` no longer crashes with `TypeError` on aware-UTC timestamps (SQL-backed keys): naive values are assumed UTC, matching the rest of the auth package.
 - `MigrationScheduler.schedule_migration()` accepts naive `run_at` values (its documented `datetime.now() + timedelta(...)` usage) without raising on the naive-vs-aware subtraction.
 - CLI database bootstrap no longer crashes with `LEX_ERR_CFG_001` when run outside a full framework container: the bare-CLI providers are marked config-from-factory so the orchestrator skips the `LexigramConfig` lookup (`lexigram db setup` / direct migration runner paths).

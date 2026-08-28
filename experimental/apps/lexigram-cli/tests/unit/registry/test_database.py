@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -195,6 +195,30 @@ class TestMySQLBackend:
             cmd = b.build_shell_command({"user": "root", "password": "pass", "host": "localhost", "database": "mydb"})
             assert "-u" in cmd
             assert "root" in cmd
+
+    def test_password_never_in_argv(self) -> None:
+        """Secrets must not leak into the child argv (readable via ps)."""
+        with patch.object(MySQLBackend, "get_client_binary", return_value="/usr/bin/mysql"):
+            with patch("lexigram.cli.registry.database.shutil.which", return_value="/usr/bin/mysqldump"):
+                b = MySQLBackend()
+                params = {"user": "root", "password": "s3cret!", "host": "localhost", "database": "mydb"}
+                for cmd in (
+                    b.build_shell_command(params),
+                    b.build_backup_command(params, "backup.sql"),
+                    b.build_restore_command(params, "backup.sql"),
+                ):
+                    assert "s3cret!" not in cmd
+                    assert not any(arg.startswith("-p") for arg in cmd)
+
+    def test_password_via_mysql_pwd_env(self) -> None:
+        b = MySQLBackend()
+        env = b.subprocess_env({"user": "root", "password": "s3cret!", "host": "localhost"})
+        assert env.get("MYSQL_PWD") == "s3cret!"
+
+    def test_no_password_keeps_env_clean(self) -> None:
+        b = MySQLBackend()
+        env = b.subprocess_env({"user": "root"})
+        assert "MYSQL_PWD" not in env
 
     @pytest.mark.asyncio
     async def test_get_tables(self) -> None:
