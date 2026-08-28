@@ -144,7 +144,6 @@ async function refreshEvents() {
     }).join("") || "<p class=\"muted\">No events yet.</p>";
   } catch (e) {
     log(`event refresh failed: ${e.message}`, "log-error");
-    showError(`Events unavailable: ${e.message}`);
   }
 }
 

@@ -61,7 +61,7 @@ async function loadOrders() {
       btn.addEventListener("click", () => shipOrder(btn.dataset.id, btn))
     );
   } catch (error) {
-    $("orders-error").textContent = `Could not load orders: ${error.message}`;
+    $("orders-error").textContent = "Orders unavailable — start the demo to place orders.";
     show("orders-error");
     log("load orders failed: " + error.message, "log-err");
   }
@@ -203,7 +203,7 @@ async function loadOutbox() {
       tbody.appendChild(tr);
     });
   } catch (error) {
-    $("outbox-error").textContent = `Could not load outbox: ${error.message}`;
+    $("outbox-error").textContent = "Outbox unavailable — start the demo to see events.";
     show("outbox-error");
     log("load outbox failed: " + error.message, "log-err");
   }

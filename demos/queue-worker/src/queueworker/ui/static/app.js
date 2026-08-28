@@ -41,7 +41,7 @@ async function refreshStats() {
       `<div class="queue-stat"><span>Handled</span><strong>${processed.count}</strong></div>`;
   } catch (e) {
     log(`refresh failed: ${e.message}`, "log-error");
-    showError(`Worker status unavailable: ${e.message}`);
+    $("queue-stats").innerHTML = "<p class='muted'>Worker not running — start the demo to see stats.</p>";
   }
 }
 
