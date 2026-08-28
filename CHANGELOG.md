@@ -17,6 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Workspace version alignment: all 54 packages now carry `0.1.5007` (was a mix of `0.1.5003`–`0.1.5006`); `uv.lock` regenerated.
 
 ### Fixed
+- CLI database bootstrap no longer crashes with `LEX_ERR_CFG_001` when run outside a full framework container: the bare-CLI providers are marked config-from-factory so the orchestrator skips the `LexigramConfig` lookup (`lexigram db setup` / direct migration runner paths).
+- `lexigram-cli` `ConfigManager.save()` no longer drops unset (`None`) fields incorrectly: the `tomli_w` path raised `TypeError` on `None`, and the manual TOML fallback wrote the corrupting string `"None"`; omitted keys now fall back to their defaults on load.
+- `lexigram-multimedia-video` and CLI registry tests no longer depend on runner binaries (`ffmpeg`/`psql`/`mysql` on `PATH`) — availability is patched so tests are deterministic.
 - `lexigram-sql` `QueryEngine` now returns normalized `list[dict]` rows and correct scalar values against real backends (`aiosqlite`, `asyncpg`, `aiomysql`) instead of assuming a driver result exposes `.fetchall()` / dict rows.
 - `ConnectionProtocol` now reflects the actual `DatabaseConnection` surface (`execute`/`execute_many`/`fetch_one`/`fetch_all`/`close`).
 - CLI migration command formatting passes the locked ruff format gate.
