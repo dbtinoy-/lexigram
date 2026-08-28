@@ -7,7 +7,6 @@ and all LLM client implementations.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar
 
 from lexigram.ai.llm.pinning import ModelPinPolicy
@@ -144,13 +143,13 @@ class PricingConfig(DomainModel):
             ValueError: On unknown source type or a ``json`` source
                 without ``file_path``.
         """
+        from lexigram.ai.llm.pricing.pricing_source_registry import (
+            PricingSourceRegistry,
+        )
         from lexigram.ai.llm.pricing.sources import (
             APIPricingSource,
-            JSONFilePricingSource,
             OpenRouterPricingSource,
-            StaticPricingSource,
         )
-        from lexigram.ai.llm.pricing.types import ModelPricing
 
         litellm_url = (
             "https://raw.githubusercontent.com/BerriAI/litellm/main/"
@@ -163,38 +162,8 @@ class PricingConfig(DomainModel):
                 APIPricingSource(litellm_url),
             ]
 
-        sources: list[AbstractPricingSource] = []
-        for cfg in self.sources:
-            source_type = cfg.type.strip().lower()
-            if source_type == "litellm":
-                sources.append(
-                    APIPricingSource(cfg.endpoint or litellm_url, cfg.timeout)
-                )
-            elif source_type == "openrouter":
-                sources.append(OpenRouterPricingSource(cfg.endpoint, cfg.timeout))
-            elif source_type == "json":
-                if not cfg.file_path:
-                    msg = "pricing source of type 'json' requires 'file_path'"
-                    raise ValueError(msg)
-                sources.append(JSONFilePricingSource(Path(cfg.file_path)))
-            elif source_type == "static":
-                static: dict[str, ModelPricing] = {}
-                for model_name, prices in cfg.models.items():
-                    static[model_name] = ModelPricing(
-                        model=model_name,
-                        prompt_per_1m=float(prices.get("prompt_per_1m", 0.0)),
-                        completion_per_1m=float(prices.get("completion_per_1m", 0.0)),
-                        provider=str(prices.get("provider", "custom")),
-                        source="static:config",
-                    )
-                sources.append(StaticPricingSource(static))
-            else:
-                msg = (
-                    f"Unknown pricing source type {cfg.type!r}. "
-                    "Supported types: litellm, openrouter, json, static"
-                )
-                raise ValueError(msg)
-        return sources
+        registry = PricingSourceRegistry.with_defaults()
+        return [registry.create_source(cfg) for cfg in self.sources]
 
 
 @dataclass(init=False)
