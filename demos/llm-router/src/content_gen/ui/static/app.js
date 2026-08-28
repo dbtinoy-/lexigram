@@ -17,7 +17,7 @@ $("btn-generate").addEventListener("click", async function() {
   const btn = $("btn-generate");
   btn.disabled = true;
   try {
-    const res = await fetch("/api/generate", {
+    const res = await fetch("/api/content/generate", {
       method: "POST",
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify({topic: "Lexigram framework", style: style})
@@ -35,7 +35,7 @@ $("btn-extract").addEventListener("click", async function() {
   const btn = $("btn-extract");
   btn.disabled = true;
   try {
-    const res = await fetch("/api/extract", {
+    const res = await fetch("/api/content/extract", {
       method: "POST",
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify({text: text})

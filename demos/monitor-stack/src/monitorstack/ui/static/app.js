@@ -14,7 +14,7 @@ function log(msg, cls) {
 
 async function refreshHealth() {
   try {
-    const res = await fetch("/api/health");
+    const res = await fetch("/api/monitor/health");
     const data = await res.json();
     $("health-grid").innerHTML =
       '<div style="display:flex;gap:1rem;">' +
@@ -27,7 +27,7 @@ async function refreshHealth() {
 
 async function refreshMetrics() {
   try {
-    const res = await fetch("/api/metrics");
+    const res = await fetch("/api/monitor/metrics");
     const data = await res.json();
     $("metrics-grid").innerHTML =
       '<div style="display:flex;gap:1rem;">' +

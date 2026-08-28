@@ -18,7 +18,7 @@ $("btn-query").addEventListener("click", async function() {
   const btn = $("btn-query");
   btn.disabled = true;
   try {
-    const res = await fetch("/api/query", {
+    const res = await fetch("/api/rag/search", {
       method: "POST",
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify({query: q})
@@ -39,7 +39,7 @@ $("btn-ingest").addEventListener("click", async function() {
   const btn = $("btn-ingest");
   btn.disabled = true;
   try {
-    const res = await fetch("/api/ingest", {
+    const res = await fetch("/api/rag/ingest", {
       method: "POST",
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify({text: text})

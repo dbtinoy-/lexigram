@@ -14,7 +14,7 @@ function log(msg, cls) {
 
 async function refreshEvents() {
   try {
-    const res = await fetch("/api/events");
+    const res = await fetch("/api/webhook/events");
     const data = await res.json();
     $("events-list").innerHTML = (data || []).map(function(e) {
       return '<div style="padding:.4rem 0;border-bottom:1px solid var(--border)">' +
@@ -29,10 +29,10 @@ $("btn-send").addEventListener("click", async function() {
   const btn = $("btn-send");
   btn.disabled = true;
   try {
-    const res = await fetch("/api/webhooks", {
+    const res = await fetch("/api/webhook/receive", {
       method: "POST",
       headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({event: eventType, data: {id: Date.now()}})
+      body: JSON.stringify({event_type: eventType, payload: {id: Date.now()}, source: "console"})
     });
     const data = await res.json();
     log("sent webhook: " + eventType, "log-hit");

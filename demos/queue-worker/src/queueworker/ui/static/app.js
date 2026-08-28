@@ -14,7 +14,7 @@ function log(msg, cls) {
 
 async function refreshStats() {
   try {
-    const res = await fetch("/api/queue/status");
+    const res = await fetch("/api/queue/size");
     const data = await res.json();
     $("queue-stats").innerHTML =
       '<div style="display:flex;gap:1rem;">' +
@@ -30,7 +30,7 @@ $("btn-enqueue").addEventListener("click", async function() {
   const btn = $("btn-enqueue");
   btn.disabled = true;
   try {
-    const res = await fetch("/api/queue/enqueue", {
+    const res = await fetch("/api/queue/publish", {
       method: "POST",
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify({payload: payload})
