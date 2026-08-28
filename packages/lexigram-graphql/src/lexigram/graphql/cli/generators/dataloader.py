@@ -8,13 +8,12 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-import jinja2
-
 from lexigram.codegen.base import GenerationResult, GeneratorBase
+from lexigram.contracts.cli.generators import resolve_options
 
 
 class DataLoaderGenerator(GeneratorBase):
-    """Generator for GraphQL DataLoaders.
+    """Generate a GraphQL DataLoader.
 
     Creates DataLoaderProtocol classes that batch and cache data fetches
     to efficiently resolve GraphQL queries.
@@ -24,16 +23,8 @@ class DataLoaderGenerator(GeneratorBase):
     description = "Generate a GraphQL DataLoaderProtocol to solve N+1 problems"
     default_output_dir = "src/graphql/dataloaders"
 
-    def __init__(self, output_dir: str = "src/graphql/dataloaders") -> None:
-        template_dir = Path(__file__).parent.parent / "templates"
-        super().__init__(
-            output_dir=output_dir,
-            template_root=template_dir,
-        )
-        self._jinja_env = jinja2.Environment(
-            loader=jinja2.FileSystemLoader(str(template_dir)),
-            autoescape=True,
-        )
+    def __init__(self, output_dir: str | Path = "src/graphql/dataloaders") -> None:
+        super().__init__(output_dir=output_dir)
 
     def get_name(self) -> str:
         return self.name
@@ -44,31 +35,35 @@ class DataLoaderGenerator(GeneratorBase):
     def generate(
         self,
         name: str,
-        output_dir: str = "src/graphql/dataloaders",
+        *,
         key_type: str = "str",
-        **kwargs: Any,
+        dry_run: bool = False,
+        force: bool = False,
+        **options: Any,
     ) -> GenerationResult:
-        """Generate a DataLoaderProtocol.
+        """Generate a DataLoader module.
 
         Args:
-            name: Name of the DataLoaderProtocol (e.g., "UserLoader")
-            output_dir: Directory to write the file
-            key_type: Type of the key (e.g., "str", "int")
+            name: Name of the DataLoader (e.g. ``"UserLoader"`` or ``"user_loader"``).
+            key_type: Type of the key (e.g. ``"str"``, ``"int"``).
+            dry_run: Compute output paths without writing.
+            force: Overwrite an existing file.
 
         Returns:
-            GeneratorResult with generated file path
+            ``GenerationResult`` with created/skipped/overwritten paths.
         """
         snake_name = self._to_snake_case(name)
-        output_path = Path(output_dir) / f"{snake_name}.py"
-
-        template = self._jinja_env.get_template("dataloader.py.jinja2")
-        rendered = template.render(
-            name=name,
-            snake_name=snake_name,
-            key_type=key_type,
+        content = self.render_template(
+            "dataloader.py.jinja2",
+            {
+                "name": name,
+                "snake_name": snake_name,
+                "key_type": key_type,
+            },
         )
+        file_path = self.output_dir / f"{snake_name}.py"
+        self.stage(file_path, content)
+        return self.finalize(self.commit(resolve_options(dry_run=dry_run, force=force)))
 
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        output_path.write_text(rendered)
 
-        return GenerationResult(files_created=[output_path])
+__all__ = ["DataLoaderGenerator"]
