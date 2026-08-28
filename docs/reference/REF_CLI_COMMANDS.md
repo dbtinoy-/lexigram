@@ -55,16 +55,17 @@ lexigram
 │   └── filter         Generate a query filter for database models
 │   └── seeder         Generate a database seeder for test/dev data
 │   └── health         Generate a database health check
-│   └── model          Generate a SQLAlchemy model
+│   └── model          Generate a Pydantic entity model with Create/Update DTOs
 │   └── service        Generate a service with unit of work
 │   └── controller     Generate a web controller with route handlers
-│   └── resource       Generate a RESTful resource with CRUD endpoints
+│   └── resource       Generate a resource controller slice
 │   └── middleware     Generate a web middleware component
 │   └── graphql        Generate a GraphQL schema and resolvers
 │   └── webhook        Generate a webhook handler
 │   └── websocket      Generate a WebSocket handler
 │   └── exception_filter Generate a web exception filter
 │   └── interceptor      Generate a web request/response interceptor
+│   └── error           Generate a custom HTTP error
 │   └── workflow_def   Generate a workflow definition with steps and transitions
 │   └── pipeline       Generate a pipeline with sequential processing stages
 │   └── saga_step      Generate a saga step with compensating transaction
@@ -158,7 +159,7 @@ lexigram
 
 ## Generator Inventory
 
-**Total: 45 generators**
+**Total: 46 generators**
 
 | Generator | Description |
 |-----------|-------------|
@@ -184,6 +185,7 @@ lexigram
 | `lexigram gen websocket` | Generate a WebSocket handler |
 | `lexigram gen exception_filter` | Generate a web exception filter |
 | `lexigram gen interceptor` | Generate a web request/response interceptor |
+| `lexigram gen error` | Generate a custom HTTP error |
 | `lexigram gen workflow_def` | Generate a workflow definition with steps and transitions |
 | `lexigram gen pipeline` | Generate a pipeline with sequential processing stages |
 | `lexigram gen saga_step` | Generate a saga step with compensating transaction |
