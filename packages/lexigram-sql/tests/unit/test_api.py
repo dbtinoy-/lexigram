@@ -65,7 +65,7 @@ class _RawProvider:
                 self.cursor = cursor
 
             async def __aenter__(inner_self):
-                return _StructuredConn(inner_self.cursor)
+                return _StructuredConn(self.cursor)
 
             async def __aexit__(inner_self, exc_type, exc, tb):
                 return False
