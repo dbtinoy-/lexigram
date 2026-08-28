@@ -7,6 +7,7 @@ from typing import Any
 
 from lexigram.codegen import FieldSpec, parse_fields
 from lexigram.codegen.base import GenerationResult, GeneratorBase
+from lexigram.contracts.cli.generators import resolve_options
 
 
 class AdminResourceGenerator(GeneratorBase):
@@ -22,45 +23,34 @@ class AdminResourceGenerator(GeneratorBase):
             template_root=Path(__file__).parent.parent / "templates",
         )
 
-    def generate(self, name: str, **kwargs: Any) -> GenerationResult:
+    def generate(
+        self,
+        name: str,
+        *,
+        dry_run: bool = False,
+        force: bool = False,
+        **kwargs: Any,
+    ) -> GenerationResult:
         """Generate an admin resource file.
 
         Args:
-            name: Model name (e.g., 'user' or 'User')
-            **kwargs: Additional arguments including 'fields' and 'dry_run'
+            name: Model name (e.g. ``'user'`` or ``'User'``).
+            dry_run: Compute output paths without writing.
+            force: Overwrite an existing file.
+            **kwargs: Additional template context (fields, icon, label, ...).
 
         Returns:
-            GenerationResult with created/skipped files.
+            ``GenerationResult`` with created/skipped/overwritten paths.
         """
-        result = GenerationResult()
-        dry_run: bool = kwargs.get("dry_run", False)
-        force: bool = kwargs.get("force", False)
-
         fields_raw = kwargs.get("fields", "")
         fields = parse_fields(fields_raw) if fields_raw else []
 
         context = self._build_context(name, fields, kwargs)
+        content = self.render_template(self.template_name, context)
 
         file_path = self.output_dir / f"{context['file_name']}.py"
-
-        if file_path.exists() and not force:
-            result.files_skipped.append(file_path)
-            return result
-
-        if dry_run:
-            result.files_created.append(file_path)
-            return result
-
-        try:
-            template = self.env.get_template(self.template_name)
-            content = template.render(**context)
-            self.output_dir.mkdir(parents=True, exist_ok=True)
-            file_path.write_text(content)
-            result.files_created.append(file_path)
-        except (RuntimeError, OSError, AttributeError, LookupError):
-            result.files_created.append(file_path)
-
-        return result
+        self.stage(file_path, content)
+        return self.finalize(self.commit(resolve_options(dry_run=dry_run, force=force)))
 
     def _build_context(self, name: str, fields: list[FieldSpec], kwargs: dict) -> dict:
         """Build template context from fields."""

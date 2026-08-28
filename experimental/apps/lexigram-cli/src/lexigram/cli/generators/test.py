@@ -7,7 +7,7 @@ from typing import Any
 
 from lexigram.cli.generators.base import GenerationResult, GeneratorBase
 from lexigram.cli.generators.field_parser import parse_fields
-from lexigram.cli.lib import to_snake_case
+from lexigram.contracts.cli.generators import resolve_options
 
 # Sample values for different field types
 FIELD_SAMPLE_VALUES = {
@@ -24,19 +24,19 @@ FIELD_SAMPLE_VALUES = {
 
 
 class TestGenerator(GeneratorBase):
-    """Generates a test file for models, services, or controllers."""
+    """Generate a test file for models, services, or controllers."""
 
-    template_name = "test_unit.py.jinja2"
+    name = "test"
+    description = "Generate test"
+    default_output_dir = "tests/unit"
 
-    def __init__(self, output_dir: str = "tests/unit") -> None:
-        super().__init__(
-            output_dir=output_dir,
-            template_root=Path(__file__).parent.parent / "templates",
-        )
+    def __init__(self, output_dir: str | Path = "tests/unit") -> None:
+        super().__init__(output_dir=output_dir)
 
     def generate(
         self,
         name: str,
+        *,
         test_type: str = "model",
         fields_str: str | None = None,
         package_name: str | None = "app",
@@ -48,46 +48,32 @@ class TestGenerator(GeneratorBase):
         """Generate a test file.
 
         Args:
-            name: The name of the module/class to test (e.g., "User").
+            name: The name of the module/class to test (e.g. ``"User"``).
             test_type: Type of test (model, service, controller).
             fields_str: Field specifications for test data.
             package_name: The package name for imports.
             doc: Test documentation.
-            dry_run: If True, don't write files.
-            force: If True, overwrite existing files.
+            dry_run: Compute output paths without writing.
+            force: Overwrite an existing file.
 
         Returns:
-            GenerationResult with created/skipped files.
+            ``GenerationResult`` with created/skipped/overwritten paths.
         """
-        result = GenerationResult()
-
-        model_name = to_snake_case(name)
-        file_path = self.output_dir / f"test_{model_name}.py"
-
-        if file_path.exists() and not force:
-            result.files_skipped.append(file_path)
-            return result
+        model_name = self._to_snake_case(name)
+        class_name = self._to_pascal_case(name)
 
         fields = parse_fields(fields_str or "")
 
-        # Determine resource name
-        resource_name = model_name
-        if resource_name.endswith("y"):
-            resource_name = resource_name[:-1] + "ies"
-        elif not resource_name.endswith("s"):
-            resource_name = resource_name + "s"
-
         # Prepare fields with sample values
-        prepared_fields = []
-        for field in fields:
-            prepared_fields.append(
-                {
-                    "name": field.name,
-                    "type": field.type,
-                    "required": field.required,
-                    "sample_value": FIELD_SAMPLE_VALUES.get(field.type, '"sample"'),
-                },
-            )
+        prepared_fields = [
+            {
+                "name": field.name,
+                "type": field.type,
+                "required": field.required,
+                "sample_value": FIELD_SAMPLE_VALUES.get(field.type, '"sample"'),
+            }
+            for field in fields
+        ]
 
         # If no fields provided, add some defaults
         if not prepared_fields:
@@ -113,25 +99,18 @@ class TestGenerator(GeneratorBase):
             ]
 
         context: dict[str, Any] = {
-            "name": name,
-            "class_name": name,
+            "class_name": class_name,
             "model_name": model_name,
-            "resource_name": resource_name,
             "test_type": test_type,
-            "package_name": package_name,
+            "package_name": package_name or "app",
             "doc": doc,
             "fields": prepared_fields,
         }
 
-        template = self.env.get_template(self.template_name)
-        content = template.render(**context)
+        content = self.render_template("test_unit.py.jinja2", context)
+        file_path = self.output_dir / f"test_{model_name}.py"
+        self.stage(file_path, content)
+        return self.finalize(self.commit(resolve_options(dry_run=dry_run, force=force)))
 
-        if not dry_run:
-            self.output_dir.mkdir(parents=True, exist_ok=True)
-            file_path.write_text(content)
-            if file_path.exists() and force:
-                result.files_overwritten.append(file_path)
-            else:
-                result.files_created.append(file_path)
 
-        return result
+__all__ = ["TestGenerator"]
