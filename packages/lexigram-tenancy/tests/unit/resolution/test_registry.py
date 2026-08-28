@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from lexigram.tenancy.resolution.header import HeaderTenantResolver
 from lexigram.tenancy.resolution.registry import ResolverRegistry
 
@@ -132,6 +130,27 @@ def test_from_config_with_jwt_claim_key() -> None:
     )
     assert len(registry) == 1
     assert registry.ordered()[0].name == "jwt_claim"
+
+
+def test_from_config_dispatch_resolves_expected_types() -> None:
+    """Each requested name dispatches to the matching resolver implementation."""
+    from lexigram.tenancy.resolution.header import HeaderTenantResolver
+    from lexigram.tenancy.resolution.jwt_claim import JWTClaimTenantResolver
+    from lexigram.tenancy.resolution.path import PathTenantResolver
+    from lexigram.tenancy.resolution.subdomain import SubdomainTenantResolver
+
+    registry = ResolverRegistry.from_config(
+        resolver_names=["jwt_claim", "header", "subdomain", "path"],
+        subdomain_pattern="app.com",
+        path_pattern="/t/{tenant_id}/",
+    )
+    types = {type(r) for r in registry.ordered()}
+    assert types == {
+        JWTClaimTenantResolver,
+        HeaderTenantResolver,
+        SubdomainTenantResolver,
+        PathTenantResolver,
+    }
 
 
 def test_from_config_path_requires_pattern() -> None:
