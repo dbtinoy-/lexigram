@@ -192,8 +192,8 @@ latest `main` run); each job has a local one-liner:
 #### medium term (Q3-Q4 2026)
 - [x] Enhanced security — audit remediation — `done` (11 rounds, clean)
 - [x] Production-grade Admin dashboard — `in progress` (polish ongoing)
-- [x] Full-stack starter template — `in progres` (extracted to own repository)
-- [x] CLI — `in progres` (22 commands, 26 generators, 80% coverage)
+- [x] Full-stack starter template — `in progress` (extracted to own repository)
+- [x] CLI — `in progress` (22 commands, 26 generators, 80% coverage)
 - [ ] Performance optimizations — `not started`
 - [x] Reach 80% Unit Tests overall coverage — `in progress` (now > 75%)
 - [ ] Reach 70% test coverage overall (unit + integration) — `not started`
