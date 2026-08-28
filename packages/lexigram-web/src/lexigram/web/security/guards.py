@@ -87,26 +87,18 @@ class PermissionGuard(ABC):
 
     The authorizer must be injected at guard instantiation time (constructor injection).
 
-    By default **all** requested permissions must be granted (``require_all=True``).
-    ``require_all=False`` is supported for explicit "any of" routes; using the
-    opt-in form makes the security boundary obvious at the point of use.
-
     Usage:
         authorizer = await container.resolve(AuthorizerProtocol)
-        @use_guards(PermissionGuard("users:write", "users:read", authorizer=authorizer))
+        @use_guards(PermissionGuard("users:write", authorizer=authorizer))
         async def create_user(self):
             ...
     """
 
     def __init__(
-        self,
-        *required_permissions: str,
-        authorizer: AuthorizerProtocol,
-        require_all: bool = True,
+        self, *required_permissions: str, authorizer: AuthorizerProtocol
     ) -> None:
         self.required_permissions = set(required_permissions)
         self._authorizer = authorizer
-        self.require_all = require_all
 
     async def can_activate(self, context: Any) -> bool:
         """Check if user has required permissions using AuthorizerProtocol."""
@@ -115,33 +107,18 @@ class PermissionGuard(ABC):
         if not user:
             return False
 
-        # A PermissionGuard without any declared permissions is meaningless;
-        # fail closed rather than accidentally protecting nothing.
-        if not self.required_permissions:
-            return False
-
-        # Check each permission against the authorizer.  A permission string is
-        # treated as "resource.action" when it contains a dot, otherwise as a
-        # bare action on the resource named by the whole string.
-        async def _matches(perm: str) -> bool:
+        # Check each permission against the authorizer
+        for perm in self.required_permissions:
+            # We treat permission string as "resource.action" if it contains a dot,
+            # otherwise just pass as action (or resource, depending on how you view it).
             parts = perm.split(".", 1)
             resource = parts[0]
             action = parts[1] if len(parts) > 1 else perm
-            can = getattr(self._authorizer, "can", None)
-            if not callable(can):
-                return False
-            return bool(await can(user, action, resource))
 
-        if self.require_all:
-            for perm in self.required_permissions:
-                if not await _matches(perm):
-                    return False
-            return True
-
-        for perm in self.required_permissions:
-            if await _matches(perm):
+            if await self._authorizer.can(user, action, resource):
                 return True
-        return False
+
+        return bool(not self.required_permissions)
 
 
 def use_guards(*guards: type[Any] | Any) -> Any:

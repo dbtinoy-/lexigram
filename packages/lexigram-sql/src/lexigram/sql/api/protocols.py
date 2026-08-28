@@ -13,12 +13,7 @@ if TYPE_CHECKING:
 
 @runtime_checkable
 class ConnectionProtocol(Protocol):
-    """Protocol for database connections.
-
-    Mirrors ``lexigram.sql.abstractions.connection.DatabaseConnection``:
-    ``execute`` / ``execute_many`` return the driver cursor/result and
-    ``fetch_one`` / ``fetch_all`` return normalised ``dict`` rows.
-    """
+    """Protocol for database connections."""
 
     async def execute(
         self,
@@ -27,28 +22,13 @@ class ConnectionProtocol(Protocol):
     ) -> Any:  # pragma: no cover - interface
         ...
 
-    async def execute_many(
-        self,
-        sql: str,
-        params_list: list[tuple[object, ...]],
-    ) -> None:  # pragma: no cover - interface
+    def fetchone(self) -> dict[str, Any] | None:  # pragma: no cover - interface
         ...
 
-    async def fetch_one(
-        self,
-        sql: str,
-        params: tuple[object, ...] | None = None,
-    ) -> dict[str, Any] | None:  # pragma: no cover - interface
+    def fetchall(self) -> list[dict[str, Any]]:  # pragma: no cover - interface
         ...
 
-    async def fetch_all(
-        self,
-        sql: str,
-        params: tuple[object, ...] | None = None,
-    ) -> list[dict[str, Any]]:  # pragma: no cover - interface
-        ...
-
-    async def close(self) -> None:  # pragma: no cover - interface
+    def scalar(self) -> Any:  # pragma: no cover - interface
         ...
 
 

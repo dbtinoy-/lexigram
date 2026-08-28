@@ -82,11 +82,7 @@ def upgrade(
     out = OutputManager()
 
     async def _run() -> None:
-        (
-            runner,
-            orchestrator,
-            _container,
-        ) = await db_bootstrap._bootstrap_migration_runner()
+        runner, orchestrator, _container = await db_bootstrap._bootstrap_migration_runner()
         try:
             applied = await runner.run_migrations()
             if applied:
@@ -110,11 +106,7 @@ def downgrade(
     out = OutputManager()
 
     async def _run() -> None:
-        (
-            runner,
-            orchestrator,
-            _container,
-        ) = await db_bootstrap._bootstrap_migration_runner()
+        runner, orchestrator, _container = await db_bootstrap._bootstrap_migration_runner()
         try:
             current = await runner.get_current_version()
             if not current:
@@ -144,11 +136,7 @@ def status(
     out = OutputManager()
 
     async def _run() -> None:
-        (
-            runner,
-            orchestrator,
-            _container,
-        ) = await db_bootstrap._bootstrap_migration_runner()
+        runner, orchestrator, _container = await db_bootstrap._bootstrap_migration_runner()
         try:
             current = await runner.get_current_version()
             pending = await runner.get_pending_migrations()
