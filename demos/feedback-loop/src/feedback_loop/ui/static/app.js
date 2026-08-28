@@ -98,7 +98,11 @@ async function regress() {
     tr.innerHTML = `<td>${escapeHtml(r.run_id)}</td><td>${r.passed_samples}/${r.total_samples}</td>`;
     $("runs-body").prepend(tr);
   } catch (error) {
-    showError(error.message);
+    if (error.message.includes("no low-rated feedback")) {
+      row("No low-rated feedback to regress yet — rate some answers 1-2 first.", "muted");
+    } else {
+      showError(error.message);
+    }
   } finally {
     button.disabled = false;
   }
