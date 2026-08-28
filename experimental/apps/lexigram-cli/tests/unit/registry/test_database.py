@@ -170,9 +170,10 @@ class TestPostgreSQLBackend:
 
     def test_build_restore_command(self) -> None:
         with patch.object(PostgreSQLBackend, "get_client_binary", return_value="/usr/bin/psql"):
-            b = PostgreSQLBackend()
-            cmd = b.build_restore_command({"user": "admin", "database": "mydb"}, "backup.sql")
-            assert "psql" in cmd[0]
+            with patch("shutil.which", return_value="/usr/bin/psql"):
+                b = PostgreSQLBackend()
+                cmd = b.build_restore_command({"user": "admin", "database": "mydb"}, "backup.sql")
+                assert "psql" in cmd[0]
 
 
 class TestMySQLBackend:
@@ -216,11 +217,12 @@ class TestMySQLBackend:
 
     def test_build_restore_command_uses_stdin(self) -> None:
         with patch.object(MySQLBackend, "get_client_binary", return_value="/usr/bin/mysql"):
-            b = MySQLBackend()
-            cmd = b.build_restore_command({"user": "root", "database": "mydb"}, "backup.sql")
-            assert cmd[0] == "mysql"
-            assert "<" not in cmd
-            assert "backup.sql" not in cmd
+            with patch("shutil.which", return_value="/usr/bin/mysql"):
+                b = MySQLBackend()
+                cmd = b.build_restore_command({"user": "root", "database": "mydb"}, "backup.sql")
+                assert cmd[0] == "mysql"
+                assert "<" not in cmd
+                assert "backup.sql" not in cmd
 
 
 class TestDatabaseRegistry:

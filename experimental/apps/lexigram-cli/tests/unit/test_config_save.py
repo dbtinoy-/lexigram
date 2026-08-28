@@ -1,9 +1,10 @@
 """Tests for ConfigManager.save()."""
 from __future__ import annotations
 
-import pytest
 from pathlib import Path
 from unittest.mock import patch
+
+import pytest
 
 from lexigram.cli.config import CLIConfig, ConfigManager
 
@@ -46,3 +47,23 @@ class TestConfigManagerSave:
     def test_save_returns_none(self, tmp_config):
         result = ConfigManager.save(CLIConfig())
         assert result is None
+    def test_save_roundtrip_without_tomli_w_omits_none(self, tmp_config, monkeypatch):
+        """Fallback TOML writer must not corrupt None into the string 'None'."""
+        import builtins
+
+        real_import = builtins.__import__
+
+        def _block_tomli_w(name, *args, **kwargs):
+            if name == "tomli_w":
+                raise ImportError("tomli_w blocked for test")
+            return real_import(name, *args, **kwargs)
+
+        monkeypatch.setattr(builtins, "__import__", _block_tomli_w)
+
+        config = CLIConfig()  # env=None by default
+        ConfigManager.save(config)
+        loaded = ConfigManager.load()
+        assert loaded is not None
+        for field in config.model_dump():
+            if field != "model_config":
+                assert getattr(loaded, field) == getattr(config, field)

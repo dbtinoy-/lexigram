@@ -69,6 +69,12 @@ class ConfigManager:
         # Build [cli] section - use model_dump to get all fields automatically
         cli_data: dict[str, object] = config.model_dump()
 
+        # TOML has no null literal: drop unset (None) fields so they fall
+        # back to their defaults on load.  Keeps tomli_w from raising
+        # TypeError and the manual writer from emitting the corrupting
+        # string "None".
+        cli_data = {k: v for k, v in cli_data.items() if v is not None}
+
         # Merge - overwrite [cli] while keeping everything else
         existing_data["cli"] = cli_data
 
@@ -88,12 +94,27 @@ class ConfigManager:
                     if isinstance(section_data, dict):
                         f.write(f"[{section_name}]\n")
                         for key, value in section_data.items():
-                            f.write(f"{key} = {_toml_value(value)}\n")
+                            literal = _toml_value(value)
+                            if literal is not None:
+                                f.write(f"{key} = {literal}\n")
                         f.write("\n")
 
 
-def _toml_value(value: object) -> str:
-    """Serialize a Python value to a TOML literal."""
+def _toml_value(value: object) -> str | None:
+    """Serialize a Python value to a TOML literal.
+
+    ``None`` has no TOML literal — return ``None`` so the caller can omit
+    the key entirely (on load the field falls back to its default) instead
+    of writing the corrupting string ``"None"``.
+
+    Args:
+        value: Value to serialize.
+
+    Returns:
+        TOML literal, or ``None`` for values that must be omitted.
+    """
+    if value is None:
+        return None
     if isinstance(value, bool):
         return "true" if value else "false"
     if isinstance(value, str):
