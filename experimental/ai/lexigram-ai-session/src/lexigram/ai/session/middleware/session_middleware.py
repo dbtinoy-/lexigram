@@ -29,14 +29,42 @@ class SessionMiddleware:
     (when the ASGI scope exposes a mutable ``scope`` dict, as Starlette/FastAPI
     do) and can be injected into route handlers.
 
+    When a new session is created over HTTP and ``config.cookie_name`` is set,
+    the middleware injects a ``Set-Cookie`` response header (HttpOnly,
+    SameSite=Lax, ``Secure`` on HTTPS) via the wrapped ``send`` callable —
+    this requires composing the middleware around an inner ASGI app:
+
+    .. code-block:: python
+
+        from starlette.middleware import Middleware
+        from lexigram.ai.session import SessionMiddleware
+
+        middleware = [
+            Middleware(
+                SessionMiddleware,
+                session_manager=manager,
+                config=config,
+            ),
+        ]
+
+    (Starlette passes the inner app as the first positional argument.)
+    Without an inner app the middleware still binds ``scope["session"]``
+    (extraction-only mode), but the cookie is not delivered.
+
     Args:
+        app: Optional inner ASGI application to call with the wrapped send.
         session_manager: Session lifecycle manager.
         config: Session configuration (controls cookie/header names and TTL).
     """
 
     def __init__(
-        self, session_manager: SessionManagerProtocol, config: SessionConfig
+        self,
+        app: Any = None,
+        *,
+        session_manager: SessionManagerProtocol,
+        config: SessionConfig,
     ) -> None:
+        self._app = app
         self._manager = session_manager
         self._config = config
 
@@ -49,6 +77,8 @@ class SessionMiddleware:
             send: ASGI send callable (wrapped to inject cookie).
         """
         if scope.get("type") not in ("http", "websocket"):
+            if self._app is not None:
+                await self._app(scope, receive, send)
             return
 
         session_id = self._extract_session_id(scope)
@@ -75,9 +105,11 @@ class SessionMiddleware:
                 cookie_name=self._config.cookie_name,
                 session_id=state.session_id,
                 ttl=self._config.session_ttl,
+                secure=scope.get("scheme") == "https",
             )
 
-        return
+        if self._app is not None:
+            await self._app(scope, receive, send)
 
     def _extract_session_id(self, scope: dict[str, Any]) -> str | None:
         """Extract a session ID from scope headers, query params, or cookies.
@@ -122,6 +154,7 @@ class _CookieInjectSend:
         cookie_name: Name of the session cookie.
         session_id: Session ID to set.
         ttl: Max-age in seconds.
+        secure: Whether to set the ``Secure`` flag (only on HTTPS requests).
     """
 
     def __init__(
@@ -131,11 +164,13 @@ class _CookieInjectSend:
         cookie_name: str,
         session_id: str,
         ttl: int,
+        secure: bool,
     ) -> None:
         self._send = send
         self._cookie_name = cookie_name
         self._session_id = session_id
         self._ttl = ttl
+        self._secure = secure
         self._headers_sent = False
 
     async def __call__(self, message: dict[str, Any]) -> None:
@@ -146,9 +181,11 @@ class _CookieInjectSend:
         """
         if message["type"] == "http.response.start" and not self._headers_sent:
             self._headers_sent = True
+            secure_flag = "; Secure" if self._secure else ""
             cookie_value = (
                 f"{self._cookie_name}={self._session_id}; "
                 f"Max-Age={self._ttl}; HttpOnly; SameSite=Lax; Path=/"
+                f"{secure_flag}"
             )
             headers: list[tuple[bytes, bytes]] = list(message.get("headers", []))
             headers.append((b"set-cookie", cookie_value.encode()))
