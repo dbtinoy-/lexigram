@@ -8,7 +8,7 @@ for the canonical top-level names."""
 
 from __future__ import annotations
 
-from lexigram.contracts.ai.relay.dto.openai_responses.items import ResponsesItem
+from lexigram.contracts.ai.relay.dto.items import ResponsesItem
 from lexigram.contracts.ai.relay.dto.openai_responses.request import ResponsesRequest
 from lexigram.contracts.ai.relay.dto.openai_responses.response import (
     ResponsesEvent,

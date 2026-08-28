@@ -35,6 +35,9 @@ ALLOWLIST: set[str] = {
     "core/lexigram-contracts/src/lexigram/contracts/data/sql/database/",
     "core/lexigram-contracts/src/lexigram/contracts/infra/tasks/protocols/",
     "core/lexigram-contracts/src/lexigram/contracts/ai/agents/",
+    # contracts relay DTO families — same-package sibling wiring under dto/
+    # (gemini/, openai_responses/ re-export their submodules)
+    "core/lexigram-contracts/src/lexigram/contracts/ai/relay/dto/",
     # admin UI component re-exports (table views, data table views)
     "experimental/apps/lexigram-admin/src/lexigram/admin/ui/organisms/",
     # UI component re-exports

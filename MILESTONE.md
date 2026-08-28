@@ -22,6 +22,12 @@ annotated `v0.1.x` tags published on `dbtinoy-/lexigram` (authoritative);
 
 Focus: push aggregate test coverage from 75.6% toward 80% target; resolve documentation claims; update roadmap to reflect actual status.
 
+> Coverage gate reference: the CI aggregate gate is `--cov-fail-under=70`
+> (`.github/workflows/ci.yml` → coverage job); the 80% figure is the
+> milestone target, and per-package floors live in each package's
+> `pyproject.toml` `addopts` (e.g. `lexigram` core uses 38%). These are
+> three different numbers by design: floor ≠ target ≠ per-package floor.
+
 ### Completed this week
 
 - **v0.1.4 released** (2026-08-23) — generator system overhaul, dual-mode config, import depth gate
