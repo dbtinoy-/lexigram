@@ -109,6 +109,9 @@ jobs:
       - name: Import depth gate (max 6 segments)
         run: uv run python dev/checks/import_depth.py --max-depth 6
 
+      - name: Datetime awareness gate (no bare datetime.now())
+        run: uv run python dev/checks/datetime_awareness.py
+
       - name: env.example coverage
         run: uv run python dev/checks/env_example.py --root .
 
