@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
+from datetime import datetime
 from typing import Any, Protocol, TypeVar, runtime_checkable
 from uuid import UUID
 
@@ -76,6 +78,31 @@ class EventStoreProtocol(Protocol):
 
         Returns:
             List of events.
+        """
+        ...
+
+
+@runtime_checkable
+class EventReplayProtocol(Protocol):
+    """Optional replay capability for event-store implementations.
+
+    ``EventStoreProtocol`` stays intentionally small so existing append/read
+    stores remain compatible.  Stores that can replay their event stream may
+    advertise this capability without forcing every custom backend to add a
+    no-op method.
+    """
+
+    async def replay_events(
+        self,
+        handler: Callable[[Any], Awaitable[None]],
+        since: datetime | None = None,
+        event_types: list[str] | None = None,
+        on_progress: Callable[[int, int], None] | None = None,
+    ) -> int:
+        """Replay matching events through an async handler.
+
+        Returns:
+            Number of events successfully delivered to the handler.
         """
         ...
 

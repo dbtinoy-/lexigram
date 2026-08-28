@@ -23,6 +23,21 @@ class TestInMemoryEventStore:
         assert store._global_position == 0
 
     @pytest.mark.asyncio
+    async def test_health_check_reports_memory_readiness(self):
+        """The offline backend exposes an explicit healthy readiness result."""
+        store = InMemoryEventStore()
+
+        result = await store.health_check()
+
+        assert result.is_healthy()
+        assert result.component == "InMemoryEventStore"
+        assert result.details == {
+            "backend": "memory",
+            "event_count": 0,
+            "stream_count": 0,
+        }
+
+    @pytest.mark.asyncio
     async def test_save_events(self):
         """Test saving events"""
         store = InMemoryEventStore()

@@ -7,8 +7,8 @@ The lab is a small event journal for one deterministic stream. The browser can:
 - publish `open`, `approve`, and intentionally failing `fail` events;
 - inspect the in-memory event-store history and global sequence numbers;
 - observe an event subscriber and a retrying handler failure;
-- replay stored history through Lexigram's `replay_events()` API; and
-- check the lab's readiness and offline backend details.
+- replay stored history through Lexigram's optional `EventReplayProtocol`; and
+- check the lab's readiness, dispatch diagnostics, and offline backend details.
 
 There is no broker, database, worker, or external API. `EventsModule.configure()`
 provides the package-owned in-memory event store and event bus; `WebModule`
@@ -41,5 +41,9 @@ The standalone port is `8102`. The demo is also listed in Demo Hub as
    enqueue result, while the failure panel reports the handler's retry attempts.
    The projection subscriber still receives the event because the bus continues
    after a failed handler.
-3. Press **Replay history**. This uses the event store's public replay API and
-   reports the number of events replayed without appending duplicates.
+3. Press **Replay history**. This uses the store's public
+   `EventReplayProtocol` capability and reports the number of events replayed
+   without appending duplicates.
+4. After a failure probe, the readiness panel becomes degraded and exposes the
+   bus's retained asynchronous dispatch error count; successful publication
+   remains an enqueue result by design.

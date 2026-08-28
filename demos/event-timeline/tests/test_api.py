@@ -7,7 +7,9 @@ import pytest
 
 
 @pytest.mark.asyncio
-async def test_health_exposes_offline_events_composition(client: httpx.AsyncClient) -> None:
+async def test_health_exposes_offline_events_composition(
+    client: httpx.AsyncClient,
+) -> None:
     response = await client.get("/api/events/health")
     assert response.status_code == 200
     data = response.json()
@@ -15,10 +17,14 @@ async def test_health_exposes_offline_events_composition(client: httpx.AsyncClie
     assert data["offline"] is True
     assert data["event_store"] == "InMemoryEventStore"
     assert data["event_bus"] == "EventBusImpl"
+    assert data["components"]["event_store"]["status"] == "healthy"
+    assert data["components"]["event_bus"]["status"] == "healthy"
 
 
 @pytest.mark.asyncio
-async def test_publish_preserves_store_order_and_notifies_subscriber(client: httpx.AsyncClient) -> None:
+async def test_publish_preserves_store_order_and_notifies_subscriber(
+    client: httpx.AsyncClient,
+) -> None:
     first = await client.post(
         "/api/events/publish",
         json={"action": "open", "actor": "alice", "note": "cart ready"},
@@ -50,14 +56,22 @@ async def test_failure_is_reported_after_enqueue_and_does_not_stop_delivery(
     assert data["ok"] is True
     assert data["result"]["status"] == "enqueued"
     assert data["handler_failures"][0]["attempts"] == 4
+    assert data["bus_dispatch_error_count"] == 1
 
     timeline = (await client.get("/api/events")).json()
     assert timeline["deliveries"][0]["status"] == "handled"
     assert timeline["handler_failures"][0]["status"] == "failed"
+    assert timeline["bus_dispatch_error_count"] == 1
+
+    health = (await client.get("/api/events/health")).json()
+    assert health["status"] == "degraded"
+    assert health["components"]["event_bus"]["details"]["dispatch_error_count"] == 1
 
 
 @pytest.mark.asyncio
-async def test_replay_reads_history_without_appending_duplicates(client: httpx.AsyncClient) -> None:
+async def test_replay_reads_history_without_appending_duplicates(
+    client: httpx.AsyncClient,
+) -> None:
     await client.post("/api/events/publish", json={"action": "open"})
     await client.post("/api/events/publish", json={"action": "approve"})
     response = await client.post("/api/events/replay")

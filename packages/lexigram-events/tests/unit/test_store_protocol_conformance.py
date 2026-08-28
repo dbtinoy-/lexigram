@@ -1,3 +1,4 @@
+from lexigram.contracts.events import EventReplayProtocol
 from lexigram.events import InMemoryEventStore
 
 
@@ -11,3 +12,4 @@ def test_inmemory_event_store_has_protocol_methods():
     assert callable(store.append)
     assert callable(store.read)
     assert callable(store.get_stream_version)
+    assert isinstance(store, EventReplayProtocol)

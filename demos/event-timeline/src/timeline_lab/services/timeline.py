@@ -7,7 +7,12 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID, uuid4
 
-from lexigram.contracts.events import EventBusProtocol, EventStoreProtocol
+from lexigram.contracts.events import (
+    EventBusDiagnosticsProtocol,
+    EventBusProtocol,
+    EventReplayProtocol,
+    EventStoreProtocol,
+)
 from lexigram.result import Result
 from timeline_lab.config import TimelineLabConfig
 from timeline_lab.events import TimelineEvent
@@ -85,6 +90,7 @@ class TimelineService:
             "stream_version": version,
             "event": self._serialize(stored_event),
             "handler_failures": self._failures_for(stored_event),
+            "bus_dispatch_error_count": self._bus_dispatch_error_count(),
         }
 
     async def history(self) -> dict[str, Any]:
@@ -99,8 +105,7 @@ class TimelineService:
         async def capture(event: TimelineEvent) -> None:
             replayed.append(self._serialize(event))
 
-        replay_events = getattr(self._event_store, "replay_events", None)
-        if replay_events is None:
+        if not isinstance(self._event_store, EventReplayProtocol):
             self._last_replay = {
                 "count": 0,
                 "event_ids": [],
@@ -111,7 +116,7 @@ class TimelineService:
             current["replay"] = dict(self._last_replay)
             return current
 
-        count = await replay_events(
+        count = await self._event_store.replay_events(
             capture,
             event_types=[TimelineEvent.__name__],
         )
@@ -127,15 +132,34 @@ class TimelineService:
     async def health(self) -> dict[str, Any]:
         """Return readiness details for the offline event composition."""
         current = await self._event_store.read(self.stream_id)
+        components = {
+            "event_store": await self._component_health(self._event_store),
+            "event_bus": await self._component_health(self._event_bus),
+        }
+        healthy = all(
+            details.get("status") in {"healthy", "ok"}
+            for details in components.values()
+        )
         return {
-            "status": "ok",
+            "status": "ok" if healthy else "degraded",
             "service": "events-timeline",
             "offline": True,
             "event_store": type(self._event_store).__name__,
             "event_bus": type(self._event_bus).__name__,
             "stream_id": self.stream_id,
             "event_count": len(current),
+            "components": components,
         }
+
+    @staticmethod
+    async def _component_health(component: object) -> dict[str, Any]:
+        """Adapt the optional HealthCheckProtocol to the lab's JSON contract."""
+        check = getattr(component, "health_check", None)
+        if check is None:
+            return {"status": "unknown"}
+        result = await check()
+        to_dict = getattr(result, "to_dict", None)
+        return to_dict() if to_dict is not None else {"status": str(result)}
 
     def _snapshot(self, events: list[TimelineEvent]) -> dict[str, Any]:
         return {
@@ -147,10 +171,11 @@ class TimelineService:
                 self._failure_entry(event_id, attempts)
                 for event_id, attempts in self._failure_attempts.items()
             ],
+            "bus_dispatch_error_count": self._bus_dispatch_error_count(),
             "replay": dict(self._last_replay),
             "contract": {
-                "store": "EventStoreProtocol.read + append + replay_events",
-                "bus": "EventBusProtocol.publish + subscribe + flush",
+                "store": "EventStoreProtocol.read + append + EventReplayProtocol.replay_events",
+                "bus": "EventBusProtocol.publish + subscribe; concrete flush",
             },
         }
 
@@ -201,6 +226,12 @@ class TimelineService:
         event_id = str(event.event_id)
         attempts = self._failure_attempts.get(event_id, 0)
         return [self._failure_entry(event_id, attempts)] if attempts else []
+
+    def _bus_dispatch_error_count(self) -> int:
+        """Read the event bus's public asynchronous diagnostics snapshot."""
+        if not isinstance(self._event_bus, EventBusDiagnosticsProtocol):
+            return 0
+        return len(self._event_bus.dispatch_errors)
 
     @staticmethod
     def _failure_entry(event_id: str, attempts: int) -> dict[str, Any]:

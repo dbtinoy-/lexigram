@@ -116,6 +116,25 @@ class EventBusProtocol(Protocol):
 
 
 @runtime_checkable
+class EventBusDiagnosticsProtocol(Protocol):
+    """Optional diagnostics capability for asynchronous event buses.
+
+    ``EventBusProtocol.publish()`` only promises enqueue acceptance.  A bus
+    that dispatches handlers in the background can implement this capability
+    to expose settled failures without changing publication semantics.
+    """
+
+    @property
+    def dispatch_errors(self) -> tuple[Exception, ...]:
+        """Return a read-only snapshot of observed handler failures."""
+        ...
+
+    def clear_dispatch_errors(self) -> None:
+        """Clear the observed handler failures."""
+        ...
+
+
+@runtime_checkable
 class EventMiddlewareProtocol(Protocol):
     """Protocol for event bus middleware.
 

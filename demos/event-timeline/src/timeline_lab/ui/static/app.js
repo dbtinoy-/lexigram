@@ -37,8 +37,10 @@ function renderTimeline(data) {
 }
 
 async function refresh() {
-  try { renderTimeline(await jsonRequest('api/events')); }
-  catch (error) { showResult(`Could not read timeline: ${error.message}`, true); }
+  try {
+    renderTimeline(await jsonRequest('api/events'));
+    await health();
+  } catch (error) { showResult(`Could not read timeline: ${error.message}`, true); }
 }
 
 function showResult(message, warning = false) {
@@ -58,6 +60,7 @@ async function publish(action) {
     showResult(`✓ ${data.result.status} · sequence #${data.event.sequence_number} · stream version ${data.stream_version}.${failure}`, Boolean(failure));
     $('#note').value = '';
     renderTimeline(await jsonRequest('api/events'));
+    await health();
   } catch (error) { showResult(`Could not publish: ${error.message}`, true); }
   state.busy = false;
   document.querySelectorAll('.action').forEach((button) => { button.disabled = false; });
@@ -77,13 +80,18 @@ async function replay() {
 async function health() {
   try {
     const data = await jsonRequest('api/events/health');
+    const healthy = data.status === 'ok';
+    const dispatchErrors = data.components?.event_bus?.details?.dispatch_error_count ?? 0;
     $('#health-status').textContent = data.status;
-    $('#health-backend').textContent = `${data.event_store} · offline`;
-  } catch (_) { $('#health-status').textContent = 'unhealthy'; $('#health-status').style.color = 'var(--red)'; }
+    $('#health-status').style.color = healthy ? 'var(--green)' : 'var(--red)';
+    $('#health-backend').textContent = `${data.event_store} · ${dispatchErrors} dispatch error${dispatchErrors === 1 ? '' : 's'} · offline`;
+  } catch (_) {
+    $('#health-status').textContent = 'unhealthy';
+    $('#health-status').style.color = 'var(--red)';
+  }
 }
 
 document.querySelectorAll('.action').forEach((button) => button.addEventListener('click', () => publish(button.dataset.action)));
 $('#replay-button').addEventListener('click', replay);
 $('#refresh-button').addEventListener('click', refresh);
 refresh();
-health();
