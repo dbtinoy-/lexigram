@@ -142,11 +142,17 @@ class TestPytestPluginFixtures:
         - messaging fixtures
         - web fixtures
         - task fixtures
+        - external-service integration fixtures
         """
         # This is implicitly tested by the fact that fixtures from
         # each sub-plugin are available
         # (e.g., web_test_client from web, database_provider from db, etc.)
         assert True
+
+    def test_integration_config_fixture_is_available(self, integration_config) -> None:
+        """Integration fixtures are available to package compliance tests."""
+        assert integration_config.redis_url.startswith("redis://")
+        assert integration_config.minio_endpoint
 
     def test_test_data_factory_fixture_works(self, test_data) -> None:
         """Verify test_data factory fixture can be injected (TestDataFactory)."""
