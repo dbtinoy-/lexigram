@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from lexigram.logging import get_logger
@@ -78,8 +78,8 @@ class SQLAlchemyOAuthIdentityStore(OAuthIdentityStore):
             user_id=user_id,
             provider=provider,
             provider_user_id=provider_user_id,
-            created_at=datetime.now(),
-            updated_at=datetime.now(),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
         )
 
         insert_sql = """
