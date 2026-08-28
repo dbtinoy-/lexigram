@@ -7,13 +7,12 @@
 # defaults.  Each section maps 1:1 to a typed config model — the
 # framework validates your yaml against it at boot time.
 #
-# DEMO FOCUS: Provider pattern with in-memory stores, CRUD operations,
-# and the DI lifecycle.  Demonstrates how to wire services into the
-# container and expose them over HTTP.
+# DEMO FOCUS: Lexigram DatabaseModule + one SQL-backed task repository.
 #
 # LEARNING PATH:
-#   1. web:        HTTP server, security, CSRF
-#   2. task_app:   Task management settings
+#   1. app.py:     DatabaseModule.configure(SQLite) + WebModule
+#   2. provider:   DatabaseProviderProtocol and repository lifecycle
+#   3. browser:    parameterized CRUD against the live SQLite table
 #
 # For full reference see:
 #   - Lexigram Web:       packages/lexigram-web/src/lexigram/web/config/
@@ -87,18 +86,9 @@ web:
   # max_body_size: 10485760            # 10 MiB
 
 
-# ── Task App ─────────────────────────────────────────────────────────────────
-# Demo-specific settings for the task management demo.  The
-# TaskProvider reads this section automatically via config_key="task_app" /
-# config_model=TaskAppConfig.
-#
-# This demo uses in-memory stores to demonstrate the provider pattern
-# without requiring an external database.  In production, you would
-# replace these with lexigram-sql repositories backed by SQLite or
-# PostgreSQL.
+# ── Demo settings ────────────────────────────────────────────────────────────
+# DatabaseModule is configured explicitly in src/taskapp/app.py with an
+# isolated SQLite URL. This section is only the demo-owned typed config.
 # ─────────────────────────────────────────────────────────────────────────────
 task_app:
-  project_name: "Task Manager"         # display name for the project
-  # max_users: 100                     # maximum number of users
-  # max_projects: 50                   # maximum number of projects
-  # max_tasks_per_project: 200         # maximum tasks per project
+  project_name: "SQL Task Repository"

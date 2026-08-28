@@ -1,88 +1,74 @@
-"""Queue API — HTTP surface for message queue operations.
-
-Controllers are thin: they validate input, call a service, and
-return a response dict.  No business logic lives here.
-"""
+"""HTTP controls for the focused Lexigram queue-worker demo."""
 
 from __future__ import annotations
 
 from typing import Any
 
+from lexigram.contracts.queue.protocols import QueueProtocol
+from lexigram.contracts.queue.types import BusMessage
 from lexigram.web import Controller, get, post
+from queueworker.services.processor import MessageProcessor
 
 
 class QueueApiController(Controller):
-    """HTTP surface for message queue operations.
-
-    Delegates to services for business logic.  Returns dicts that
-    the framework serialises to JSON.
-    """
+    """Publish task messages and inspect the real ``MessageConsumer``."""
 
     prefix = "/api/queue"
 
-    def __init__(self, queue: object = None, processor: object = None) -> None:
+    def __init__(
+        self,
+        queue: QueueProtocol | None = None,
+        processor: MessageProcessor | None = None,
+        max_retries: int = 3,
+    ) -> None:
         self._queue = queue
         self._processor = processor
+        self._max_retries = max_retries
 
     @post("/publish")
     async def publish(self, body: dict[str, Any]) -> dict[str, Any]:
-        """Publish a message to the queue.
+        """Publish a Lexigram ``BusMessage`` to the worker's topic."""
+        topic = body.get("topic", self._processor.topic)
+        topic_error = self._topic_error(topic)
+        if topic_error:
+            return {"error": topic_error}
 
-        Body: ``{"topic": "orders", "payload": {"order_id": "123"}}``
-        """
-        topic = body.get("topic", "")
-        if not topic:
-            return {"error": "Topic is required"}
-
-        payload = body.get("payload", {})
-        msg = await self._queue.publish(topic, payload)
-        return {"message_id": msg.id, "topic": msg.topic}
-
-    @post("/process")
-    async def process(self, body: dict[str, Any]) -> dict[str, Any]:
-        """Process a single message from the queue.
-
-        Body: ``{"topic": "orders"}``
-        """
-        topic = body.get("topic", "")
-        if not topic:
-            return {"error": "Topic is required"}
-
-        result = await self._processor.process_message(topic)
-        if result is None:
-            return {"message": "No messages to process"}
-        return result
-
-    @post("/process/batch")
-    async def process_batch(self, body: dict[str, Any]) -> dict[str, Any]:
-        """Process a batch of messages from the queue.
-
-        Body: ``{"topic": "orders", "batch_size": 5}``
-        """
-        topic = body.get("topic", "")
-        if not topic:
-            return {"error": "Topic is required"}
-
-        batch_size = body.get("batch_size", 10)
-        results = await self._processor.process_batch(topic, batch_size=batch_size)
-        return {"processed": len(results), "results": results}
-
-    @get("/size")
-    async def size(self, topic: str = "tasks") -> dict[str, Any]:
-        """Get the number of messages in the queue."""
-        size = await self._queue.size(topic)
-        return {"topic": topic, "size": size}
+        message = BusMessage(
+            topic=topic,
+            payload=body.get("payload", {}),
+            max_retries=self._max_retries,
+        )
+        published = await self._queue.publish(topic, message)
+        return {
+            "message_id": published.id,
+            "topic": published.topic,
+            "delivery": published.delivery_guarantee.value,
+            "max_retries": published.max_retries,
+        }
 
     @get("/processed")
     async def processed(self) -> dict[str, Any]:
-        """Get all processed messages."""
+        """Get the consumer's processed-message audit trail."""
         results = self._processor.get_processed()
         return {"count": len(results), "results": results}
 
     @get("/health")
     async def health(self) -> dict[str, Any]:
-        """Health check endpoint."""
-        return {"status": "ok", "service": "queueworker"}
+        """Report QueueProtocol and MessageConsumer readiness."""
+        return {
+            "status": "ok" if self._processor.is_running() else "starting",
+            "service": "queueworker",
+            "topic": self._processor.topic,
+            "consumer_running": self._processor.is_running(),
+        }
+
+    def _topic_error(self, topic: str) -> str | None:
+        """Keep the example intentionally scoped to one worker topic."""
+        if not topic:
+            return "Topic is required"
+        if topic != self._processor.topic:
+            return f"This worker listens only to the '{self._processor.topic}' topic"
+        return None
 
 
 __all__ = ["QueueApiController"]

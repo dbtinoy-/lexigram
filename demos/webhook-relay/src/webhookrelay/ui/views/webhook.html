@@ -19,27 +19,43 @@
 
   <header>
     <h1>Webhook Relay</h1>
-    <p class="muted">Webhook Relay Demo — Demonstrates Lexigram webhook pattern</p>
+    <p class="muted">Create a Lexigram subscription, sign an event, and inspect the verified relay</p>
   </header>
   <main>
+    <section id="subscription-panel">
+      <h2>Lexigram Subscription</h2>
+      <form id="subscription-form">
+        <label for="subscription-url">Receiver URL</label>
+        <input id="subscription-url" type="url" value="https://example.test/hooks" required>
+        <label for="subscription-events">Event types <span class="muted">comma-separated</span></label>
+        <input id="subscription-events" type="text" value="order.created, payment.received" required>
+        <button type="submit" id="btn-subscribe" class="accent">Create subscription</button>
+      </form>
+      <p id="subscription-output" class="result" aria-live="polite">No browser subscription yet.</p>
+      <div id="subscription-list" class="muted" aria-live="polite"></div>
+    </section>
+
     <section id="send-panel">
-      <h2>Send Webhook</h2>
+      <h2>Send Inbound Event</h2>
       <form id="send-form">
         <label for="event-type">Event type</label>
         <div class="input-row">
           <select id="event-type">
             <option value="order.created">order.created</option>
             <option value="payment.received">payment.received</option>
-            <option value="user.registered">user.registered</option>
           </select>
-          <button type="submit" id="btn-send" class="accent">Send</button>
+          <button type="submit" id="btn-send" class="accent">Send event</button>
         </div>
+        <label class="checkbox-label">
+          <input id="use-signature" type="checkbox" checked>
+          Verify with the active subscription secret
+        </label>
       </form>
       <p id="error" class="error hidden" role="alert"></p>
     </section>
 
     <section id="events-panel">
-      <h2>Recent Events</h2>
+      <h2>Accepted Events</h2>
       <div id="events-list" aria-live="polite"></div>
     </section>
 

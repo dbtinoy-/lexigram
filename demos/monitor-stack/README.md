@@ -1,54 +1,49 @@
 # Monitor Stack Demo
 
-Teaches the **Lexigram monitoring pattern** — in-memory metrics, health
-checks, tracing, and observability decorators.  Demonstrates observability
-patterns without requiring external monitoring services.
+A focused, browser-first example of **Lexigram MonitorModule**. The console
+uses the package's real metric instruments, bounded in-memory tracing, and
+categorised health registry. No external telemetry service is required.
 
 ## What you'll learn
 
-1. **Health checks** — registering and running health check functions
-2. **Metrics collection** — counters, gauges, and histograms
-3. **Request tracing** — trace spans with timing
-4. **Provider wiring** — injecting monitoring services via DI
+1. `MonitorModule.configure()` — real observability bindings through DI
+2. Metrics — counters, gauges, histograms, and instrument introspection
+3. Tracing — start/end spans, attributes, trace IDs, and duration metrics
+4. Health probes — register a readiness check and run the package registry
+5. Provider lifecycle — add only the demo-specific self-check and HTTP console
 
 ## Read in order
 
 | # | File | What you learn |
 |---|------|----------------|
-| 1 | `application.yaml` | Configuration — service name, health interval, metrics toggle |
-| 2 | `src/monitorstack/app.py` | Composition root — `build_modules()` + `build_providers()` |
-| 3 | `src/monitorstack/di/provider.py` | Provider lifecycle — `register()`, `boot()`, `health_check()` |
-| 4 | `src/monitorstack/config.py` | Config model — `BaseConfig` + `Field()` with descriptions |
-| 5 | `src/monitorstack/metrics.py` | In-memory metrics — counters, gauges, histograms |
-| 6 | `src/monitorstack/services/health.py` | Health checker — register and run health checks |
-| 7 | `src/monitorstack/services/tracer.py` | Request tracing — trace spans with timing |
-| 8 | `src/monitorstack/controllers/api.py` | HTTP surface — thin controller adapters |
-| 9 | `tests/` | Real composition root, no mocks |
+| 1 | `application.yaml` | Lexigram Monitor tracing and demo settings |
+| 2 | `src/monitorstack/app.py` | `MonitorModule` + `WebModule` composition |
+| 3 | `src/monitorstack/di/provider.py` | Resolve monitor protocols and register one self-check |
+| 4 | `src/monitorstack/controllers/api.py` | JSON adapters for metrics, probes, and spans |
+| 5 | `src/monitorstack/ui/` | Live browser console |
+| 6 | `tests/` | Real composition-root coverage |
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                      application.yaml                           │
-│  web: server/host/port, security/csrf/enabled                  │
-│  monitorstack: service_name, health_check_interval, metrics_enabled│
-└─────────────────────────────────────────────────────────────────┘
-                            │
-                            ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                         app.py                                  │
-│  build_modules()  → [WebModule.configure(controllers=[...])]    │
-│  build_providers() → [MonitorStackProvider()]                   │
-│  create_app()     → Application(name="monitor-stack")          │
-└─────────────────────────────────────────────────────────────────┘
-                            │
-                            ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                      provider.py                                │
-│  register(): container.singleton(MonitorStackConfig, instance=cfg)│
-│  boot():     resolve config → create metrics/health/tracer → bind│
-└─────────────────────────────────────────────────────────────────┘
+application.yaml
+      │
+      ▼
+MonitorModule.configure()
+      ├── MetricsCollectorProtocol
+      ├── TracerProtocol
+      └── HealthCheckRegistry
+                │
+                ▼
+      MonitorStackProvider + WebModule
+                │
+                ▼
+       browser observability console
 ```
+
+The demo deliberately does not duplicate metric, tracing, or health classes.
+Lexigram Monitor owns those capabilities; the app provider only registers the
+one check and presents them.
 
 ## Quick start
 
@@ -57,22 +52,17 @@ cd demos/monitor-stack
 uv run python -m monitorstack
 ```
 
-## Run tests
-
-```bash
-cd demos/monitor-stack
-uv run pytest tests/ -v
-```
+Open the URL printed by the server. Record a span, adjust a metric, and watch
+the health and metric panels refresh.
 
 ## API endpoints
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `GET` | `/api/monitor/health` | Run health checks |
-| `GET` | `/api/monitor/health/self` | Self health check |
-| `GET` | `/api/monitor/metrics` | Get all metrics |
+| `GET` | `/api/monitor/health` | Run liveness/readiness probes |
+| `GET` | `/api/monitor/health/self` | Run the named self-check |
+| `GET` | `/api/monitor/metrics` | Inspect package metric instruments |
 | `POST` | `/api/monitor/metrics/increment` | Increment a counter |
 | `POST` | `/api/monitor/metrics/gauge` | Set a gauge |
-| `GET` | `/api/monitor/traces` | Get trace spans |
-| `POST` | `/api/monitor/trace` | Create a trace span |
-| `GET` | `/api/monitor/health` | Health check |
+| `GET` | `/api/monitor/traces` | Inspect bounded spans |
+| `POST` | `/api/monitor/trace` | Create a timed span |

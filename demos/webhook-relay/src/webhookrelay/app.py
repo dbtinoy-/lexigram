@@ -39,6 +39,7 @@ from lexigram.app.base import Application
 from lexigram.config.main import LexigramConfig
 from lexigram.di.provider import Provider
 from lexigram.web.module import WebModule
+from lexigram.webhook.module import WebhookModule
 from webhookrelay.controllers.api import WebhookApiController
 from webhookrelay.di.provider import WebhookRelayProvider
 from webhookrelay.ui.pages import WebhookPageController
@@ -51,8 +52,11 @@ def build_modules() -> list[object]:
     framework expands into providers at boot.
     """
     return [
-        # WebModule is the only module that needs your controllers list —
-        # this is the explicit wiring style.
+        # WebhookModule owns subscription storage, secret generation,
+        # verification, delivery, and lifecycle wiring. This demo keeps a
+        # local event ledger so the browser can inspect an inbound relay
+        # without needing a second public endpoint.
+        WebhookModule.configure(),
         WebModule.configure(
             controllers=[WebhookApiController, WebhookPageController],
         ),

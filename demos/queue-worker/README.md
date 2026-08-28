@@ -1,53 +1,47 @@
 # Queue Worker Demo
 
-Teaches the **Lexigram queue pattern** — in-memory message queue, message
-consumers, and background task processing.  Demonstrates publish/consume
-patterns without requiring an external message broker.
+A focused, browser-first example of **Lexigram QueueModule** and
+`MessageConsumer`. Publish a task to one configured topic and watch the
+consumer process it in the same standalone app. It uses Lexigram's in-memory
+backend, so no broker is required.
 
 ## What you'll learn
 
-1. **In-memory queue** — publish and consume messages with topic routing
-2. **Message processing** — single and batch message processing
-3. **Provider wiring** — injecting queue services via DI
-4. **Test bootstrap** — real composition root, no mocks
+1. `QueueModule.stub()` — real `QueueProtocol` DI wiring with an in-memory backend
+2. `BusMessage` — typed topic, payload, delivery guarantee, and retry metadata
+3. `MessageConsumer` — subscription and automatic handler lifecycle
+4. `Provider` lifecycle — start the consumer in `boot()` and stop it cleanly
+5. Browser controls — publish and inspect worker progress without a CLI
 
 ## Read in order
 
 | # | File | What you learn |
 |---|------|----------------|
-| 1 | `application.yaml` | Configuration — queue name, retries, batch size |
-| 2 | `src/queueworker/app.py` | Composition root — `build_modules()` + `build_providers()` |
-| 3 | `src/queueworker/di/provider.py` | Provider lifecycle — `register()`, `boot()`, `health_check()` |
-| 4 | `src/queueworker/config.py` | Config model — `BaseConfig` + `Field()` with descriptions |
-| 5 | `src/queueworker/queue.py` | In-memory queue — publish, consume, peek, size |
-| 6 | `src/queueworker/services/processor.py` | Message processing — single and batch |
-| 7 | `src/queueworker/controllers/api.py` | HTTP surface — thin controller adapters |
-| 8 | `tests/` | Real composition root, no mocks |
+| 1 | `application.yaml` | Worker topic and demo configuration |
+| 2 | `src/queueworker/app.py` | `QueueModule` + `WebModule` composition |
+| 3 | `src/queueworker/di/provider.py` | Resolve `QueueProtocol`, start and stop the consumer |
+| 4 | `src/queueworker/services/processor.py` | `MessageConsumer.handle()` implementation |
+| 5 | `src/queueworker/controllers/api.py` | Publish and browser inspection endpoints |
+| 6 | `src/queueworker/ui/` | Standalone task publisher and status console |
+| 7 | `tests/` | Real composition-root coverage |
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                      application.yaml                           │
-│  web: server/host/port, security/csrf/enabled                  │
-│  queueworker: queue_name, max_retries, batch_size              │
-└─────────────────────────────────────────────────────────────────┘
-                            │
-                            ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                         app.py                                  │
-│  build_modules()  → [WebModule.configure(controllers=[...])]    │
-│  build_providers() → [QueueWorkerProvider()]                    │
-│  create_app()     → Application(name="queue-worker")           │
-└─────────────────────────────────────────────────────────────────┘
-                            │
-                            ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                      provider.py                                │
-│  register(): container.singleton(QueueWorkerConfig, instance=cfg)│
-│  boot():     resolve config → create queue → bind controller    │
-└─────────────────────────────────────────────────────────────────┘
+application.yaml
+      │
+      ▼
+QueueModule.stub() ──► QueueProtocol ──► MessageProcessor(MessageConsumer)
+      │                                      │
+      └────────────── WebModule ◄────────────┘
+                         │
+                         ▼
+                 browser console + API
 ```
+
+The worker intentionally listens only to the configured `tasks` topic. This
+keeps the demo about one queue-worker concern rather than turning it into a
+multi-topic bus showcase.
 
 ## Quick start
 
@@ -56,20 +50,14 @@ cd demos/queue-worker
 uv run python -m queueworker
 ```
 
-## Run tests
-
-```bash
-cd demos/queue-worker
-uv run pytest tests/ -v
-```
+Open the URL printed by the server and publish a task. The worker handles it
+automatically; there is no separate process or pull-style CLI step.
 
 ## API endpoints
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `POST` | `/api/queue/publish` | Publish a message to the queue |
-| `POST` | `/api/queue/process` | Process a single message |
-| `POST` | `/api/queue/process/batch` | Process a batch of messages |
-| `GET` | `/api/queue/size` | Get queue size |
-| `GET` | `/api/queue/processed` | Get processed messages |
-| `GET` | `/api/queue/health` | Health check |
+| `POST` | `/api/queue/publish` | Publish a `BusMessage` to the worker topic |
+| `GET` | `/api/queue/processed` | Inspect the consumer audit trail |
+| `GET` | `/api/queue/health` | Show topic and consumer readiness |
+| `GET` | `/api/queue/size` | Show the best-effort publish/handle progress estimate |

@@ -1,59 +1,51 @@
 # SQL Repository Demo
 
-Demonstrates the **Lexigram provider pattern** — in-memory stores, CRUD operations,
-and the DI lifecycle.  Demonstrates how to wire services into the container
-and expose them over HTTP with a clean composition root.
+A focused, browser-first example of a **Lexigram SQL repository**. The demo
+uses `DatabaseModule` with an in-memory SQLite database, a typed
+`DatabaseProviderProtocol`, and a small `TaskRepository`. It is intentionally
+about one resource: tasks.
 
 ## What you'll learn
 
-1. **Provider pattern** — `register()` declares bindings, `boot()` wires them
-2. **Controller pattern** — thin HTTP adapters that delegate to services
-3. **Config model** — typed dataclass with `BaseConfig` + `Field()` defaults
-4. **Test bootstrap** — real composition root, no mocks, `httpx.ASGITransport`
+1. `DatabaseModule.configure()` — SQLite connection lifecycle through DI
+2. `DatabaseProviderProtocol` — schema setup, parameterized queries, inserts,
+   updates, deletes, and health checks
+3. Repository separation — SQL stays in `TaskRepository`, not the controller
+4. Provider lifecycle — initialize the schema and seed rows in `boot()`
+5. Browser controls — create tasks, update status, delete rows, and inspect
+   SQL-backed stats
 
 ## Read in order
 
 | # | File | What you learn |
 |---|------|----------------|
-| 1 | `application.yaml` | Configuration — web server, CSRF, demo settings |
-| 2 | `src/taskapp/app.py` | Composition root — `build_modules()` + `build_providers()` |
-| 3 | `src/taskapp/di/provider.py` | Provider lifecycle — `register()`, `boot()`, `health_check()` |
-| 4 | `src/taskapp/config.py` | Config model — `BaseConfig` + `Field()` with descriptions |
-| 5 | `src/taskapp/controllers/api.py` | HTTP surface — thin controller adapters, CRUD endpoints |
-| 6 | `tests/` | Real composition root, no mocks |
+| 1 | `src/taskapp/app.py` | `DatabaseModule` + `WebModule` composition |
+| 2 | `src/taskapp/di/provider.py` | Resolve the database and initialize the repository |
+| 3 | `src/taskapp/repository/tasks.py` | Repository queries through the database protocol |
+| 4 | `src/taskapp/controllers/api.py` | Thin HTTP adapter and validation |
+| 5 | `src/taskapp/ui/` | Browser task console |
+| 6 | `tests/` | Real SQLite-backed composition-root coverage |
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                      application.yaml                           │
-│  web: server/host/port, security/csrf/enabled                  │
-│  task_app: project_name                                        │
-└─────────────────────────────────────────────────────────────────┘
-                            │
-                            ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                         app.py                                  │
-│  build_modules()  → [WebModule.configure(controllers=[...])]    │
-│  build_providers() → [TaskProvider()]                           │
-│  create_app()     → Application(name="sql-repository")         │
-└─────────────────────────────────────────────────────────────────┘
-                            │
-                            ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                      provider.py                                │
-│  register(): container.singleton(TaskAppConfig, instance=cfg)  │
-│  boot():     resolve config → create stores → bind controller   │
-└─────────────────────────────────────────────────────────────────┘
-                            │
-                            ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                     controllers/api.py                           │
-│  prefix = "/api/tasks"                                          │
-│  POST/GET/DELETE users, projects, tasks                         │
-│  PUT /tasks/{id}/status                                        │
-└─────────────────────────────────────────────────────────────────┘
+DatabaseModule.configure(SQLite)
+              │
+              ▼
+   DatabaseProviderProtocol
+              │
+              ▼
+       TaskRepository ──► TasksApiController
+              │                    │
+              └──── WebModule ◄────┘
+                         │
+                         ▼
+                   browser console
 ```
+
+The database URL is `sqlite+aiosqlite:///:memory:` so every run is isolated
+and standalone. Swap the module configuration for a production database URL
+without changing the repository's protocol boundary.
 
 ## Quick start
 
@@ -62,27 +54,15 @@ cd demos/sql-repository
 uv run python -m taskapp
 ```
 
-## Run tests
-
-```bash
-cd demos/sql-repository
-uv run pytest tests/ -v
-```
+Open the URL printed by the server and use the task controls.
 
 ## API endpoints
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `POST` | `/api/tasks/users` | Create a user |
-| `GET` | `/api/tasks/users` | List all users |
-| `GET` | `/api/tasks/users/{id}` | Get a user by ID |
-| `DELETE` | `/api/tasks/users/{id}` | Delete a user |
-| `POST` | `/api/tasks/projects` | Create a project |
-| `GET` | `/api/tasks/projects` | List all projects |
-| `GET` | `/api/tasks/projects/{id}` | Get a project by ID |
-| `DELETE` | `/api/tasks/projects/{id}` | Delete a project |
-| `POST` | `/api/tasks/tasks` | Create a task |
-| `GET` | `/api/tasks/tasks` | List all tasks |
-| `GET` | `/api/tasks/tasks/{id}` | Get a task by ID |
+| `POST` | `/api/tasks/tasks` | Insert a task through the repository |
+| `GET` | `/api/tasks/tasks` | List SQL-backed tasks |
+| `GET` | `/api/tasks/tasks/{id}` | Read one task |
 | `PUT` | `/api/tasks/tasks/{id}/status` | Update task status |
 | `DELETE` | `/api/tasks/tasks/{id}` | Delete a task |
+| `GET` | `/api/tasks/stats` | Query aggregate task counts |

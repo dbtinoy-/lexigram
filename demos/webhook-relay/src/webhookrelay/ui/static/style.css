@@ -115,5 +115,8 @@ form label { color: var(--ink-dim); font-size: .8rem; font-weight: 600; }
 .event-row { display: grid; grid-template-columns: 1fr auto; gap: .25rem .75rem; padding: .55rem 0; border-bottom: 1px solid var(--border); }
 .event-row time { grid-column: 1 / -1; color: var(--ink-dim); font-size: .72rem; overflow-wrap: anywhere; }
 .event-row span { color: var(--ok); font-size: .8rem; }
+.result { margin-top: .6rem; color: var(--ok); font-size: .82rem; overflow-wrap: anywhere; }
+.checkbox-label { display: flex; flex-direction: row; align-items: center; gap: .45rem; font-weight: 400; }
+.checkbox-label input { accent-color: var(--accent); }
 .error { color: var(--error); font-size: .82rem; }
 @media (max-width: 480px) { .input-row { align-items: stretch; flex-direction: column; } }

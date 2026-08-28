@@ -1,13 +1,8 @@
-"""Webhook relay demo — HMAC signing and payload validation.
+"""Webhook relay demo — Lexigram subscriptions and HMAC verification.
 
-Convention followed: **Package exports** — ``__init__.py`` re-exports
-the public API surface without defining logic.
-
-Exports:
-
-- ``create_app`` — composition root for the application
-- ``WebhookRelayConfig`` — demo configuration model
-- ``WebhookRelayProvider`` — DI provider for webhook relay services
+The public surface is intentionally small: a standalone application factory,
+its typed ingress config, and the lifecycle provider that composes the
+package services with the browser event ledger.
 """
 
 from __future__ import annotations

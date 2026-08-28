@@ -7,13 +7,13 @@
 # defaults.  Each section maps 1:1 to a typed config model — the
 # framework validates your yaml against it at boot time.
 #
-# DEMO FOCUS: Monitoring pattern with in-memory backend, health checks,
-# metrics collection, and request tracing.  Demonstrates observability
-# patterns without requiring external monitoring services.
+# DEMO FOCUS: Lexigram MonitorModule health, metrics, and tracing.
+# The package-owned in-memory instruments keep the console standalone.
 #
 # LEARNING PATH:
 #   1. web:        HTTP server, security, CSRF
-#   2. monitorstack: Service name, health check interval, metrics toggle
+#   2. monitor:     Lexigram metric/tracing backend and span retention
+#   3. monitorstack: Demo health-response label
 #
 # For full reference see:
 #   - Lexigram Web:       packages/lexigram-web/src/lexigram/web/config/
@@ -71,18 +71,19 @@ web:
 
 
 # ── Monitor Stack ────────────────────────────────────────────────────────────
-# Demo-specific settings for the monitoring demo.  The
-# MonitorStackProvider reads this section automatically via
-# config_key="monitorstack" / config_model=MonitorStackConfig.
-#
-# This demo uses in-memory metrics to demonstrate health checks,
-# counters, gauges, histograms, and request tracing without requiring
-# external monitoring services like Prometheus or Datadog.
+# Demo-owned display label. MonitorModule reads its own observability section
+# above; this provider config is deliberately not a second metrics system.
 # ─────────────────────────────────────────────────────────────────────────────
+# ── Lexigram Monitor capability ──────────────────────────────────────────────
+# MonitorModule supplies the real metric instruments, bounded in-memory trace
+# provider, and categorised health registry used by the console.
+monitor:
+  backend_type: memory
+  tracing:
+    enabled: true
+    service_name: demo-service
+    max_spans: 200
+
+# ── Demo console settings ────────────────────────────────────────────────────
 monitorstack:
-  service_name: "demo-service"         # service name for metrics tagging
-  health_check_interval: 30            # seconds between health checks
-  metrics_enabled: true                # enable metrics collection
-  # tracing_enabled: true              # enable request tracing
-  # log_level: "info"                  # log level for monitoring
-  # export_interval: 60                # seconds between metric exports
+  service_name: "monitor-console"

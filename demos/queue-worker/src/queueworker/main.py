@@ -1,42 +1,15 @@
-"""Serve the queue-worker REST API.
-
-Convention followed: **Application boot** — ``create_app()`` builds the
-composition root, this file boots it and runs the web server.  Host/port
-are read automatically from ``application.yaml`` — no manual config wiring
-needed.
-
-Run::
-
-    uv run python -m queueworker
-
-The server exposes:
-
-- ``POST /api/queue/publish``       — publish a message to the queue
-- ``POST /api/queue/process``       — process a single message
-- ``POST /api/queue/process/batch`` — process a batch of messages
-- ``GET /api/queue/size``           — get queue size
-- ``GET /api/queue/processed``      — get processed messages
-- ``GET /api/queue/health``         — health check
-"""
+"""Serve the QueueModule worker console."""
 
 from __future__ import annotations
 
 import asyncio
 import sys
 
-from lexigram.logging import get_logger
 from queueworker.app import create_app
-
-logger = get_logger(__name__)
 
 
 async def serve() -> None:
-    """Boot and serve until interrupted.
-
-    ``app.start()`` triggers the full lifecycle:
-    register → freeze → boot (seeding happens here) → server start.
-    The ``finally`` block ensures ``stop()`` runs even on errors.
-    """
+    """Boot the consumer and run the standalone web server."""
     from lexigram.web.server.runner import run_server
 
     app = create_app()
@@ -48,7 +21,7 @@ async def serve() -> None:
 
 
 def main() -> int:
-    """Sync entry point: translate asyncio interrupts into exit codes."""
+    """Translate asyncio interrupts into a conventional exit code."""
     try:
         asyncio.run(serve())
     except KeyboardInterrupt:

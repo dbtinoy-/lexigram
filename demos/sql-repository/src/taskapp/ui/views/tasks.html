@@ -19,22 +19,20 @@
 
   <header>
     <h1>Task Manager</h1>
-    <p class="muted">SQL Repository Demo — Demonstrates lexigram-sql CRUD operations</p>
+    <p class="muted">SQL Repository — parameterized CRUD over Lexigram DatabaseModule and SQLite</p>
   </header>
   <main>
-    <section id="users-panel">
-      <h2>Users</h2>
-      <div id="users-list"></div>
-    </section>
-
-    <section id="projects-panel">
-      <h2>Projects</h2>
-      <div id="projects-list"></div>
-    </section>
-
-    <section id="tasks-panel">
+    <section id="task-panel">
       <h2>Tasks</h2>
-      <div id="tasks-list"></div>
+      <form id="task-form">
+        <label for="task-title">New task</label>
+        <div class="input-row">
+          <input id="task-title" type="text" placeholder="Try a repository insert" required>
+          <button type="submit" id="create-task" class="accent">Create task</button>
+        </div>
+      </form>
+      <p id="task-stats" class="muted" aria-live="polite"></p>
+      <div id="tasks-list" aria-live="polite"></div>
     </section>
 
     <section id="log-panel">

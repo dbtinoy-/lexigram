@@ -7,9 +7,9 @@
 # defaults.  Each section maps 1:1 to a typed config model — the
 # framework validates your yaml against it at boot time.
 #
-# DEMO FOCUS: RAG pipeline with in-memory vector store, document
-# ingestion, retrieval, and context synthesis.  Demonstrates the
-# full RAG lifecycle without requiring external vector databases.
+# DEMO FOCUS: Lexigram VectorModule + one document retrieval collection.
+# The local embedder keeps the experience standalone; storage and similarity
+# search are provided by Lexigram's VectorStoreProtocol.
 #
 # LEARNING PATH:
 #   1. web:        HTTP server, security, CSRF
@@ -17,7 +17,6 @@
 #
 # For full reference see:
 #   - Lexigram Web:       packages/lexigram-web/src/lexigram/web/config/
-#   - Lexigram AI RAG:    experimental/ai/lexigram-ai-rag/
 #   - Demo config:        demos/rag-pipeline/src/ragdocs/config.py
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -75,10 +74,9 @@ web:
 # RagDocsProvider reads this section automatically via
 # config_key="ragdocs" / config_model=RagDocsConfig.
 #
-# This demo uses an in-memory vector store to demonstrate the full
-# RAG lifecycle without requiring an external vector database like
-# Pinecone or Weaviate.  In production, replace with lexigram-ai-rag's
-# backend.
+# VectorModule.stub() selects Lexigram's in-memory backend. Replace the
+# module configuration, not the controller, when moving to Qdrant or another
+# VectorStoreProtocol implementation.
 #
 # The RAG pipeline consists of:
 #   1. Document ingestion — chunk and store documents

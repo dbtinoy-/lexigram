@@ -1,13 +1,8 @@
-"""SQL repository demo — task management with in-memory stores.
+"""SQL repository demo — one SQLite-backed task resource.
 
-Convention followed: **Package exports** — ``__init__.py`` re-exports
-the public API surface without defining logic.
-
-Exports:
-
-- ``create_app`` — composition root for the application
-- ``TaskAppConfig`` — demo configuration model
-- ``TaskProvider`` — DI provider for task management services
+The public surface is intentionally small: a standalone application factory,
+its typed demo config, and the lifecycle provider that initializes the
+Lexigram database repository.
 """
 
 from __future__ import annotations
