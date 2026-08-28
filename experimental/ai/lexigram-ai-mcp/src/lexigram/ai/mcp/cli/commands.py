@@ -170,6 +170,15 @@ async def _serve_sse(mcp_server: object, host: str, port: int) -> None:
     Implements a bare-asyncio HTTP server — no third-party web framework
     required.  The MCP client POSTs JSON-RPC requests to ``POST /mcp``.
 
+    The server is loopback-oriented by design: requests carrying an
+    ``Origin`` header are accepted only when the origin's host is a
+    loopback address (``127.0.0.1`` / ``localhost`` / ``::1``), and the
+    allowed origin is echoed back instead of ``*``.  This prevents a
+    random webpage from driving the local MCP server (and reading its
+    responses) via cross-origin ``text/plain`` POSTs, which otherwise
+    bypass CORS preflight.  Non-browser clients without an ``Origin``
+    header are unaffected.
+
     Args:
         mcp_server: A resolved MCPServer instance.
         host: Bind host.
@@ -180,63 +189,104 @@ async def _serve_sse(mcp_server: object, host: str, port: int) -> None:
     async def _handle(
         reader: asyncio.StreamReader, writer: asyncio.StreamWriter
     ) -> None:
-        try:
-            request_line = await reader.readline()
-            if not request_line:
-                return
-
-            headers: dict[str, str] = {}
-            while True:
-                hdr = await reader.readline()
-                if hdr in (b"\r\n", b"\n", b""):
-                    break
-                if b":" in hdr:
-                    key, _, val = hdr.decode(errors="replace").partition(":")
-                    key.strip().lower()
-                    headers[key.strip()] = val.strip()
-
-            content_length = int(headers.get("content-length", 0))
-            body = await reader.read(content_length) if content_length else b""
-
-            parts = request_line.decode(errors="replace").split(" ", 2)
-            method = parts[0] if parts else ""
-
-            if method == "POST" and body:
-                try:
-                    message = json.loads(body)
-                    response = await mcp_server.handle_message(message)  # type: ignore[attr-defined]
-                    if response is not None:
-                        response_body = json.dumps(response)
-                        writer.write(
-                            b"HTTP/1.1 200 OK\r\n"
-                            b"Content-Type: application/json\r\n"
-                            b"Access-Control-Allow-Origin: *\r\n"
-                            + f"Content-Length: {len(response_body)}\r\n".encode()
-                            + b"Connection: close\r\n\r\n"
-                            + response_body
-                        )
-                    else:
-                        writer.write(
-                            b"HTTP/1.1 204 No Content\r\nConnection: close\r\n\r\n"
-                        )
-                except json.JSONDecodeError:
-                    writer.write(
-                        b"HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n"
-                    )
-            else:
-                writer.write(b"HTTP/1.1 404 Not Found\r\nConnection: close\r\n\r\n")
-        except (RuntimeError, OSError, AttributeError, LookupError):
-            pass
-        finally:
-            try:
-                writer.close()
-                await writer.wait_closed()
-            except (RuntimeError, OSError, AttributeError, LookupError):
-                pass
+        await _handle_http_connection(reader, writer, mcp_server)
 
     server = await asyncio.start_server(_handle, host, port)
     async with server:
         await server.serve_forever()
+
+
+def _is_loopback_origin(origin: str) -> bool:
+    """Return True when the Origin header's host is a loopback address."""
+    from urllib.parse import urlsplit
+
+    try:
+        hostname = urlsplit(origin).hostname or ""
+    except ValueError:
+        return False
+    return hostname in ("127.0.0.1", "localhost", "::1")
+
+
+async def _handle_http_connection(
+    reader: asyncio.StreamReader,
+    writer: asyncio.StreamWriter,
+    mcp_server: object,
+) -> None:
+    """Serve one HTTP request/response exchange for the SSE transport."""
+    try:
+        request_line = await reader.readline()
+        if not request_line:
+            return
+
+        headers: dict[str, str] = {}
+        while True:
+            hdr = await reader.readline()
+            if hdr in (b"\r\n", b"\n", b""):
+                break
+            if b":" in hdr:
+                key, _, val = hdr.decode(errors="replace").partition(":")
+                headers[key.strip().lower()] = val.strip()
+
+        content_length = int(headers.get("content-length", 0))
+        body = await reader.read(content_length) if content_length else b""
+
+        parts = request_line.decode(errors="replace").split(" ", 2)
+        method = parts[0] if parts else ""
+
+        origin = headers.get("origin", "")
+        if origin and not _is_loopback_origin(origin):
+            writer.write(b"HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n")
+            return
+
+        cors_headers = b""
+        if origin:
+            cors_headers = (
+                f"Access-Control-Allow-Origin: {origin}\r\n"
+                "Vary: Origin\r\n"
+                "Access-Control-Allow-Methods: POST, OPTIONS\r\n"
+                "Access-Control-Allow-Headers: Content-Type\r\n"
+            ).encode()
+
+        if method == "OPTIONS":
+            writer.write(
+                b"HTTP/1.1 204 No Content\r\n"
+                + cors_headers
+                + b"Connection: close\r\n\r\n"
+            )
+            return
+
+        if method == "POST" and body:
+            try:
+                message = json.loads(body)
+                response = await mcp_server.handle_message(message)  # type: ignore[attr-defined]
+                if response is not None:
+                    response_body = json.dumps(response)
+                    writer.write(
+                        b"HTTP/1.1 200 OK\r\n"
+                        b"Content-Type: application/json\r\n"
+                        + cors_headers
+                        + f"Content-Length: {len(response_body)}\r\n".encode()
+                        + b"Connection: close\r\n\r\n"
+                        + response_body
+                    )
+                else:
+                    writer.write(
+                        b"HTTP/1.1 204 No Content\r\n"
+                        + cors_headers
+                        + b"Connection: close\r\n\r\n"
+                    )
+            except json.JSONDecodeError:
+                writer.write(b"HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n")
+        else:
+            writer.write(b"HTTP/1.1 404 Not Found\r\nConnection: close\r\n\r\n")
+    except (RuntimeError, OSError, AttributeError, LookupError):
+        pass
+    finally:
+        try:
+            writer.close()
+            await writer.wait_closed()
+        except (RuntimeError, OSError, AttributeError, LookupError):
+            pass
 
 
 def _load_script_module(target: str) -> object:

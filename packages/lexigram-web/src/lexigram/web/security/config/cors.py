@@ -40,8 +40,11 @@ class CORSConfig(BaseConfig):
 
     enabled: bool = Field(default=True, description="Enable CORS")
     allowed_origins: list[str] = Field(
-        default_factory=lambda: ["*"],
-        description="Allowed origins (use ['*'] to allow all)",
+        default_factory=list,
+        description=(
+            "Allowed origins (use ['*'] to allow all). Deny-by-default: "
+            "an empty list blocks every cross-origin request."
+        ),
     )
     allow_methods: list[str] = Field(
         default_factory=lambda: ["GET", "POST", "PUT", "DELETE", "PATCH"]

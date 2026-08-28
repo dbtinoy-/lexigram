@@ -47,7 +47,7 @@ class CORSMiddleware(WebCORSMiddleware):
         """
         if config is None:
             return CORSConfig(
-                allowed_origins=kwargs.get("allow_origins", ["*"]),
+                allowed_origins=kwargs.get("allow_origins", []),
                 allow_credentials=kwargs.get("allow_credentials", False),
                 allow_methods=kwargs.get(
                     "allow_methods",
@@ -64,7 +64,7 @@ class CORSMiddleware(WebCORSMiddleware):
         if hasattr(config, "to_middleware_kwargs"):
             cors_kwargs = config.to_middleware_kwargs()
             return CORSConfig(
-                allowed_origins=cors_kwargs.get("allow_origins", ["*"]),
+                allowed_origins=cors_kwargs.get("allow_origins", []),
                 allow_credentials=cors_kwargs.get("allow_credentials", False),
                 allow_methods=cors_kwargs.get(
                     "allow_methods", ["GET", "POST", "PUT", "DELETE", "PATCH"]
@@ -75,7 +75,7 @@ class CORSMiddleware(WebCORSMiddleware):
             )
 
         return CORSConfig(
-            allowed_origins=getattr(config, "allow_origins", ["*"]),
+            allowed_origins=getattr(config, "allow_origins", []),
             allow_credentials=getattr(config, "allow_credentials", False),
             allow_methods=getattr(
                 config,
