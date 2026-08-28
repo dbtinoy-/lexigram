@@ -100,9 +100,14 @@ class HubProvider(Provider):
             if fleet is not None
             else {"mounted": 0, "failures": 0}
         )
+        status = (
+            HealthStatus.HEALTHY
+            if fleet is not None and not fleet.failures
+            else HealthStatus.DEGRADED
+        )
         return HealthCheckResult(
             component=self.name,
-            status=HealthStatus.HEALTHY,
+            status=status,
             category=HealthCheckCategory.READINESS,
             details=details,
         )
