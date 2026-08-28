@@ -18,6 +18,7 @@ from lexigram.web import Controller, FileResponse, RedirectResponse, get
 UI_ROOT = Path(__file__).resolve().parent
 VIEWS_ROOT = UI_ROOT / "views"
 STATIC_ROOT = UI_ROOT / "static"
+SHARED_ASSETS = UI_ROOT.parent.parent.parent.parent / "shared" / "assets"
 
 
 def _view(name: str) -> FileResponse:
@@ -71,11 +72,11 @@ class PagesController(Controller):
 
     @get("/static/logo.png")
     async def logo(self, request: Request) -> FileResponse:
-        return _static("logo.png", "image/png")
+        return FileResponse(path=SHARED_ASSETS / "logo.png", media_type="image/png")
 
     @get("/static/icon.png")
     async def icon(self, request: Request) -> FileResponse:
-        return _static("icon.png", "image/png")
+        return FileResponse(path=SHARED_ASSETS / "icon.png", media_type="image/png")
 
 
 __all__ = ["PagesController"]
