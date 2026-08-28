@@ -4,16 +4,19 @@ from __future__ import annotations
 
 import asyncio
 import time
-from typing import Any, cast
+from typing import Any
 
 from lexigram.contracts import ContainerRegistrarProtocol, ContainerResolverProtocol
 from lexigram.contracts.core import HealthCheckResult, HealthStatus, ProviderPriority
 from lexigram.di.provider import Provider
 from lexigram.logging import get_logger
+from lexigram.search.backends.db_registry import DbSearchBackendRegistry
 from lexigram.search.config import BackendType, SearchConfig
 from lexigram.search.engine import SearchEngine
 
 logger = get_logger(__name__)
+
+_DB_BACKEND_REGISTRY = DbSearchBackendRegistry.with_defaults()
 
 
 class SearchProvider(Provider):
@@ -214,24 +217,9 @@ class SearchProvider(Provider):
                 sub_provider._config.backend_type if sub_provider._config else None
             )
 
-            if backend_type == BackendType.POSTGRES:
-                from lexigram.search.backends.postgres.backend import (
-                    PostgresDatabaseSearchBackend,
-                )
-
-                db_backend = cast(
-                    "SearchEngine", PostgresDatabaseSearchBackend(provider=db_provider)
-                )
-            elif backend_type == BackendType.MYSQL:
-                from lexigram.search.backends.mysql import MySQLDatabaseSearchBackend
-
-                db_backend = cast(
-                    "SearchEngine", MySQLDatabaseSearchBackend(provider=db_provider)
-                )
-            else:
-                raise RuntimeError(
-                    f"Unsupported DB-backed search backend: {backend_type}"
-                )
+            db_backend = _DB_BACKEND_REGISTRY.create_db_backend(
+                backend_type, db_provider
+            )
 
             # Replace the NullBackend placeholder on the sub-provider so the
             # container's factory lambda returns the real backend.
@@ -291,24 +279,9 @@ class SearchProvider(Provider):
                 self._config.backend_type if self._config else None
             )
 
-            if backend_type == BackendType.POSTGRES:
-                from lexigram.search.backends.postgres.backend import (
-                    PostgresDatabaseSearchBackend,
-                )
-
-                db_backend = cast(
-                    "SearchEngine", PostgresDatabaseSearchBackend(provider=db_provider)
-                )
-            elif backend_type == BackendType.MYSQL:
-                from lexigram.search.backends.mysql import MySQLDatabaseSearchBackend
-
-                db_backend = cast(
-                    "SearchEngine", MySQLDatabaseSearchBackend(provider=db_provider)
-                )
-            else:
-                raise RuntimeError(
-                    f"Unsupported DB-backed search backend: {backend_type}"
-                )
+            db_backend = _DB_BACKEND_REGISTRY.create_db_backend(
+                backend_type, db_provider
+            )
 
             self.backend = db_backend
 
