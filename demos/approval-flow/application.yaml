@@ -2,37 +2,140 @@
 name: approval-flow
 version: 0.1.0
 description: Deterministic purchase approval state machine with saga orchestration
+# ────────────────────────────────────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
+# Approval Flow Demo — Complete Configuration Reference
+# ══════════════════════════════════════════════════════════════════════════════
+#
+# Every configuration key available for this demo.
+# Uncommented lines are the values we override; commented lines show
+# defaults.  Each section maps 1:1 to a typed config model — the
+# framework validates your yaml against it at boot time.
+#
+# DEMO FOCUS: State-machine-driven approval workflow — a purchase request
+# enters the pipeline, transitions through approval steps (manager,
+# finance, director), and resolves to approved/rejected/escalated.
+#
+# LEARNING PATH:
+#   1. web:          HTTP server, security, CSRF
+#   2. workflow:     Pipeline orchestration, retries, timeouts
+#   3. approval_flow: Demo-specific seed data and labels
+#
+# For full reference see:
+#   - Lexigram Web:       packages/lexigram-web/src/lexigram/web/config/
+#   - Lexigram Workflow:  packages/lexigram-workflow/src/lexigram/workflow/config.py
+# ══════════════════════════════════════════════════════════════════════════════
 
-# ── Web ─────────────────────────────────────────────────────────────────────
-# HTTP server and security settings for the demo UI and API.
+
+# ── Web ──────────────────────────────────────────────────────────────────────
+# Lexigram Web auto-configures Starlette, OpenAPI, CORS, CSRF, and
+# rate limiting from this single section.  The WebModule reads it
+# automatically via config_key="web" / config_model=WebConfig.
+#
+# The orchestrator calls get_section("web", WebConfig) and injects
+# the result into WebProvider.config before register() runs.
+# ─────────────────────────────────────────────────────────────────────────────
 web:
+  # ── Server ─────────────────────────────────────────────────────────────────
   server:
-    host: 0.0.0.0           # Listen on all interfaces
-    port: 8100               # Demo port (avoids conflict with other services)
+    # backend: granian          # ASGI backend: granian | uvicorn | hypercorn | gunicorn
+    host: 0.0.0.0               # bind address (0.0.0.0 for external access)
+    port: 8100                  # listen port
+    # workers: 1               # worker processes (1 = single process)
+    # reload: false            # auto-reload on file changes (dev only)
+    # debug: false             # enable debug mode
+
+  # ── Security ───────────────────────────────────────────────────────────────
   security:
+    # enabled: true                    # master switch for security subsystem
+
+    # ── CSRF ───────────────────────────────────────────────────────────────
+    # Disabled here because the demo posts JSON from the browser console.
     csrf:
-      enabled: false         # Disabled for local demo — no session-based auth
+      enabled: false                    # disable for JSON-only playground
+      # cookie_name: csrf_token
+      # header_name: X-CSRF-Token
+      # cookie_secure: true
+      # cookie_httponly: true
+      # cookie_samesite: Lax
+      # token_length: 32
+      # token_ttl: 3600
+      # excluded_paths: []
 
-# ── Workflow ────────────────────────────────────────────────────────────────
-# Workflow module configuration shared across approval steps.
+    # ── CORS ───────────────────────────────────────────────────────────────
+    # cors:
+    #   enabled: true
+    #   allowed_origins:
+    #     - http://localhost:8100       # this demo
+    #   allow_methods: [GET, POST, PUT, DELETE, PATCH, OPTIONS]
+    #   allow_headers: ["*"]
+    #   allow_credentials: false
+    #   max_age: 600
+
+    # ── Headers ─────────────────────────────────────────────────────────────
+    # custom_headers:
+    #   x-content-type-options: nosniff
+    #   x-frame-options: DENY
+    #   x-xss-protection: "1; mode=block"
+    # referrer_policy: strict-origin-when-cross-origin
+
+  # ── Rate Limiting ──────────────────────────────────────────────────────────
+  # rate_limit:
+  #   enabled: false
+  #   default_limit: 100
+  #   default_window: 60
+  #   whitelist_ips: []
+  #   storage_backend: memory
+
+  # ── Misc ───────────────────────────────────────────────────────────────────
+  # openapi_title: API
+  # openapi_version: "1.0.0"
+  # openapi_url: /openapi.json
+  # swagger_ui_url: /docs
+  # redoc_url: /redoc
+  # compression_enabled: true
+  # template_directory: templates
+  # enable_auth: false
+  # max_body_size: 10485760            # 10 MiB
+
+
+# ── Workflow ─────────────────────────────────────────────────────────────────
+# Lexigram Workflow provides pipeline orchestration, graph execution,
+# state machines, and retry/timeout infrastructure.  The WorkflowModule
+# reads this section automatically via config_key="workflow" /
+# config_model=WorkflowConfig.
+#
+# This demo uses a custom state machine (ApprovalStateMachine) but the
+# pipeline settings below control retry and timeout behavior.
+# ─────────────────────────────────────────────────────────────────────────────
 workflow:
-  # Maximum number of automatic retries when a pipeline step fails
-  # due to a transient error (network blip, timeout, etc.).
-  retry_attempts: 1
+  # ── Bulk Operation ─────────────────────────────────────────────────────────
+  # batch_size: 10                  # items per batch operation
+  # max_concurrency: 5              # parallel batch workers
+  # timeout: 300                    # batch operation timeout (seconds)
+  retry_attempts: 1                # retries per pipeline step (demo uses 1 for fast feedback)
+  # retry_delay: 1.0               # delay between retries (seconds)
+  # enable_progress_tracking: true  # track batch progress
 
-  # Hard ceiling in seconds for the entire approval pipeline.
-  # If the chain hasn't completed by then, the workflow aborts.
-  pipeline_timeout: 30
+  # ── Pipeline ───────────────────────────────────────────────────────────────
+  pipeline_timeout: 30             # hard ceiling for the entire approval chain (seconds)
+  # checkpoint_enabled: false       # persist pipeline checkpoints
 
-# ── Approval Flow ───────────────────────────────────────────────────────────
+  # ── Graph Execution ────────────────────────────────────────────────────────
+  # name: workflow                  # graph name
+  # enabled: true
+  # max_iterations: 25              # max graph traversal steps
+  # node_timeout: 120               # per-node timeout (seconds)
+  # total_timeout: 0                # total graph timeout (0 = unlimited)
+  # parallel_branches: true         # execute parallel branches concurrently
+  # max_parallel_branches: 0        # limit concurrent branches (0 = unlimited)
+
+
+# ── Approval Flow ────────────────────────────────────────────────────────────
 # Demo-specific settings that seed the interactive approval request.
+# Consumed by ApprovalFlowConfig (config_section="approval_flow").
+# ─────────────────────────────────────────────────────────────────────────────
 approval_flow:
-  # Master switch — set to false to disable the provider and controller.
-  enabled: true
-
-  # Title pre-filled in the browser on first load.
-  initial_request: Purchase 24 laptops
-
-  # Dollar amount pre-filled in the browser on first load.
-  # Must be > 0 (enforced by the config dataclass validation).
-  initial_amount: 24000
+  enabled: true                    # toggle the provider and controller
+  initial_request: Purchase 24 laptops   # title pre-filled on first load
+  initial_amount: 24000            # dollar amount pre-filled on first load (> 0)

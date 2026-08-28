@@ -1,71 +1,150 @@
 # ── Metadata ────────────────────────────────────────────────────────────────
 name: feature-flags
 version: 0.1.0
-description: Feature flag evaluation with percentage rollouts and environment targeting
+description: Feature flag management with runtime evaluation
+# ────────────────────────────────────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
+# Feature Flags Demo — Complete Configuration Reference
+# ══════════════════════════════════════════════════════════════════════════════
+#
+# Every configuration key available for this demo.
+# Uncommented lines are the values we override; commented lines show
+# defaults.  Each section maps 1:1 to a typed config model — the
+# framework validates your yaml against it at boot time.
+#
+# DEMO FOCUS: Feature flag management with runtime toggle, percentage
+# rollouts, and boolean evaluation.  Flags are defined in YAML and
+# evaluated via FlagManager from the FeatureFlagsModule.
+#
+# LEARNING PATH:
+#   1. web:          HTTP server, security, CSRF
+#   2. features:     Flag definitions, caching, env overrides
+#   3. release_control: Demo-specific defaults and labels
+#
+# For full reference see:
+#   - Lexigram Web:      packages/lexigram-web/src/lexigram/web/config/
+#   - Lexigram Features: packages/lexigram-features/src/lexigram/features/config.py
+# ══════════════════════════════════════════════════════════════════════════════
 
-# ── Server ──────────────────────────────────────────────────────────────────
-# Embedded web server for the browser-first release control console.
+
+# ── Web ──────────────────────────────────────────────────────────────────────
+# Lexigram Web auto-configures Starlette, OpenAPI, CORS, CSRF, and
+# rate limiting from this single section.  The WebModule reads it
+# automatically via config_key="web" / config_model=WebConfig.
+#
+# The orchestrator calls get_section("web", WebConfig) and injects
+# the result into WebProvider.config before register() runs.
+# ─────────────────────────────────────────────────────────────────────────────
 web:
+  # ── Server ─────────────────────────────────────────────────────────────────
   server:
-    host: 0.0.0.0                 # Bind address; 0.0.0.0 exposes on all interfaces
-    port: 8099                    # Local port for the demo dashboard
+    # backend: granian          # ASGI backend: granian | uvicorn | hypercorn | gunicorn
+    host: 0.0.0.0               # bind address (0.0.0.0 for external access)
+    port: 8100                  # listen port
+    # workers: 1               # worker processes (1 = single process)
+    # reload: false            # auto-reload on file changes (dev only)
+    # debug: false             # enable debug mode
+
+  # ── Security ───────────────────────────────────────────────────────────────
   security:
+    # enabled: true                    # master switch for security subsystem
+
+    # ── CSRF ───────────────────────────────────────────────────────────────
+    # Disabled here because the demo posts JSON from the browser console.
     csrf:
-      enabled: false              # CSRF disabled — offline lab only, no production traffic
+      enabled: false                    # disable for JSON-only playground
+      # cookie_name: csrf_token
+      # header_name: X-CSRF-Token
+      # cookie_secure: true
+      # cookie_httponly: true
+      # cookie_samesite: Lax
+      # token_length: 32
+      # token_ttl: 3600
+      # excluded_paths: []
 
-# ── Feature Flags ───────────────────────────────────────────────────────────
-# Master switch and evaluation defaults consumed by FeatureFlagsModule.
+    # ── CORS ───────────────────────────────────────────────────────────────
+    # cors:
+    #   enabled: true
+    #   allowed_origins:
+    #     - http://localhost:8100       # this demo
+    #   allow_methods: [GET, POST, PUT, DELETE, PATCH, OPTIONS]
+    #   allow_headers: ["*"]
+    #   allow_credentials: false
+    #   max_age: 600
+
+    # ── Headers ─────────────────────────────────────────────────────────────
+    # custom_headers:
+    #   x-content-type-options: nosniff
+    #   x-frame-options: DENY
+    #   x-xss-protection: "1; mode=block"
+    # referrer_policy: strict-origin-when-cross-origin
+
+  # ── Rate Limiting ──────────────────────────────────────────────────────────
+  # rate_limit:
+  #   enabled: false
+  #   default_limit: 100
+  #   default_window: 60
+  #   whitelist_ips: []
+  #   storage_backend: memory
+
+  # ── Misc ───────────────────────────────────────────────────────────────────
+  # openapi_title: API
+  # openapi_version: "1.0.0"
+  # openapi_url: /openapi.json
+  # swagger_ui_url: /docs
+  # redoc_url: /redoc
+  # compression_enabled: true
+  # template_directory: templates
+  # enable_auth: false
+  # max_body_size: 10485760            # 10 MiB
+
+
+# ── Features ─────────────────────────────────────────────────────────────────
+# Lexigram Features provides a feature flag system with runtime
+# evaluation via FlagManager.  The FeatureFlagsModule reads this
+# section automatically via config_key="features" /
+# config_model=FeatureFlagsConfig.
+#
+# Flags support boolean on/off, percentage rollouts, and
+# conditional overrides via environment variables.
+# ─────────────────────────────────────────────────────────────────────────────
 features:
-  enabled: true                   # Global kill-switch; when false all flags resolve to off
-  cache_ttl: 15                   # Seconds to cache flag evaluations in-process before
-                                  # re-evaluating from the provider; prevents redundant work
-                                  # on rapid sequential requests while staying fresh enough
-                                  # for quick rollouts
-  default_enabled: false          # Fallback when a flag is missing or has no explicit
-                                  # enabled state — conservative default ensures unknown
-                                  # flags stay off until intentionally opted in
-
-  # ── Flag Definitions ────────────────────────────────────────────────────
-  # Each key is a flag name registered with FlagManager at boot time.
+  name: features                    # subsystem identifier
+  enabled: true                     # toggle the features provider
+  cache_ttl: 15                    # flag cache TTL in seconds
+  default_enabled: false           # default for undefined flags
+  # flag_env_prefix: LEX_FLAG_     # env var prefix for flag overrides
+  #
+  # Flag definitions — each key is a flag name.
+  # Supports: true (on), false (off), or { enabled, percentage } for rollouts.
+  #
+  # NOTE: This demo hardcodes flags in services/control.py rather than
+  # reading initial_flags from YAML.  The flags below document the
+  # actual runtime behavior for reference.
   initial_flags:
-
-    # ── new_checkout ──────────────────────────────────────────────────────
-    # Percentage-based gradual rollout. Exactly 50 % of users (determined
-    # deterministically by hashing user_id + flag name) receive the new
-    # checkout experience; the other 50 % sees the legacy flow.
     new_checkout:
-      type: percentage            # Evaluation strategy — percentage rollout
-      enabled: true               # Master toggle for this specific flag
-      percentage: 50              # Rollout fraction (0-100); deterministic per user
-      description: Gradual rollout for the new checkout experience
-
-    # ── search_experiment ─────────────────────────────────────────────────
-    # Variant / A/B test flag. Users are split 50/50 between the
-    # "control" (legacy ranking) and "ranked" (new algorithm) variants.
-    # The variant is deterministic given the same user_id + flag name.
+      type: percentage              # 50% deterministic rollout by user hash
+      enabled: true
+      percentage: 50                # bucket < 50 → enabled
     search_experiment:
-      type: variant               # Evaluation strategy — multi-variant A/B test
-      enabled: true               # Master toggle for this specific flag
+      type: variant                  # 50/50 variant assignment (control vs treatment)
+      enabled: true
       variants:
-        control: 50               # Weight for the control variant (legacy ranking)
-        ranked: 50                # Weight for the challenger variant (new algorithm)
-      default_variant: control    # Fallback variant when hashing yields no match
-      description: Deterministic A/B search ranking experiment
-
-    # ── ai_assistant ──────────────────────────────────────────────────────
-    # User-attribute targeting rule. The flag resolves to true only when
-    # the evaluated user's attributes contain plan = pro. Free-tier users
-    # always see this flag as off — no percentage split, just a hard gate.
+        control: 50                 # 50% weight → "control" variant
+        treatment: 50               # 50% weight → "treatment" variant
     ai_assistant:
-      type: user_attribute        # Evaluation strategy — match user attributes
-      enabled: true               # Master toggle for this specific flag
+      type: user_attribute           # enabled only when plan=pro
+      enabled: true
       user_attributes:
-        plan: pro                 # Required attribute; all listed pairs must match
-      description: Available only to users on the pro plan
+        plan: pro                    # matches context.user_attributes["plan"]
 
-# ── Release Control ─────────────────────────────────────────────────────────
-# Application-level defaults for the release desk UI and audit trail.
+
+# ── Release Control ──────────────────────────────────────────────────────────
+# Demo-specific settings for the flag manager UI.
+# Consumed by ReleaseControlConfig (config_section="release_control").
+# ─────────────────────────────────────────────────────────────────────────────
 release_control:
-  enabled: true                   # Toggle the browser-facing release console
-  default_actor: release-operator # Actor label recorded in audit log when the UI
-                                  # does not supply an explicit actor name
+  enabled: true                     # toggle the provider and controller
+  name: release-control             # display label
+  env: demo                         # environment tag
+  default_actor: admin              # actor label for audit trail
