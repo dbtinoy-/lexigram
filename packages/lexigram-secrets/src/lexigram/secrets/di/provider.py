@@ -12,12 +12,8 @@ if TYPE_CHECKING:
     from lexigram.contracts.core.health import HealthCheckResult
 
 from lexigram.di.provider import Provider, ProviderPriority
+from lexigram.secrets.backends.registry import SecretsBackendRegistry
 from lexigram.secrets.config import SecretsConfig
-from lexigram.secrets.constants import (
-    DEFAULT_VAULT_MOUNT_POINT,
-    DEFAULT_VAULT_URL,
-    ERROR_UNKNOWN_BACKEND,
-)
 from lexigram.secrets.exceptions import SecretConfigError
 from lexigram.secrets.rotation import RotationDecorator, RotationSchedule
 from lexigram.secrets.tenancy import TenantScopedSecretStore
@@ -110,66 +106,34 @@ class SecretsProvider(Provider):
         )
 
     def _create_store(self, config: SecretsConfig) -> RotatableSecretStoreProtocol:
-        if config.backend_type == "memory":
-            from lexigram.secrets.backends.memory import InMemoryRotatableSecretStore
-
-            return InMemoryRotatableSecretStore()
+        options = dict(config.backend_options)
         if config.backend_type == "vault":
-            token = config.backend_options.get("token", "")
-            if not token:
+            if not options.get("token", ""):
                 raise SecretConfigError(
                     "vault backend requires a non-empty 'token' in backend_options "
                     "before registration (D1 fail-closed)"
                 )
-            from lexigram.secrets.backends.vault import HashicorpVaultStore
-
-            return HashicorpVaultStore(
-                url=config.backend_options.get("url", DEFAULT_VAULT_URL),
-                token=token,
-                mount_point=config.backend_options.get(
-                    "mount_point", DEFAULT_VAULT_MOUNT_POINT
-                ),
-            )
-        if config.backend_type == "aws":
-            aws_access_key_id = config.backend_options.get("aws_access_key_id")
-            aws_secret_access_key = config.backend_options.get("aws_secret_access_key")
+        elif config.backend_type == "aws":
+            aws_access_key_id = options.get("aws_access_key_id")
+            aws_secret_access_key = options.get("aws_secret_access_key")
             if (aws_access_key_id is None) != (aws_secret_access_key is None):
                 raise SecretConfigError(
                     "aws backend requires both 'aws_access_key_id' and "
                     "'aws_secret_access_key' in backend_options, or neither "
                     "(to use ambient credentials) (D1 fail-closed)"
                 )
-            from lexigram.secrets.backends.aws import AWSSecretsManagerStore
-
-            return AWSSecretsManagerStore(
-                region_name=config.backend_options.get("region_name", "us-east-1"),
-                aws_access_key_id=aws_access_key_id,
-                aws_secret_access_key=aws_secret_access_key,
-                aws_session_token=config.backend_options.get("aws_session_token"),
-            )
-        if config.backend_type == "gcp":
-            project_id = config.backend_options.get("project_id", "")
-            if not project_id:
+        elif config.backend_type == "gcp":
+            if not options.get("project_id", ""):
                 raise SecretConfigError(
                     "gcp backend requires a non-empty 'project_id' in backend_options "
                     "before registration (D1 fail-closed)"
                 )
-            from lexigram.secrets.backends.gcp import GCPSecretManagerStore
-
-            return GCPSecretManagerStore(project_id=project_id)
-        if config.backend_type == "azure":
-            vault_url = config.backend_options.get("vault_url", "")
-            if not vault_url:
+        elif config.backend_type == "azure":
+            if not options.get("vault_url", ""):
                 raise SecretConfigError(
                     "azure backend requires a non-empty 'vault_url' in backend_options "
                     "before registration (D1 fail-closed)"
                 )
-            from lexigram.secrets.backends.azure import AzureKeyVaultStore
 
-            return AzureKeyVaultStore(
-                vault_url=vault_url,
-                tenant_id=config.backend_options.get("tenant_id"),
-                client_id=config.backend_options.get("client_id"),
-                client_secret=config.backend_options.get("client_secret"),
-            )
-        raise ValueError(ERROR_UNKNOWN_BACKEND.format(backend=config.backend_type))
+        registry = SecretsBackendRegistry.with_defaults()
+        return registry.create_store(config.backend_type, options)
