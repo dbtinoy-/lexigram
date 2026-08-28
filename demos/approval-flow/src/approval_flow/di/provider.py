@@ -12,6 +12,7 @@ from lexigram.contracts.core.health import (
     HealthCheckResult,
     HealthStatus,
 )
+from lexigram.contracts.workflow import StateMachineProtocol
 from lexigram.di.provider import Provider
 from lexigram.workflow.di.provider import WorkflowProvider
 
@@ -43,7 +44,8 @@ class ApprovalFlowProvider(Provider):
         # relationship explicit: this app's service comes after WorkflowModule.
         await container.resolve(WorkflowProvider)
         config = await container.resolve(ApprovalFlowConfig)
-        self._service = ApprovalFlowService(config)
+        state_machine = await container.resolve(StateMachineProtocol)
+        self._service = ApprovalFlowService(config, state_machine=state_machine)
         container.bind(
             ApprovalFlowApiController,
             ApprovalFlowApiController(service=self._service),

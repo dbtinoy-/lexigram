@@ -20,6 +20,22 @@ class TestWorkflowModule:
         result = WorkflowModule.configure()
         assert PipelineProtocol in result.exports
 
+    def test_configure_exposes_application_state_machine(self) -> None:
+        from lexigram.contracts.workflow import StateMachineProtocol
+
+        state_machine = object()
+        result = WorkflowModule.configure(state_machine=state_machine)
+
+        assert StateMachineProtocol in result.exports
+        provider = result.providers[0]
+        assert provider._state_machine is state_machine
+
+    def test_configure_does_not_export_absent_state_machine(self) -> None:
+        from lexigram.contracts.workflow import StateMachineProtocol
+
+        result = WorkflowModule.configure()
+        assert StateMachineProtocol not in result.exports
+
     def test_configure_config_type_check(self) -> None:
         with pytest.raises(TypeError, match="must be BulkOperationConfig"):
             WorkflowModule.configure(config="invalid")

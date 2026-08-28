@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from approval_flow.controllers.api import ApprovalFlowApiController
 from approval_flow.di.provider import ApprovalFlowProvider
+from approval_flow.services.flow import build_approval_state_machine
 from approval_flow.ui.pages import ApprovalFlowPageController
 from lexigram.app.base import Application
 from lexigram.config.main import LexigramConfig
@@ -14,7 +15,7 @@ from lexigram.workflow.module import WorkflowModule
 
 def build_modules() -> list[object]:
     return [
-        WorkflowModule.configure(),
+        WorkflowModule.configure(state_machine=build_approval_state_machine()),
         WebModule.configure(
             controllers=[ApprovalFlowApiController, ApprovalFlowPageController],
         ),

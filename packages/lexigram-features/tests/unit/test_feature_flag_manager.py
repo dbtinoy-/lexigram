@@ -95,6 +95,46 @@ class TestFlagManager:
         manager.set_override("feature_a", False)
         assert manager.get_override_state("feature_a") is False
 
+    def test_set_override_forwards_actor_for_disable(
+        self, manager: FlagManager
+    ) -> None:
+        manager.set_override("feature_a", False, actor="release-bot")
+
+        entry = manager.get_audit_log()[-1]
+        assert entry.actor == "release-bot"
+        assert entry.new_value is False
+
+    @pytest.mark.asyncio
+    async def test_add_provider_layers_definitions_by_priority(
+        self, manager: FlagManager
+    ) -> None:
+        high = LocalProvider()
+        high.set_flag_sync("feature_a", False)
+        high.set_flag_sync("high_only", True)
+        low = LocalProvider()
+        low.set_flag_sync("feature_a", True)
+        low.set_flag_sync("low_only", True)
+
+        manager.add_provider(low, priority=10)
+        manager.add_provider(high, priority=20)
+
+        # The higher-priority definition wins, while unique definitions from
+        # both providers remain visible through the chain.
+        assert await manager.is_enabled("feature_a") is False
+        assert await manager.is_enabled("high_only") is True
+        assert await manager.is_enabled("low_only") is True
+
+    @pytest.mark.asyncio
+    async def test_add_provider_preserves_lower_priority_flags(
+        self, manager: FlagManager
+    ) -> None:
+        provider = LocalProvider()
+        provider.set_flag_sync("new_flag", True)
+        manager.add_provider(provider)
+
+        assert await manager.is_enabled("feature_a") is True
+        assert await manager.is_enabled("new_flag") is True
+
     @pytest.mark.asyncio
     async def test_get_variant_returns_variant_string(self) -> None:
         provider = MemoryProvider()

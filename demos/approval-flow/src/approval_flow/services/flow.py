@@ -6,12 +6,57 @@ from datetime import UTC, datetime
 from typing import Any
 
 from approval_flow.config import ApprovalFlowConfig
+from lexigram.contracts.workflow import StateMachineProtocol
 from lexigram.workflow.approval import (
     ApprovalChain,
     ApprovalPolicy,
     ApprovalStep,
 )
 from lexigram.workflow.state import State, StateError, StateMachine, Transition
+
+
+def build_approval_state_machine() -> StateMachine:
+    """Build the deterministic state machine used by the demo.
+
+    The composition root passes one instance through ``WorkflowModule`` so
+    the application service consumes the package's DI contract rather than
+    constructing an unregistered workflow dependency.
+    """
+    states = [
+        State(
+            "draft",
+            transitions={"submit": Transition("submit", "manager_review")},
+        ),
+        State(
+            "manager_review",
+            transitions={
+                "approve_manager": Transition("approve_manager", "finance_review"),
+                "reject_manager": Transition("reject_manager", "rejected"),
+            },
+        ),
+        State(
+            "finance_review",
+            transitions={
+                "approve_finance": Transition("approve_finance", "approved"),
+                "reject_finance": Transition("reject_finance", "rejected"),
+            },
+        ),
+        State(
+            "approved",
+            transitions={
+                "rollback": Transition("rollback", "manager_review"),
+                "reset": Transition("reset", "draft"),
+            },
+        ),
+        State(
+            "rejected",
+            transitions={
+                "retry": Transition("retry", "manager_review"),
+                "reset": Transition("reset", "draft"),
+            },
+        ),
+    ]
+    return StateMachine(states=states, initial_state="draft")
 
 
 class ApprovalFlowService:
@@ -23,7 +68,11 @@ class ApprovalFlowService:
     interactive state transitions from the user.
     """
 
-    def __init__(self, config: ApprovalFlowConfig) -> None:
+    def __init__(
+        self,
+        config: ApprovalFlowConfig,
+        state_machine: StateMachineProtocol | None = None,
+    ) -> None:
         self._config = config
         self._actor = "requester"
         self._request = {
@@ -32,46 +81,11 @@ class ApprovalFlowService:
             "owner": "Maya Chen",
         }
         self._history: list[dict[str, Any]] = []
-        self._machine = self._new_machine()
+        self._machine = state_machine or build_approval_state_machine()
 
     def _new_machine(self) -> StateMachine:
-        states = [
-            State(
-                "draft",
-                transitions={"submit": Transition("submit", "manager_review")},
-            ),
-            State(
-                "manager_review",
-                transitions={
-                    "approve_manager": Transition("approve_manager", "finance_review"),
-                    "reject_manager": Transition("reject_manager", "rejected"),
-                },
-            ),
-            State(
-                "finance_review",
-                transitions={
-                    "approve_finance": Transition("approve_finance", "approved"),
-                    "reject_finance": Transition("reject_finance", "rejected"),
-                },
-            ),
-            State(
-                "approved",
-                transitions={
-                    "rollback": Transition("rollback", "manager_review"),
-                    "reset": Transition("reset", "draft"),
-                },
-            ),
-            State(
-                "rejected",
-                transitions={
-                    "retry": Transition("retry", "manager_review"),
-                    "reset": Transition("reset", "draft"),
-                },
-            ),
-        ]
-        machine = StateMachine(states=states, initial_state="draft")
         self._history = []
-        return machine
+        return build_approval_state_machine()
 
     def snapshot(self) -> dict[str, Any]:
         state = self._machine.current_state
@@ -189,4 +203,4 @@ class ApprovalFlowService:
         ]
 
 
-__all__ = ["ApprovalFlowService"]
+__all__ = ["ApprovalFlowService", "build_approval_state_machine"]
