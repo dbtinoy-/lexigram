@@ -22,6 +22,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    from lexigram.middleware.config import MiddlewareConfig
     from lexigram.middleware.core.chain import MiddlewareChain
 
 from lexigram.contracts.exceptions import RegistryAlreadyExistsError

@@ -138,7 +138,7 @@ class LexigramConfig(BaseConfig):
             # Return dict or attribute value; empty dict for missing sections
             if data is None:
                 return {}
-            return data  # type: ignore[return-value]
+            return data
 
         if isinstance(data, model_cls):
             return data
