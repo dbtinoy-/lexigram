@@ -1,3 +1,8 @@
+# ── Metadata ────────────────────────────────────────────────────────────────
+name: rag-pipeline
+version: 0.1.0
+description: Document ingestion and semantic search with vector store
+# ────────────────────────────────────────────────────────────────────────────
 # ══════════════════════════════════════════════════════════════════════════════
 # RAG Pipeline Demo — Complete Configuration Reference
 # ══════════════════════════════════════════════════════════════════════════════
@@ -62,7 +67,7 @@ web:
 
   # ── Rate Limiting ──────────────────────────────────────────────────────────
   # rate_limit:
-  #   enabled: true
+  #   enabled: false
   #   default_limit: 100
   #   default_window: 60
   #   whitelist_ips: []

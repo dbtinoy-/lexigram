@@ -70,6 +70,18 @@ Open http://127.0.0.1:8090, log in as any persona (password
 verdict; the articles card shows the create-guard denying viewers.
 Override the port without touching yaml: `LEX_WEB__SERVER__PORT=9000`.
 
+## API Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/login` | Log in as one of the seeded personas |
+| POST | `/api/logout` | Invalidate the session cookie |
+| GET | `/api/me` | Return the session user's roles and effective permissions |
+| GET | `/api/matrix` | The permission grid computed live via authorize() per persona |
+| POST | `/api/try` | Run one authorize() verdict for a persona/action/resource triple |
+| GET | `/api/articles` | List all articles (requires authentication) |
+| POST | `/api/articles` | Create an article (requires articles.create permission) |
+
 ## Layout — read it in this order
 
 Start at the composition root and follow the wiring outward.

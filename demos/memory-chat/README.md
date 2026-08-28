@@ -68,6 +68,14 @@ Open http://127.0.0.1:8083. The chat page has alice/bob tabs, a shared
 thread view, and a facts sidebar.  Override the port without touching
 yaml: `LEX_WEB__SERVER__PORT=9000`.
 
+## API Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/chat` | One conversational turn for an owner |
+| GET | `/api/facts/{owner}` | Snapshot of everything stored about one owner |
+| POST | `/api/demo` | Scripted two-session replay proving recall and isolation |
+
 Try: as alice say *"I'm vegetarian"* then *"I'm allergic to peanuts"*, then
 ask for a dinner menu — the reply cites both constraints. Switch to bob and
 ask the same: *"anything goes."* The **Run demo replay** button scripts the

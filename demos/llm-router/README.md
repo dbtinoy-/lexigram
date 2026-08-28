@@ -1,6 +1,6 @@
 # LLM Router Demo
 
-Teaches the **Lexigram LLM client pattern** — ScriptedLLMClient for deterministic
+Demonstrates the **Lexigram LLM client pattern** — ScriptedLLMClient for deterministic
 testing, content generation, and structured product extraction.  Demonstrates
 how to build LLM-powered services without making real API calls.
 

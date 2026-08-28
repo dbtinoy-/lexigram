@@ -63,6 +63,17 @@ then call the machine endpoint:
 curl -H "X-API-Key: <raw-key>" http://127.0.0.1:8091/api/me
 ```
 
+## API Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/login` | Authenticate with email/password and set session cookie |
+| POST | `/api/logout` | Invalidate the session cookie |
+| GET | `/api/keys` | List API keys for the authenticated user |
+| POST | `/api/keys/create` | Issue a new API key (raw secret shown once) |
+| POST | `/api/keys/{key_id}/revoke` | Revoke an API key |
+| GET | `/api/me` | Machine authentication via `X-API-Key` header |
+
 ## Tests
 
 ```bash

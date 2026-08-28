@@ -37,6 +37,35 @@ Walk the flows: register a second account, view the profile's token claims
 (roles/permissions/key_id/expiry), revoke sessions from another browser,
 change your password and re-login.
 
+## API Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/register` | Create an account and start a session |
+| POST | `/api/login` | Verify credentials and set the session cookie |
+| POST | `/api/logout` | Invalidate the session cookie |
+| GET | `/api/me` | Return the session's identity, or 401 when anonymous |
+| GET | `/api/profile` | Identity + fresh JWT claims + active sessions for this user |
+| POST | `/api/profile/password` | Change the session user's password (requires current password) |
+| POST | `/api/sessions/{session_id}/revoke` | Revoke one of the session user's active sessions |
+| POST | `/api/forgot-password` | Request a password reset token for the given email |
+| POST | `/api/reset-password` | Reset a password using a valid reset token |
+| POST | `/api/verify-email` | Verify the session user's email with a verification token |
+| POST | `/api/send-verification` | Send a verification email for the session user |
+
+## Lexigram Concepts
+
+| Concept | Where in this demo | Your app |
+|---------|-------------------|----------|
+| Composition root | `app.py` | Replace controllers/providers list |
+| Module pattern | `AuthModule`, `WebModule` | Add your own modules |
+| Provider lifecycle | `di/provider.py` | Replace with your registrations |
+| Result<T,E> pattern | `controllers/api.py` | Return Result from handlers |
+| Protocol binding | `repository/session_repository.py` | Swap impl for Postgres/etc |
+| Constructor injection | Everywhere | Declare deps as typed params |
+| Domain models | `services/` | Plain dataclasses, no framework imports |
+| Boot-time seeding | `services/seed.py` | Your own data initialization |
+
 ## Notes
 
 - Every command boots a fresh in-memory world: users and sessions reset per

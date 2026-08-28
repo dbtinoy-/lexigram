@@ -1,3 +1,8 @@
+# ── Metadata ────────────────────────────────────────────────────────────────
+name: sql-repository
+version: 0.1.0
+description: In-memory task management with CRUD API and SQL-like queries
+# ────────────────────────────────────────────────────────────────────────────
 # ══════════════════════════════════════════════════════════════════════════════
 # SQL Repository Demo — Complete Configuration Reference
 # ══════════════════════════════════════════════════════════════════════════════
@@ -68,7 +73,7 @@ web:
 
   # ── Rate Limiting ──────────────────────────────────────────────────────────
   # rate_limit:
-  #   enabled: true
+  #   enabled: false
   #   default_limit: 100
   #   default_window: 60
   #   whitelist_ips: []

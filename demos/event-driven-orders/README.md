@@ -12,6 +12,15 @@ staged into a minimal transactional **outbox** so nothing is lost between
 No database, broker, or external service is required — everything runs on the
 framework's in-memory buses.
 
+## What You'll Learn
+
+- **Command bus** — how write-side commands (`PlaceOrder`, `PayOrder`, `ShipOrder`) are dispatched through `CommandBusImpl` and routed to dedicated handlers
+- **Domain events** — how every write publishes a `DomainEvent` that the read side and side-effect handlers subscribe to
+- **Read-model projection** — how `EventBusImpl.subscribe()` builds a query-safe read model from domain events
+- **Transactional outbox** — how events are staged and flushed to prevent loss between state changes and delivery
+- **Error mapping** — how `@error_status` decorators surface domain errors as proper HTTP status codes (404, 409, 400)
+- **Composition root pattern** — how `EventsModule.configure()` and `Provider` wire buses, handlers, and repositories together
+
 ## Concepts
 
 | Piece | Where | Lexigram API used |

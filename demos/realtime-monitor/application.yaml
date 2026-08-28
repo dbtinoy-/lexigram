@@ -1,3 +1,8 @@
+# ── Metadata ────────────────────────────────────────────────────────────────
+name: realtime-monitor
+version: 0.1.0
+description: Live event stream dashboard with SSE and severity filtering
+# ────────────────────────────────────────────────────────────────────────────
 # ══════════════════════════════════════════════════════════════════════════════
 # Realtime Monitor — Complete Configuration Reference
 # ══════════════════════════════════════════════════════════════════════════════
@@ -74,7 +79,7 @@ web:
 
   # ── Rate Limiting ──────────────────────────────────────────────────────────
   # rate_limit:
-  #   enabled: true
+  #   enabled: false
   #   default_limit: 100
   #   default_window: 60
   #   whitelist_ips: []

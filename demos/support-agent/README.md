@@ -59,6 +59,13 @@ Open http://127.0.0.1:8082, pick a scenario, type a question, and watch
 the agent reason step-by-step. Override the port without touching yaml:
 `LEX_WEB__SERVER__PORT=9000`.
 
+## API Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/tools` | List registered tools for the console sidebar |
+| POST | `/api/ask` | Run one scenario-scripted ReAct turn |
+
 ## Layout — read it in this order
 
 Start at the composition root and follow the wiring outward.

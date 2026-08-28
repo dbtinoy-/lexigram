@@ -56,6 +56,13 @@ request showing progress and any error in the console.
 
 Override the port without touching yaml: `LEX_WEB__SERVER__PORT=9000`.
 
+## API Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/ask` | Answer a natural-language question with citations |
+| GET | `/stats` | Return corpus index stats (files/chunks ingested at boot) |
+
 The split-screen console gives you:
 
 - **Left panel** — question input, strategy selector, run demo button,

@@ -1,3 +1,8 @@
+# ── Metadata ────────────────────────────────────────────────────────────────
+name: auth-apikeys
+version: 0.1.0
+description: API key lifecycle: creation, scoping, and revocation
+# ────────────────────────────────────────────────────────────────────────────
 # ══════════════════════════════════════════════════════════════════════════════
 # Auth-APIKeys Demo — Complete Configuration Reference
 # ══════════════════════════════════════════════════════════════════════════════
@@ -70,7 +75,7 @@ web:
 
   # ── Rate Limiting ──────────────────────────────────────────────────────────
   # rate_limit:
-  #   enabled: true
+  #   enabled: false
   #   default_limit: 100
   #   default_window: 60
   #   whitelist_ips: []
