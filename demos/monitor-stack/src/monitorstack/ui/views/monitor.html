@@ -12,8 +12,8 @@
   <a href="/" class="nav-brand">Lexigram</a>
   <span class="nav-demo">Monitor Stack</span>
   <div class="nav-links">
-    <a href="https://lexigram.dev">Docs</a>
-    <a href="https://github.com/dbtinoy-/lexigram">GitHub</a>
+    <a href="https://lexigram.dev" target="_blank" rel="noopener">Docs</a>
+    <a href="https://github.com/dbtinoy-/lexigram" target="_blank" rel="noopener">GitHub</a>
   </div>
 </nav>
 
@@ -29,7 +29,20 @@
 
     <section id="metrics-panel">
       <h2>Metrics</h2>
-      <div id="metrics-grid"></div>
+      <div id="metrics-grid" aria-live="polite"></div>
+    </section>
+
+    <section id="trace-panel">
+      <h2>Trace a request</h2>
+      <form id="trace-form">
+        <label for="trace-name">Span name</label>
+        <div class="input-row">
+          <input id="trace-name" type="text" value="demo.request" required>
+          <button type="submit" id="trace-btn" class="accent">Record trace</button>
+        </div>
+      </form>
+      <p id="trace-output" class="muted" aria-live="polite"></p>
+      <p id="error" class="error hidden" role="alert"></p>
     </section>
 
     <section id="log-panel">
@@ -38,6 +51,6 @@
     </section>
   </main>
   <script src="/static/app.js"></script>
-  <div class="demo-footer">Powered by <a href="https://lexigram.dev">Lexigram</a></div>
+  <div class="demo-footer">Powered by <a href="https://lexigram.dev" target="_blank" rel="noopener">Lexigram</a></div>
 </body>
 </html>

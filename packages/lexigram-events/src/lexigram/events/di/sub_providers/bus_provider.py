@@ -96,7 +96,7 @@ class BusSubProvider:
         ]:
             if bus and hasattr(bus, "health_check"):
                 try:
-                    hc = await bus.health_check()
+                    hc = await bus.health_check(timeout=timeout)
                     details[name] = hc.to_dict() if hasattr(hc, "to_dict") else hc
                     if hasattr(hc, "status") and hc.status != HealthStatus.HEALTHY:
                         all_healthy = False

@@ -55,3 +55,46 @@ th { font-weight: 600; color: var(--ink-dim); font-size: .72rem; text-transform:
 .nav-links { margin-left: auto; display: flex; gap: 1rem; font-size: .85rem; }
 .nav-links a { color: var(--ink-dim); text-decoration: none; }
 .nav-links a:hover { color: var(--accent); }
+/* ── Fleet-wide layout and accessibility polish ─────────────────────────── */
+html { min-height: 100%; }
+body {
+  height: auto;
+  min-height: 100vh;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+.demo-nav { flex-wrap: wrap; }
+.nav-links { flex-wrap: wrap; }
+button:disabled { cursor: wait; }
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid rgba(101, 163, 13, .35);
+  outline-offset: 2px;
+}
+.demo-footer { position: static; margin-top: auto; }
+
+@media (max-width: 720px) {
+  .demo-nav { gap: .5rem; padding: .55rem .8rem; }
+  .nav-demo { flex: 1; min-width: 10rem; margin-left: 0; }
+  .nav-links { width: 100%; margin-left: 0; gap: .75rem; }
+  header { padding: .85rem .8rem .35rem; }
+  main {
+    height: auto !important;
+    padding: .75rem .8rem 1.5rem;
+  }
+  main > section,
+  main > aside,
+  #console,
+  aside { width: 100%; }
+  #ask-form,
+  #publish-form { flex-wrap: wrap; }
+  #ask-form input,
+  #question { min-width: 0; flex: 1 1 12rem; }
+  table { display: block; overflow-x: auto; }
+  .demo-footer { padding: .55rem .8rem; }
+}
+
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }

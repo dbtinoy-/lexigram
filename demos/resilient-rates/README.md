@@ -43,10 +43,13 @@ deterministic seeded random-walk provider whose faults you script live.
 
 ```bash
 cd demos/resilient-rates
-PYTHONPATH=src uv run python -m rates
+PYTHONPATH=src uv run python -m rates              # start the web console
 ```
 
-Open `http://localhost:7073` for the rate desk console.
+Open `http://localhost:7073` for the rate desk console. Use **Run 5-Act
+Demo** for the guided resilience walkthrough, or operate each scenario,
+cache, quote, and stampede control directly from the page. Every control
+shows its in-progress state and reports success or failure in the activity log.
 
 ## Layout — read it in this order
 

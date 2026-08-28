@@ -14,6 +14,7 @@ from lexigram.contracts.events.protocols import (
     EventBusProtocol,
     EventHandlerProtocol,
     EventMiddlewareProtocol,
+    EventReplayProtocol,
     EventSourcedReadRepositoryProtocol,
     EventSourcedRepositoryProtocol,
     EventStoreProtocol,
@@ -26,8 +27,6 @@ from lexigram.contracts.events.protocols import (
     SnapshotStoreProtocol,
     WebhookSignatureVerifierProtocol,
 )
-
-
 
 
 class TestEventStoreProtocol:
@@ -99,6 +98,25 @@ class TestEventStoreProtocol:
         assert isinstance(Store(), EventStoreProtocol)
 
 
+class TestEventReplayProtocol:
+    """Tests for the optional replay capability."""
+
+    def test_is_runtime_checkable_without_expanding_event_store(self) -> None:
+        """Replay-capable stores can advertise replay independently."""
+
+        class ReplayStore:
+            async def replay_events(
+                self,
+                handler: Any,
+                since: Any = None,
+                event_types: list[str] | None = None,
+                on_progress: Any = None,
+            ) -> int:
+                return 0
+
+        assert isinstance(ReplayStore(), EventReplayProtocol)
+
+
 class TestSnapshotStoreProtocol:
     """Tests for SnapshotStoreProtocol."""
 
@@ -107,7 +125,9 @@ class TestSnapshotStoreProtocol:
         """Test protocol has save async method."""
 
         class Store:
-            async def save(self, aggregate_id: str, snapshot: Any, version: int) -> None:
+            async def save(
+                self, aggregate_id: str, snapshot: Any, version: int
+            ) -> None:
                 pass
 
         store = Store()
@@ -129,7 +149,9 @@ class TestSnapshotStoreProtocol:
         """Test protocol is runtime checkable."""
 
         class Store:
-            async def save(self, aggregate_id: str, snapshot: Any, version: int) -> None:
+            async def save(
+                self, aggregate_id: str, snapshot: Any, version: int
+            ) -> None:
                 pass
 
             async def load(self, aggregate_id: str) -> tuple | None:
@@ -202,7 +224,9 @@ class TestEventSourcedRepositoryProtocol:
 
     def test_protocol_extends_read_repo(self) -> None:
         """Test protocol extends EventSourcedReadRepositoryProtocol."""
-        assert issubclass(EventSourcedRepositoryProtocol, EventSourcedReadRepositoryProtocol)
+        assert issubclass(
+            EventSourcedRepositoryProtocol, EventSourcedReadRepositoryProtocol
+        )
 
 
 class TestAggregateFactoryProtocol:
@@ -293,5 +317,3 @@ class TestPubSubProtocol:
                 pass
 
         assert isinstance(PubSub(), PubSubProtocol)
-
-

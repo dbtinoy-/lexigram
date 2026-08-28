@@ -1,54 +1,51 @@
 # Webhook Relay Demo
 
-Teaches the **Lexigram webhook pattern** — HMAC signing, payload validation,
-and relay routing.  Demonstrates secure webhook processing without requiring
-external webhook services.
+A focused, browser-first example of **Lexigram WebhookModule** for inbound
+event verification. Lexigram owns subscription storage, secret generation,
+constant-time HMAC verification, delivery infrastructure, and lifecycle. The
+demo adds only a local event ledger so accepted events are visible immediately
+without a second receiver service.
 
 ## What you'll learn
 
-1. **HMAC signing** — signing and verifying webhook payloads
-2. **Payload validation** — signature verification and size limits
-3. **Event routing** — routing events to registered handlers
-4. **Event logging** — tracking all processed events
+1. `WebhookModule.configure()` — real package DI bundle and memory stores
+2. `WebhookSubscriptionService` — create and list active subscriptions
+3. `HMACSignatureVerifier` — verify raw payloads with constant-time comparison
+4. Inbound relay boundaries — optionally verify an event against a stored secret
+5. Browser controls — send sample events and inspect the accepted-event ledger
 
 ## Read in order
 
 | # | File | What you learn |
 |---|------|----------------|
-| 1 | `application.yaml` | Configuration — secret key, signature header, payload size |
-| 2 | `src/webhookrelay/app.py` | Composition root — `build_modules()` + `build_providers()` |
-| 3 | `src/webhookrelay/di/provider.py` | Provider lifecycle — `register()`, `boot()`, `health_check()` |
-| 4 | `src/webhookrelay/config.py` | Config model — `BaseConfig` + `Field()` with descriptions |
-| 5 | `src/webhookrelay/signer.py` | HMAC signing — sign and verify payloads |
-| 6 | `src/webhookrelay/services/validator.py` | Payload validation — signature and size checks |
-| 7 | `src/webhookrelay/services/relay.py` | Event routing — route events to handlers |
-| 8 | `src/webhookrelay/controllers/api.py` | HTTP surface — thin controller adapters |
-| 9 | `tests/` | Real composition root, no mocks |
+| 1 | `application.yaml` | WebhookModule and ingress configuration |
+| 2 | `src/webhookrelay/app.py` | `WebhookModule` + `WebModule` composition |
+| 3 | `src/webhookrelay/di/provider.py` | Resolve package services and wire the ledger |
+| 4 | `src/webhookrelay/controllers/api.py` | Subscription and verification HTTP surface |
+| 5 | `src/webhookrelay/services/relay.py` | The demo-only accepted-event ledger |
+| 6 | `src/webhookrelay/ui/` | Browser relay console |
+| 7 | `tests/` | Real composition-root coverage |
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                      application.yaml                           │
-│  web: server/host/port, security/csrf/enabled                  │
-│  webhookrelay: secret_key, signature_header, max_payload_size  │
-└─────────────────────────────────────────────────────────────────┘
-                            │
-                            ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                         app.py                                  │
-│  build_modules()  → [WebModule.configure(controllers=[...])]    │
-│  build_providers() → [WebhookRelayProvider()]                   │
-│  create_app()     → Application(name="webhook-relay")          │
-└─────────────────────────────────────────────────────────────────┘
-                            │
-                            ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                      provider.py                                │
-│  register(): container.singleton(WebhookRelayConfig, instance=cfg)│
-│  boot():     resolve config → create signer/validator/relay → bind│
-└─────────────────────────────────────────────────────────────────┘
+WebhookModule.configure()
+      ├── WebhookSubscriptionService
+      ├── HMACSignatureVerifier
+      └── memory subscription/delivery stores
+                         │
+                         ▼
+               WebhookRelayProvider
+                  + local event ledger
+                         │
+                         ▼
+                 browser relay console
 ```
+
+The console creates a subscription first, keeps the returned secret only in
+browser memory, and uses Web Crypto to sign the next inbound event. Uncheck
+verification to see the intentionally permissive demo path; the API also
+supports direct callers that provide a subscription ID and HMAC signature.
 
 ## Quick start
 
@@ -57,30 +54,25 @@ cd demos/webhook-relay
 uv run python -m webhookrelay
 ```
 
-## Run tests
-
-```bash
-cd demos/webhook-relay
-uv run pytest tests/ -v
-```
+Open the URL printed by the server and send a sample event.
 
 ## API endpoints
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `POST` | `/api/webhook/receive` | Receive and process a webhook |
-| `POST` | `/api/webhook/validate` | Validate a webhook signature |
-| `GET` | `/api/webhook/events` | Get all webhook events |
-| `GET` | `/api/webhook/events/count` | Get webhook event count |
-| `GET` | `/api/webhook/health` | Health check |
+| `POST` | `/api/webhook/subscriptions` | Create a Lexigram subscription |
+| `GET` | `/api/webhook/subscriptions` | List active subscriptions |
+| `POST` | `/api/webhook/receive` | Accept an event; optionally verify it |
+| `POST` | `/api/webhook/validate` | Verify a raw payload with the demo key |
+| `GET` | `/api/webhook/events` | Inspect accepted events |
+| `GET` | `/api/webhook/events/count` | Count accepted events |
+| `GET` | `/api/webhook/health` | Show relay readiness |
 
-## Generating a valid signature
+## Generating a valid raw-payload signature
 
 ```python
-import hmac
-import hashlib
+from lexigram.webhook.verification.hmac import HMACSignatureVerifier
 
-secret = "demo-secret-key-for-hmac-signing"
-payload = b'{"event_type": "order.created", "payload": {"order_id": "123"}}'
-signature = "sha256=" + hmac.new(secret.encode(), payload, hashlib.sha256).hexdigest()
+verifier = HMACSignatureVerifier()
+signature = verifier.compute_signature(b"test payload", "demo-secret-key-for-hmac-signing")
 ```

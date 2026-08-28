@@ -201,6 +201,7 @@ asyncio_mode = "auto"
 addopts = ["--cov=lexigram.events", "--cov-report=html", "--cov-report=term", "--cov-fail-under=63"]
 testpaths = ["tests"]
 markers = [
+    "e2e: mark a test as an end-to-end test",
     "integration: mark a test as an integration test",
     "scenario: marks cross-package scenario integration tests",
     "requires_kafka: marks tests that require a live Kafka connection",

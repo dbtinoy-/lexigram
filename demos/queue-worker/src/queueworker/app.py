@@ -38,6 +38,7 @@ from __future__ import annotations
 from lexigram.app.base import Application
 from lexigram.config.main import LexigramConfig
 from lexigram.di.provider import Provider
+from lexigram.queue.module import QueueModule
 from lexigram.web.module import WebModule
 from queueworker.controllers.api import QueueApiController
 from queueworker.di.provider import QueueWorkerProvider
@@ -51,8 +52,10 @@ def build_modules() -> list[object]:
     framework expands into providers at boot.
     """
     return [
-        # WebModule is the only module that needs your controllers list —
-        # this is the explicit wiring style.
+        # QueueModule owns the QueueProtocol backend and lifecycle. The demo
+        # provider adds one focused MessageConsumer for the configured task
+        # topic; WebModule exposes controls for publishing and inspection.
+        QueueModule.stub(),
         WebModule.configure(
             controllers=[QueueApiController, QueuePageController],
         ),

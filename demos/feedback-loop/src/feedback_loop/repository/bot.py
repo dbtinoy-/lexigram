@@ -6,7 +6,7 @@ trace identifiers for each question; ``POOR_KEYS`` marks the two
 deliberately poor answers that drive the regression flow.
 
 The canned questions in ``BOT`` (and their trace ids) are *domain data*,
-not CLI or UI concerns — they stay here regardless of how the demo is
+not presentation concerns — they stay here regardless of how the demo is
 invoked.
 """
 

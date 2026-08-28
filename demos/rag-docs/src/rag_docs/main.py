@@ -1,11 +1,15 @@
-"""Entry point for the rag-docs REST API.
+"""Standalone server entry point for the rag-docs demo.
 
 Run::
 
-    uv run python -m rag_docs
+    cd demos/rag-docs
+    PYTHONPATH=src uv run python -m rag_docs
 
 Host/port come from ``application.yaml`` (``web.server``); override without
 editing the file via ``LEX_WEB__SERVER__PORT``.
+
+The split-screen console exposes both single questions and the guided
+three-question walkthrough.
 
 Lifecycle teaching notes:
 - ``Application.boot(...)`` is the idiomatic context manager: it creates the
@@ -22,7 +26,6 @@ Lifecycle teaching notes:
 from __future__ import annotations
 
 import asyncio
-import sys
 
 from lexigram.logging import get_logger
 from rag_docs.app import build_modules, build_providers
@@ -48,6 +51,7 @@ async def serve() -> None:
 
 
 def main() -> int:
+    """Start the standalone RAG docs console server."""
     try:
         asyncio.run(serve())
     except KeyboardInterrupt:
@@ -56,4 +60,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    raise SystemExit(main())

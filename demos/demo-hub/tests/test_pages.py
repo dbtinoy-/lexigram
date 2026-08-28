@@ -75,4 +75,4 @@ async def test_api_status_has_required_fields(client: httpx.AsyncClient) -> None
         assert "name" in svc
         assert "status" in svc
         assert "blurb" in svc
-        assert svc["status"] in ("up", "down", "cli")
+        assert svc["status"] in ("up", "down")

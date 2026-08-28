@@ -9,7 +9,7 @@ from lexigram.web.config import WebConfig
 
 
 def _load_web_config() -> WebConfig:
-    """Load the web section from application.yaml (replaces deleted bind_web)."""
+    """Load the web section explicitly for this YAML binding test."""
     from pathlib import Path
 
     yaml_path = Path(__file__).resolve().parent.parent / "application.yaml"

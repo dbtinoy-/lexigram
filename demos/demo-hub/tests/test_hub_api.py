@@ -8,9 +8,31 @@ registry_mod = pytest.importorskip("demo_hub.services.registry")
 subsite_mod = pytest.importorskip("demo_hub.subsite")
 
 
-def test_registry_lists_all_nineteen_live_services() -> None:
+def test_registry_lists_all_twenty_three_live_services() -> None:
     registry = registry_mod.ServiceRegistry()
-    assert len(registry.web_services()) == 19
+    assert len(registry.web_services()) == 23
+
+
+def test_registry_includes_the_three_feature_showcases() -> None:
+    registry = registry_mod.ServiceRegistry()
+    by_slug = {service.slug: service for service in registry.web_services()}
+    assert {"feature-flags", "approval-flow", "artifact-vault"} <= set(by_slug)
+    assert all(
+        by_slug[slug].featured
+        for slug in ("feature-flags", "approval-flow", "artifact-vault")
+    )
+
+
+def test_registry_includes_the_events_timeline_lab() -> None:
+    registry = registry_mod.ServiceRegistry()
+    service = next(
+        item for item in registry.web_services() if item.slug == "event-timeline"
+    )
+    assert service.app_path == "timeline_lab.app"
+    assert service.port == 8102
+    assert {"event bus", "event store", "replay", "offline"} <= set(
+        service.capabilities
+    )
 
 
 def test_registry_ports_are_unique_and_known() -> None:
@@ -58,7 +80,7 @@ def test_rewrite_js_leaves_fetch_and_comments_alone() -> None:
 
 def test_rewrite_html_leaves_external_urls() -> None:
     html = (
-        b'<html><head></head><body>'
+        b"<html><head></head><body>"
         b'<a href="https://ex.com">e</a><a href="//cdn/x">p</a>'
         b"</body></html>"
     )

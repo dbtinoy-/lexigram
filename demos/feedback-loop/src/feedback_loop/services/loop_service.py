@@ -127,7 +127,7 @@ class LoopService:
                 "answer": BOT[key],
                 "comment": comment or "",
             },
-            metadata={"source": "cli"},
+            metadata={"source": "web"},
         )
         return Ok(item_id)
 

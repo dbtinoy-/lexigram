@@ -20,7 +20,7 @@ except ImportError:
     _GCS_AVAILABLE = False
 
 from lexigram.contracts.core import HealthStatus
-from lexigram.contracts.infra.storage import FileInfo, Uploadable
+from lexigram.contracts.infra.storage import FileInfo, Uploadable, UploadOptions
 from lexigram.storage.backends.base import AbstractDriver
 from lexigram.storage.exceptions import StorageError, StorageFileNotFoundError
 from lexigram.storage.lib.content_type import get_content_type
@@ -124,7 +124,7 @@ class GCSDriver(AbstractDriver):
         self,
         path: str,
         data: Uploadable,
-        content_type: str | None = None,
+        content_type: UploadOptions | str | None = None,
         **options: Any,
     ) -> FileInfo:
         """Upload *data* to the GCS *path*.
@@ -143,7 +143,12 @@ class GCSDriver(AbstractDriver):
         """
         key = self._normalize_path(path)
         content = await self._to_bytes(data)
-        resolved_content_type = content_type if content_type else get_content_type(key)
+        upload_options = self._normalize_upload_options(content_type, options)
+        resolved_content_type = (
+            upload_options.content_type
+            if upload_options and upload_options.content_type
+            else get_content_type(key)
+        )
 
         try:
             await self._client.upload(
@@ -163,7 +168,7 @@ class GCSDriver(AbstractDriver):
                 size=len(content),
                 content_type=resolved_content_type,
                 last_modified=datetime.now(UTC),
-                metadata=options.get("metadata") if options else None,
+                metadata=upload_options.metadata if upload_options else None,
             )
         except Exception as exc:
             logger.exception("gcs_upload_failed bucket=%s key=%s", self.bucket, key)

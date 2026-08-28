@@ -26,6 +26,7 @@ from contextlib import nullcontext as _nullcontext
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
+from lexigram.contracts.core import HealthCheckResult, HealthStatus
 from lexigram.events.buses._dispatch import HandlerDispatchMixin
 from lexigram.events.buses.base import Bus, MiddlewareFunc
 from lexigram.events.config import EventBusConfig
@@ -155,6 +156,21 @@ class EventBusImpl(HandlerDispatchMixin, Bus[Event, None], EventBusProtocol):  #
         self._background_tasks: set[asyncio.Task[None]] = set()
         self._in_flight: int = 0
         self._dispatch_errors: list[Exception] = []
+
+    @property
+    def dispatch_errors(self) -> tuple[Exception, ...]:
+        """Return handler failures observed during asynchronous dispatch.
+
+        ``publish()`` reports enqueue acceptance, while handlers run in the
+        background drain.  This read-only snapshot lets health checks and
+        operator surfaces inspect failures even when ``continue_on_error`` is
+        enabled.
+        """
+        return tuple(self._dispatch_errors)
+
+    def clear_dispatch_errors(self) -> None:
+        """Clear the observed dispatch failures after an operator has read them."""
+        self._dispatch_errors.clear()
 
     def subscribe(self, event_type: type[Event], handler: Any) -> None:
         """Subscribe a handler to an event type.
@@ -304,6 +320,32 @@ class EventBusImpl(HandlerDispatchMixin, Bus[Event, None], EventBusProtocol):  #
             await self._emit_published_hook(event)
         return Ok(None)
 
+    async def health_check(self, timeout: float = 5.0) -> HealthCheckResult:
+        """Report event-bus readiness and accumulated dispatch failures.
+
+        Publication is intentionally asynchronous, so a successful
+        ``publish()`` does not prove that every handler completed.  The
+        diagnostics count makes that distinction visible to health consumers.
+        """
+        _ = timeout
+        errors = self.dispatch_errors
+        status = HealthStatus.DEGRADED if errors else HealthStatus.HEALTHY
+        return HealthCheckResult(
+            component=self.__class__.__name__,
+            status=status,
+            details={
+                "subscriber_count": sum(
+                    len(handlers) for handlers in self._subscribers.values()
+                ),
+                "in_flight": self._in_flight,
+                "queued_event_types": sum(
+                    not channel.is_empty for channel in self._event_channels.values()
+                ),
+                "dispatch_error_count": len(errors),
+                "dispatch_errors": [str(error) for error in errors],
+            },
+        )
+
     async def flush(self) -> None:
         """Wait until all pending events in every channel have been dispatched.
 
@@ -311,7 +353,7 @@ class EventBusImpl(HandlerDispatchMixin, Bus[Event, None], EventBusProtocol):  #
         in-progress handler dispatches have completed. Useful in tests.
         """
         while (
-            any(not ch.is_empty for ch in self._event_channels.values())  # type: ignore[attr-defined]
+            any(not ch.is_empty for ch in self._event_channels.values())
             or self._in_flight > 0
         ):
             await asyncio.sleep(0)

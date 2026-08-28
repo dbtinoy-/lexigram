@@ -32,8 +32,8 @@ function renderHistory() {
   list.innerHTML = history
     .map(
       (h) =>
-        `<li data-q="${h.question.replace(/"/g, "&quot;")}" data-s="${h.strategy}">` +
-        `<span class="strategy-tag">${h.strategy}</span>${h.question}</li>`
+        `<li data-q="${escapeHtml(h.question).replace(/"/g, "&quot;")}" data-s="${escapeHtml(h.strategy)}">` +
+        `<span class="strategy-tag">${escapeHtml(h.strategy)}</span>${escapeHtml(h.question)}</li>`
     )
     .join("");
   list.querySelectorAll("li").forEach((li) => {
@@ -113,45 +113,58 @@ const DEMO_QUESTIONS = [
 async function runDemo() {
   const askBtn = $("ask-btn");
   const demoBtn = $("demo-btn");
+  const status = $("demo-status");
   askBtn.disabled = true;
   demoBtn.disabled = true;
   hide("error-toast");
+  status.textContent = `Running question 1 of ${DEMO_QUESTIONS.length}…`;
 
-  for (const { q, s } of DEMO_QUESTIONS) {
-    $("question").value = q;
-    $("strategy").value = s;
-    $("answer-area").classList.remove("empty-state");
-    $("answer-area").innerHTML = `<p class="placeholder">Demo: ${escapeHtml(q)}…</p>`;
+  try {
+    for (let index = 0; index < DEMO_QUESTIONS.length; index++) {
+      const { q, s } = DEMO_QUESTIONS[index];
+      $("question").value = q;
+      $("strategy").value = s;
+      status.textContent = `Running question ${index + 1} of ${DEMO_QUESTIONS.length}…`;
+      $("answer-area").classList.remove("empty-state");
+      $("answer-area").innerHTML = `<p class="placeholder">Searching: ${escapeHtml(q)}…</p>`;
 
-    try {
       const res = await fetch("/ask", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ question: q, strategy: s }),
       });
-
-      if (res.ok) {
-        const body = await res.json();
-        $("answer-area").innerHTML = `<p class="answer-text">${escapeHtml(body.answer)}</p>`;
-        if (body.citations && body.citations.length > 0) {
-          $("citations").innerHTML = body.citations
-            .map((c) => `<li>${escapeHtml(c)}</li>`)
-            .join("");
-          show("citations-area");
-        }
-        addHistory(q, s);
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(body.detail || body.error || `HTTP ${res.status}`);
       }
-    } catch (_) {
-      /* continue to next question */
+
+      $("answer-area").innerHTML = `<p class="answer-text">${escapeHtml(body.answer)}</p>`;
+      if (body.citations && body.citations.length > 0) {
+        $("citations").innerHTML = body.citations
+          .map((c) => `<li>${escapeHtml(c)}</li>`)
+          .join("");
+        show("citations-area");
+      } else {
+        hide("citations-area");
+      }
+      addHistory(q, s);
+      status.textContent = `Completed question ${index + 1} of ${DEMO_QUESTIONS.length}`;
+
+      /* brief pause between questions */
+      if (index < DEMO_QUESTIONS.length - 1) {
+        await new Promise((r) => setTimeout(r, 400));
+      }
     }
-
-    /* brief pause between questions */
-    await new Promise((r) => setTimeout(r, 400));
+    status.textContent = "Guided demo complete";
+  } catch (error) {
+    status.textContent = `Demo failed: ${error.message}`;
+    $("error-toast").textContent = `Guided demo failed: ${error.message}`;
+    show("error-toast");
+  } finally {
+    askBtn.disabled = false;
+    demoBtn.disabled = false;
+    loadStats();
   }
-
-  askBtn.disabled = false;
-  demoBtn.disabled = false;
-  loadStats();
 }
 
 /* ── Helpers ────────────────────────────────────────────────── */

@@ -46,11 +46,13 @@ From this demo's root (so `application.yaml` is discovered):
 
 ```bash
 cd demos/rag-docs
-PYTHONPATH=src uv run python -m rag_docs
+PYTHONPATH=src uv run python -m rag_docs              # start the web console
 ```
 
-Open http://127.0.0.1:7075.  Type a question about Lexigram, pick a
-strategy, and get cited answers from the framework's own docs.
+Open http://127.0.0.1:7075. Type a question about Lexigram, pick a strategy,
+and get cited answers from the framework's own docs. **Run Guided Demo**
+walks through three representative questions in the browser, with each
+request showing progress and any error in the console.
 
 Override the port without touching yaml: `LEX_WEB__SERVER__PORT=9000`.
 

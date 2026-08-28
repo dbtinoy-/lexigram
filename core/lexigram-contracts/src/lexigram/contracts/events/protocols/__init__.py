@@ -22,6 +22,9 @@ from lexigram.contracts.events.protocols.domain import (
     DomainEventPublisherProtocol as DomainEventPublisherProtocol,
 )
 from lexigram.contracts.events.protocols.domain import (
+    EventBusDiagnosticsProtocol as EventBusDiagnosticsProtocol,
+)
+from lexigram.contracts.events.protocols.domain import (
     EventBusProtocol as EventBusProtocol,
 )
 from lexigram.contracts.events.protocols.domain import (
@@ -49,6 +52,9 @@ from lexigram.contracts.events.protocols.store import (
     AggregateFactoryProtocol as AggregateFactoryProtocol,
 )
 from lexigram.contracts.events.protocols.store import (
+    EventReplayProtocol as EventReplayProtocol,
+)
+from lexigram.contracts.events.protocols.store import (
     EventSourcedReadRepositoryProtocol as EventSourcedReadRepositoryProtocol,
 )
 from lexigram.contracts.events.protocols.store import (
@@ -66,9 +72,11 @@ __all__ = [
     "CommandBusProtocol",
     "CommandHandlerProtocol",
     "DomainEventPublisherProtocol",
+    "EventBusDiagnosticsProtocol",
     "EventBusProtocol",
     "EventHandlerProtocol",
     "EventMiddlewareProtocol",
+    "EventReplayProtocol",
     "EventSourcedReadRepositoryProtocol",
     "EventSourcedRepositoryProtocol",
     "EventStoreProtocol",

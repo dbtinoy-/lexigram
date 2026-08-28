@@ -12,7 +12,8 @@
 
 ``resolve_default_docs_dir()`` is CWD-proof: it anchors to this file's
 location (``di/provider.py`` → ``[5]`` parents up = repository root) so
-tests and CLI work from any invocation point.
+tests
+and standalone server launches work from any invocation point.
 
 Register/boot pattern (auth-rbac style)::
 
@@ -86,7 +87,7 @@ class DocsAskProvider(Provider):
         """Ingest the corpus and assemble DocsAskService.
 
         The boot sequence:
-        1. Resolve the corpus directory (CLI override or CWD-proof default)
+        1. Resolve the corpus directory (configured path or CWD-proof default)
         2. Create a shared ``HashingEmbedder`` — one instance for both
            corpus indexing and query embedding so IDF weights match
         3. ``build_docs_store`` walks markdown files, chunks, fits IDF,

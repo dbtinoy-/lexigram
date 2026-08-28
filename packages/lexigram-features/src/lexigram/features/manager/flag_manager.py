@@ -15,6 +15,7 @@ import time
 from typing import TYPE_CHECKING, Any
 
 from lexigram.concurrency.task_utils import create_tracked_task
+from lexigram.features.backends.chained import ChainedProvider
 from lexigram.features.backends.local import LocalProvider
 from lexigram.features.types import FlagContext, FlagEvaluation
 from lexigram.logging import get_logger
@@ -76,6 +77,13 @@ class FlagManager:
         event_bus: EventBusProtocol | None = None,
     ) -> None:
         self._provider: AbstractFlagProvider = provider or LocalProvider()
+        # Keep the base provider in a priority-aware chain so ``add_provider``
+        # can layer environment, local, or remote definitions without
+        # silently discarding flags already configured on the manager.
+        self._provider_entries: list[tuple[int, int, AbstractFlagProvider]] = [
+            (0, 0, self._provider),
+        ]
+        self._provider_sequence = 0
         self._cache_ttl = cache_ttl
         self._default_enabled = default_enabled
         self._event_bus: EventBusProtocol | None = event_bus
@@ -186,10 +194,27 @@ class FlagManager:
         return default
 
     def add_provider(self, provider: AbstractFlagProvider, priority: int = 50) -> None:
-        """Register a flag provider at the given priority level."""
-        # For simplicity in this adaptation, just replace the default provider.
-        # A robust implementation would support multiple chained providers.
-        self._provider = provider
+        """Register a flag provider at the given priority level.
+
+        Providers are queried from highest to lowest priority. When multiple
+        providers define the same flag, the higher-priority definition wins;
+        lower-priority providers remain available for flags it does not define.
+        Providers with the same priority use most-recently-added precedence.
+        """
+        self._provider_sequence += 1
+        self._provider_entries.append((priority, self._provider_sequence, provider))
+        ordered = [
+            entry[2]
+            for entry in sorted(
+                self._provider_entries,
+                key=lambda entry: (entry[0], entry[1]),
+                reverse=True,
+            )
+        ]
+        self._provider = ordered[0] if len(ordered) == 1 else ChainedProvider(ordered)
+        # A new definition may change any cached evaluation, including a
+        # previously missing flag, so provider registration invalidates cache.
+        self._cache.clear()
 
     async def get_value(
         self,
@@ -279,7 +304,7 @@ class FlagManager:
         if enabled:
             self.enable(name, actor=actor)
         else:
-            self.disable(name)
+            self.disable(name, actor=actor)
 
     def clear_override(self, name: str) -> None:
         """Remove any runtime override for *name*, restoring provider control."""

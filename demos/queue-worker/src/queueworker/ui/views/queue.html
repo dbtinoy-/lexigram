@@ -12,27 +12,34 @@
   <a href="/" class="nav-brand">Lexigram</a>
   <span class="nav-demo">Queue Worker</span>
   <div class="nav-links">
-    <a href="https://lexigram.dev">Docs</a>
-    <a href="https://github.com/dbtinoy-/lexigram">GitHub</a>
+    <a href="https://lexigram.dev" target="_blank" rel="noopener">Docs</a>
+    <a href="https://github.com/dbtinoy-/lexigram" target="_blank" rel="noopener">GitHub</a>
   </div>
 </nav>
 
   <header>
     <h1>Queue Worker</h1>
-    <p class="muted">Queue Worker Demo — Demonstrates Lexigram queue pattern</p>
+    <p class="muted">Queue Worker — publish to one topic and watch Lexigram MessageConsumer handle it</p>
   </header>
   <main>
     <section id="enqueue-panel">
       <h2>Enqueue Job</h2>
-      <div>
-        <input id="job-payload" type="text" placeholder="Job payload..." style="width:60%;">
-        <button id="btn-enqueue" class="accent">Enqueue</button>
-      </div>
+      <form id="enqueue-form">
+        <label for="topic">Worker topic</label>
+        <input id="topic" type="text" value="tasks" readonly>
+        <label for="job-payload">Task payload</label>
+        <input id="job-payload" type="text" placeholder="What should the worker handle?" required>
+        <div class="form-actions">
+          <button type="submit" id="btn-enqueue" class="accent">Publish task</button>
+          <button type="button" id="refresh-status">Refresh status</button>
+        </div>
+      </form>
+      <p id="error" class="error hidden" role="alert"></p>
     </section>
 
     <section id="queue-panel">
       <h2>Queue Status</h2>
-      <div id="queue-stats"></div>
+      <div id="queue-stats" class="queue-stats" aria-live="polite"></div>
     </section>
 
     <section id="log-panel">
@@ -41,6 +48,6 @@
     </section>
   </main>
   <script src="/static/app.js"></script>
-  <div class="demo-footer">Powered by <a href="https://lexigram.dev">Lexigram</a></div>
+  <div class="demo-footer">Powered by <a href="https://lexigram.dev" target="_blank" rel="noopener">Lexigram</a></div>
 </body>
 </html>

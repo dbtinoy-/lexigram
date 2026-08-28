@@ -50,7 +50,7 @@ Then open <http://127.0.0.1:7000>:
 | URL | What |
 |-----|------|
 | `/` | Hub console — card per demo, green/red status, All/Capability/Auth filters |
-| `/api/status` | JSON status for every embedded demo (`up` / `down` / `cli`) |
+| `/api/status` | JSON status for every embedded demo (`up` / `down`) |
 | `/demos/resilient-rates/` | Each demo lives at `/demos/<slug>/` |
 
 ## Layout — read it in this order

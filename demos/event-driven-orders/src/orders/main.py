@@ -1,4 +1,4 @@
-"""Entry point for the event-driven orders demo.
+"""Standalone server entry point for the event-driven orders demo.
 
 Run::
 
@@ -6,6 +6,7 @@ Run::
     PYTHONPATH=src uv run python -m orders
 
 Host/port come from ``application.yaml`` — no hardcoded values.
+The order lifecycle walkthrough is available from the browser console.
 
 Lifecycle teaching notes:
 - ``Application.start()`` boots every provider in dependency order,
@@ -19,12 +20,8 @@ Lifecycle teaching notes:
 from __future__ import annotations
 
 import asyncio
-import sys
 
-from lexigram.logging import get_logger
 from orders.app import create_app
-
-logger = get_logger(__name__)
 
 
 async def serve() -> None:
@@ -40,7 +37,7 @@ async def serve() -> None:
 
 
 def main() -> int:
-    """Sync wrapper: translate interrupts into a shell-friendly exit code."""
+    """Start the standalone order console server."""
     try:
         asyncio.run(serve())
     except KeyboardInterrupt:
@@ -49,4 +46,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    raise SystemExit(main())

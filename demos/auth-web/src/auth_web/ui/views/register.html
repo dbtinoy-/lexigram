@@ -11,8 +11,8 @@
   <a href="/" class="nav-brand">Lexigram</a>
   <span class="nav-demo">Auth Web</span>
   <div class="nav-links">
-    <a href="https://lexigram.dev">Docs</a>
-    <a href="https://github.com/dbtinoy-/lexigram">GitHub</a>
+    <a href="https://lexigram.dev" target="_blank" rel="noopener">Docs</a>
+    <a href="https://github.com/dbtinoy-/lexigram" target="_blank" rel="noopener">GitHub</a>
   </div>
 </nav>
 <header>
@@ -39,21 +39,29 @@
   </div>
 
   <script src="/static/app.js"></script>
-  <div class="demo-footer">Powered by <a href="https://lexigram.dev">Lexigram</a></div>
+  <div class="demo-footer">Powered by <a href="https://lexigram.dev" target="_blank" rel="noopener">Lexigram</a></div>
 </div>
   <script>
     document.getElementById("register-form").addEventListener("submit", async (event) => {
       event.preventDefault();
       showError("");
+      const submit = event.target.querySelector("button[type=submit]");
+      submit.disabled = true;
       const form = new FormData(event.target);
-      const result = await api("/api/register", {
-        method: "POST",
-        body: JSON.stringify(Object.fromEntries(form)),
-      });
-      if (result.ok) {
-        window.location.href = "/profile";
-      } else {
-        showError(result.body.error || "Registration failed");
+      try {
+        const result = await api("/api/register", {
+          method: "POST",
+          body: JSON.stringify(Object.fromEntries(form)),
+        });
+        if (result.ok) {
+          window.location.href = "/profile";
+        } else {
+          showError(result.body.error || result.body.detail || "Registration failed");
+        }
+      } catch (error) {
+        showError(error.message);
+      } finally {
+        submit.disabled = false;
       }
     });
   </script>

@@ -96,18 +96,22 @@ class FeatureFlagsProvider(Provider):
             logger.info("features_disabled", reason="FeatureFlagsConfig.enabled=False")
             return
 
+        # Normalize both the legacy boolean seed format and rich definitions
+        # supplied by application configuration. One normalized set of flags
+        # powers both the simple protocol and the rich manager API.
+        initial = {
+            flag_name: self._coerce_flag(flag_name, definition)
+            for flag_name, definition in cfg.initial_flags.items()
+        }
+
         # Simple boolean provider for the FlagProviderProtocol contract.
         simple = LocalProvider()
-        for flag_name, enabled in cfg.initial_flags.items():
-            simple.set_flag_sync(flag_name, enabled)
+        for flag_name, flag in initial.items():
+            simple.set_flag_sync(flag_name, flag.enabled)
         container.singleton(FlagProviderProtocol, simple)
         self._simple_provider = simple
 
         # Rich provider + manager for full evaluation API.
-        initial: dict[str, Flag] = {
-            flag_name: Flag(name=flag_name, type=FlagType.BOOLEAN, enabled=enabled)
-            for flag_name, enabled in cfg.initial_flags.items()
-        }
         local = LocalProvider(initial)
         manager = FlagManager(
             local,
@@ -120,20 +124,52 @@ class FeatureFlagsProvider(Provider):
         container.singleton(FlagManagerProtocol, manager)
         self._manager = manager
 
+    @staticmethod
+    def _coerce_flag(name: str, definition: object) -> Flag:
+        """Normalize one configured seed into a rich :class:`Flag`.
+
+        ``initial_flags`` historically accepted ``name -> bool`` mappings.
+        Keeping that shape while accepting ``Flag`` instances and YAML-friendly
+        mappings lets applications opt into percentage, attribute, and variant
+        evaluation without replacing the provider after boot.
+        """
+        if isinstance(definition, Flag):
+            if definition.name != name:
+                raise ValueError(
+                    f"Flag definition key {name!r} does not match name "
+                    f"{definition.name!r}"
+                )
+            return definition
+
+        if isinstance(definition, bool):
+            return Flag(name=name, type=FlagType.BOOLEAN, enabled=definition)
+
+        if isinstance(definition, dict):
+            payload = dict(definition)
+            payload["name"] = name
+            flag_type = payload.get("type", FlagType.BOOLEAN)
+            if not isinstance(flag_type, FlagType):
+                flag_type = FlagType(flag_type)
+            payload["type"] = flag_type
+            return Flag(**payload)
+
+        raise TypeError(
+            f"initial_flags[{name!r}] must be bool, Flag, or a flag-definition mapping; "
+            f"got {type(definition).__name__}"
+        )
+
     async def boot(self, container: BootContainerProtocol) -> None:
         """Wire the event bus into the flag manager when one is available."""
         if self._manager is None:
             return
-        try:
-            from lexigram.contracts.events.protocols import EventBusProtocol
 
-            event_bus = await container.resolve(EventBusProtocol)
+        from lexigram.contracts.events.protocols import EventBusProtocol
+
+        # EventBusProtocol is optional. Use the container's explicit optional
+        # resolution path so unrelated wiring failures are not silently hidden.
+        event_bus = await container.resolve_optional(EventBusProtocol)
+        if event_bus is not None:
             self._manager._event_bus = event_bus
-        except Exception as e:  # noqa: BLE001
-            logger.debug(
-                "event_bus_unavailable",
-                error=str(e),
-            )  # EventBusProtocol is optional; feature flags work without it
 
     async def health_check(self, timeout: float = 5.0) -> HealthCheckResult:
         """Check health of feature flags.

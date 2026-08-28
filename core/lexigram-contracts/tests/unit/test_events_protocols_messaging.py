@@ -8,6 +8,7 @@ import pytest
 
 from lexigram.contracts.events.protocols import (
     DomainEventPublisherProtocol,
+    EventBusDiagnosticsProtocol,
     EventBusProtocol,
     EventHandlerProtocol,
     EventMiddlewareProtocol,
@@ -175,6 +176,23 @@ class TestEventBusProtocol:
         assert isinstance(Bus(), EventBusProtocol)
 
 
+class TestEventBusDiagnosticsProtocol:
+    """Tests for the optional asynchronous dispatch diagnostics capability."""
+
+    def test_is_runtime_checkable(self) -> None:
+        """A bus can expose diagnostics without changing EventBusProtocol."""
+
+        class Bus:
+            @property
+            def dispatch_errors(self) -> tuple[Exception, ...]:
+                return ()
+
+            def clear_dispatch_errors(self) -> None:
+                pass
+
+        assert isinstance(Bus(), EventBusDiagnosticsProtocol)
+
+
 class TestEventMiddlewareProtocol:
     """Tests for EventMiddlewareProtocol."""
 
@@ -200,5 +218,3 @@ class TestEventMiddlewareProtocol:
                 pass
 
         assert isinstance(Middleware(), EventMiddlewareProtocol)
-
-

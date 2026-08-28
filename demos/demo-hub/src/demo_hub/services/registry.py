@@ -17,7 +17,7 @@ class DemoService:
         name: Display name.
         port: Port used when the demo runs standalone (informational only —
             embedded mode serves everything from the hub's own port).
-        kind: ``web`` for live consoles, ``cli`` for offline entries.
+        kind: ``web`` for live browser consoles.
         group: Top-level grouping — ``standard`` (single-package) or
             ``multi-module`` (multi-package composition).
         blurb: One-line description for the card grid.
@@ -38,6 +38,8 @@ class DemoService:
     readme_path: str = ""
     check_path: str = "/"
     errors: list[str] = field(default_factory=list)
+    capabilities: tuple[str, ...] = ()
+    featured: bool = False
 
     @property
     def is_hostable(self) -> bool:
@@ -219,7 +221,7 @@ class ServiceRegistry:
                 8094,
                 "web",
                 "standard",
-                "Tracing and observability dashboard",
+                "Lexigram Monitor health, metrics, and tracing console",
                 "monitor-stack",
                 "monitorstack.app",
                 "monitor-stack/README.md",
@@ -230,7 +232,7 @@ class ServiceRegistry:
                 8095,
                 "web",
                 "standard",
-                "Background job processing with retry",
+                "Lexigram MessageConsumer for one tasks topic",
                 "queue-worker",
                 "queueworker.app",
                 "queue-worker/README.md",
@@ -241,7 +243,7 @@ class ServiceRegistry:
                 8096,
                 "web",
                 "standard",
-                "Retrieval-augmented generation pipeline",
+                "Lexigram vector collection, chunking, and retrieval",
                 "rag-pipeline",
                 "ragdocs.app",
                 "rag-pipeline/README.md",
@@ -252,7 +254,7 @@ class ServiceRegistry:
                 8097,
                 "web",
                 "standard",
-                "SQLAlchemy repository pattern with unit-of-work",
+                "Lexigram DatabaseModule with SQLite task repository",
                 "sql-repository",
                 "taskapp.app",
                 "sql-repository/README.md",
@@ -263,10 +265,63 @@ class ServiceRegistry:
                 8098,
                 "web",
                 "standard",
-                "Inbound webhook processing and relay",
+                "Lexigram subscription creation and HMAC verification",
                 "webhook-relay",
                 "webhookrelay.app",
                 "webhook-relay/README.md",
+                capabilities=("subscriptions", "HMAC", "webhooks"),
+            ),
+            DemoService(
+                "feature-flags",
+                "Release Control Lab",
+                8099,
+                "web",
+                "standard",
+                "Feature rollouts, variants, overrides, and audit history",
+                "feature-flags",
+                "release_control.app",
+                "feature-flags/README.md",
+                capabilities=("feature flags", "variants", "runtime overrides"),
+                featured=True,
+            ),
+            DemoService(
+                "approval-flow",
+                "Approval Flow",
+                8100,
+                "web",
+                "standard",
+                "State-machine approvals with retry and compensation",
+                "approval-flow",
+                "approval_flow.app",
+                "approval-flow/README.md",
+                capabilities=("state machine", "approval gates", "history"),
+                featured=True,
+            ),
+            DemoService(
+                "artifact-vault",
+                "Artifact Vault",
+                8101,
+                "web",
+                "standard",
+                "Browser object storage with metadata and previews",
+                "artifact-vault",
+                "artifact_vault.app",
+                "artifact-vault/README.md",
+                capabilities=("blob storage", "metadata", "offline"),
+                featured=True,
+            ),
+            DemoService(
+                "event-timeline",
+                "Events Timeline Lab",
+                8102,
+                "web",
+                "standard",
+                "Publish, inspect, fail, and replay an in-memory event stream",
+                "event-timeline",
+                "timeline_lab.app",
+                "event-timeline/README.md",
+                capabilities=("event bus", "event store", "replay", "offline"),
+                featured=True,
             ),
         ]
 
@@ -286,17 +341,11 @@ class ServiceRegistry:
             failures: Slug → error text for demos that failed to boot.
 
         Returns:
-            One dict per service with a ``status`` of ``up``, ``down``
-            or ``cli``.
+            One dict per service with a ``status`` of ``up`` or ``down``.
         """
         payload: list[dict[str, object]] = []
         for svc in self.services:
-            if svc.kind != "web":
-                status = "cli"
-            elif mounted.get(svc.slug):
-                status = "up"
-            else:
-                status = "down"
+            status = "up" if mounted.get(svc.slug) else "down"
             payload.append(
                 {
                     "slug": svc.slug,
@@ -305,6 +354,8 @@ class ServiceRegistry:
                     "kind": svc.kind,
                     "group": svc.group,
                     "blurb": svc.blurb,
+                    "capabilities": list(svc.capabilities),
+                    "featured": svc.featured,
                     "status": status,
                     "error": failures.get(svc.slug),
                 }

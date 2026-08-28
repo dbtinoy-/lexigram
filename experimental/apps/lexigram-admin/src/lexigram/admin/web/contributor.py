@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from lexigram.contracts.exceptions import UnresolvableDependencyError
+
 if TYPE_CHECKING:
     from lexigram.contracts.core.di import ContainerResolverProtocol
 
@@ -57,6 +59,15 @@ class AdminWebContributor:
             app: The ASGI application (typically Starlette).
             container: DI container for resolving the admin bundle.
         """
-        admin_bundle = await container.resolve("admin_bundle", bypass_visibility=True)
+        try:
+            admin_bundle = await container.resolve(
+                "admin_bundle", bypass_visibility=True
+            )
+        except UnresolvableDependencyError:
+            # The web contributor is installed independently from the admin
+            # bundle. Treat the bundle as an optional integration instead of
+            # emitting a startup error for every WebProvider.
+            return
+
         if admin_bundle and hasattr(admin_bundle, "mount_to_app"):
             await admin_bundle.mount_to_app(app, container)

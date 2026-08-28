@@ -11,11 +11,13 @@ Run::
 
 The server exposes:
 
-- ``POST /api/webhook/receive``      — receive and process a webhook
-- ``POST /api/webhook/validate``     — validate a webhook signature
-- ``GET /api/webhook/events``        — get all webhook events
-- ``GET /api/webhook/events/count``  — get webhook event count
-- ``GET /api/webhook/health``        — health check
+- ``POST /api/webhook/subscriptions`` — create a Lexigram subscription
+- ``GET /api/webhook/subscriptions``  — list active subscriptions
+- ``POST /api/webhook/receive``       — receive and optionally verify an event
+- ``POST /api/webhook/validate``      — validate a raw payload signature
+- ``GET /api/webhook/events``         — get accepted webhook events
+- ``GET /api/webhook/events/count``   — get accepted event count
+- ``GET /api/webhook/health``         — health check
 """
 
 from __future__ import annotations

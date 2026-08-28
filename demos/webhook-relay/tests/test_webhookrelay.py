@@ -6,8 +6,11 @@ Services are tested through their public API, not by mocking internals.
 
 from __future__ import annotations
 
-import pytest
 import httpx
+import pytest
+
+from lexigram.serialization import dumps
+from lexigram.webhook.verification.hmac import HMACSignatureVerifier
 
 
 class TestWebhookReceiving:
@@ -35,6 +38,55 @@ class TestWebhookReceiving:
         assert resp.status_code == 200
         data = resp.json()
         assert "error" in data
+
+
+class TestWebhookSubscriptions:
+    """Exercise Lexigram-managed subscription and verification wiring."""
+
+    @pytest.mark.asyncio
+    async def test_create_and_verify_subscription_event(
+        self, client: httpx.AsyncClient
+    ) -> None:
+        subscription_response = await client.post(
+            "/api/webhook/subscriptions",
+            json={
+                "url": "https://example.test/hooks",
+                "event_types": ["order.created"],
+            },
+        )
+        assert subscription_response.status_code == 200
+        subscription = subscription_response.json()
+        assert subscription["active"] is True
+        assert subscription["secret"]
+
+        payload = {"order_id": "123"}
+        signature = HMACSignatureVerifier().compute_signature(
+            dumps(payload, sort_keys=True), subscription["secret"]
+        )
+        response = await client.post(
+            "/api/webhook/receive",
+            json={
+                "event_type": "order.created",
+                "payload": payload,
+                "subscription_id": subscription["subscription_id"],
+                "signature": signature,
+            },
+        )
+        assert response.status_code == 200
+        assert response.json()["verified"] is True
+
+    @pytest.mark.asyncio
+    async def test_list_subscriptions_hides_secrets(
+        self, client: httpx.AsyncClient
+    ) -> None:
+        await client.post(
+            "/api/webhook/subscriptions",
+            json={"url": "https://example.test/hooks"},
+        )
+        response = await client.get("/api/webhook/subscriptions")
+        assert response.status_code == 200
+        item = response.json()["subscriptions"][0]
+        assert "secret" not in item
 
 
 class TestWebhookValidation:

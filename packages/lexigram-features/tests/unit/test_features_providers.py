@@ -196,15 +196,43 @@ class TestFeatureFlagsProvider:
         assert container.singleton.call_count >= 2
 
     @pytest.mark.asyncio
+    async def test_register_accepts_rich_flag_definitions(self) -> None:
+        """YAML-friendly definitions seed the rich manager without adapters."""
+        config = FeatureFlagsConfig(
+            initial_flags={
+                "rollout": {
+                    "type": "percentage",
+                    "enabled": True,
+                    "percentage": 100,
+                },
+                "experiment": {
+                    "type": "variant",
+                    "enabled": True,
+                    "variants": {"control": 50, "ranked": 50},
+                    "default_variant": "control",
+                },
+            }
+        )
+        provider = FeatureFlagsProvider(config=config)
+        await provider.register(MagicMock())
+
+        manager = provider.get_manager()
+        assert manager is not None
+        rollout = await manager.evaluate("rollout", FlagContext(user_id="u-1"))
+        experiment = await manager.get_variant(
+            "experiment", FlagContext(user_id="u-1")
+        )
+        assert rollout.reason == "percentage_rollout"
+        assert experiment in {"control", "ranked"}
+
+    @pytest.mark.asyncio
     async def test_boot_without_event_bus(
         self,
         provider: FeatureFlagsProvider,
     ) -> None:
         """Test boot when event bus is not available."""
         container = MagicMock()
-        container.resolve = AsyncMock(
-            side_effect=Exception("not registered"),
-        )
+        container.resolve_optional = AsyncMock(return_value=None)
         await provider.register(container)
         await provider.boot(container)
         assert provider.get_manager() is not None
@@ -218,7 +246,7 @@ class TestFeatureFlagsProvider:
         await provider.register(MagicMock())
         container = MagicMock()
         event_bus = MagicMock()
-        container.resolve = AsyncMock(return_value=event_bus)
+        container.resolve_optional = AsyncMock(return_value=event_bus)
         await provider.boot(container)
         manager = provider.get_manager()
         assert manager is not None

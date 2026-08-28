@@ -10,6 +10,7 @@ from collections import defaultdict
 import dataclasses
 from typing import TYPE_CHECKING
 
+from lexigram.contracts.core import HealthCheckResult, HealthStatus
 from lexigram.events.exceptions import ConcurrencyError
 from lexigram.events.stores.base import AbstractEventStore, AbstractSnapshotStore
 
@@ -64,6 +65,24 @@ class InMemoryEventStore(AbstractEventStore):
         self._global_position: int = 0
         # M-19: type index maps event_type -> list of positions in _global_log
         self._type_index: dict[str, list[int]] = defaultdict(list)
+
+    async def health_check(self, timeout: float = 5.0) -> HealthCheckResult:
+        """Report readiness for the process-local in-memory store.
+
+        The in-memory backend has no external dependency to probe.  Reporting
+        it explicitly avoids making a configured offline application look
+        partially unknown to the EventsProvider health aggregate.
+        """
+        _ = timeout
+        return HealthCheckResult(
+            component=self.__class__.__name__,
+            status=HealthStatus.HEALTHY,
+            details={
+                "backend": "memory",
+                "event_count": len(self._global_log),
+                "stream_count": len(self._streams),
+            },
+        )
 
     async def append(
         self,

@@ -60,6 +60,7 @@ async def client() -> AsyncIterator[httpx.AsyncClient]:
                     json(controller.set_scenario),
                     methods=["POST"],
                 ),
+                Route("/demo", json(controller.demo), methods=["POST"]),
             ]
         )
         transport = httpx.ASGITransport(app=asgi)
@@ -121,3 +122,10 @@ async def test_cache_clear_endpoint(client: httpx.AsyncClient) -> None:
 async def test_invalid_pair_maps_to_404(client: httpx.AsyncClient) -> None:
     response = await client.get("/rates/USDEUR")
     assert response.status_code == 404
+
+
+async def test_guided_demo_runs_over_http(client: httpx.AsyncClient) -> None:
+    response = await client.post("/demo")
+
+    assert response.status_code == 200
+    assert response.json() == {"ok": True, "acts": 5}

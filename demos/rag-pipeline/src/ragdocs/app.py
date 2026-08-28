@@ -38,6 +38,7 @@ from __future__ import annotations
 from lexigram.app.base import Application
 from lexigram.config.main import LexigramConfig
 from lexigram.di.provider import Provider
+from lexigram.vector.module import VectorModule
 from lexigram.web.module import WebModule
 from ragdocs.controllers.api import RagApiController
 from ragdocs.di.provider import RagDocsProvider
@@ -51,8 +52,10 @@ def build_modules() -> list[object]:
     framework expands into providers at boot.
     """
     return [
-        # WebModule is the only module that needs your controllers list —
-        # this is the explicit wiring style.
+        # VectorModule owns lifecycle and the VectorStoreProtocol binding.
+        # The stub selects Lexigram's real in-memory backend so this demo
+        # stays standalone while the composition root remains production-like.
+        VectorModule.stub(),
         WebModule.configure(
             controllers=[RagApiController, RagPageController],
         ),

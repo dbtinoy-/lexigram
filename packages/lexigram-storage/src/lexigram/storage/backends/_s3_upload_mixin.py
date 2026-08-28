@@ -33,6 +33,7 @@ class _S3UploadMixin:
     _build_sse_params: Any
     _normalize_path: Any
     _get_file_size: Any
+    _normalize_upload_options: Any
 
     async def _upload_small_file(
         self,
@@ -339,16 +340,14 @@ class _S3UploadMixin:
         self,
         path: str,
         data: Uploadable,
-        content_type: str | None = None,
+        content_type: UploadOptions | str | None = None,
         **options: Any,
     ) -> FileInfo:
         """Upload data to S3 with automatic multipart upload for large files"""
         key = self._normalize_path(path)
 
-        # Build upload options from protocol-compatible signature
-        opt: UploadOptions | None = None
-        if content_type is not None or options:
-            opt = UploadOptions(content_type=content_type, **options)
+        # Build upload options from the protocol-compatible signature.
+        opt = self._normalize_upload_options(content_type, options)
 
         # Determine file size to choose upload strategy
         file_size = await self._get_file_size(data)

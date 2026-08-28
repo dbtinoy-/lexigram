@@ -1,13 +1,7 @@
-"""Queue worker demo — message queue with in-memory backend.
+"""Queue worker demo — one Lexigram topic with an automatic consumer.
 
-Convention followed: **Package exports** — ``__init__.py`` re-exports
-the public API surface without defining logic.
-
-Exports:
-
-- ``create_app`` — composition root for the application
-- ``QueueWorkerConfig`` — demo configuration model
-- ``QueueWorkerProvider`` — DI provider for queue worker services
+The public surface is intentionally small: a standalone application factory,
+its typed config, and the lifecycle provider that starts the consumer.
 """
 
 from __future__ import annotations

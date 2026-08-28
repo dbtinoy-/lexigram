@@ -40,18 +40,16 @@ PYTHONPATH=src uv run python -m ops_console
 ```
 
 Open http://127.0.0.1:7071 in two browsers — you should see the same live
-heartbeats appear in both. Then push a manual event:
-
-```bash
-PYTHONPATH=src uv run python -m ops_console --publish --message "deploy request approved"
-```
+heartbeats appear in both. Use the **Publish** form below the event feed to
+send a message; the form reports publishing, success, and failure states while
+the event is broadcast to every connected dashboard.
 
 ## Layout — read it in this order
 
 | # | File | Lesson |
 |---|------|--------|
 | 1 | `src/ops_console/app.py` | ⭐ Composition root: config → modules → providers |
-| 2 | `src/ops_console/main.py` | Lifecycle: `Application.start/stop`, CLI publish |
+| 2 | `src/ops_console/main.py` | Lifecycle: `Application.start/stop`, standalone server |
 | 3 | `src/ops_console/di/provider.py` | DI wiring: register() binds, boot() starts heartbeat |
 | 4 | `src/ops_console/config.py` | Custom config model: `RealtimeConfig` for `demo:` section |
 | 5 | `src/ops_console/services/event_stream.py` | Event bus: pub/sub, replay, bounded queues |
@@ -63,7 +61,7 @@ PYTHONPATH=src uv run python -m ops_console --publish --message "deploy request 
 demos/realtime-monitor/
 ├── src/ops_console/
 │   ├── app.py                 # ⭐ composition root (start here)
-│   ├── main.py                # entry point / lifecycle + CLI publish
+│   ├── main.py                # standalone server entry point / lifecycle
 │   ├── config.py              # RealtimeConfig for demo: section
 │   ├── domain.py              # SystemEvent value type + Severity enum
 │   ├── di/

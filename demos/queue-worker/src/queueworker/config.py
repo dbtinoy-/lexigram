@@ -43,11 +43,6 @@ class QueueWorkerConfig(BaseConfig):
         default=3,
         description="Maximum retry attempts per message",
     )
-    batch_size: int = Field(
-        default=10,
-        description="Messages to process per batch",
-    )
-
     # Uncomment to add more config fields:
     # dead_letter_queue: str = Field(
     #     default="tasks.dlq",

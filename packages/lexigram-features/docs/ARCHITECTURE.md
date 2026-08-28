@@ -174,7 +174,7 @@ The package's `protocols.py` re-exports all three protocols so consumers may imp
 |-------|-----------------|---------|--------------|
 | Flag backend | `AbstractFlagProvider` / `FlagProviderProtocol` | `LocalProvider` | Subclass `AbstractFlagProvider`, implement `get_flag_definition()` / `get_all_flags()` |
 | Caching layer | `CacheBackendFlagProvider` + `CacheBackendProtocol` | — | Wrap any `CacheBackendProtocol` (Redis, Memcached, in-memory) |
-| Provider chaining | `ChainedProvider` | — | Layer env overrides on code defaults with priority ordering |
+| Provider chaining | `ChainedProvider`, `FlagManager.add_provider()` | — | Layer env overrides on code defaults with priority ordering; higher priority wins |
 | Runtime overrides | `FlagManager.enable()` / `disable()` | — | Force-enable/disable at runtime without modifying provider |
 | Change listeners | `FlagChangeListener` / `AsyncFlagChangeListener` | — | Register via `manager.add_listener()` / `add_listener_sync()` |
 | Event bus | `EventBusProtocol` | None (graceful skip) | Register `EventBus` in container; `FlagChangeEvent` published automatically |

@@ -182,6 +182,11 @@ class ChannelProtocol(Protocol):
         """True if the channel has been closed."""
         ...
 
+    @property
+    def is_empty(self) -> bool:
+        """True if the channel currently has no queued items."""
+        ...
+
 
 __all__ = [
     "ChannelProtocol",
