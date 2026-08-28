@@ -7,78 +7,129 @@
 ## Summary
 
 - Tool checks run: 2
-- Passing tools: 2
-- Failing tools: 0
+- Passing tools: 0
+- Failing tools: 2
 - Packages counted: 54
-- Total mypy errors: 0
-- Packages with errors: 0
+- Total mypy errors: 95
+- Packages with errors: 12
 
 ## Tool Results
 
 | Tool | Status | Exit Code | Duration | Command |
 |------|--------|-----------|----------|---------|
-| `Ruff` | **PASS** | 0 | 235 ms | `uv run ruff check .` |
-| `Mypy` | **PASS** | 0 | 44714 ms | `uv run mypy src/ (per-package across 54 packages)` |
+| `Ruff` | **FAIL** | 1 | 346 ms | `uv run ruff check .` |
+| `Mypy` | **FAIL** | 1 | 142900 ms | `uv run mypy src/ (per-package across 54 packages)` |
 
 ### Ruff
 
-- Status: **PASS**
-- Exit code: `0`
-- Duration: `235 ms`
+- Status: **FAIL**
+- Exit code: `1`
+- Duration: `346 ms`
 - Command: `uv run ruff check .`
 - Output snippet:
 
 ```text
-All checks passed!
+F401 [*] `lexigram.contracts.admin.StatContent` imported but unused
+ --> packages/lexigram-events/src/lexigram/events/admin/handlers/events_throughput.py:7:54
+  |
+5 | from typing import TYPE_CHECKING
+6 |
+7 | from lexigram.contracts.admin import MessageContent, StatContent, Tone, WidgetParams
+  |                                                      ^^^^^^^^^^^
+8 | from lexigram.contracts.admin.errors import AdminError
+...
 ```
 
 ### Mypy
 
-- Status: **PASS**
-- Exit code: `0`
-- Duration: `44714 ms`
+- Status: **FAIL**
+- Exit code: `1`
+- Duration: `142900 ms`
 - Command: `uv run mypy src/ (per-package across 54 packages)`
 - Output snippet:
 
 ```text
-All per-package mypy checks passed.
+[lexigram] 7 errors
+[lexigram-admin] 4 errors
+[lexigram-ai-mcp] 2 errors
+[lexigram-cache] 6 errors
+[lexigram-cli] 2 errors
+[lexigram-events] 2 errors
+[lexigram-graphql] 3 errors
+[lexigram-monitor] 50 errors
+[lexigram-resilience] 1 errors
+[lexigram-search] 2 errors
+[lexigram-sql] 1 errors
+[lexigram-web] 15 errors
 ```
+
+### Mypy Error Breakdown
+
+#### By Error Code
+
+| Code | Count | Description |
+|------|-------|-------------|
+| `unused-ignore` | 28 | Unused type: ignore comment |
+| `import-not-found` | 25 | Type checking error |
+| `arg-type` | 13 | Argument type mismatch |
+| `no-redef` | 12 | Name already defined |
+| `no-any-return` | 8 | Function returns Any when specific type declared |
+| `import-untyped` | 4 | Type checking error |
+| `attr-defined` | 3 | Attribute not defined on type |
+| `unreachable` | 3 | Type checking error |
+| `name-defined` | 2 | Type checking error |
+| `union-attr` | 1 | Type checking error |
+
+#### By Package (Top 10)
+
+| Package | Errors |
+|---------|--------|
+| `lexigram-monitor` | 50 |
+| `lexigram-web` | 15 |
+| `lexigram` | 7 |
+| `lexigram-cache` | 6 |
+| `lexigram-admin` | 4 |
+| `lexigram-graphql` | 3 |
+| `lexigram-ai-mcp` | 2 |
+| `lexigram-cli` | 2 |
+| `lexigram-events` | 2 |
+| `lexigram-search` | 2 |
 
 ## Package Metrics
 
 | Package | Source Files | Test Files |
 |---------|--------------|------------|
-| `lexigram` | 309 | 275 |
-| `lexigram-admin` | 569 | 477 |
-| `lexigram-ai` | 25 | 101 |
-| `lexigram-ai-agents` | 60 | 44 |
+| `lexigram` | 311 | 282 |
+| `lexigram-admin` | 568 | 478 |
+| `lexigram-ai` | 24 | 101 |
+| `lexigram-ai-agents` | 59 | 44 |
 | `lexigram-ai-evaluation` | 22 | 24 |
-| `lexigram-ai-feedback` | 25 | 29 |
-| `lexigram-ai-governance` | 78 | 46 |
-| `lexigram-ai-guard` | 34 | 22 |
-| `lexigram-ai-llm` | 160 | 130 |
-| `lexigram-ai-mcp` | 64 | 36 |
-| `lexigram-ai-memory` | 49 | 32 |
-| `lexigram-ai-observability` | 27 | 30 |
-| `lexigram-ai-prompt` | 46 | 34 |
-| `lexigram-ai-rag` | 189 | 52 |
-| `lexigram-ai-relay` | 43 | 44 |
-| `lexigram-ai-relay-gateway` | 67 | 66 |
-| `lexigram-ai-session` | 46 | 35 |
-| `lexigram-ai-skills` | 53 | 38 |
-| `lexigram-ai-workers` | 35 | 34 |
-| `lexigram-audit` | 46 | 37 |
-| `lexigram-auth` | 137 | 89 |
-| `lexigram-cache` | 94 | 73 |
-| `lexigram-cli` | 112 | 78 |
-| `lexigram-contracts` | 341 | 168 |
-| `lexigram-events` | 158 | 109 |
-| `lexigram-features` | 35 | 26 |
-| `lexigram-graph` | 25 | 32 |
+| `lexigram-ai-feedback` | 24 | 29 |
+| `lexigram-ai-governance` | 77 | 46 |
+| `lexigram-ai-guard` | 33 | 22 |
+| `lexigram-ai-llm` | 159 | 130 |
+| `lexigram-ai-mcp` | 63 | 37 |
+| `lexigram-ai-memory` | 48 | 32 |
+| `lexigram-ai-observability` | 26 | 30 |
+| `lexigram-ai-prompt` | 45 | 34 |
+| `lexigram-ai-rag` | 188 | 52 |
+| `lexigram-ai-relay` | 42 | 44 |
+| `lexigram-ai-relay-gateway` | 66 | 66 |
+| `lexigram-ai-session` | 45 | 36 |
+| `lexigram-ai-skills` | 52 | 40 |
+| `lexigram-ai-workers` | 34 | 34 |
+| `lexigram-audit` | 45 | 37 |
+| `lexigram-auth` | 136 | 91 |
+| `lexigram-cache` | 93 | 73 |
+| `lexigram-cli` | 111 | 78 |
+| `lexigram-contracts` | 346 | 168 |
+| `lexigram-events` | 157 | 111 |
+| `lexigram-features` | 34 | 26 |
+| `lexigram-graph` | 24 | 32 |
 | `lexigram-graphql` | 82 | 63 |
-| `lexigram-http` | 33 | 32 |
-| `lexigram-monitor` | 94 | 59 |
-| `lexigram-multimedia` | 21 | 23 |
+| `lexigram-http` | 32 | 32 |
+| `lexigram-monitor` | 93 | 59 |
+| `lexigram-multimedia` | 20 | 23 |
 | `lexigram-multimedia-beat` | 11 | 7 |
 | `lexigram-multimedia-image` | 13 | 9 |
 | `lexigram-multimedia-interpolate` | 12 | 7 |
@@ -86,20 +137,20 @@ All per-package mypy checks passed.
 | `lexigram-multimedia-tts` | 20 | 13 |
 | `lexigram-multimedia-upscale` | 15 | 9 |
 | `lexigram-multimedia-video` | 28 | 20 |
-| `lexigram-nosql` | 43 | 47 |
-| `lexigram-notification` | 60 | 37 |
-| `lexigram-queue` | 44 | 42 |
-| `lexigram-resilience` | 56 | 38 |
-| `lexigram-search` | 97 | 61 |
-| `lexigram-secrets` | 25 | 14 |
-| `lexigram-sql` | 196 | 152 |
-| `lexigram-storage` | 39 | 37 |
-| `lexigram-tasks` | 91 | 62 |
-| `lexigram-tenancy` | 64 | 44 |
-| `lexigram-testing` | 171 | 41 |
-| `lexigram-ui` | 165 | 79 |
-| `lexigram-vector` | 65 | 42 |
-| `lexigram-web` | 200 | 170 |
-| `lexigram-webhook` | 42 | 36 |
-| `lexigram-workflow` | 69 | 54 |
+| `lexigram-nosql` | 42 | 47 |
+| `lexigram-notification` | 59 | 38 |
+| `lexigram-queue` | 43 | 42 |
+| `lexigram-resilience` | 55 | 38 |
+| `lexigram-search` | 96 | 61 |
+| `lexigram-secrets` | 24 | 14 |
+| `lexigram-sql` | 195 | 153 |
+| `lexigram-storage` | 38 | 37 |
+| `lexigram-tasks` | 90 | 62 |
+| `lexigram-tenancy` | 63 | 44 |
+| `lexigram-testing` | 170 | 41 |
+| `lexigram-ui` | 164 | 79 |
+| `lexigram-vector` | 64 | 42 |
+| `lexigram-web` | 199 | 170 |
+| `lexigram-webhook` | 41 | 36 |
+| `lexigram-workflow` | 68 | 54 |
 

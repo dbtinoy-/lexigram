@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from lexigram.contracts.admin import MessageContent, StatContent, Tone, WidgetParams
+from lexigram.contracts.admin import MessageContent, Tone, WidgetParams
 from lexigram.contracts.admin.errors import AdminError
 from lexigram.result import Ok, Result
 
