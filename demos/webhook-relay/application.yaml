@@ -7,13 +7,13 @@
 # defaults.  Each section maps 1:1 to a typed config model — the
 # framework validates your yaml against it at boot time.
 #
-# DEMO FOCUS: Webhook pattern with HMAC signing, payload validation,
-# and relay routing.  Demonstrates secure webhook processing without
-# requiring external webhook services.
+# DEMO FOCUS: Lexigram WebhookModule subscriptions and HMAC verification.
+# The browser creates a subscription, signs an inbound event, and inspects
+# the local accepted-event ledger.
 #
 # LEARNING PATH:
-#   1. web:        HTTP server, security, CSRF
-#   2. webhookrelay: Secret key, signature header, payload size, retries
+#   1. webhook:    Lexigram subscription store and delivery lifecycle
+#   2. webhookrelay: demo-only secret validation and ledger settings
 #
 # For full reference see:
 #   - Lexigram Web:       packages/lexigram-web/src/lexigram/web/config/
@@ -84,11 +84,19 @@ web:
 #   2. Event routing — route events to registered handlers
 #   3. Event logging — log all processed events
 # ─────────────────────────────────────────────────────────────────────────────
+# ── Lexigram Webhook capability ──────────────────────────────────────────────
+# WebhookModule owns subscriptions, generated secrets, HMAC verification,
+# delivery stores, and lifecycle wiring. Private URLs are enabled only because
+# this standalone demo may point at a local/test receiver.
+webhook:
+  store_backend: memory
+  allow_private_urls: true
+  enable_admin: false
+  retry_max_attempts: 3
+
+# ── Demo ingress settings ────────────────────────────────────────────────────
+# These settings belong to the browser-facing ingress adapter, not the package.
 webhookrelay:
-  secret_key: "demo-secret-key-for-hmac-signing"  # HMAC signing secret
-  signature_header: "X-Hub-Signature-256"          # signature header name
-  max_payload_size: 1048576                         # max payload size (1 MiB)
-  retry_count: 3                                    # retry attempts
-  # event_timeout: 30                               # event processing timeout
-  # log_events: true                                # log all events
-  # allowed_sources: ["shopify", "github", "stripe"] # allowed webhook sources
+  secret_key: "demo-secret-key-for-hmac-signing"  # raw-payload playground key
+  max_payload_size: 1048576                   # 1 MiB guard for validation
+  max_payload_size: 1048576                       # max payload size (1 MiB)

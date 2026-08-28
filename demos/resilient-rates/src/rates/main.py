@@ -1,34 +1,19 @@
-"""Serve the resilient-rates REST API.
-
-Convention followed: **Application boot** — ``create_app()`` builds the
-composition root, this file boots it and runs the web server.  Host/port
-are read automatically from ``application.yaml`` — no manual config wiring
-needed.
+"""Standalone server entry point for the resilient-rates demo.
 
 Run::
 
-    uv run python -m rates
+    cd demos/resilient-rates
+    PYTHONPATH=src uv run python -m rates
 
-The server exposes:
-
-- ``GET /``              — single-page rate desk console
-- ``GET /rates/{pair}``  — quote via cache → single-flight → pipeline → stale
-- ``GET /stats``         — hit/miss/upstream/retry/stale counters
-- ``POST /scenario/{name}`` — flip upstream health live
-- ``POST /cache/clear``  — drop cached quotes
-- ``POST /stampede/{pair}`` — collapse N concurrent fetches into one call
-- ``POST /demo``         — five-act guided walkthrough
+Host/port come from ``application.yaml`` — no hardcoded values.
+The rate desk's guided walkthrough is available from the browser console.
 """
 
 from __future__ import annotations
 
 import asyncio
-import sys
 
-from lexigram.logging import get_logger
 from rates.app import create_app
-
-logger = get_logger(__name__)
 
 
 async def serve() -> None:
@@ -49,7 +34,7 @@ async def serve() -> None:
 
 
 def main() -> int:
-    """Sync entry point: translate asyncio interrupts into exit codes."""
+    """Start the standalone rate desk server."""
     try:
         asyncio.run(serve())
     except KeyboardInterrupt:
@@ -58,7 +43,7 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    raise SystemExit(main())
 
 
 __all__ = ["main", "serve"]

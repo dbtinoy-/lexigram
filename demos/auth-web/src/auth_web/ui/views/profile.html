@@ -11,8 +11,8 @@
   <a href="/" class="nav-brand">Lexigram</a>
   <span class="nav-demo">Auth Web</span>
   <div class="nav-links">
-    <a href="https://lexigram.dev">Docs</a>
-    <a href="https://github.com/dbtinoy-/lexigram">GitHub</a>
+    <a href="https://lexigram.dev" target="_blank" rel="noopener">Docs</a>
+    <a href="https://github.com/dbtinoy-/lexigram" target="_blank" rel="noopener">GitHub</a>
   </div>
 </nav>
 <header>
@@ -37,6 +37,7 @@
       <tbody id="sessions"></tbody>
     </table>
   </div>
+  <p id="error" class="error" role="alert"></p>
   <nav>
     <a href="/password">Change password</a>
     <a href="#" id="logout">Log out</a>
@@ -45,7 +46,7 @@
 </main>
 
   <script src="/static/app.js"></script>
-  <div class="demo-footer">Powered by <a href="https://lexigram.dev">Lexigram</a></div>
+  <div class="demo-footer">Powered by <a href="https://lexigram.dev" target="_blank" rel="noopener">Lexigram</a></div>
   <script>
     async function loadProfile() {
       const me = await api("/api/me");
@@ -74,24 +75,38 @@
         .map((session) =>
           `<tr><td><code>${session.session_id.slice(0, 18)}…</code></td>` +
           `<td class="muted">${session.expires_at ?? ""}</td>` +
-          `<td><button class="secondary" data-session="${session.session_id}">Revoke</button></td></tr>`)
+          `<td><button type="button" class="secondary" data-session="${session.session_id}">Revoke</button></td></tr>`)
         .join("");
       document.getElementById("sessions").innerHTML = rows;
       for (const button of document.querySelectorAll("button[data-session]")) {
         button.addEventListener("click", async () => {
-          await api(`/api/sessions/${button.dataset.session}/revoke`, { method: "POST" });
-          loadProfile();
+          button.disabled = true;
+          try {
+            const result = await api(`/api/sessions/${button.dataset.session}/revoke`, { method: "POST" });
+            if (!result.ok) throw new Error(result.body.error || result.body.detail || "Could not revoke session");
+            await loadProfile();
+          } catch (error) {
+            showError(error.message);
+            button.disabled = false;
+          }
         });
       }
     }
 
     document.getElementById("logout").addEventListener("click", async (event) => {
       event.preventDefault();
-      await api("/api/logout", { method: "POST" });
-      window.location.href = "/login";
+      const link = event.currentTarget;
+      link.setAttribute("aria-busy", "true");
+      try {
+        await api("/api/logout", { method: "POST" });
+        window.location.href = "/login";
+      } catch (error) {
+        showError(error.message);
+        link.removeAttribute("aria-busy");
+      }
     });
 
-    loadProfile();
+    loadProfile().catch((error) => showError(error.message));
   </script>
 </div>
 </main>

@@ -142,8 +142,8 @@ cache:
 # RatesProvider reads this section automatically via config_key="demo" /
 # config_model=RatesConfig.
 #
-# Flip the upstream scenario at runtime via POST /scenario/{name} or
-# the CLI: python -m rates scenario flaky
+# Flip the upstream scenario at runtime from the rate desk controls via
+# POST /scenario/{name} (for example, POST /scenario/flaky).
 # ─────────────────────────────────────────────────────────────────────────────
 demo:
   upstream_scenario: healthy           # healthy | flaky | down | slow

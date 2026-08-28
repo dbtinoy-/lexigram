@@ -38,6 +38,7 @@ from __future__ import annotations
 from lexigram.app.base import Application
 from lexigram.config.main import LexigramConfig
 from lexigram.di.provider import Provider
+from lexigram.monitor.module import MonitorModule
 from lexigram.web.module import WebModule
 from monitorstack.controllers.api import MonitorApiController
 from monitorstack.di.provider import MonitorStackProvider
@@ -51,8 +52,9 @@ def build_modules() -> list[object]:
     framework expands into providers at boot.
     """
     return [
-        # WebModule is the only module that needs your controllers list —
-        # this is the explicit wiring style.
+        # MonitorModule supplies real metrics, tracing, and health registries.
+        # This demo only adds the browser controls and one self-check.
+        MonitorModule.configure(),
         WebModule.configure(
             controllers=[MonitorApiController, MonitorPageController],
         ),

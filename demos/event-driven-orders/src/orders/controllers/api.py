@@ -187,9 +187,8 @@ class OrdersApiController(Controller):
     async def run_demo(self) -> Result[dict, OrderError]:
         """Run the full lifecycle in one call: place, pay, ship, flush.
 
-        Mirrors the CLI ``demo`` command but over HTTP.  Returns the
-        order id and final read-model row so the UI can display the
-        result immediately.
+        Runs the guided browser walkthrough over HTTP.  Returns the order id
+        and final read-model row so the UI can display the result immediately.
         """
         # Place a sample order.
         from orders.domain import OrderItem as _Item

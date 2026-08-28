@@ -11,8 +11,8 @@
   <a href="/" class="nav-brand">Lexigram</a>
   <span class="nav-demo">Auth Web</span>
   <div class="nav-links">
-    <a href="https://lexigram.dev">Docs</a>
-    <a href="https://github.com/dbtinoy-/lexigram">GitHub</a>
+    <a href="https://lexigram.dev" target="_blank" rel="noopener">Docs</a>
+    <a href="https://github.com/dbtinoy-/lexigram" target="_blank" rel="noopener">GitHub</a>
   </div>
 </nav>
 <header>
@@ -27,12 +27,16 @@
   </div>
 
   <script src="/static/app.js"></script>
-  <div class="demo-footer">Powered by <a href="https://lexigram.dev">Lexigram</a></div>
+  <div class="demo-footer">Powered by <a href="https://lexigram.dev" target="_blank" rel="noopener">Lexigram</a></div>
 </div>
   <script>
     (async () => {
-      const me = await api("/api/me");
-      window.location.href = me.ok ? "/profile" : "/login";
+      try {
+        const me = await api("/api/me");
+        window.location.href = me.ok ? "/profile" : "/login";
+      } catch (error) {
+        showError(`Session check failed: ${error.message}`);
+      }
     })();
   </script>
 </div>

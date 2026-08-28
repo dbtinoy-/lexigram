@@ -171,7 +171,7 @@ class EventStreamMixin:
 
         Args:
             handler: Async callable that receives each :class:`Event`.
-            since: Optional lower-bound timestamp filter (exclusive).
+            since: Optional exclusive timestamp checkpoint.
             event_types: Optional list of event type names to include.
             on_progress: Optional callback invoked after each event: ``(processed, total)``.
 
@@ -185,7 +185,9 @@ class EventStreamMixin:
                 self.stream_by_type(event_types) if event_types else self.stream_all()
             )
             async for event in event_iter:
-                if since and event.occurred_at < since:
+                # ``since`` is an exclusive replay checkpoint: an event at
+                # exactly the checkpoint has already been consumed.
+                if since and event.occurred_at <= since:
                     continue
                 buffered.append(event)
         except (RuntimeError, OSError, ValueError) as e:

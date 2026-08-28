@@ -17,10 +17,16 @@ async function api(path, options = {}) {
 
 function showError(message) {
   const el = document.getElementById("error");
-  if (el) el.textContent = message || "";
+  if (el) {
+    el.textContent = message || "";
+    el.style.display = message ? "block" : "none";
+  }
 }
 
 function showOk(message) {
   const el = document.getElementById("ok");
-  if (el) el.textContent = message || "";
+  if (el) {
+    el.textContent = message || "";
+    el.style.display = message ? "block" : "none";
+  }
 }

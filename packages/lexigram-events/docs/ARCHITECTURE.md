@@ -88,7 +88,7 @@ flowchart LR
 | Bus | Pattern | Handlers | Returns |
 |-----|---------|----------|---------|
 | `CommandBusImpl` | Command dispatch | 1 | `CommandResult` |
-| `EventBusImpl` | Pub/sub per event type | N (parallel) | `DispatchResult` |
+| `EventBusImpl` | Pub/sub per event type | N (parallel) | `Result[None, EventError]` |
 | `QueryBusImpl` | Query dispatch | 1 | Query result |
 
 ### EventBus Details
@@ -96,6 +96,8 @@ flowchart LR
 - Per-event-type `BoundedChannel` for backpressure
 - Background drain tasks for concurrent dispatch
 - Dead letter queue for failed events after retries
+- Public `dispatch_errors` diagnostics snapshot and `clear_dispatch_errors()` operator control
+- `health_check()` reports in-flight work, queue state, and accumulated dispatch failures
 - Configurable: `max_concurrent_handlers`, `handler_timeout`, `parallel_dispatch`, `continue_on_error`
 
 ### Middleware Order
@@ -283,7 +285,7 @@ States: `NOT_STARTED → STARTED → RUNNING → COMPLETED`, with compensation f
 | MongoDB | `mongodb` | `MongoDBEventStore` | `MongoDBSnapshotStore` |
 | Redis | `redis` | `RedisEventStore` | — |
 
-All stores implement `EventStoreProtocol` with: `append()` (optimistic concurrency), `read()` (version range), `stream_all()` (global ordering), `compact()`.
+All stores implement the minimal `EventStoreProtocol` with `append()` (optimistic concurrency), `read()` (version range), and `read_all()`. Concrete stores additionally expose stream and compaction helpers; replay-capable stores satisfy the optional `EventReplayProtocol` and implement `replay_events()` without forcing that method onto custom append/read-only backends. The in-memory backend also provides an explicit healthy `health_check()` result.
 
 ### Message Broker Adapters
 
@@ -295,7 +297,7 @@ RabbitMQ (`rabbitmq`), Kafka (`kafka`), Azure Service Bus (`azure`). All impleme
 
 All major protocols are defined in `lexigram-contracts`:
 
-- **`lexigram.contracts.events`:** `EventBusProtocol`, `CommandBusProtocol`, `QueryBusProtocol`, `EventStoreProtocol`, `SnapshotStoreProtocol`, `EventHandlerProtocol`, `CommandHandlerProtocol`, `QueryHandlerProtocol`, `ProjectionProtocol`, `AggregateFactoryProtocol`, `MultiEventHandlerProtocol`
+- **`lexigram.contracts.events`:** `EventBusProtocol`, `EventBusDiagnosticsProtocol`, `CommandBusProtocol`, `QueryBusProtocol`, `EventStoreProtocol`, `EventReplayProtocol`, `SnapshotStoreProtocol`, `EventHandlerProtocol`, `CommandHandlerProtocol`, `QueryHandlerProtocol`, `ProjectionProtocol`, `AggregateFactoryProtocol`, `MultiEventHandlerProtocol`
 - **`lexigram.contracts.domain`:** `DomainEvent`
 - **`lexigram.contracts.workflow`:** `SagaProtocol`, `SagaManagerProtocol`
 

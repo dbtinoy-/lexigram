@@ -27,6 +27,7 @@ const msgInput = document.getElementById("msg");
 const srcInput = document.getElementById("src");
 const sevInput = document.getElementById("sev");
 const publishBtn = document.getElementById("publish-btn");
+const publishStatus = document.getElementById("publish-status");
 
 function td(cls) {
   const cell = document.createElement("td");
@@ -86,6 +87,7 @@ async function refreshStats() {
   try {
     const r = await fetch("/api/stats", { cache: "no-store" });
     const s = await r.json();
+    if (!r.ok || s.error) throw new Error(s.error || `HTTP ${r.status}`);
     subsEl.textContent = s.subscribers;
     histEl.textContent = s.history;
   } catch (_) {
@@ -108,11 +110,6 @@ es.addEventListener("heartbeat", (e) => {
 });
 
 es.onmessage = (e) => {
-  if (paused) {
-    buffered++;
-    pauseBtn.textContent = "Resume (" + buffered + ")";
-    return;
-  }
   let d;
   try {
     d = JSON.parse(e.data);
@@ -121,8 +118,13 @@ es.onmessage = (e) => {
   }
   feed.unshift(d);
   if (feed.length > MAX_ROWS) feed.pop();
-  tbody.prepend(buildRow(d));
-  empty.style.display = "none";
+  if (paused) {
+    buffered++;
+    pauseBtn.textContent = "Resume (" + buffered + ")";
+    return;
+  }
+  // Re-render rather than bypassing the active search/severity filters.
+  render();
 };
 
 search.addEventListener("input", () => {
@@ -149,8 +151,10 @@ clearBtn.addEventListener("click", () => {
 form.addEventListener("submit", async (ev) => {
   ev.preventDefault();
   publishBtn.disabled = true;
+  publishStatus.textContent = "Publishing…";
+  publishStatus.className = "publish-status";
   try {
-    await fetch("/api/events", {
+    const response = await fetch("/api/events", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -159,7 +163,14 @@ form.addEventListener("submit", async (ev) => {
         source: srcInput.value.trim() || "console",
       }),
     });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok || body.error) throw new Error(body.error || `HTTP ${response.status}`);
     msgInput.value = "";
+    publishStatus.textContent = "Published";
+    publishStatus.className = "publish-status ok";
+  } catch (error) {
+    publishStatus.textContent = `Publish failed: ${error.message}`;
+    publishStatus.className = "publish-status error";
   } finally {
     publishBtn.disabled = false;
   }

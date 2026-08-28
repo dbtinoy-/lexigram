@@ -18,6 +18,8 @@ START = datetime(2026, 8, 18, 12, 0, 0, tzinfo=UTC)
 class TestCommand(DomainModel):
     """Minimal command with an explicit idempotency key."""
 
+    __test__ = False
+
     request_id: str
     data: str
 

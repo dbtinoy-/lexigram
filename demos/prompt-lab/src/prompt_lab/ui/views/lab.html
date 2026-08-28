@@ -12,8 +12,8 @@
   <a href="/" class="nav-brand">Lexigram</a>
   <span class="nav-demo">Prompt Lab</span>
   <div class="nav-links">
-    <a href="https://lexigram.dev">Docs</a>
-    <a href="https://github.com/dbtinoy-/lexigram">GitHub</a>
+    <a href="https://lexigram.dev" target="_blank" rel="noopener">Docs</a>
+    <a href="https://github.com/dbtinoy-/lexigram" target="_blank" rel="noopener">GitHub</a>
   </div>
 </nav>
 
@@ -24,8 +24,8 @@
   <main>
     <section id="console">
       <div id="variants">
-        <button data-variant="v1">Terse (v1)</button>
-        <button data-variant="v2">Empathetic (v2)</button>
+        <button type="button" data-variant="v1">Terse (v1)</button>
+        <button type="button" data-variant="v2">Empathetic (v2)</button>
       </div>
       <form id="preview-form">
         <input id="issue" type="text" value="late parcel">
@@ -36,16 +36,16 @@
       <pre id="preview"></pre>
       <div class="row">
         <ul id="history-list"></ul>
-        <button id="rollback-btn">Rollback</button>
+        <button type="button" id="rollback-btn">Rollback</button>
       </div>
     </section>
     <aside>
       <h2>A/B scorecard</h2>
-      <button id="ab-btn">Run A/B</button>
+      <button type="button" id="ab-btn">Run A/B</button>
       <table><thead><tr><th>variant</th><th>avg</th><th>passed</th></tr></thead>
         <tbody id="ab-body"></tbody></table>
       <p id="winner" class="muted"></p>
-      <p id="error" class="hidden"></p>
+      <p id="error" class="hidden" role="alert"></p>
     </aside>
   </main>
   <script src="/static/app.js"></script>

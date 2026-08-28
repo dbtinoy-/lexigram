@@ -100,14 +100,23 @@ class HandlerDispatchMixin:
                     try:
                         await self._dispatch_to_handlers(event)
                     except asyncio.CancelledError:
-                        self._in_flight -= 1
+                        # The finally block owns the in-flight decrement; doing
+                        # it here as well makes cancellation drive the counter
+                        # negative and can let flush() return too early.
                         raise
                     except Exception as exc:  # noqa: BLE001 — drain-loop handler isolation; one bad event must not stop others
                         logger.exception(
                             "event_drain.dispatch_error",
                             event_type=event_type.__name__,
                         )
-                        self._dispatch_errors.append(exc)
+                        # HandlerDispatchMixin records settled handler errors
+                        # before raising for stop-on-error.  Avoid recording
+                        # that same exception a second time here, while still
+                        # retaining unexpected drain-level failures.
+                        if not any(
+                            recorded is exc for recorded in self._dispatch_errors
+                        ):
+                            self._dispatch_errors.append(exc)
                     finally:
                         self._in_flight -= 1
         except asyncio.CancelledError:
@@ -195,6 +204,14 @@ class HandlerDispatchMixin:
                     errors.append((type(e), e))
                     if not self._config.continue_on_error:
                         break
+
+        # Every settled handler failure needs to be observable.  The previous
+        # implementation discarded failures when continuing dispatch and only
+        # retained the first failure when parallel stop-on-error dispatch
+        # raised.  Record all handler errors before applying the configured
+        # propagation policy; the drain loop de-duplicates the raised error.
+        if errors:
+            self._dispatch_errors.extend(error for _, error in errors)
 
         if errors and not self._config.continue_on_error:
             raise errors[0][1]

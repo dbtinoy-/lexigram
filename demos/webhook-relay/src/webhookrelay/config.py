@@ -39,17 +39,9 @@ class WebhookRelayConfig(BaseConfig):
         default="demo-secret-key",
         description="HMAC signing secret",
     )
-    signature_header: str = Field(
-        default="X-Hub-Signature-256",
-        description="Signature header name",
-    )
     max_payload_size: int = Field(
         default=1048576,
         description="Max payload size in bytes (1 MiB)",
-    )
-    retry_count: int = Field(
-        default=3,
-        description="Number of retry attempts",
     )
 
     # Uncomment to add more config fields:

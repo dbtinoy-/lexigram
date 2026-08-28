@@ -1,0 +1,27 @@
+# Events Timeline / Replay Lab — offline lexigram-events contract
+web:
+  server:
+    host: 0.0.0.0
+    port: 8102
+  security:
+    csrf:
+      enabled: false
+
+events:
+  enabled: true
+  event_store_backend: memory
+  memory:
+    max_events_per_stream: 10000
+    enable_snapshots: false
+  event_bus:
+    # Keep the two handlers deterministic while still exercising fan-out.
+    parallel_dispatch: false
+    continue_on_error: true
+    retry_failed_handlers: true
+    max_handler_retries: 3
+    max_queue_per_subscriber: 100
+
+timeline_lab:
+  enabled: true
+  stream_id: checkout-demo
+  default_actor: browser-operator

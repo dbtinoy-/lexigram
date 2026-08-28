@@ -8,6 +8,7 @@ from lexigram.contracts.workflow import (
     ContentCheckpointStoreProtocol,
     PipelineProtocol,
     SagaStoreProtocol,
+    StateMachineProtocol,
 )
 from lexigram.di.module import DynamicModule, Module, module
 from lexigram.workflow.config import ContentCheckpointConfig
@@ -45,6 +46,7 @@ class WorkflowModule(Module):
         cls,
         config: BulkOperationConfig | None = None,
         saga_store: SagaStoreProtocol | None = None,
+        state_machine: StateMachineProtocol | None = None,
         content_checkpoint_store: ContentCheckpointStoreProtocol | None = None,
         content_checkpoint_config: ContentCheckpointConfig | None = None,
     ) -> DynamicModule:
@@ -55,6 +57,9 @@ class WorkflowModule(Module):
                 for framework defaults.
             saga_store: Optional durable :class:`~lexigram.contracts.workflow.SagaStoreProtocol`
                 implementation.  Defaults to in-memory.
+            state_machine: Optional application-configured
+                :class:`~lexigram.contracts.workflow.StateMachineProtocol` to
+                register for DI consumers.
             content_checkpoint_store: Optional :class:`~lexigram.contracts.workflow.ContentCheckpointStoreProtocol`
                 implementation for content-addressed saga checkpoints.
             content_checkpoint_config: Optional :class:`~lexigram.workflow.config.ContentCheckpointConfig`
@@ -84,11 +89,15 @@ class WorkflowModule(Module):
                 WorkflowProvider(
                     config=config,
                     saga_store=saga_store,
+                    state_machine=state_machine,
                     content_checkpoint_store=content_checkpoint_store,
                     content_checkpoint_config=content_checkpoint_config,
                 )
             ],
-            exports=[PipelineProtocol],
+            exports=[
+                PipelineProtocol,
+                *([StateMachineProtocol] if state_machine is not None else []),
+            ],
         )
 
     @classmethod

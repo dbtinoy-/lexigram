@@ -36,6 +36,14 @@ async def test_page_has_strategy_select(client: httpx.AsyncClient) -> None:
     assert 'value="vector"' in response.text
     assert 'value="mmr"' in response.text
 
+
+async def test_page_exposes_guided_demo_feedback(client: httpx.AsyncClient) -> None:
+    response = await client.get("/")
+
+    assert response.status_code == 200
+    assert "Run Guided Demo" in response.text
+    assert 'id="demo-status"' in response.text
+
 async def test_static_assets_served(client: httpx.AsyncClient) -> None:
     css = await client.get("/static/style.css")
     js = await client.get("/static/app.js")

@@ -2,51 +2,95 @@
 "use strict";
 
 const $ = (id) => document.getElementById(id);
+
 function ts() { return new Date().toLocaleTimeString(); }
 function log(msg, cls) {
   const el = document.createElement("div");
   el.className = "log-entry " + (cls || "");
-  el.innerHTML = '<span class="log-time">' + ts() + "</span>" + msg;
+  el.textContent = `${ts()} ${msg}`;
   const logEl = $("log");
   logEl.prepend(el);
   if (logEl.children.length > 50) logEl.lastChild.remove();
 }
 
-$("btn-query").addEventListener("click", async function() {
-  const q = $("query-input").value;
-  if (!q.trim()) return;
+function showError(message) {
+  const error = $("error");
+  error.textContent = message;
+  error.classList.toggle("hidden", !message);
+}
+
+async function readResponse(response) {
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || data.error) {
+    throw new Error(data.error || `HTTP ${response.status}`);
+  }
+  return data;
+}
+
+async function search(event) {
+  event.preventDefault();
+  const query = $("query-input").value.trim();
+  if (!query) {
+    showError("Ask a question first.");
+    $("query-input").focus();
+    return;
+  }
   const btn = $("btn-query");
   btn.disabled = true;
+  showError("");
   try {
     const res = await fetch("/api/rag/search", {
       method: "POST",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({query: q})
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query }),
     });
-    const data = await res.json();
-    $("results").innerHTML = (data.results || []).map(function(r) {
-      return '<div style="padding:.5rem;margin:.4rem 0;background:var(--surface2);border-radius:6px;">' +
-        '<strong>' + (r.score || "") + '</strong> — ' + (r.text || r.content || JSON.stringify(r)) + '</div>';
-    }).join("") || "<p>No results.</p>";
-    log("query returned " + (data.results || []).length + " results", "log-hit");
-  } catch (e) { log("query failed: " + e.message, "log-error"); }
-  finally { btn.disabled = false; }
-});
+    const data = await readResponse(res);
+    $("results").innerHTML = (data.results || []).map(function(result) {
+      const score = Number(result.score || 0).toFixed(3);
+      return `<article class="result"><strong>${score}</strong><p>${escapeHtml(result.content || "")}</p></article>`;
+    }).join("") || "<p class=\"muted\">No results.</p>";
+    log(`query returned ${(data.results || []).length} result(s)`, "log-hit");
+  } catch (e) {
+    showError(e.message);
+    log(`query failed: ${e.message}`, "log-error");
+  } finally {
+    btn.disabled = false;
+  }
+}
 
-$("btn-ingest").addEventListener("click", async function() {
-  const text = $("doc-input").value;
-  if (!text.trim()) return;
+async function ingest(event) {
+  event.preventDefault();
+  const content = $("doc-input").value.trim();
+  if (!content) {
+    showError("Paste document text first.");
+    $("doc-input").focus();
+    return;
+  }
   const btn = $("btn-ingest");
   btn.disabled = true;
+  showError("");
   try {
     const res = await fetch("/api/rag/ingest", {
       method: "POST",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({text: text})
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content }),
     });
-    const data = await res.json();
-    log("ingested document: " + (data.chunks || "?") + " chunks", "log-hit");
+    const data = await readResponse(res);
+    log(`ingested document: ${data.chunks_stored} chunk(s)`, "log-hit");
     $("doc-input").value = "";
-  } catch (e) { log("ingest failed: " + e.message, "log-error"); }
-  finally { btn.disabled = false; }
-});
+  } catch (e) {
+    showError(e.message);
+    log(`ingest failed: ${e.message}`, "log-error");
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function escapeHtml(text) {
+  const element = document.createElement("div");
+  element.textContent = text;
+  return element.innerHTML;
+}
+
+$("query-form").addEventListener("submit", search);
+$("ingest-form").addEventListener("submit", ingest);

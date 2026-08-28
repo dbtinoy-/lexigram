@@ -1,11 +1,13 @@
 """EventBus publish, hooks, subscriptions, and dispatch-mode tests."""
 
+import asyncio
 from unittest.mock import AsyncMock, Mock, patch
 from uuid import uuid4
 
 import pytest
 
 from lexigram.contracts.domain import DomainEvent
+from lexigram.contracts.events import EventBusDiagnosticsProtocol
 from lexigram.events.buses import (
     CommandBusImpl,
     EventBusImpl,
@@ -34,8 +36,31 @@ class TestEventBus:
         """Test event bus creation"""
         bus = EventBusImpl()
         assert isinstance(bus, Bus)
+        assert isinstance(bus, EventBusDiagnosticsProtocol)
         assert bus._subscribers == {}
         assert bus._global_handlers == []
+
+    @pytest.mark.asyncio
+    async def test_cancelled_dispatch_does_not_make_in_flight_negative(self):
+        """Cancellation decrements the in-flight counter exactly once."""
+        bus = EventBusImpl()
+        started = asyncio.Event()
+        release = asyncio.Event()
+
+        async def handler(event):
+            started.set()
+            await release.wait()
+
+        bus.subscribe(DomainEvent, handler)
+        await bus.publish(make_domain_event(aggregate_id=uuid4()))
+        await started.wait()
+
+        drain_task = next(iter(bus._background_tasks))
+        drain_task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await drain_task
+
+        assert bus._in_flight == 0
 
     @pytest.mark.asyncio
     async def test_event_publish(self):
@@ -80,7 +105,9 @@ class TestEventBus:
         ]
 
     @pytest.mark.asyncio
-    async def test_event_publish_emits_event_handled_hook_after_successful_handler(self):
+    async def test_event_publish_emits_event_handled_hook_after_successful_handler(
+        self,
+    ):
         """Successful handlers emit ``event.handled`` once per handler."""
         received: list[EventHandledHook] = []
         registry = HookRegistry("events-test")
@@ -213,7 +240,9 @@ class TestEventBus:
                     aw.close()
             return [(handler1, None), (handler2, None)]
 
-        with patch.object(Parallel, "execute", side_effect=mock_execute) as mock_execute:
+        with patch.object(
+            Parallel, "execute", side_effect=mock_execute
+        ) as mock_execute:
             await bus.publish(event)
             # flush() must be called inside the patch context so the drain
             # task runs while Parallel.execute is still mocked.
@@ -235,7 +264,9 @@ class TestEventBus:
         """
         from lexigram.events.buses.event import EventBusConfig
 
-        config = EventBusConfig(parallel_dispatch=True, continue_on_error=False, retry_failed_handlers=False)
+        config = EventBusConfig(
+            parallel_dispatch=True, continue_on_error=False, retry_failed_handlers=False
+        )
         bus = EventBusImpl(config=config)
 
         aggregate_id = uuid4()
@@ -245,7 +276,7 @@ class TestEventBus:
             raise ValueError("handler1 failed")
 
         async def handler2(e):
-            return None
+            raise ValueError("handler2 failed")
 
         bus.subscribe(DomainEvent, handler1)
         bus.subscribe(DomainEvent, handler2)
@@ -253,11 +284,12 @@ class TestEventBus:
         await bus.publish(event)
         await bus.flush()  # wait for drain task to process
 
-        assert len(bus._dispatch_errors) == 1
-        err = bus._dispatch_errors[0]
-        assert isinstance(err, EventHandlerError)
-        assert err.handler == handler1.__name__
-        assert "handler1 failed" in err.error
+        assert len(bus.dispatch_errors) == 2
+        assert all(isinstance(err, EventHandlerError) for err in bus.dispatch_errors)
+        assert {err.handler for err in bus.dispatch_errors} == {
+            handler1.__name__,
+            handler2.__name__,
+        }
 
     @pytest.mark.asyncio
     async def test_event_publish_parallel_with_error_continue(self):
@@ -282,6 +314,12 @@ class TestEventBus:
         await bus.flush()  # wait for drain task to dispatch
 
         handler2.assert_called_once_with(event)
+        assert len(bus.dispatch_errors) == 1
+        assert isinstance(bus.dispatch_errors[0], EventHandlerError)
+        assert (await bus.health_check()).is_degraded()
+        bus.clear_dispatch_errors()
+        assert bus.dispatch_errors == ()
+        assert (await bus.health_check()).is_healthy()
 
     @pytest.mark.asyncio
     async def test_event_publish_sequential_with_error_continue(self):
@@ -306,6 +344,8 @@ class TestEventBus:
         # Both handlers should have been called despite handler1 failing
         handler1.assert_called_once_with(event)
         handler2.assert_called_once_with(event)
+        assert len(bus.dispatch_errors) == 1
+        assert isinstance(bus.dispatch_errors[0], EventHandlerError)
 
     @pytest.mark.asyncio
     async def test_event_publish_sequential_with_error_stop(self):
@@ -317,7 +357,11 @@ class TestEventBus:
         """
         from lexigram.events.buses.event import EventBusConfig
 
-        config = EventBusConfig(parallel_dispatch=False, continue_on_error=False, retry_failed_handlers=False)
+        config = EventBusConfig(
+            parallel_dispatch=False,
+            continue_on_error=False,
+            retry_failed_handlers=False,
+        )
         bus = EventBusImpl(config=config)
 
         aggregate_id = uuid4()
@@ -402,6 +446,3 @@ class TestEventBus:
         await bus.flush()  # wait for drain task to dispatch all handlers
 
         assert max_seen == 2  # Should not exceed limit of 2
-
-
-

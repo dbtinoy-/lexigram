@@ -6,7 +6,7 @@ from datetime import timedelta
 from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
 from lexigram.contracts.core.provider import ProviderProtocol
-from lexigram.contracts.infra.storage.models import FileInfo
+from lexigram.contracts.infra.storage.models import FileInfo, Uploadable, UploadOptions
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -33,16 +33,17 @@ class BlobStoreProtocol(Protocol):
     async def upload(
         self,
         path: str,
-        data: bytes | AsyncIterator[bytes],
-        content_type: str | None = None,
+        data: Uploadable,
+        content_type: UploadOptions | str | None = None,
         **options: Any,
     ) -> FileInfo:
         """Upload data to the storage backend.
 
         Args:
             path: Storage path/key.
-            data: File content as bytes or async iterator.
-            content_type: MIME type of the content.
+            data: File content as bytes, text, file-like object, or async iterator.
+            content_type: MIME type or :class:`UploadOptions` for metadata and
+                other upload settings.
             **options: Additional upload options.
 
         Returns:

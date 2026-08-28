@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Release Control Lab · Lexigram</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<nav class="demo-nav">
+  <a href="/" class="nav-brand">Lexigram</a>
+  <span class="nav-demo">Release Control Lab</span>
+  <div class="nav-links"><a href="https://docs.lexigram.dev" target="_blank" rel="noopener">Docs</a><a href="https://github.com/dbtinoy-/lexigram" target="_blank" rel="noopener">GitHub</a></div>
+</nav>
+<header>
+  <div class="eyebrow">FEATURE FLAGS · STANDARD MODULE</div>
+  <h1>Release Control Lab</h1>
+  <p class="muted">Change rollout behavior safely, evaluate a real user context, and inspect the override trail.</p>
+</header>
+<main>
+  <section class="panel intro-panel">
+    <div><h2>Try the rollout</h2><p class="muted">Change the user context, then evaluate. Percentage and variant assignments are deterministic for the same user.</p></div>
+    <form id="context-form" class="context-form">
+      <label>User ID <input id="user-id" value="demo-user-42" autocomplete="off"></label>
+      <label>Plan <select id="plan"><option value="free">free</option><option value="pro" selected>pro</option></select></label>
+      <button class="accent" type="submit">Evaluate context</button>
+      <button type="button" id="clear-cache">Clear TTL cache</button>
+    </form>
+    <p id="context-result" class="result" role="status" aria-live="polite"></p>
+  </section>
+  <div class="dashboard-grid">
+    <section class="panel"><div class="section-heading"><h2>Flag evaluations</h2><span id="cache-label" class="pill">loading</span></div><div id="flags" aria-live="polite"></div></section>
+    <section class="panel"><div class="section-heading"><h2>Runtime override</h2><span class="pill">audited</span></div>
+      <p class="muted">Force a flag for an incident or release window. Clear it to return to provider control.</p>
+      <form id="override-form">
+        <label>Flag <select id="override-name"><option value="new_checkout">new_checkout</option><option value="search_experiment">search_experiment</option><option value="ai_assistant">ai_assistant</option></select></label>
+        <label>Actor <input id="actor" value="release-operator" autocomplete="off"></label>
+        <div class="actions"><button class="accent" type="submit" data-enabled="true">Force on</button><button type="submit" data-enabled="false">Force off</button><button type="button" id="clear-override">Clear override</button></div>
+      </form>
+      <p id="override-result" class="result" role="status" aria-live="polite"></p>
+    </section>
+  </div>
+  <section class="panel"><div class="section-heading"><h2>Override audit trail</h2><button type="button" id="refresh-audit">Refresh</button></div><div id="audit" class="audit-list" aria-live="polite"></div></section>
+</main>
+<footer class="demo-footer">Powered by <a href="https://lexigram.dev" target="_blank" rel="noopener">Lexigram</a> · in-memory state resets on restart</footer>
+<script src="/static/app.js"></script>
+</body>
+</html>

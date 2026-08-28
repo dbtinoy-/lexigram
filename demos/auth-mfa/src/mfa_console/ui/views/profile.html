@@ -12,8 +12,8 @@
   <a href="/" class="nav-brand">Lexigram</a>
   <span class="nav-demo">Auth MFA</span>
   <div class="nav-links">
-    <a href="https://lexigram.dev">Docs</a>
-    <a href="https://github.com/dbtinoy-/lexigram">GitHub</a>
+    <a href="https://lexigram.dev" target="_blank" rel="noopener">Docs</a>
+    <a href="https://github.com/dbtinoy-/lexigram" target="_blank" rel="noopener">GitHub</a>
   </div>
 </nav>
 <header>
@@ -24,6 +24,7 @@
 <div class="auth-content">
 
     <div class="card" id="identity"><p class="muted">Loading…</p></div>
+    <p id="error" class="error" role="alert"></p>
 
     <div class="card">
       <div class="card-header"><strong>Two-factor authentication</strong></div>
@@ -32,7 +33,7 @@
       </div>
       <div id="enroll-box" style="display:none">
         <p>Enable TOTP, then confirm with a code from your authenticator on next login.</p>
-        <button id="enroll-btn">Enable TOTP</button>
+        <button type="button" id="enroll-btn">Enable TOTP</button>
       </div>
       <div id="enrolled-box" style="display:none">
         <p class="ok">MFA is enabled. Backup codes remaining: <b id="codes-left"></b></p>
@@ -50,6 +51,6 @@
 
   <script src="/static/app.js"></script>
   <script src="/static/mfa.js"></script>
-  <div class="demo-footer">Powered by <a href="https://lexigram.dev">Lexigram</a></div>
+  <div class="demo-footer">Powered by <a href="https://lexigram.dev" target="_blank" rel="noopener">Lexigram</a></div>
 </body>
 </html>

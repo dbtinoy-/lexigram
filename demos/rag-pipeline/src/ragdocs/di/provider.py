@@ -1,26 +1,9 @@
-"""Provider wiring for the RAG pipeline demo.
+"""Lifecycle wiring for the single-purpose RAG retrieval demo.
 
-Convention followed: **Provider pattern** — ``RagDocsProvider`` is the
-canonical shape (mirrors ``lexigram-auth`` + the boot-phase ``bind()``
-contract in ``lexigram.contracts.core.di``):
-
-- ``register()`` only *declares* bindings.  Zero-arg factories cover
-  purely config-derived services; dependency-full services are declared
-  as class bindings and instantiated in :meth:`boot`.
-- ``boot()`` resolves cross-module dependencies after every provider
-  has registered and rebinds the concrete instances via
-  ``container.bind()``.
-- Controllers are constructed by the router from the container; ``boot``
-  binds their prebuilt instances so per-request resolution reuses them.
-
-Lifecycle:
-  1. ``register()`` — declare bindings (no resolution)
-  2. ``boot()`` — resolve cross-module deps, create instances, bind
-  3. ``shutdown()`` — cleanup (not needed for in-memory stores)
-
-For full reference see:
-- ``lexigram.di.provider.Provider`` — base provider class
-- ``lexigram.contracts.core.di`` — container protocols
+The demo owns document chunking and a deterministic local embedder.  Lexigram
+owns vector-store lifecycle, collection management, and similarity search.
+That boundary makes the example easy to move from the in-memory backend to
+Qdrant, pgvector, or another configured backend later.
 """
 
 from __future__ import annotations
@@ -31,6 +14,12 @@ from lexigram.contracts.core.health import (
     HealthCheckCategory,
     HealthCheckResult,
     HealthStatus,
+)
+from lexigram.contracts.data.vector import (
+    CollectionConfig,
+    DistanceMetric,
+    IndexType,
+    VectorStoreProtocol,
 )
 from lexigram.di.provider import Provider
 from ragdocs.config import RagDocsConfig
@@ -46,73 +35,57 @@ __all__ = ["RagDocsProvider"]
 
 
 class RagDocsProvider(Provider):
-    """Bind the RAG pipeline services as container-managed singletons.
-
-    This provider demonstrates the full lifecycle:
-    - ``register()`` declares the config and controller bindings
-    - ``boot()`` creates the vector store, chunker, and retriever
-    - ``health_check()`` reports readiness status
-    """
+    """Bind the chunker, embedder, and vector collection to the app."""
 
     name = "ragdocs"
-
-    # Config binding — the framework injects the typed YAML section here
     config_key: str | None = "ragdocs"
     config_model: type | None = RagDocsConfig
 
     async def register(self, container: ContainerRegistrarProtocol) -> None:
-        """Declare bindings; concrete wiring happens in :meth:`boot`.
-
-        This method runs AFTER the framework has loaded the config.
-        ``self.config`` contains the typed ``RagDocsConfig`` instance
-        with YAML values + env overrides already merged.
-        """
+        """Declare config and controller bindings before boot resolution."""
         cfg = self.config or RagDocsConfig()
-
-        # Bind the config as a singleton — other services can resolve it
         container.singleton(RagDocsConfig, instance=cfg)
-
-        # Class bindings so the keys exist; boot() replaces them with
-        # fully-wired instances via container.bind().
         container.singleton(RagApiController, RagApiController)
 
     async def boot(self, container: ContainerResolverProtocol) -> None:
-        """Resolve cross-module dependencies and bind concrete instances.
-
-        This method runs AFTER all providers have registered.
-        Resolution is safe — all bindings are in place.
-        """
+        """Create the configured collection and wire the controller."""
         from ragdocs.services.chunker import DocumentChunker
         from ragdocs.services.retriever import Retriever
-        from ragdocs.vector_store import InMemoryVectorStore
+        from ragdocs.vector_store import DeterministicEmbedder
 
         cfg = await container.resolve(RagDocsConfig)
+        vector_store = await container.resolve(VectorStoreProtocol)
 
-        # Create the vector store
-        # In production, replace with lexigram-ai-rag's backend:
-        #   from lexigram_ai_rag import PineconeVectorStore, VectorConfig
-        #   vector_store = PineconeVectorStore(config=VectorConfig(index="my-index"))
-        vector_store = InMemoryVectorStore(dimension=cfg.embedding_dimension)
+        if not await vector_store.collection_exists(cfg.collection_name):
+            await vector_store.create_collection(
+                CollectionConfig(
+                    name=cfg.collection_name,
+                    dimension=cfg.embedding_dimension,
+                    distance_metric=DistanceMetric.COSINE,
+                    index_type=IndexType.FLAT,
+                )
+            )
 
-        # Create the chunker and retriever
-        chunker = DocumentChunker(chunk_size=cfg.chunk_size)
-        retriever = Retriever(vector_store=vector_store, top_k=cfg.top_k)
+        collection = await vector_store.get_collection(cfg.collection_name)
+        embedder = DeterministicEmbedder(cfg.embedding_dimension)
+        retriever = Retriever(
+            collection=collection,
+            embedder=embedder,
+            top_k=cfg.top_k,
+        )
 
-        # Bind the wired controller — the router resolves this for
-        # every request, so per-request resolution reuses the same instance.
         container.bind(
             RagApiController,
             RagApiController(
-                vector_store=vector_store, chunker=chunker, retriever=retriever
+                collection=collection,
+                chunker=DocumentChunker(chunk_size=cfg.chunk_size),
+                embedder=embedder,
+                retriever=retriever,
             ),
         )
 
     async def health_check(self, timeout: float = 5.0) -> HealthCheckResult:
-        """Report readiness of the RAG pipeline.
-
-        Called by the framework's health check system.  Return
-        HEALTHY if the service is ready to handle requests.
-        """
+        """Report readiness for the application-owned pipeline."""
         return HealthCheckResult(
             component=self.name,
             status=HealthStatus.HEALTHY,

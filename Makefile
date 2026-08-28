@@ -121,8 +121,11 @@ guard:  ## Verify all dirty paths belong to this lane: make guard ALLOWED="path/
 # All demos ship pytest suites and run from the repo root in the
 # workspace env.
 DEMO_PYTEST := $(UV) run --group tooling pytest
-DEMO_TEST_DIRS := demos/demo-hub/tests demos/event-driven-orders/tests demos/realtime-monitor/tests demos/resilient-rates/tests demos/rag-docs/tests demos/auth-web/tests demos/auth-rbac/tests demos/auth-mfa/tests demos/auth-apikeys/tests demos/support-agent/tests demos/memory-chat/tests demos/ai-guardrails/tests demos/prompt-lab/tests demos/feedback-loop/tests
-DEMO_COMPILE_DIRS := demos/demo-hub demos/event-driven-orders demos/realtime-monitor demos/resilient-rates demos/rag-docs demos/auth-web demos/auth-rbac demos/auth-mfa demos/auth-apikeys demos/support-agent demos/memory-chat demos/ai-guardrails demos/prompt-lab demos/feedback-loop
+# Derive the gate inputs from each demo's application.yaml so new demos
+# cannot silently fall out of the workspace tests or compile checks.
+DEMO_DIRS := $(patsubst %/,%,$(dir $(wildcard demos/*/application.yaml)))
+DEMO_TEST_DIRS := $(addsuffix /tests,$(DEMO_DIRS))
+DEMO_COMPILE_DIRS := $(DEMO_DIRS)
 
 .PHONY: test-demos
 test-demos:  ## Run demo test suites
@@ -135,17 +138,41 @@ verify-demos:  ## Compile-check demo entry points and scripts
 .PHONY: check-demos
 check-demos: test-demos verify-demos smoke-demos  ## Demo gate: tests + compile checks + smoke runs
 
-# Smoke-run every demo entry point (catches CLI rot compile checks cannot).
-# CLI demos run a real guided walkthrough; server demos prove they import/boot.
+# Smoke-check every demo entry point. Web behavior is exercised through each
+# demo's endpoint/page tests; this target verifies standalone imports without
+# binding a port.
+DEMO_IMPORTS := \
+	demos/demo-hub:demo_hub.main \
+	demos/realtime-monitor:ops_console.main \
+	demos/resilient-rates:rates.main \
+	demos/event-driven-orders:orders.main \
+	demos/rag-docs:rag_docs.main \
+	demos/auth-web:auth_web.main \
+	demos/auth-rbac:rbac_console.main \
+	demos/auth-mfa:mfa_console.main \
+	demos/auth-apikeys:apikey_console.main \
+	demos/support-agent:support_agent.main \
+	demos/memory-chat:memory_chat.main \
+	demos/ai-guardrails:guard_gate.main \
+	demos/prompt-lab:prompt_lab.main \
+	demos/feedback-loop:feedback_loop.main \
+	demos/llm-router:content_gen.main \
+	demos/monitor-stack:monitorstack.main \
+	demos/queue-worker:queueworker.main \
+	demos/rag-pipeline:ragdocs.main \
+	demos/sql-repository:taskapp.main \
+	demos/webhook-relay:webhookrelay.main \
+	demos/feature-flags:release_control.main \
+	demos/approval-flow:approval_flow.main \
+	demos/artifact-vault:artifact_vault.main \
+	demos/event-timeline:timeline_lab.main
+
 .PHONY: smoke-demos
-smoke-demos: ## Execute demo entry points end-to-end
-	cd demos/resilient-rates && PYTHONPATH=src timeout 120 $(CURDIR)/.venv/bin/python -m rates demo >/dev/null
-	cd demos/event-driven-orders && PYTHONPATH=src timeout 120 $(CURDIR)/.venv/bin/python -m orders demo >/dev/null
-	cd demos/rag-docs && PYTHONPATH=src timeout 120 $(CURDIR)/.venv/bin/python -m rag_docs demo >/dev/null
-	cd demos/demo-hub && PYTHONPATH=src $(CURDIR)/.venv/bin/python -c "import demo_hub.main" >/dev/null
-	cd demos/realtime-monitor && PYTHONPATH=src $(CURDIR)/.venv/bin/python -c "import ops_console.main" >/dev/null
-	cd demos/auth-web && PYTHONPATH=src $(CURDIR)/.venv/bin/python -c "import auth_web.main" >/dev/null
-	cd demos/auth-rbac && PYTHONPATH=src $(CURDIR)/.venv/bin/python -c "import rbac_console.main" >/dev/null
+smoke-demos: ## Import standalone demo entry points without binding ports
+	@set -e; for target in $(DEMO_IMPORTS); do \
+		dir=$${target%%:*}; module=$${target##*:}; \
+		(cd $$dir && PYTHONPATH=src $(CURDIR)/.venv/bin/python -c "import $$module"); \
+	done
 
 # Single-port fleet: `make demos-up` starts only the hub (:7000); it boots
 # every demo Application in-process and mounts it under /demos/<slug>/.
@@ -154,8 +181,11 @@ smoke-demos: ## Execute demo entry points end-to-end
 .PHONY: demos-up
 demos-up: ## Start the demo hub (all demos embedded) at http://127.0.0.1:7000
 	@mkdir -p .cache/demo-logs .cache/demo-pids
-	@PYTHONPATH=demos/demo-hub/src nohup $(CURDIR)/.venv/bin/python -m demo_hub >> .cache/demo-logs/demo_hub.log 2>&1 & \
-	echo $$! > .cache/demo-pids/demo_hub.pid; echo "started demo_hub :7000 (booting 13 demos)"
+	@cd demos/demo-hub && \
+		LEX_WEB__SERVER__HOST=0.0.0.0 PYTHONPATH=src nohup $(CURDIR)/.venv/bin/python -m demo_hub \
+		>> $(CURDIR)/.cache/demo-logs/demo_hub.log 2>&1 & \
+		echo $$! > $(CURDIR)/.cache/demo-pids/demo_hub.pid; \
+		echo "started demo_hub :7000 (booting 23 demos)"
 	@sleep 25 && $(MAKE) --no-print-directory demos-status
 
 .PHONY: demos-down

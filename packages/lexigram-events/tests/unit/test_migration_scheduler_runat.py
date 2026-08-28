@@ -14,14 +14,23 @@ class _FakeTaskManager:
     def __init__(self) -> None:
         self.tasks: list[tuple[object, str]] = []
 
+    @staticmethod
+    def _close_unrun_coroutine(coro: object) -> None:
+        """Dispose of coroutine objects because this fake never schedules them."""
+        close = getattr(coro, "close", None)
+        if callable(close):
+            close()
+
     def create_background_task(
         self, coro: object, *, name: str | None = None
     ) -> object:
         self.tasks.append((coro, name or ""))
+        self._close_unrun_coroutine(coro)
         return object()
 
     def create_critical_task(self, coro: object, *, name: str | None = None) -> object:
         self.tasks.append((coro, name or ""))
+        self._close_unrun_coroutine(coro)
         return object()
 
 

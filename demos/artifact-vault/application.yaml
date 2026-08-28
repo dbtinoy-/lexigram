@@ -1,0 +1,16 @@
+# Artifact Vault — deterministic offline object-storage playground
+web:
+  server:
+    host: 0.0.0.0
+    port: 8101
+  security:
+    csrf:
+      enabled: false
+storage:
+  enabled: true
+  default_driver: memory
+  service:
+    max_file_size_mb: 1
+artifact_vault:
+  enabled: true
+  seed_welcome_artifact: true

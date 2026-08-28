@@ -37,8 +37,11 @@ class EventsOverviewPage:
                 subscriber_count = "N/A"
 
             try:
-                dispatch_errors = getattr(self._event_bus, "_dispatch_errors", None)
-                error_count = len(dispatch_errors) if dispatch_errors is not None else 0
+                # Diagnostics are an optional public capability.  A custom
+                # EventBusProtocol without it reports no retained errors;
+                # private bus state is intentionally not inspected here.
+                dispatch_errors = getattr(self._event_bus, "dispatch_errors", ())
+                error_count = len(dispatch_errors)
             except Exception:
                 error_count = "N/A"
 
