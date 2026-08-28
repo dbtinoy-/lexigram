@@ -35,4 +35,5 @@ pytest_plugins = [
     "lexigram.testing.fixtures.messaging",
     "lexigram.testing.fixtures.web",
     "lexigram.testing.fixtures.tasks",
+    "lexigram.testing.integration.fixtures",
 ]
