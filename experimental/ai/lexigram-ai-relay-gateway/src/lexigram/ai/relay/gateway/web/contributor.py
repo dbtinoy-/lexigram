@@ -111,6 +111,7 @@ class RelayGatewayWebContributor:
             resolve_passthrough=_resolve_passthrough,
             resolve_model_catalog=_resolve_model_catalog,
             resolve_health=_resolve_health,
+            fallback_container=container,
         )
         for route in routes:
             path = route.path

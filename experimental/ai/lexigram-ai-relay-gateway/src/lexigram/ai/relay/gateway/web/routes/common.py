@@ -42,34 +42,46 @@ ResolveModelCatalog: TypeAlias = Callable[[Request], Awaitable[ModelCatalogServi
 
 async def _resolve_verifier(
     request: Request,
+    fallback_container: Any | None = None,
 ) -> RelayAuthVerifierProtocol | _RequireAuthMisconfigured | None:
     """Resolve the verifier when auth is required, else ``None``.
 
-    ``None`` means auth is explicitly off (no config, or
-    ``require_auth=False``).  When auth is required but no verifier is
-    bound, the ``_RequireAuthMisconfigured`` sentinel is returned so
-    ``auth_guard`` fails closed instead of passing through silently.
+    The request-scoped container from ``request.state.container`` is
+    preferred, falling back to the mount-time container — matching how
+    the contributor's gateway resolvers resolve services.
+
+    ``None`` means auth is explicitly off (``require_auth=False`` on a
+    registered ``RelayGatewayConfig``).  When auth is required but no
+    verifier is bound — or when no container/config is available to
+    prove the opt-out — the ``_RequireAuthMisconfigured`` sentinel is
+    returned so ``auth_guard`` fails closed instead of passing through
+    silently.  ``require_auth`` defaults to ``True``, so a missing
+    config is treated as misconfiguration, not as an explicit opt-out.
     """
-    container: Any = getattr(request.state, "container", None)
+    container: Any = getattr(request.state, "container", None) or fallback_container
     if container is None:
-        return None
+        return _REQUIRE_AUTH_MISCONFIGURED
     config = await container.resolve_optional(RelayGatewayConfig)
     if config is None or not config.require_auth:
-        return None
+        return _REQUIRE_AUTH_MISCONFIGURED if config is None else None
     verifier = await container.resolve_optional(RelayAuthVerifierProtocol)
     if verifier is None:
         return _REQUIRE_AUTH_MISCONFIGURED
     return verifier
 
 
-async def _resolve_limiter(request: Request) -> RelayRateLimiter | None:
+async def _resolve_limiter(
+    request: Request, fallback_container: Any | None = None
+) -> RelayRateLimiter | None:
     """Build the limiter from config when rules are set, else ``None``.
 
     The counter comes from the container; an unbound counter leaves the
     limiter inert (pass-through), and an empty ``rate_limits`` map
-    disables the guard entirely — today's behavior either way.
+    disables the guard entirely — today's behavior either way.  The
+    request-scoped container is preferred, falling back to the
+    mount-time container like the gateway resolvers.
     """
-    container: Any = getattr(request.state, "container", None)
+    container: Any = getattr(request.state, "container", None) or fallback_container
     if container is None:
         return None
     config = await container.resolve_optional(RelayGatewayConfig)
@@ -129,17 +141,18 @@ async def _log_dispatch(  # noqa: PLR0917 - six positional log fields
 
 def _with_auth_guard(
     handler: Callable[..., Awaitable[Response]],
+    fallback_container: Any | None = None,
 ) -> Callable[..., Awaitable[Response]]:
     """Wrap a route handler so auth and rate limiting run first.
 
     Auth is on by default; pass-through only happens when auth is
-    explicitly opted out (``require_auth=False``) or no gateway config
-    is present.
+    explicitly opted out (``require_auth=False`` on a registered
+    ``RelayGatewayConfig``).  A missing container/config fails closed.
     """
 
     async def guarded(request: Request) -> Response:
-        verifier = await _resolve_verifier(request)
-        limiter = await _resolve_limiter(request)
+        verifier = await _resolve_verifier(request, fallback_container)
+        limiter = await _resolve_limiter(request, fallback_container)
 
         async def inner(req: Request) -> Response:
             blocked = await rate_limit_guard(req, limiter)

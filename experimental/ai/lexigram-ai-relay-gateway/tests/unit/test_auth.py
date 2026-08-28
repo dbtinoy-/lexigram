@@ -103,14 +103,18 @@ async def test_auth_guard_fails_closed_when_required_but_unbound(
     error_log.assert_called_once_with("relay_auth_required_but_unbound")
 
 
-async def test_resolve_verifier_is_none_without_container() -> None:
-    assert await _resolve_verifier(_make_request()) is None
+async def test_resolve_verifier_fails_closed_without_container() -> None:
+    """No container at all means we cannot prove the auth opt-out —
+    require_auth defaults to True, so fail closed (503 sentinel)."""
+    assert await _resolve_verifier(_make_request()) is _REQUIRE_AUTH_MISCONFIGURED
 
 
-async def test_resolve_verifier_is_none_when_config_unbound() -> None:
+async def test_resolve_verifier_fails_closed_when_config_unbound() -> None:
+    """A container without RelayGatewayConfig is misconfiguration, not an
+    explicit opt-out — fail closed."""
     request = _make_request()
     request.state.container = FakeContainer(config=None)
-    assert await _resolve_verifier(request) is None
+    assert await _resolve_verifier(request) is _REQUIRE_AUTH_MISCONFIGURED
 
 
 async def test_resolve_verifier_is_none_when_auth_not_required() -> None:
@@ -137,3 +141,19 @@ async def test_resolve_verifier_returns_bound_verifier() -> None:
     verifier = await _resolve_verifier(request)
     assert verifier is not None
     assert isinstance(verifier, FakeVerifier)
+
+
+async def test_resolve_verifier_uses_fallback_container() -> None:
+    """Mount-time container fallback mirrors the contributor resolvers:
+    without request.state.container, the guard still resolves auth."""
+    fallback = FakeContainer(
+        config=RelayGatewayConfig(require_auth=True), verifier=FakeVerifier(ok=True)
+    )
+    verifier = await _resolve_verifier(_make_request(), fallback_container=fallback)
+    assert verifier is not None
+    assert isinstance(verifier, FakeVerifier)
+
+
+async def test_resolve_verifier_fallback_honors_opt_out() -> None:
+    fallback = FakeContainer(config=RelayGatewayConfig(require_auth=False))
+    assert await _resolve_verifier(_make_request(), fallback_container=fallback) is None
