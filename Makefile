@@ -161,7 +161,11 @@ DEMO_IMPORTS := \
 	demos/queue-worker:queueworker.main \
 	demos/rag-pipeline:ragdocs.main \
 	demos/sql-repository:taskapp.main \
-	demos/webhook-relay:webhookrelay.main
+	demos/webhook-relay:webhookrelay.main \
+	demos/feature-flags:release_control.main \
+	demos/approval-flow:approval_flow.main \
+	demos/artifact-vault:artifact_vault.main \
+	demos/event-timeline:timeline_lab.main
 
 .PHONY: smoke-demos
 smoke-demos: ## Import standalone demo entry points without binding ports
@@ -181,7 +185,7 @@ demos-up: ## Start the demo hub (all demos embedded) at http://127.0.0.1:7000
 		LEX_WEB__SERVER__HOST=0.0.0.0 PYTHONPATH=src nohup $(CURDIR)/.venv/bin/python -m demo_hub \
 		>> $(CURDIR)/.cache/demo-logs/demo_hub.log 2>&1 & \
 		echo $$! > $(CURDIR)/.cache/demo-pids/demo_hub.pid; \
-		echo "started demo_hub :7000 (booting 19 demos)"
+		echo "started demo_hub :7000 (booting 23 demos)"
 	@sleep 25 && $(MAKE) --no-print-directory demos-status
 
 .PHONY: demos-down

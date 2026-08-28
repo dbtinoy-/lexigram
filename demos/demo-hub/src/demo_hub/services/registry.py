@@ -310,6 +310,19 @@ class ServiceRegistry:
                 capabilities=("blob storage", "metadata", "offline"),
                 featured=True,
             ),
+            DemoService(
+                "event-timeline",
+                "Events Timeline Lab",
+                8102,
+                "web",
+                "standard",
+                "Publish, inspect, fail, and replay an in-memory event stream",
+                "event-timeline",
+                "timeline_lab.app",
+                "event-timeline/README.md",
+                capabilities=("event bus", "event store", "replay", "offline"),
+                featured=True,
+            ),
         ]
 
     def web_services(self) -> list[DemoService]:

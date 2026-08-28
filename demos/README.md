@@ -252,6 +252,14 @@ A browser object-storage workbench using the memory driver:
 - **Preview and delete** — exercise list, info, download, and delete operations
 - **Honest access capabilities** — see public URL behavior and why memory has no presigned URL
 
+### [event-timeline](event-timeline/) — Lexigram EventsModule + WebModule
+
+A focused event journal for one in-memory stream:
+
+- **Publish and subscribe** — publish checkout facts and watch a real EventBus subscriber record delivery
+- **Failure reporting** — trigger a retrying handler failure while the bus continues to the projection subscriber
+- **History and replay** — inspect store-assigned sequence numbers and run `replay_events()` without duplicates
+
 ---
 
 ## Running them
@@ -287,6 +295,7 @@ PYTHONPATH=demos/webhook-relay/src uv run python -m webhookrelay           # web
 PYTHONPATH=demos/feature-flags/src uv run python -m release_control     # release control (:8099)
 PYTHONPATH=demos/approval-flow/src uv run python -m approval_flow         # approval flow (:8100)
 PYTHONPATH=demos/artifact-vault/src uv run python -m artifact_vault       # artifact vault (:8101)
+PYTHONPATH=demos/event-timeline/src uv run python -m timeline_lab           # events timeline (:8102)
 
 make test-demos                                                              # every demo test suite
 ```
