@@ -99,13 +99,15 @@ def sanitize_html(
     tags = allowed_tags if allowed_tags is not None else set(_DEFAULT_TAGS)
     attrs = allowed_attributes if allowed_attributes is not None else _DEFAULT_ATTRS
 
-    return str(_nh3.clean(
-        html_input,
-        tags=tags,
-        attributes=attrs,
-        strip_comments=strip_comments,
-        link_rel=None,
-    ))
+    return str(
+        _nh3.clean(
+            html_input,
+            tags=tags,
+            attributes=attrs,
+            strip_comments=strip_comments,
+            link_rel=None,
+        )
+    )
 
 
 class HtmlSanitizer:
@@ -153,12 +155,14 @@ class HtmlSanitizer:
         tags: set[str] = (
             set(self._config.allowed_tags) if self._config.allowed_tags else set()
         )
-        return str(_nh3.clean(
-            value,
-            tags=tags,
-            attributes=None,
-            strip_comments=self._config.strip_comments,
-        ))
+        return str(
+            _nh3.clean(
+                value,
+                tags=tags,
+                attributes=None,
+                strip_comments=self._config.strip_comments,
+            )
+        )
 
     def strip_dangerous(self, text: str) -> str:
         """Strip dangerous HTML tags and attributes from text.

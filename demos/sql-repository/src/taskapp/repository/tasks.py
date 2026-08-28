@@ -26,7 +26,9 @@ class TaskRepository:
             )
             """
         )
-        count = await self._database.execute_query("SELECT COUNT(*) AS count FROM tasks")
+        count = await self._database.execute_query(
+            "SELECT COUNT(*) AS count FROM tasks"
+        )
         if count.rows[0]["count"] == 0:
             for task in seed:
                 await self._database.execute_insert("tasks", task)

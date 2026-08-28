@@ -22,7 +22,9 @@ class EventsThroughputWidgetHandler:
     def __init__(self, event_bus: EventBusProtocol) -> None:
         self._event_bus = event_bus
 
-    async def get_data(self, params: WidgetParams) -> Result[MessageContent, AdminError]:
+    async def get_data(
+        self, params: WidgetParams
+    ) -> Result[MessageContent, AdminError]:
         """Fetch event throughput metrics.
 
         Returns a message explaining stats are unavailable pending

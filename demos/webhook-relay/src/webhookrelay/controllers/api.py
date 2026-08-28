@@ -57,7 +57,9 @@ class WebhookApiController(Controller):
         subscriptions = await self._subscriptions.list(active_only=True)
         return {
             "count": len(subscriptions),
-            "subscriptions": [self._subscription_payload(item) for item in subscriptions],
+            "subscriptions": [
+                self._subscription_payload(item) for item in subscriptions
+            ],
         }
 
     @post("/receive")

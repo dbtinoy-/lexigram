@@ -74,5 +74,7 @@ Open the URL printed by the server and send a sample event.
 from lexigram.webhook.verification.hmac import HMACSignatureVerifier
 
 verifier = HMACSignatureVerifier()
-signature = verifier.compute_signature(b"test payload", "demo-secret-key-for-hmac-signing")
+signature = verifier.compute_signature(
+    b"test payload", "demo-secret-key-for-hmac-signing"
+)
 ```

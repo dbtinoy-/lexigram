@@ -58,9 +58,7 @@ class MonitorApiController(Controller):
                     "count": len(observations),
                     "min": min(observations) if observations else 0,
                     "max": max(observations) if observations else 0,
-                    "avg": sum(observations) / len(observations)
-                    if observations
-                    else 0,
+                    "avg": sum(observations) / len(observations) if observations else 0,
                 }
         return {
             "counters": counters,
