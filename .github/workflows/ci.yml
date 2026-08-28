@@ -103,6 +103,12 @@ jobs:
       - name: Contracts protocol-surface gate
         run: uv run python dev/checks/protocol_surface.py --root .
 
+      - name: Import boundaries (import-linter, namespace-aware)
+        run: uv run python dev/checks/lint_imports.py
+
+      - name: Import depth gate (max 6 segments)
+        run: uv run python dev/checks/import_depth.py --max-depth 6
+
       - name: env.example coverage
         run: uv run python dev/checks/env_example.py --root .
 
