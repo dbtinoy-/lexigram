@@ -81,6 +81,7 @@ class AdminResourceGenerator(GeneratorBase):
         for field in field_dicts:
             field["pydantic_type"] = self._to_pydantic_type(field)
             field["form_field_kwargs"] = self._get_form_field_kwargs(field)
+            field["declaration"] = self._field_declaration(field)
 
         return {
             "model_name": model_name,
@@ -180,20 +181,20 @@ class AdminResourceGenerator(GeneratorBase):
 
             if field_type in ("bool", "boolean"):
                 columns.append(
-                    f'BooleanColumn("{field_name}").label("{self._label(field_name)}")',
+                    f'BooleanColumn("{field_name}", label="{self._label(field_name)}")',
                 )
             elif "date" in field_type or "time" in field_type:
                 columns.append(
-                    f'DateColumn("{field_name}").label("{self._label(field_name)}").format("%Y-%m-%d %H:%M")',
+                    f'DateColumn("{field_name}", label="{self._label(field_name)}").datetime().sortable()',
                 )
             else:
                 sortable = (
-                    "sortable()"
+                    ".sortable()"
                     if field_name in ("name", "email", "created_at", "updated_at")
                     else ""
                 )
                 columns.append(
-                    f'TextColumn("{field_name}").label("{self._label(field_name)}"){sortable}',
+                    f'TextColumn("{field_name}", label="{self._label(field_name)}"){sortable}',
                 )
 
         return columns
@@ -218,18 +219,31 @@ class AdminResourceGenerator(GeneratorBase):
 
             if field_type in ("bool", "boolean"):
                 filters.append(
-                    f'BooleanFilter("{field_name}").label("{self._label(field_name)}")',
+                    f'ToggleFilter("{field_name}", label="{self._label(field_name)}")',
                 )
             elif "date" in field_type or "time" in field_type:
                 filters.append(
-                    f'DateFilter("{field_name}").label("{self._label(field_name)}")',
-                )
-            else:
-                filters.append(
-                    f'TextFilter("{field_name}").label("{self._label(field_name)}")',
+                    f'RangeFilter("{field_name}", label="{self._label(field_name)}", input_type="date")',
                 )
 
         return filters
+
+    def _field_declaration(self, field: dict) -> str:
+        """Generate a SchemaField declaration for the resource `fields` list."""
+        field_name = field.get("name", "")
+        label = self._label(field_name)
+        field_type = field.get("type", "str").lower()
+
+        if field_type in ("bool", "boolean"):
+            return f'BooleanField(name="{field_name}", label="{label}")'
+        if "date" in field_type or "time" in field_type:
+            return f'DateField(name="{field_name}", label="{label}", sortable=True)'
+        sortable = field_name in ("name", "created_at", "updated_at")
+        searchable = field_name in ("name", "email", "title")
+        return (
+            f'TextField(name="{field_name}", label="{label}", '
+            f"sortable={sortable}, searchable={searchable})"
+        )
 
     def _label(self, name: str) -> str:
         """Convert field name to label."""
