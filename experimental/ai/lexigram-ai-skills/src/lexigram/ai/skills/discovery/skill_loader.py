@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import os
 from pathlib import Path
+import sys
 from typing import Any
 
 from lexigram.logging import (
@@ -14,6 +15,58 @@ from lexigram.serialization import JSONDecodeError, dumps_str, loads
 
 logger = get_logger(__name__)
 
+# Bootstrap executed in a subprocess (``python -c``) for ``.py`` skills.
+# It receives the script path as argv[1] and JSON params on stdin, runs the
+# script with the same namespace contract as the historical in-process
+# executor (``params``, ``os``, ``json``), then writes a single JSON result
+# object to stdout.  Script stdout is diverted to stderr so prints cannot
+# corrupt the result protocol.  ``BaseException`` is caught so that
+# ``sys.exit`` and script crashes still produce a structured error result.
+_PY_BOOTSTRAP = r"""
+import asyncio
+import json
+import os
+import sys
+
+script = sys.argv[1]
+params = json.loads(sys.stdin.buffer.read() or b"{}")
+result = None
+real_stdout = sys.stdout
+try:
+    sys.stdout = sys.stderr
+    local_ns = {"params": params, "os": os, "json": json}
+    with open(script, "r", encoding="utf-8") as fh:
+        code = fh.read()
+    compiled = compile(code, script, "exec")
+    exec(compiled, local_ns)
+    main_fn = local_ns.get("main")
+    if callable(main_fn):
+        out = main_fn(params)
+        if asyncio.iscoroutine(out):
+            out = asyncio.run(out)
+        if isinstance(out, dict):
+            out.setdefault("status", "success")
+            out.setdefault("script", script)
+            result = out
+        else:
+            result = {
+                "status": "success",
+                "output": str(out),
+                "script": script,
+            }
+    else:
+        result = {
+            "status": "success",
+            "message": "Script executed (no main() function)",
+            "script": script,
+        }
+except BaseException as exc:  # noqa: BLE001 - subprocess boundary: report any failure
+    result = {"status": "error", "error": str(exc), "script": script}
+finally:
+    sys.stdout = real_stdout
+sys.stdout.write(json.dumps(result))
+"""
+
 
 class SkillLoader:
     """Handles loading bundled files and executing skill scripts.
@@ -21,14 +74,15 @@ class SkillLoader:
     Features:
     - Reading reference.md, forms.md, and other bundled context files
     - Executing scripts (Python, Shell, JavaScript) with parameters
-    - Sandboxed execution with path validation
-    - Timeout enforcement
-    - Environment variable injection
+    - Subprocess execution with path validation (all script types)
+    - Timeout enforcement (covers module-level code and sync main() too)
 
     Note:
         Skill directories are **executable content** — only populate them
         from trusted sources.  Script execution is gated by containment
-        against the configured root and by ``allowed_script_types``.
+        against the configured root and by ``allowed_script_types``; each
+        script type runs in its own subprocess with a hard timeout, so a
+        runaway or malicious script cannot wedge the host process.
     """
 
     def __init__(
@@ -178,66 +232,70 @@ class SkillLoader:
     async def _execute_python(
         self, script_path: Path, params: dict[str, Any]
     ) -> dict[str, Any]:
-        """Execute a Python script."""
+        """Execute a Python skill script in a subprocess.
+
+        The script runs via ``sys.executable -c <bootstrap>`` with JSON
+        params on stdin and a JSON result on stdout, mirroring the
+        ``.sh``/``.js`` executors: process isolation, event-loop safety,
+        and a hard ``timeout_seconds`` that covers module-level code and
+        synchronous ``main()`` alike.  The namespace contract is preserved
+        (``params``, ``os``, ``json`` globals; ``main(params)`` may be sync
+        or async and return a dict or a scalar).
+        """
 
         try:
-            code = script_path.read_text(encoding="utf-8")
-
-            local_ns: dict[str, Any] = {
-                "params": params,
-                "os": os,
-                "json": __import__("json"),
-            }
-
-            try:
-                compiled = compile(code, str(script_path), "exec")
-                exec(compiled, local_ns)  # noqa: S102
-            except Exception as e:  # noqa: BLE001  # exec() on user scripts can raise any exception
-                return {
-                    "status": "error",
-                    "error": str(e),
-                    "script": str(script_path),
-                }
-
-            main_fn = local_ns.get("main")
-            if callable(main_fn):
-                if asyncio.iscoroutinefunction(main_fn):
-                    result = await asyncio.wait_for(
-                        main_fn(params),
-                        timeout=self._timeout,
-                    )
-                else:
-                    result = main_fn(params)
-
-                if isinstance(result, dict):
-                    result["status"] = "success"
-                    result["script"] = str(script_path)
-                    return result
-                return {
-                    "status": "success",
-                    "output": str(result),
-                    "script": str(script_path),
-                }
-
-            return {
-                "status": "success",
-                "message": "Script executed (no main() function)",
-                "script": str(script_path),
-            }
-
+            process = await asyncio.create_subprocess_exec(
+                sys.executable,
+                "-c",
+                _PY_BOOTSTRAP,
+                str(script_path),
+                stdin=asyncio.subprocess.PIPE,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+                env=self._get_env(script_path),
+            )
+            input_json = dumps_str(params).encode()
+            stdout, stderr = await asyncio.wait_for(
+                process.communicate(input=input_json),
+                timeout=self._timeout,
+            )
         except TimeoutError:
+            process.kill()
             return {
                 "status": "error",
                 "error": f"Script execution timed out after {self._timeout}s",
                 "script": str(script_path),
             }
-        except Exception as exc:  # noqa: BLE001  # user script execution can raise any exception type
-            logger.warning("skill_loader_python_error", error=str(exc))
+        except Exception as exc:  # noqa: BLE001  # subprocess spawn can raise any exception type
             return {
                 "status": "error",
                 "error": str(exc),
                 "script": str(script_path),
             }
+
+        stdout_text = stdout.decode("utf-8", errors="replace")
+        stderr_text = stderr.decode("utf-8", errors="replace")
+        try:
+            output = loads(stdout_text)
+        except JSONDecodeError:
+            output = stdout_text
+
+        if isinstance(output, dict) and "status" in output:
+            output.setdefault("script", str(script_path))
+            return output
+        if process.returncode != 0:
+            return {
+                "status": "error",
+                "error": f"Script exited with code {process.returncode}",
+                "stderr": stderr_text,
+                "script": str(script_path),
+            }
+        return {
+            "status": "success",
+            "output": output,
+            "stderr": stderr_text,
+            "script": str(script_path),
+        }
 
     async def _execute_shell(
         self, script_path: Path, params: dict[str, Any]
