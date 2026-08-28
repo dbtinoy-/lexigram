@@ -23,25 +23,17 @@ async function load() {
 }
 
 function dot(s) {
-  const cls = s.status === "up" ? "up" : s.status === "cli" ? "cli" : "down";
+  const cls = s.status === "up" ? "up" : "down";
   return `<span class="dot ${cls}" title="${s.status}"></span>`;
 }
 
 function card(s) {
   const err = s.error ? ` title="${s.error.replace(/"/g, "&quot;")}"` : "";
-  const href = s.kind === "web"
-    ? `/demos/${s.slug}/`
-    : "https://docs.lexigram.dev";
-  const port = s.kind === "web"
-    ? `<code>standalone :${s.port}</code>`
-    : `<code>cli / notebook</code>`;
-  const infoBtn = s.kind === "web"
-    ? `<button type="button" class="info-btn" data-slug="${s.slug}" data-name="${s.name.replace(/"/g, "&quot;")}" title="About this demo" aria-label="About ${s.name.replace(/"/g, "&quot;")}">&#9432;</button>`
-    : "";
+  const infoBtn = `<button type="button" class="info-btn" data-slug="${s.slug}" data-name="${s.name.replace(/"/g, "&quot;")}" title="About this demo" aria-label="About ${s.name.replace(/"/g, "&quot;")}">&#9432;</button>`;
   return `<div class="card-wrap ${filter !== "all" && s.group !== filter ? "hidden" : ""}">
-    <a class="card" href="${href}"${err}>
+    <a class="card" href="/demos/${s.slug}/"${err}>
       ${dot(s)}<h3>${s.name}</h3><p>${s.blurb}</p>
-      ${port}</a>
+      <code>standalone :${s.port}</code></a>
     ${infoBtn}</div>`;
 }
 

@@ -17,7 +17,7 @@ class DemoService:
         name: Display name.
         port: Port used when the demo runs standalone (informational only —
             embedded mode serves everything from the hub's own port).
-        kind: ``web`` for live consoles, ``cli`` for offline entries.
+        kind: ``web`` for live browser consoles.
         group: Top-level grouping — ``standard`` (single-package) or
             ``multi-module`` (multi-package composition).
         blurb: One-line description for the card grid.
@@ -286,17 +286,11 @@ class ServiceRegistry:
             failures: Slug → error text for demos that failed to boot.
 
         Returns:
-            One dict per service with a ``status`` of ``up``, ``down``
-            or ``cli``.
+            One dict per service with a ``status`` of ``up`` or ``down``.
         """
         payload: list[dict[str, object]] = []
         for svc in self.services:
-            if svc.kind != "web":
-                status = "cli"
-            elif mounted.get(svc.slug):
-                status = "up"
-            else:
-                status = "down"
+            status = "up" if mounted.get(svc.slug) else "down"
             payload.append(
                 {
                     "slug": svc.slug,

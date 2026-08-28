@@ -130,3 +130,12 @@ async def test_outbox_inspection_and_flush(client: httpx.AsyncClient) -> None:
     flushed = (await client.post("/outbox/flush")).json()
     assert flushed["ok"] is True
     assert flushed["flushed"] >= len(staged)
+
+
+async def test_guided_demo_runs_over_http(client: httpx.AsyncClient) -> None:
+    response = await client.post("/api/demo")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "shipped"
+    assert body["order_id"]

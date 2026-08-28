@@ -1,9 +1,4 @@
-"""Enable ``python -m feedback_loop``.
-
-Convention: the ``__main__`` module is a thin shim that delegates to
-``main.main()``.  It contains no CLI dispatch logic — all routing
-happens through the web layer.
-"""
+"""Serve the feedback loop console with ``python -m feedback_loop``."""
 
 from __future__ import annotations
 

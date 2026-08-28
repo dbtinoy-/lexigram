@@ -47,7 +47,7 @@ main { padding: .75rem 1.5rem 2rem; flex: 1; }
 .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; vertical-align: middle; }
 .dot.up { background: #16a34a; }
 .dot.down { background: #dc2626; }
-.dot.cli { background: #d97706; }
+
 
 /* Info button */
 .info-btn { position: absolute; top: .55rem; right: .6rem; background: transparent;

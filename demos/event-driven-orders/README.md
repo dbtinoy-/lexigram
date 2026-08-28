@@ -44,13 +44,14 @@ curl -X POST localhost:7074/api/demo                  # run full lifecycle
 
 ```bash
 cd demos/event-driven-orders
-PYTHONPATH=src uv run python -m orders              # start server
-PYTHONPATH=src uv run python -m orders demo         # offline lifecycle walkthrough
+PYTHONPATH=src uv run python -m orders              # start the web console
 ```
 
 Open `http://localhost:7074` in your browser for the interactive console.
-The **Run Demo** button executes the full lifecycle: place -> pay -> ship ->
-flush, then shows the final read-model row.
+The **Run Demo** button executes the full lifecycle: place → pay → ship →
+flush, then shows the final read-model row. The form and row actions expose
+the same place, pay, ship, outbox, and refresh behavior with loading,
+success, and error feedback.
 
 ## Layout — read it in this order
 
