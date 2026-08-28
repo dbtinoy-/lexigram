@@ -1,54 +1,42 @@
-"""Message processor — processes messages from the queue."""
+"""Queue consumer for the demo's one task topic."""
 
 from __future__ import annotations
 
 from datetime import UTC, datetime
 from typing import Any
 
+from lexigram.contracts.queue.types import BusMessage
+from lexigram.queue.consumers.consumer import MessageConsumer
 
-class MessageProcessor:
-    """Processes messages from the queue.
 
-    Demonstrates how to consume and process messages from a queue.
-    """
+class MessageProcessor(MessageConsumer):
+    """Lexigram ``MessageConsumer`` that records handled task messages."""
 
-    def __init__(self, queue: Any) -> None:
-        self._queue = queue
+    def __init__(self, queue: Any, topic: str = "tasks") -> None:
+        super().__init__(queue)
+        self.topic = topic
         self._processed: list[dict[str, Any]] = []
 
-    async def process_message(self, topic: str) -> dict[str, Any] | None:
-        """Process a single message from the queue."""
-        msg = await self._queue.consume(topic)
-        if msg is None:
-            return None
+    async def handle(self, message: BusMessage) -> None:
+        """Handle one bus message and keep a browser-readable audit trail."""
+        self._processed.append(
+            {
+                "message_id": message.id,
+                "topic": message.topic,
+                "payload": message.payload,
+                "processed_at": datetime.now(UTC).isoformat(),
+            }
+        )
 
-        result = {
-            "message_id": msg.id,
-            "topic": msg.topic,
-            "payload": msg.payload,
-            "processed_at": datetime.now(UTC).isoformat(),
-        }
-        self._processed.append(result)
-        return result
+    @property
+    def processed_count(self) -> int:
+        """Return the number of messages handled by this consumer."""
+        return len(self._processed)
 
-    async def process_batch(
-        self, topic: str, batch_size: int = 10
-    ) -> list[dict[str, Any]]:
-        """Process a batch of messages from the queue."""
-        results = []
-        for _ in range(batch_size):
-            result = await self.process_message(topic)
-            if result is None:
-                break
-            results.append(result)
-        return results
+    def is_running(self) -> bool:
+        """Return whether the Lexigram consumer subscription is active."""
+        return self._running
 
     def get_processed(self) -> list[dict[str, Any]]:
-        """Get all processed messages."""
+        """Return a snapshot of processed messages."""
         return list(self._processed)
-
-    def clear_processed(self) -> int:
-        """Clear the processed messages log."""
-        count = len(self._processed)
-        self._processed.clear()
-        return count

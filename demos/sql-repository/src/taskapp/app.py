@@ -39,6 +39,8 @@ from __future__ import annotations
 from lexigram.app.base import Application
 from lexigram.config.main import LexigramConfig
 from lexigram.di.provider import Provider
+from lexigram.sql.config import DatabaseConfig
+from lexigram.sql.module import DatabaseModule
 from lexigram.web.module import WebModule
 from taskapp.controllers.api import TasksApiController
 from taskapp.di.provider import TaskProvider
@@ -56,8 +58,11 @@ def build_modules() -> list[object]:
     ``LEX_*`` environment overrides already merged.
     """
     return [
-        # WebModule is the only module that needs your controllers list —
-        # this is the explicit wiring style.
+        # DatabaseModule owns SQLite connection lifecycle and exposes the
+        # DatabaseProviderProtocol used by this demo's task repository.
+        DatabaseModule.configure(
+            DatabaseConfig.from_url("sqlite+aiosqlite:///:memory:")
+        ),
         WebModule.configure(
             controllers=[TasksApiController, TasksPageController],
         ),

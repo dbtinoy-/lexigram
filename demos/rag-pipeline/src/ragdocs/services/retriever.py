@@ -1,50 +1,76 @@
-"""Retriever — retrieves relevant documents for queries."""
+"""Retriever built on Lexigram's vector collection protocol."""
 
 from __future__ import annotations
 
 from typing import Any
 
+from lexigram.contracts.data.vector import SearchQuery, VectorCollectionProtocol
+from ragdocs.vector_store import DeterministicEmbedder
+
 
 class Retriever:
-    """Retrieves relevant documents for queries.
+    """Retrieve relevant chunks from one Lexigram vector collection."""
 
-    Demonstrates retrieval patterns for RAG pipelines.
-    """
-
-    def __init__(self, vector_store: Any, top_k: int = 5) -> None:
-        self._vector_store = vector_store
+    def __init__(
+        self,
+        collection: VectorCollectionProtocol,
+        embedder: DeterministicEmbedder,
+        top_k: int = 5,
+    ) -> None:
+        self._collection = collection
+        self._embedder = embedder
         self._top_k = top_k
 
     async def retrieve(
         self, query: str, top_k: int | None = None
     ) -> list[dict[str, Any]]:
-        """Retrieve relevant documents for a query."""
-        k = top_k or self._top_k
-        return await self._vector_store.search(query, top_k=k)
+        """Run a similarity search through the collection protocol."""
+        search = SearchQuery(
+            vector=self._embedder.embed(query),
+            top_k=top_k or self._top_k,
+            include_metadata=True,
+        )
+        results = await self._collection.search(search)
+        return [
+            {
+                "id": result.id,
+                "content": result.content or "",
+                "metadata": result.metadata,
+                "score": result.score,
+            }
+            for result in results
+        ]
 
     async def retrieve_with_context(
         self, query: str, top_k: int | None = None
     ) -> dict[str, Any]:
-        """Retrieve documents and format them as context."""
+        """Retrieve chunks and format them as LLM-ready context."""
         results = await self.retrieve(query, top_k)
-
-        context_parts = []
-        for i, doc in enumerate(results, 1):
-            context_parts.append(f"[{i}] {doc['content']}")
-
+        context = "\n\n".join(
+            f"[{index}] {document['content']}"
+            for index, document in enumerate(results, 1)
+        )
         return {
             "query": query,
-            "context": "\n\n".join(context_parts),
+            "context": context,
             "sources": [
-                {"id": doc["id"], "score": doc["score"], "metadata": doc["metadata"]}
-                for doc in results
+                {
+                    "id": document["id"],
+                    "score": document["score"],
+                    "metadata": document["metadata"],
+                }
+                for document in results
             ],
         }
 
     async def get_stats(self) -> dict[str, Any]:
-        """Get retriever statistics."""
-        count = await self._vector_store.count()
+        """Return collection-level retrieval stats."""
         return {
-            "total_documents": count,
+            "collection": self._collection.name,
+            "total_documents": await self._collection.count(),
             "top_k": self._top_k,
+            "dimension": self._collection.dimension,
         }
+
+
+__all__ = ["Retriever"]

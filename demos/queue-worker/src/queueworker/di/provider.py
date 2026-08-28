@@ -1,27 +1,4 @@
-"""Provider wiring for the queue worker demo.
-
-Convention followed: **Provider pattern** — ``QueueWorkerProvider`` is the
-canonical shape (mirrors ``lexigram-auth`` + the boot-phase ``bind()``
-contract in ``lexigram.contracts.core.di``):
-
-- ``register()`` only *declares* bindings.  Zero-arg factories cover
-  purely config-derived services; dependency-full services are declared
-  as class bindings and instantiated in :meth:`boot`.
-- ``boot()`` resolves cross-module dependencies after every provider
-  has registered and rebinds the concrete instances via
-  ``container.bind()``.
-- Controllers are constructed by the router from the container; ``boot``
-  binds their prebuilt instances so per-request resolution reuses them.
-
-Lifecycle:
-  1. ``register()`` — declare bindings (no resolution)
-  2. ``boot()`` — resolve cross-module deps, create instances, bind
-  3. ``shutdown()`` — cleanup (not needed for in-memory stores)
-
-For full reference see:
-- ``lexigram.di.provider.Provider`` — base provider class
-- ``lexigram.contracts.core.di`` — container protocols
-"""
+"""Lifecycle wiring for the focused Lexigram queue-worker demo."""
 
 from __future__ import annotations
 
@@ -32,9 +9,11 @@ from lexigram.contracts.core.health import (
     HealthCheckResult,
     HealthStatus,
 )
+from lexigram.contracts.queue.protocols import QueueProtocol
 from lexigram.di.provider import Provider
 from queueworker.config import QueueWorkerConfig
 from queueworker.controllers.api import QueueApiController
+from queueworker.services.processor import MessageProcessor
 
 if TYPE_CHECKING:
     from lexigram.contracts.core.di import (
@@ -46,69 +25,53 @@ __all__ = ["QueueWorkerProvider"]
 
 
 class QueueWorkerProvider(Provider):
-    """Bind the queue worker services as container-managed singletons.
-
-    This provider demonstrates the full lifecycle:
-    - ``register()`` declares the config and controller bindings
-    - ``boot()`` creates the in-memory queue and wires the controller
-    - ``health_check()`` reports readiness status
-    """
+    """Bind one Lexigram MessageConsumer to the configured task topic."""
 
     name = "queueworker"
-
-    # Config binding — the framework injects the typed YAML section here
     config_key: str | None = "queueworker"
     config_model: type | None = QueueWorkerConfig
 
+    def __init__(self) -> None:
+        super().__init__()
+        self._queue: QueueProtocol | None = None
+        self._processor: MessageProcessor | None = None
+
     async def register(self, container: ContainerRegistrarProtocol) -> None:
-        """Declare bindings; concrete wiring happens in :meth:`boot`.
-
-        This method runs AFTER the framework has loaded the config.
-        ``self.config`` contains the typed ``QueueWorkerConfig`` instance
-        with YAML values + env overrides already merged.
-        """
+        """Declare config and controller bindings."""
         cfg = self.config or QueueWorkerConfig()
-
-        # Bind the config as a singleton — other services can resolve it
         container.singleton(QueueWorkerConfig, instance=cfg)
-
-        # Class bindings so the keys exist; boot() replaces them with
-        # fully-wired instances via container.bind().
         container.singleton(QueueApiController, QueueApiController)
 
     async def boot(self, container: ContainerResolverProtocol) -> None:
-        """Resolve cross-module dependencies and bind concrete instances.
-
-        This method runs AFTER all providers have registered.
-        Resolution is safe — all bindings are in place.
-        """
-        from queueworker.queue import InMemoryQueue
-        from queueworker.services.processor import MessageProcessor
-
+        """Resolve QueueProtocol, subscribe the consumer, then wire HTTP."""
         cfg = await container.resolve(QueueWorkerConfig)
+        queue = await container.resolve(QueueProtocol)
+        processor = MessageProcessor(queue=queue, topic=cfg.queue_name)
+        await processor.start()
 
-        # Create the queue and processor
-        # In production, replace with lexigram-queue's backend:
-        #   from lexigram_queue import RabbitMQBackend
-        #   queue = RabbitMQBackend(config=cfg)
-        queue = InMemoryQueue()
-        processor = MessageProcessor(queue=queue)
-
-        # Bind the wired controller — the router resolves this for
-        # every request, so per-request resolution reuses the same instance.
+        self._queue = queue
+        self._processor = processor
         container.bind(
             QueueApiController,
-            QueueApiController(queue=queue, processor=processor),
+            QueueApiController(
+                queue=queue,
+                processor=processor,
+                max_retries=cfg.max_retries,
+            ),
         )
 
-    async def health_check(self, timeout: float = 5.0) -> HealthCheckResult:
-        """Report readiness of the queue worker.
+    async def shutdown(self) -> None:
+        """Stop the consumer before closing the Lexigram queue backend."""
+        if self._processor is not None:
+            await self._processor.stop()
+        if self._queue is not None and hasattr(self._queue, "close"):
+            await self._queue.close()  # type: ignore[attr-defined]
 
-        Called by the framework's health check system.  Return
-        HEALTHY if the service is ready to handle requests.
-        """
+    async def health_check(self, timeout: float = 5.0) -> HealthCheckResult:
+        """Report readiness of the queue worker."""
+        ready = self._processor is not None and self._processor.is_running()
         return HealthCheckResult(
             component=self.name,
-            status=HealthStatus.HEALTHY,
+            status=HealthStatus.HEALTHY if ready else HealthStatus.UNHEALTHY,
             category=HealthCheckCategory.READINESS,
         )

@@ -188,45 +188,45 @@ Content generation and structured extraction without an API key:
 - **Content generation** — style control and retry handling
 - **Structured extraction** — parse model output into typed product data
 
-### [monitor-stack](monitor-stack/) — observability without infrastructure
+### [monitor-stack](monitor-stack/) — the Lexigram MonitorModule
 
-An in-memory monitoring console:
+A browser console over the package's real observability protocols:
 
-- **Health checks** — register and run service checks
-- **Metrics** — counters, gauges, and histograms
-- **Tracing** — timed request spans through injected services
+- **Health registry** — register and run a readiness check
+- **Metrics** — counters, gauges, histograms, and instrument introspection
+- **Tracing** — timed spans with IDs and attributes through DI
 
-### [queue-worker](queue-worker/) — in-memory background processing
+### [queue-worker](queue-worker/) — an automatic Lexigram consumer
 
-Publish, consume, and process messages without a broker:
+Publish to one `tasks` topic and watch the package consumer handle messages:
 
-- **Topic routing** — publish and consume from an in-memory queue
-- **Processing modes** — single-message and batch workflows
-- **Retry settings** — configure worker behavior through YAML
+- **QueueProtocol** — `QueueModule.stub()` owns the backend and lifecycle
+- **MessageConsumer** — subscription starts at provider boot; no pull CLI
+- **Retry metadata** — `BusMessage` receives the configured retry policy
 
-### [rag-pipeline](rag-pipeline/) — the RAG lifecycle
+### [rag-pipeline](rag-pipeline/) — Lexigram VectorModule retrieval
 
 A complete retrieval pipeline without an external vector database:
 
-- **In-memory vectors** — cosine similarity search
+- **VectorStoreProtocol** — create a dimensioned cosine collection at boot
 - **Chunking** — split documents into indexable pieces
-- **Context synthesis** — format retrieved material for generation
+- **Context synthesis** — format ranked sources for generation
 
-### [sql-repository](sql-repository/) — provider-wired CRUD
+### [sql-repository](sql-repository/) — Lexigram DatabaseModule CRUD
 
-A task management API demonstrating the repository boundary:
+A single task resource backed by an in-memory SQLite database:
 
-- **Provider lifecycle** — register stores, then initialize them at boot
-- **Thin controllers** — expose CRUD over the HTTP layer
-- **In-memory persistence** — deterministic and fully offline
+- **DatabaseProviderProtocol** — schema, parameterized queries, and health
+- **Repository boundary** — SQL stays out of the thin HTTP controller
+- **Browser mutations** — create, update, delete, and aggregate stats
 
-### [webhook-relay](webhook-relay/) — signed inbound events
+### [webhook-relay](webhook-relay/) — Lexigram WebhookModule verification
 
-Secure webhook processing without an external webhook service:
+A browser-visible inbound webhook flow without an external receiver:
 
-- **HMAC-SHA256** — sign and verify payloads
-- **Validation** — enforce signatures and size limits
-- **Relay routing** — dispatch events and record processing results
+- **Subscriptions** — package-managed URL validation and secret generation
+- **HMAC-SHA256** — verify canonical raw payloads in constant time
+- **Accepted ledger** — keep the demo focused while making results visible
 
 ---
 

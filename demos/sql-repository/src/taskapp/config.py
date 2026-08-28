@@ -1,14 +1,4 @@
-"""Demo-specific configuration models.
-
-Convention followed: **Config model** — ``TaskAppConfig`` extends
-``BaseConfig`` (stdlib dataclass, NOT pydantic).  Each field uses
-``Field()`` with a description and default value.  The framework
-validates the YAML section against this model at boot time.
-
-For full reference see:
-- ``lexigram.config.BaseConfig`` — base config class
-- ``lexigram.validation.Field`` — field descriptor with validation
-"""
+"""Typed configuration for the SQL repository demo."""
 
 from __future__ import annotations
 
@@ -22,37 +12,17 @@ from lexigram.validation import ConfigDict, Field
 
 @dataclass(init=False)
 class TaskAppConfig(BaseConfig):
-    """Root configuration for the sql-repository demo.
-
-    Maps 1:1 to the ``task_app:`` section in ``application.yaml``.
-    The framework merges YAML values + ``LEX_TASK_APP__*`` env overrides
-    into this model at boot time.
-    """
+    """Small demo-owned config section kept separate from SQL config."""
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="ignore")
     config_section: ClassVar[str] = "task_app"
     name: str = "task_app"
     enabled: bool = True
     env: Environment | None = Field(None, description="Deployment environment")
-
     project_name: str = Field(
-        default="Task Manager",
-        description="Display name for the project",
+        default="SQL Task Repository",
+        description="Display name for this standalone demo",
     )
-
-    # Uncomment to add more config fields:
-    # max_users: int = Field(
-    #     default=100,
-    #     description="Maximum number of users",
-    # )
-    # max_projects: int = Field(
-    #     default=50,
-    #     description="Maximum number of projects",
-    # )
-    # max_tasks_per_project: int = Field(
-    #     default=200,
-    #     description="Maximum tasks per project",
-    # )
 
 
 __all__ = ["TaskAppConfig"]

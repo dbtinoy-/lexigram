@@ -13,7 +13,7 @@
 #
 # LEARNING PATH:
 #   1. web:        HTTP server, security, CSRF
-#   2. queueworker: Queue name, retries, batch size
+#   2. queueworker: Worker topic and message retry metadata
 #
 # For full reference see:
 #   - Lexigram Web:       packages/lexigram-web/src/lexigram/web/config/
@@ -75,14 +75,10 @@ web:
 # QueueWorkerProvider reads this section automatically via
 # config_key="queueworker" / config_model=QueueWorkerConfig.
 #
-# This demo uses an in-memory queue to demonstrate publish/consume
-# patterns without requiring an external message broker like RabbitMQ
-# or Kafka.  In production, replace with lexigram-queue's backend.
+# QueueModule.stub() supplies Lexigram's in-memory QueueProtocol backend.
+# The custom provider subscribes one MessageConsumer to this topic. Swap the
+# module configuration for a broker-backed QueueConfig in a production app.
 # ─────────────────────────────────────────────────────────────────────────────
 queueworker:
-  queue_name: "tasks"                  # name of the default queue
-  max_retries: 3                       # maximum retry attempts per message
-  batch_size: 10                       # messages to process per batch
-  # dead_letter_queue: "tasks.dlq"     # dead letter queue name
-  # message_ttl: 3600                  # message TTL in seconds
-  # visibility_timeout: 30             # visibility timeout in seconds
+  queue_name: "tasks"                  # the one topic this worker consumes
+  max_retries: 3                       # BusMessage retry metadata

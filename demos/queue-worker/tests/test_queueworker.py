@@ -1,112 +1,74 @@
-"""Tests — real composition root, no mocks.
-
-Every test boots a real Application with the actual DI container.
-Services are tested through their public API, not by mocking internals.
-"""
+"""HTTP tests for the real QueueModule + MessageConsumer composition."""
 
 from __future__ import annotations
 
-import pytest
+import asyncio
+
 import httpx
+import pytest
 
 
 class TestQueueOperations:
-    """Test queue publish and process operations."""
+    """Test publish/subscribe behavior rather than a fake pull queue."""
 
     @pytest.mark.asyncio
     async def test_publish_message(self, client: httpx.AsyncClient) -> None:
-        """POST /api/queue/publish publishes a message."""
-        resp = await client.post(
+        response = await client.post(
             "/api/queue/publish",
-            json={"topic": "orders", "payload": {"order_id": "123"}},
+            json={"payload": {"order_id": "123"}},
         )
-        assert resp.status_code == 200
-        data = resp.json()
+        assert response.status_code == 200
+        data = response.json()
         assert "message_id" in data
-        assert data["topic"] == "orders"
+        assert data["topic"] == "tasks"
+        assert data["delivery"] == "at_least_once"
+        assert data["max_retries"] == 3
+
+        # InMemoryQueue dispatches handlers as tracked asyncio tasks.
+        await asyncio.sleep(0.01)
+        processed = await client.get("/api/queue/processed")
+        assert processed.json()["count"] == 1
 
     @pytest.mark.asyncio
     async def test_publish_missing_topic(self, client: httpx.AsyncClient) -> None:
-        """POST /api/queue/publish with empty topic returns error."""
-        resp = await client.post(
+        response = await client.post(
             "/api/queue/publish",
             json={"topic": ""},
         )
-        assert resp.status_code == 200
-        data = resp.json()
-        assert "error" in data
+        assert response.status_code == 200
+        assert "error" in response.json()
 
     @pytest.mark.asyncio
-    async def test_process_message(self, client: httpx.AsyncClient) -> None:
-        """POST /api/queue/process processes a message."""
-        # First publish a message
+    async def test_worker_rejects_other_topics(self, client: httpx.AsyncClient) -> None:
+        response = await client.post(
+            "/api/queue/publish",
+            json={"topic": "orders", "payload": {}},
+        )
+        assert "error" in response.json()
+        assert "tasks" in response.json()["error"]
+
+    @pytest.mark.asyncio
+    async def test_get_processed_messages(self, client: httpx.AsyncClient) -> None:
         await client.post(
             "/api/queue/publish",
-            json={"topic": "orders", "payload": {"order_id": "456"}},
+            json={"payload": {"index": 1}},
         )
-
-        # Then process it
-        resp = await client.post(
-            "/api/queue/process",
-            json={"topic": "orders"},
-        )
-        assert resp.status_code == 200
-        data = resp.json()
-        assert "message_id" in data
-
-    @pytest.mark.asyncio
-    async def test_process_empty_queue(self, client: httpx.AsyncClient) -> None:
-        """POST /api/queue/process with empty queue returns no messages."""
-        resp = await client.post(
-            "/api/queue/process",
-            json={"topic": "empty_topic"},
-        )
-        assert resp.status_code == 200
-        data = resp.json()
-        assert "message" in data
-
-    @pytest.mark.asyncio
-    async def test_process_batch(self, client: httpx.AsyncClient) -> None:
-        """POST /api/queue/process/batch processes multiple messages."""
-        # Publish multiple messages
-        for i in range(5):
-            await client.post(
-                "/api/queue/publish",
-                json={"topic": "batch_topic", "payload": {"index": i}},
-            )
-
-        # Process batch
-        resp = await client.post(
-            "/api/queue/process/batch",
-            json={"topic": "batch_topic", "batch_size": 3},
-        )
-        assert resp.status_code == 200
-        data = resp.json()
-        assert data["processed"] == 3
-
-    @pytest.mark.asyncio
-    async def test_get_size(self, client: httpx.AsyncClient) -> None:
-        """GET /api/queue/size returns queue size."""
-        # Publish some messages
-        for _ in range(3):
-            await client.post(
-                "/api/queue/publish",
-                json={"topic": "size_topic", "payload": {}},
-            )
-
-        resp = await client.get("/api/queue/size?topic=size_topic")
-        assert resp.status_code == 200
-        data = resp.json()
-        assert data["size"] == 3
+        await asyncio.sleep(0.01)
+        response = await client.get("/api/queue/processed")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["count"] == 1
+        assert data["results"][0]["payload"]["index"] == 1
 
 
 class TestHealth:
-    """Test health endpoint."""
+    """Test worker readiness."""
 
     @pytest.mark.asyncio
     async def test_health(self, client: httpx.AsyncClient) -> None:
-        """GET /api/queue/health returns ok."""
-        resp = await client.get("/api/queue/health")
-        assert resp.status_code == 200
-        data = resp.json()
+        response = await client.get("/api/queue/health")
+        assert response.status_code == 200
+        data = response.json()
         assert data["status"] == "ok"
+        assert data["topic"] == "tasks"
+        assert data["consumer_running"] is True

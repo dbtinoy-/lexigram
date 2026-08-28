@@ -14,6 +14,11 @@ async def test_console_has_nav(client: httpx.AsyncClient) -> None:
     assert "demo-nav" in r.text
     assert "nav-brand" in r.text
 
+async def test_console_exposes_package_flow(client: httpx.AsyncClient) -> None:
+    r = await client.get("/")
+    assert "Create a Lexigram subscription" in r.text
+    assert "Verify with the active subscription secret" in r.text
+
 async def test_console_has_light_theme(client: httpx.AsyncClient) -> None:
     css = await client.get("/static/style.css")
     assert css.status_code == 200
