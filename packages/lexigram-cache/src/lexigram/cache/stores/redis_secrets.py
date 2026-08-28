@@ -19,6 +19,7 @@ Usage::
 from __future__ import annotations
 
 from datetime import UTC, datetime
+import time
 from typing import Any, cast
 
 from lexigram.contracts.core import HealthCheckResult, HealthStatus
@@ -175,12 +176,12 @@ class RedisSecretStore(BaseSecretStore):  # type: ignore[valid-type,misc]
 
     async def health_check(self, timeout: float = 5.0) -> HealthCheckResult:
         """Check the health of the secret store"""
-        start_time = datetime.now().timestamp()
+        start_time = time.monotonic()
         try:
             client = await self._get_client()
 
             await cast("Awaitable[Any]", client.ping())
-            duration_ms = (datetime.now().timestamp() - start_time) * 1000
+            duration_ms = (time.monotonic() - start_time) * 1000
             return HealthCheckResult(
                 component="secret_store",
                 status=HealthStatus.HEALTHY,
@@ -190,10 +191,10 @@ class RedisSecretStore(BaseSecretStore):  # type: ignore[valid-type,misc]
                     "url": self.url,
                 },
                 duration_ms=duration_ms,
-                checked_at=datetime.fromtimestamp(datetime.now().timestamp(), UTC),
+                checked_at=datetime.now(UTC),
             )
         except (ConnectionError, OSError, TimeoutError, RuntimeError) as e:
-            duration_ms = (datetime.now().timestamp() - start_time) * 1000
+            duration_ms = (time.monotonic() - start_time) * 1000
             logger.exception("Redis secret store health check failed")
             return HealthCheckResult(
                 component="secret_store",
@@ -205,5 +206,5 @@ class RedisSecretStore(BaseSecretStore):  # type: ignore[valid-type,misc]
                     "url": self.url,
                 },
                 duration_ms=duration_ms,
-                checked_at=datetime.fromtimestamp(datetime.now().timestamp(), UTC),
+                checked_at=datetime.now(UTC),
             )

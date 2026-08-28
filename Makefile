@@ -62,6 +62,10 @@ lint-loc:  ## Enforce the 500-LOC file limit (shrinking ratchet vs dev/checks/_d
 lint-depth:  ## Check import depth ≤ 4 (source only, excludes tests)
 	$(UV) run python dev/checks/import_depth.py --max-depth 6
 
+.PHONY: lint-datetime
+lint-datetime:  ## Enforce aware-UTC datetimes in production code (no bare datetime.now())
+	$(UV) run python dev/checks/datetime_awareness.py
+
 .PHONY: dep-tree
 dep-tree:  ## Regenerate docs/reference/DEPENDENCY_TREE.md (sorted, fenced)
 	$(UV) run python dev/generators/dep_tree.py

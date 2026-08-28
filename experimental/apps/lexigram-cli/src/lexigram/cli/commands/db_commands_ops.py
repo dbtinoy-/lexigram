@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import UTC, datetime
 from pathlib import Path
 import subprocess
 
@@ -116,9 +117,7 @@ def backup(
             out.error(f"Backup not supported for {backend_name}")
             raise typer.Exit(1)
 
-        import datetime
-
-        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
         default_output = f"backup_{backend.name}_{timestamp}.sql"
         output_path = output or default_output
 

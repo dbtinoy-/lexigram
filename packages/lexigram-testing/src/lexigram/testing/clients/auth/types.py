@@ -109,9 +109,11 @@ class AuthTestToken:
     ) -> AuthTestToken:
         """Create a test token for a user."""
         # Generate mock JWT tokens
-        access_token = f"mock_access_token_{user.user_id}_{datetime.now().timestamp()}"
+        access_token = (
+            f"mock_access_token_{user.user_id}_{datetime.now(UTC).timestamp()}"
+        )
         refresh_token = (
-            f"mock_refresh_token_{user.user_id}_{datetime.now().timestamp()}"
+            f"mock_refresh_token_{user.user_id}_{datetime.now(UTC).timestamp()}"
         )
 
         if expires_at is None:

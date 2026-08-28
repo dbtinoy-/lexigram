@@ -11,6 +11,7 @@ from collections.abc import Sequence
 from dataclasses import asdict
 from datetime import datetime
 import re
+import time
 from typing import TYPE_CHECKING, Any
 
 from lexigram.contracts.workflow.content_checkpoint import (
@@ -106,7 +107,7 @@ class DatabaseContentCheckpointStore:
         """
         await self._ensure_schema()
         entry_json = _entry_to_json(entry)
-        now_ts = datetime.now().timestamp()
+        now_ts = time.time()
         await self._provider.execute(
             f"INSERT INTO {self._table_name} "  # noqa: S608 -- table name allowlisted by _TABLE_NAME_RE in __init__
             f"(key_str, entry_json, stage_handler_version, "

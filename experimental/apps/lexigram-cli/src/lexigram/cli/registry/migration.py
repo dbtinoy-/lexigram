@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import abc
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 import re
 from typing import Any, ClassVar
@@ -95,7 +95,12 @@ class SQLMigrationBackend(MigrationBackend):
 
             await self.provider.execute(
                 "INSERT INTO schema_migrations (version, name, applied_at, success) VALUES (?, ?, ?, ?)",
-                (migration.version, migration.name, datetime.now().isoformat(), True),
+                (
+                    migration.version,
+                    migration.name,
+                    datetime.now(UTC).isoformat(),
+                    True,
+                ),
             )
             return True
         except (RuntimeError, OSError, AttributeError, LookupError):
@@ -122,14 +127,14 @@ class SQLMigrationBackend(MigrationBackend):
             return False
 
     async def create_migration(self, name: str) -> str:
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
         version = f"{timestamp}_{name.replace(' ', '_').lower()}"
         filename = f"{version}.sql"
         filepath = self.migrations_dir / filename
 
         content = f"""-- Migration: {name}
 -- Version: {version}
--- Created: {datetime.now().isoformat()}
+-- Created: {datetime.now(UTC).isoformat()}
 
 -- Write your SQL migration here
 

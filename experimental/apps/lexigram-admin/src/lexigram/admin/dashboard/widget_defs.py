@@ -8,7 +8,7 @@ dashboard builder assembly.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any, Protocol
 
@@ -91,10 +91,10 @@ class DashboardConfig:
             widgets=[WidgetConfig.from_dict(w) for w in data.get("widgets", [])],
             layout=data.get("layout", {}),
             created_at=datetime.fromisoformat(
-                data.get("created_at", datetime.now().isoformat()),
+                data.get("created_at", datetime.now(UTC).isoformat()),
             ),
             updated_at=datetime.fromisoformat(
-                data.get("updated_at", datetime.now().isoformat()),
+                data.get("updated_at", datetime.now(UTC).isoformat()),
             ),
         )
 
@@ -140,7 +140,7 @@ class InMemoryDashboardStore:
 
     async def save(self, dashboard: DashboardConfig) -> bool:
         """Save dashboard."""
-        dashboard.updated_at = datetime.now()
+        dashboard.updated_at = datetime.now(UTC)
         self.dashboards[dashboard.id] = dashboard
         return True
 
