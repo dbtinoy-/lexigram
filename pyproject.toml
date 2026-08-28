@@ -327,22 +327,6 @@ extend-exclude = [
     "dev/**",
     "tools",
     "tools/**",
-    # Generated scaffold example files from `lexigram new` command
-    # These are generated application skeletons, not framework source
-    "lexigram-cli/src/admin/**",
-    "lexigram-cli/src/clients/**",
-    "lexigram-cli/src/commands/**",
-    "lexigram-cli/src/consumers/**",
-    "lexigram-cli/src/filters/**",
-    "lexigram-cli/src/graphql/**",
-    "lexigram-cli/src/guards/**",
-    "lexigram-cli/src/health/**",
-    "lexigram-cli/src/queries/**",
-    "lexigram-cli/src/repositories/**",
-    "lexigram-cli/src/search/**",
-    "lexigram-cli/src/storage/**",
-    "lexigram-cli/src/webhooks/**",
-    "lexigram-cli/src/websocket/**",
     # Benchmarks are not production source
     "benchmarks/**",
 ]
