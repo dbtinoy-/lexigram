@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "lexigram-graphql"
-version = "0.1.5008"
+version = "0.1.5009"
 description = "GraphQL support for Lexigram Framework - Strawberry, Apollo Federation, and subscriptions"
 readme = "README.md"
 requires-python = ">=3.11"

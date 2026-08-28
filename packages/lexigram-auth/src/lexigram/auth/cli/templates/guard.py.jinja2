@@ -5,86 +5,82 @@ This module provides a custom authorization guard for Lexigram.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
-from lexigram.auth.web.guards import Guard, GuardContext
+from lexigram.auth.types import GuardContext
+from lexigram.auth.web.guards import PermissionGuard, RoleGuard
+from lexigram.contracts.web import ResponseFactoryProtocol
 
 if TYPE_CHECKING:
-    from lexigram.auth.providers import AuthorizationProvider
+    from lexigram.contracts.web import ResponseProtocol
 
 
-class {{ guard_name }}Guard(Guard):
+class {{ guard_name }}Guard:
     """Custom authorization guard for {{ guard_name }}.
-    
-    This guard checks if the user has the required authorization
-    to access a resource or perform an action.
+
+    Implements :class:`~lexigram.contracts.web.guard.GuardProtocol`
+    (``can_activate`` / ``handle_rejection``) so it can be applied with
+    ``@use_guards(...)``.
     """
-    
-    def __init__(
-        self,
-        authorization_provider: AuthorizationProvider | None = None,
-    ):
-        """Initialize the guard.
-        
-        Args:
-            authorization_provider: Optional authorization service.
-        """
-        self.authorization_provider = authorization_provider
-    
-    async def check(self, context: GuardContext) -> bool:
+
+    async def can_activate(self, context: GuardContext) -> bool:
         """Check if the request is authorized.
-        
+
         Args:
-            context: The guard context containing request and user info.
-            
+            context: Guard context containing request and user info.
+
         Returns:
-            True if authorized, False otherwise.
+            ``True`` if authorized, ``False`` otherwise.
         """
-        # Get user from context
         user = context.user
-        
         if user is None:
             return False
-        
-        # Add your authorization logic here
-        # Example for role guard:
-        # return await self._check_role(user, context)
-        
-        # Example for permission guard:
-        # return await self._check_permission(user, context)
-        
-        # Example for custom logic:
-        # return await self._check_custom(user, context)
-        
+
+        # Add your authorization logic here.
+        # Examples:
+        # if not getattr(user, "is_active", True):
+        #     return False
+        # if await self._has_permission(user, "{{ guard_name_snake }}:access"):
+        #     return True
         return await self._check_{{ guard_name_snake }}(user, context)
-    
+
     async def _check_{{ guard_name_snake }}(
         self,
         user: Any,
         context: GuardContext,
     ) -> bool:
         """Custom authorization check for {{ guard_name }}.
-        
+
         Args:
             user: The authenticated user.
             context: The guard context.
-            
+
         Returns:
-            True if authorized.
+            ``True`` if authorized.
         """
-        # Implement your custom logic here
-        # Example:
-        # if not user.is_active:
-        #     return False
-        #
-        # Check specific conditions
-        # return user.has_permission("{{ guard_name_snake }}:access")
-        
         return True
-    
-    def get_error_message(self) -> str:
-        """Get the error message to show when authorization fails."""
-        return "{{ guard_name }} authorization failed. You don't have permission to access this resource."
+
+    async def handle_rejection(self, context: GuardContext) -> "ResponseProtocol":
+        """Return the rejection response when authorization fails."""
+        from lexigram.di.resolution.context import get_resolver
+
+        resolver = get_resolver(context.request)
+        if resolver is None:
+            raise RuntimeError(
+                "Guard requires a DI resolver on the request — ensure the "
+                "request passed through the app's DI middleware",
+            )
+        response_factory = await resolver.resolve(ResponseFactoryProtocol)
+        return cast(
+            "ResponseProtocol",
+            response_factory.json(
+                {
+                    "error": "forbidden",
+                    "message": "{{ guard_name }} authorization failed",
+                },
+                status_code=403,
+            ),
+        )
 
 
 # =============================================================================
@@ -92,37 +88,20 @@ class {{ guard_name }}Guard(Guard):
 # =============================================================================
 
 {% if guard_type == 'role' %}
-class {{ guard_name }}RoleGuard({{ guard_name }}Guard):
+class {{ guard_name }}RoleGuard(RoleGuard):
     """Role-based guard for {{ guard_name }}.
-    
-    Checks if the user has one of the required roles.
+
+    Checks if the user has one of the required roles; override
+    :meth:`can_activate` to add custom authorization logic.
     """
-    
-    def __init__(
-        self,
-        roles: list[str],
-        authorization_provider: AuthorizationProvider | None = None,
-    ):
+
+    def __init__(self, *roles: str) -> None:
         """Initialize the role guard.
-        
+
         Args:
             roles: List of allowed roles.
-            authorization_provider: Optional authorization service.
         """
-        super().__init__(authorization_provider)
-        self.roles = roles
-    
-    async def _check_{{ guard_name_snake }}(
-        self,
-        user: Any,
-        context: GuardContext,
-    ) -> bool:
-        """Check if user has required role."""
-        if not hasattr(user, "roles"):
-            return False
-        
-        user_roles = user.roles if isinstance(user.roles, list) else []
-        return any(role in user_roles for role in self.roles)
+        super().__init__(*roles)
 {% endif %}
 
 
@@ -131,37 +110,25 @@ class {{ guard_name }}RoleGuard({{ guard_name }}Guard):
 # =============================================================================
 
 {% if guard_type == 'permission' %}
-class {{ guard_name }}PermissionGuard({{ guard_name }}Guard):
+class {{ guard_name }}PermissionGuard(PermissionGuard):
     """Permission-based guard for {{ guard_name }}.
-    
-    Checks if the user has one of the required permissions.
+
+    Checks if the user has the required permissions; override
+    :meth:`can_activate` to add custom authorization logic.
     """
-    
+
     def __init__(
         self,
-        permissions: list[str],
-        authorization_provider: AuthorizationProvider | None = None,
-    ):
+        *permissions: str,
+        require_all: bool = True,
+    ) -> None:
         """Initialize the permission guard.
-        
+
         Args:
             permissions: List of required permissions.
-            authorization_provider: Optional authorization service.
+            require_all: Require all permissions (default) or any of them.
         """
-        super().__init__(authorization_provider)
-        self.permissions = permissions
-    
-    async def _check_{{ guard_name_snake }}(
-        self,
-        user: Any,
-        context: GuardContext,
-    ) -> bool:
-        """Check if user has required permission."""
-        if not hasattr(user, "permissions"):
-            return False
-        
-        user_permissions = user.permissions if isinstance(user.permissions, list) else []
-        return any(perm in user_permissions for perm in self.permissions)
+        super().__init__(*permissions, require_all=require_all)
 {% endif %}
 
 
@@ -171,17 +138,14 @@ class {{ guard_name }}PermissionGuard({{ guard_name }}Guard):
 
 # In routes:
 #
-# from lexigram import Router
-# from {{ package_name }}.{{ guard_name_snake }}_guard import {{ guard_name }}Guard
+# from lexigram.auth.web import use_guards
 #
-# router = Router()
-#
-# @router.get("/{{ guard_name_snake }}", guards=[{{ guard_name }}Guard()])
+# @use_guards({{ guard_name }}Guard())
 # async def protected_endpoint(request):
 #     return {"message": "Authorized!"}
 #
 # Or with roles:
 #
-# @router.get("/admin", guards=[{{ guard_name }}RoleGuard(roles=["admin"])])
+# @use_guards({{ guard_name }}RoleGuard("admin"))
 # async def admin_endpoint(request):
 #     return {"message": "Admin only!"}

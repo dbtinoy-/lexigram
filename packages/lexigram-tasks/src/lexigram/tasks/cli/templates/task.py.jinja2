@@ -4,68 +4,64 @@
 {{ doc }}
 {% endif %}
 """
+
+from __future__ import annotations
+
+import uuid as _uuid
 from typing import Any
 
 from lexigram.di import injectable
-from lexigram.tasks import task, TaskResult, TaskStatus
+from lexigram.logging import get_logger
+from lexigram.tasks import JobProtocol, TaskProvider
+{% if schedule %}
+from lexigram.tasks import scheduled
+{% else %}
+from lexigram.tasks import task
+{% endif %}
 
+logger = get_logger(__name__)
 
+{% if schedule %}
+@scheduled(
+    cron="{{ schedule }}",
+    name="{{ resource_name }}",
+)
+{% else %}
 @task(
     name="{{ resource_name }}",
-    description="{{ doc or 'Task for processing ' + resource_name }}",
-    {% if schedule %}schedule="{{ schedule }}",{% endif %}
 )
+{% endif %}
 async def {{ name }}(
     *args: Any,
     **kwargs: Any,
-) -> TaskResult:
+) -> dict[str, Any]:
     """{{ doc or 'Process ' + resource_name }}.
-    
-    This is an async background task that can be scheduled or triggered manually.
-    
+
+    This is an async background task that can be enqueued through
+    :class:`TaskProvider` or scheduled with a cron expression.
+
     Args:
         *args: Positional arguments.
         **kwargs: Keyword arguments.
-        
+
     Returns:
-        TaskResult with success status and any result data.
+        Result data produced by the task.
     """
-    # Import logger inside function to avoid circular imports
-    from lexigram.logging import get_logger
-    
-    logger = get_logger("task.{{ name }}")
-    
-    logger.info(f"Starting {{ name }} task", extra={"args": args, "kwargs": kwargs})
-    
+    logger.info("{{ name }}_started", args=args, kwargs=kwargs)
+
     try:
         # Extract parameters from kwargs
         {% for param in params %}
         {{ param.name }} = kwargs.get("{{ param.name }}", {{ param.default }})
         {% endfor %}
-        
-        # TODO: Add your task logic here
-        # Example:
-        # result = await process_{{ resource_name }}({{ name }}={{ name }})
-        
-        # Process the task
+
         result_data = await _process_{{ resource_name }}(*args, **kwargs)
-        
-        logger.info(f"{{ name }} task completed successfully")
-        
-        return TaskResult(
-            status=TaskStatus.SUCCESS,
-            message="{{ name }} completed successfully",
-            data=result_data,
-        )
-        
-    except Exception as e:  # noqa: BLE001
-        logger.exception(f"{{ name }} task failed: {e}")
-        
-        return TaskResult(
-            status=TaskStatus.FAILED,
-            message=f"Task failed: {str(e)}",
-            error=str(e),
-        )
+
+        logger.info("{{ name }}_completed", result=result_data)
+        return result_data
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("{{ name }}_failed", error=str(exc))
+        raise
 
 
 async def _process_{{ resource_name }}(
@@ -73,21 +69,21 @@ async def _process_{{ resource_name }}(
     **kwargs: Any,
 ) -> dict[str, Any]:
     """Internal processing logic for the {{ name }} task.
-    
+
     Args:
         *args: Positional arguments.
         **kwargs: Keyword arguments.
-        
+
     Returns:
         Processing result data.
     """
     # TODO: Implement your task logic here
-    
+    #
     # Example:
     # from {{ package_name }}.services import {{ class_name }}Service
-    # service = await {{ class_name }}Service()
+    # service = {{ class_name }}Service()
     # result = await service.process(...)
-    
+
     return {
         "processed": True,
         "count": len(args),
@@ -97,84 +93,55 @@ async def _process_{{ resource_name }}(
 @injectable
 class {{ class_name }}TaskRunner:
     """Task runner for {{ class_name }} operations.
-    
-    This class provides a convenient way to dispatch {{ name }} tasks
-    and manage their execution.
+
+    Provides a convenient way to enqueue {{ name }} tasks through the
+    injected :class:`~lexigram.tasks.TaskProvider`.
     """
-    
-    def __init__(self):
-        """Initialize the task runner."""
-        from lexigram.tasks.dispatcher import TaskDispatcher
-        
-        self.dispatcher = TaskDispatcher()
-        self._logger = None
-    
+
+    def __init__(self, provider: TaskProvider) -> None:
+        """Initialize the task runner.
+
+        Args:
+            provider: Task provider used to enqueue jobs.
+        """
+        self._provider = provider
+
     @property
-    def logger(self):
-        """Get logger."""
-        if self._logger is None:
-            from lexigram.logging import get_logger
-            self._logger = get_logger("{{ class_name }}TaskRunner")
-        return self._logger
-    
+    def logger(self) -> Any:
+        """Return the module logger."""
+        return logger
+
     async def run(
         self,
         {% for param in params %}
-        {{ param.name }}: {{ param.type }} = {{ param.default }},
+        {{ param.name }}: Any = {{ param.default }},
         {% endfor %}
-        delay: float = 0,
     ) -> str:
         """Run the {{ name }} task.
-        
+
         Args:
             {% for param in params %}
             {{ param.name }}: {{ param.description or 'The ' + param.name }}
             {% endfor %}
-            delay: Optional delay in seconds before running.
-            
+
         Returns:
-            Task ID for tracking.
+            Job ID for tracking.
         """
-        task_kwargs = {
+        task_kwargs: dict[str, Any] = {
             {% for param in params %}
             "{{ param.name }}": {{ param.name }},
             {% endfor %}
         }
-        
-        self.logger.info(f"Dispatching {{ name }} task", extra=task_kwargs)
-        
-        if delay > 0:
-            # Schedule task for later
-            task_id = await self.dispatcher.schedule(
-                {{ name }},
-                delay=delay,
-                **task_kwargs,
-            )
-        else:
-            # Run task immediately
-            task_id = await self.dispatcher.dispatch(
-                {{ name }},
-                **task_kwargs,
-            )
-        
-        self.logger.info(f"{{ name }} task dispatched with ID: {task_id}")
-        
-        return task_id
-    
-    async def run_periodic(self, interval: float = 60) -> str:
-        """Run the {{ name }} task periodically.
-        
-        Args:
-            interval: Interval in seconds between runs.
-            
-        Returns:
-            Task ID for tracking.
-        """
-        self.logger.info(f"Scheduling {{ name }} task to run every {interval}s")
-        
-        task_id = await self.dispatcher.schedule_periodic(
-            {{ name }},
-            interval=interval,
+
+        logger.info("{{ name }}_dispatch", task_kwargs=task_kwargs)
+
+        job = JobProtocol(
+            id=_uuid.uuid4().hex,
+            name="{{ resource_name }}",
+            args=(),
+            kwargs=task_kwargs,
         )
-        
-        return task_id
+        job_id = await self._provider.enqueue_job(job)
+
+        logger.info("{{ name }}_dispatched", job_id=job_id)
+        return job_id
