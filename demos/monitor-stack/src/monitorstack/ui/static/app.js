@@ -45,7 +45,7 @@ async function refreshHealth() {
         `<span class="status-${escapeHtml(check.status)}">${escapeHtml(check.status)}</span></div>`
       ).join("");
   } catch (e) {
-    showError(`Health check failed: ${e.message}`);
+    $("health-grid").innerHTML = "<p class='muted'>Health check unavailable — start the demo to see checks.</p>";
     log(`health check failed: ${e.message}`, "log-error");
   }
 }
@@ -69,7 +69,7 @@ async function refreshMetrics() {
     ].join("");
     $("metrics-grid").innerHTML = html || "<p class=\"muted\">No metrics recorded yet.</p>";
   } catch (e) {
-    showError(`Metrics unavailable: ${e.message}`);
+    $("metrics-grid").innerHTML = "<p class='muted'>Metrics unavailable — start the demo to see metrics.</p>";
     log(`metrics refresh failed: ${e.message}`, "log-error");
   }
 }

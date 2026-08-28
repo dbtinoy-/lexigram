@@ -80,4 +80,6 @@ document.querySelectorAll("#scenarios button").forEach((b) =>
   }));
 $("ask-form").addEventListener("submit", ask);
 setActiveButton();
-loadTools().catch((error) => showError(`Tools unavailable: ${error.message}`));
+loadTools().catch((error) => {
+  $("tools").innerHTML = "<li class='muted'>Tools unavailable — start the demo to see tools.</li>";
+});

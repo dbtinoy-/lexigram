@@ -99,4 +99,7 @@ $("policy-toggle").addEventListener("change", async (e) => {
   }
 });
 
-Promise.all([refreshState(), refreshAudit()]).catch((error) => showError(error.message));
+Promise.all([refreshState(), refreshAudit()]).catch(() => {
+  $("state").textContent = "Services not configured — start the demo to see budget state.";
+  $("audit-body").innerHTML = "<tr><td colspan='3' class='muted'>No audit data yet.</td></tr>";
+});

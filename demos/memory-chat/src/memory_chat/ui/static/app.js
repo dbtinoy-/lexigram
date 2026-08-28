@@ -50,7 +50,7 @@ async function loadFacts() {
           .join("")
       : "<li class='muted'>nothing yet</li>";
   } catch (e) {
-    showError(`Facts unavailable: ${e.message}`);
+    $("facts").innerHTML = "<li class='muted'>Facts unavailable — send a message to start.</li>";
   }
 }
 
@@ -95,7 +95,10 @@ async function runDemo() {
       history[turn.owner].push({ sender: "bot", text: `${turn.owner}: ${turn.reply}` }));
     renderThread();
     await loadFacts();
-    if (!body.isolation_ok) showError("Isolation check failed.");
+    if (!body.isolation_ok) {
+      history[owner].push({ sender: "bot", text: "Isolation check failed — owner data may overlap." });
+      renderThread();
+    }
   } catch (e) {
     showError(`Demo failed: ${e.message}`);
   } finally {
