@@ -19,22 +19,9 @@ from lexigram.queue.admin.contributor import QueueAdminContributor
 from lexigram.queue.admin.handlers.consumer_lag import ConsumerLagWidgetHandler
 from lexigram.queue.admin.handlers.failed_messages import FailedMessagesWidgetHandler
 from lexigram.queue.admin.handlers.queue_depth import QueueDepthWidgetHandler
-from lexigram.queue.backends import (
-    InMemoryQueue,
-    KafkaQueue,
-    RabbitMQQueue,
-    RedisQueue,
-    SQSQueue,
-)
-from lexigram.queue.config import (
-    KafkaDriverConfig,
-    NamedQueueConfig,
-    QueueConfig,
-    RabbitMQDriverConfig,
-    RedisDriverConfig,
-    SQSDriverConfig,
-)
+from lexigram.queue.config import NamedQueueConfig, QueueConfig
 from lexigram.queue.core.dlq import DeadLetterQueue
+from lexigram.queue.drivers.registry import QueueDriverRegistry
 
 if TYPE_CHECKING:
     from lexigram.contracts.core.di import (
@@ -104,42 +91,8 @@ class QueueProvider(Provider):
         Raises:
             ValueError: If driver is unsupported.
         """
-        if entry.driver == "memory":
-            return InMemoryQueue()
-
-        if entry.driver == "redis":
-            redis_cfg = entry.redis or RedisDriverConfig()
-            return RedisQueue(
-                url=redis_cfg.url or "redis://localhost:6379/0",
-                max_connections=redis_cfg.max_connections,
-            )
-
-        if entry.driver == "rabbitmq":
-            rabbitmq_cfg = entry.rabbitmq or RabbitMQDriverConfig()
-            return RabbitMQQueue(
-                url=rabbitmq_cfg.url or "amqp://guest:guest@localhost/",
-                exchange=rabbitmq_cfg.exchange,
-                prefetch_count=rabbitmq_cfg.prefetch_count,
-            )
-
-        if entry.driver == "kafka":
-            kafka_cfg = entry.kafka or KafkaDriverConfig()
-            return KafkaQueue(
-                bootstrap_servers=kafka_cfg.bootstrap_servers or "localhost:9092",
-                client_id=kafka_cfg.client_id,
-                group_id=kafka_cfg.group_id,
-                auto_offset_reset=kafka_cfg.auto_offset_reset,
-            )
-
-        if entry.driver == "sqs":
-            sqs_cfg = entry.sqs or SQSDriverConfig()
-            return SQSQueue(
-                region=sqs_cfg.region,
-                queue_url=sqs_cfg.queue_url or "",
-                visibility_timeout=sqs_cfg.visibility_timeout,
-            )
-
-        raise ValueError(f"Unsupported queue driver: {entry.driver!r}")
+        registry = QueueDriverRegistry.with_defaults()
+        return registry.create_backend(entry.driver, entry)
 
     async def register(self, container: ContainerRegistrarProtocol) -> None:
         """Bind all queue backends into the container.
