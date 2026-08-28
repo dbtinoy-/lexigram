@@ -106,7 +106,7 @@ class MessagePackSerializer(AsyncStringSerializerProtocol):
 
     def serialize(self, data: Any) -> bytes:
         try:
-            import msgpack  # type: ignore[import-untyped]
+            import msgpack  # type: ignore[import-not-found]
         except ImportError:
             raise ImportError("msgpack not installed") from None
 

@@ -84,7 +84,7 @@ def _otel_processor(
 ) -> dict[str, Any]:
     """Inject OpenTelemetry trace and span IDs into the event dict."""
     try:
-        from opentelemetry import trace
+        from opentelemetry import trace  # type: ignore[import-not-found]
 
         span = trace.get_current_span()
         if span and span.get_span_context().is_valid:

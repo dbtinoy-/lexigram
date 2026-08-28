@@ -26,7 +26,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, cast
 
-from lexigram import hashing as ambient_hashing  # type: ignore[attr-defined]
+from lexigram import hashing as ambient_hashing
 from lexigram.logging import get_logger
 from lexigram.result import Ok, Result
 from lexigram.serialization import dumps_str

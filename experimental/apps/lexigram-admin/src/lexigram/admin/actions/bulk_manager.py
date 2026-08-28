@@ -123,7 +123,7 @@ class BulkActionProgress:
     def elapsed_ms(self) -> float:
         """Get elapsed time in milliseconds."""
         delta = time.monotonic() - self.start_time
-        return delta.total_seconds() * 1000
+        return delta * 1000
 
     def increment(self, count: int = 1) -> Any:
         """Increment progress counter."""
@@ -187,7 +187,7 @@ class BulkActionManager(Generic[T]):
             progress.increment(len(batch_ids))
             await asyncio.sleep(0)
 
-        duration = (time.monotonic() - start_time).total_seconds() * 1000
+        duration = (time.monotonic() - start_time) * 1000
 
         return Ok(
             BulkActionResult(
@@ -295,7 +295,7 @@ class BulkActionManager(Generic[T]):
         if self._cache_backend is not None:
             await self._cache_backend.set(progress_key, progress.to_dict(), 300)
 
-        duration = (time.monotonic() - start_time).total_seconds() * 1000
+        duration = (time.monotonic() - start_time) * 1000
 
         return Ok(
             BulkActionResult(

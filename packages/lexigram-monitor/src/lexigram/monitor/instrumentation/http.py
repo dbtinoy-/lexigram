@@ -25,9 +25,11 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 
 # Try to import opentelemetry, but handle the case where it's broken
 try:
-    from opentelemetry import metrics, trace
-    from opentelemetry.propagate import extract
-    from opentelemetry.semconv.trace import SpanAttributes
+    from opentelemetry import metrics, trace  # type: ignore[import-not-found]
+    from opentelemetry.propagate import extract  # type: ignore[import-not-found]
+    from opentelemetry.semconv.trace import (
+        SpanAttributes,  # type: ignore[import-not-found]
+    )
 
     _opentelemetry_available = True
 except (ImportError, NameError):
@@ -73,10 +75,10 @@ except (ImportError, NameError):
     metrics = type("metrics", (), {"get_meter": lambda *_: _DummyMeter()})()
     trace = type("trace", (), {"get_tracer": lambda *_: _DummyTracer()})()
 
-    def extract(*args: Any) -> Any:  # type: ignore[misc]
+    def extract(*args: Any) -> Any:
         return None
 
-    SpanAttributes = type(  # type: ignore[misc]
+    SpanAttributes = type(
         "SpanAttributes",
         (),
         {
@@ -128,10 +130,10 @@ class OTelMiddleware:
                 description="Duration of HTTP requests",
             )
         else:
-            self.tracer = None  # type: ignore[assignment]
-            self.meter = None  # type: ignore[assignment]
-            self.request_counter = None  # type: ignore[assignment]
-            self.request_duration = None  # type: ignore[assignment]
+            self.tracer = None
+            self.meter = None
+            self.request_counter = None
+            self.request_duration = None
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         """Process an HTTP request and record tracing and metrics.

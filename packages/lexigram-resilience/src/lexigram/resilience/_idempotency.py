@@ -5,7 +5,7 @@ from __future__ import annotations
 import functools
 from typing import TYPE_CHECKING, Any
 
-from lexigram import hashing, serialization  # type: ignore[attr-defined]
+from lexigram import hashing, serialization
 from lexigram.logging import get_logger
 
 if TYPE_CHECKING:

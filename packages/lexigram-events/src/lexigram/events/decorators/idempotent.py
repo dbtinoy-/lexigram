@@ -20,7 +20,7 @@ from __future__ import annotations
 import functools
 from typing import TYPE_CHECKING, Any, ParamSpec, cast
 
-from lexigram import hashing  # type: ignore[attr-defined]
+from lexigram import hashing
 from lexigram.events.decorators.idempotency_cache import IdempotencyCache
 
 if TYPE_CHECKING:

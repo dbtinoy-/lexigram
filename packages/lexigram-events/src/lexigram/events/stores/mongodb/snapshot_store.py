@@ -193,7 +193,7 @@ class MongoDBSnapshotStore(AbstractSnapshotStore):
             },
         )
 
-        return result.deleted_count
+        return int(result.deleted_count)
 
     def _doc_to_snapshot(self, doc: dict[str, Any]) -> Snapshot:
         """Convert a MongoDB document to a Snapshot (M-14)."""

@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Any, Literal, cast
 
-from lexigram import hashing as ambient_hashing  # type: ignore[attr-defined]
+from lexigram import hashing as ambient_hashing
 from lexigram.logging import get_logger
 from lexigram.primitives import clock as ambient_clock
 from lexigram.search.exceptions import CacheError

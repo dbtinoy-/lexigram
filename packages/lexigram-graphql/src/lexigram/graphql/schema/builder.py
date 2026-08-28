@@ -231,7 +231,7 @@ class SchemaBuilderProtocol:
         from lexigram.graphql.security.depth import DepthLimitExtension
 
         cfg = self._config
-        env_raw = cfg.env or os.getenv("LEX_ENV", "development") or "development"
+        env_raw: str = cfg.env or os.getenv("LEX_ENV", "development") or "development"
         introspection_enabled = (
             cfg.introspection.enabled
             and env_raw.lower() in cfg.introspection.allowed_environments

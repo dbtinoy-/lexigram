@@ -11,12 +11,12 @@ from lexigram.security.config import InputSanitizerConfig
 logger = get_logger(__name__)
 
 try:
-    import nh3 as _nh3
+    import nh3 as _nh3  # type: ignore[import-not-found]
 
     _NH3_AVAILABLE = True
 except ImportError:  # pragma: no cover
     _NH3_AVAILABLE = False
-    _nh3 = None  # type: ignore[assignment]
+    _nh3 = None
 
 # Safe conservative defaults for the standalone sanitize_html function.
 _DEFAULT_TAGS: frozenset[str] = frozenset(
@@ -99,13 +99,13 @@ def sanitize_html(
     tags = allowed_tags if allowed_tags is not None else set(_DEFAULT_TAGS)
     attrs = allowed_attributes if allowed_attributes is not None else _DEFAULT_ATTRS
 
-    return _nh3.clean(
+    return str(_nh3.clean(
         html_input,
         tags=tags,
         attributes=attrs,
         strip_comments=strip_comments,
         link_rel=None,
-    )
+    ))
 
 
 class HtmlSanitizer:
@@ -153,12 +153,12 @@ class HtmlSanitizer:
         tags: set[str] = (
             set(self._config.allowed_tags) if self._config.allowed_tags else set()
         )
-        return _nh3.clean(
+        return str(_nh3.clean(
             value,
             tags=tags,
             attributes=None,
             strip_comments=self._config.strip_comments,
-        )
+        ))
 
     def strip_dangerous(self, text: str) -> str:
         """Strip dangerous HTML tags and attributes from text.

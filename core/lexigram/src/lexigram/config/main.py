@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import difflib
 import os
-from typing import Any, ClassVar, TypeVar
+from typing import Any, ClassVar, TypeVar, cast
 
 from lexigram.app.config.discovery import ModuleDiscoveryConfig
 from lexigram.app.config.models import HealthConfig
@@ -138,7 +138,7 @@ class LexigramConfig(BaseConfig):
             # Return dict or attribute value; empty dict for missing sections
             if data is None:
                 return {}
-            return data
+            return cast("T | dict[str, Any]", data)
 
         if isinstance(data, model_cls):
             return data

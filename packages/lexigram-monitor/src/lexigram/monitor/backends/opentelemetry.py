@@ -26,10 +26,19 @@ MeterProvider: Any = None
 TracerProvider: Any = None
 
 try:
-    from opentelemetry import metrics, trace
-    from opentelemetry.sdk.metrics import MeterProvider
-    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry import metrics as _metrics  # type: ignore[import-not-found]
+    from opentelemetry import trace as _trace  # type: ignore[import-not-found]
+    from opentelemetry.sdk.metrics import (
+        MeterProvider as _MP,  # type: ignore[import-not-found]  # noqa: N814
+    )
+    from opentelemetry.sdk.trace import (
+        TracerProvider as _TP,  # type: ignore[import-not-found]  # noqa: N814
+    )
 
+    metrics = _metrics
+    trace = _trace
+    MeterProvider = _MP
+    TracerProvider = _TP
     HAS_OPENTELEMETRY = True
 except ImportError:
     HAS_OPENTELEMETRY = False

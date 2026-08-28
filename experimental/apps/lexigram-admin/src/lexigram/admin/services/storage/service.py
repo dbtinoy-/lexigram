@@ -176,7 +176,7 @@ class AdminStorageService:
             file_info: AdminFileInfo
             if isinstance(result, AdminFileInfo):
                 file_info = result
-            elif FileInfo and isinstance(result, FileInfo):  # type: ignore[truthy-function]
+            elif FileInfo and isinstance(result, FileInfo):
                 file_info = AdminFileInfo(
                     path=result.path,
                     size=result.size,

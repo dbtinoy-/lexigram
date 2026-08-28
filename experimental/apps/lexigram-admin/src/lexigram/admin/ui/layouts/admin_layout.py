@@ -269,6 +269,7 @@ class AdminLayout(LayoutBase):
 
         # Tailwind CSS (static build)
         parts.append('<link rel="stylesheet" href="/admin/static/css/tailwind.css">')
+        parts.append('<link rel="stylesheet" href="/admin/static/css/admin.css">')
         parts.append(DARK_BOOTSTRAP_SCRIPT)
         parts.append(THEME_BRIDGE_SCRIPT)
 

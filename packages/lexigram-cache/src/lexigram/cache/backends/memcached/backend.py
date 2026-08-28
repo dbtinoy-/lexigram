@@ -11,9 +11,9 @@ import contextlib
 from typing import Any
 
 try:
-    import pymemcache  # type: ignore[import-untyped]
+    import pymemcache  # type: ignore[import-not-found]
     from pymemcache import Client as AsyncMemcachedClient
-    from pymemcache.client.base import (  # type: ignore[import-untyped]
+    from pymemcache.client.base import (  # type: ignore[import-not-found]
         Client as MemcachedClient,
     )
 except ImportError:

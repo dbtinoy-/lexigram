@@ -63,7 +63,8 @@ def _resolve_backend(app: Any) -> str:
             web = config.get_section("web", WebConfig)
             requested = web.server.backend
             if _is_available(requested):
-                return requested
+                result: str = str(requested)
+                return result
         except Exception:
             pass
 
@@ -85,21 +86,21 @@ def _is_available(name: str) -> bool:
             return False
     if name == "uvicorn":
         try:
-            import uvicorn  # noqa: F401
+            import uvicorn  # type: ignore[import-not-found]  # noqa: F401
 
             return True
         except ImportError:
             return False
     if name == "hypercorn":
         try:
-            import hypercorn  # noqa: F401
+            import hypercorn  # type: ignore[import-not-found]  # noqa: F401
 
             return True
         except ImportError:
             return False
     if name == "gunicorn":
         try:
-            import gunicorn  # noqa: F401
+            import gunicorn  # type: ignore[import-untyped]  # noqa: F401
 
             return True
         except ImportError:
@@ -124,7 +125,7 @@ def _to_import_string(app: Any) -> str | None:
             # Walk up to 10 frames looking for a module with create_app
             caller_frame = frame
             for _ in range(10):
-                caller_frame = caller_frame.f_back
+                caller_frame = caller_frame.f_back if caller_frame is not None else None
                 if caller_frame is None:
                     break
                 caller_module = caller_frame.f_globals.get("__name__")
@@ -144,7 +145,7 @@ def _to_import_string(app: Any) -> str | None:
         module = app.__class__.__module__
         if module == "builtins" or module.startswith("starlette."):
             return None
-        return f"{module}:{app.__class__.__name__}"
+        return str(f"{module}:{app.__class__.__name__}")
     except (AttributeError, TypeError):
         return None
 
@@ -190,8 +191,7 @@ def run_server(
         # Granian needs the main thread for signal handling, so we spawn it
         # as a subprocess (like gunicorn).  Uvicorn works fine in a thread.
         backend = _resolve_backend(app)
-        if host is None or port is None:
-            host, port = _resolve_web_config(app, host, port)
+        host, port = _resolve_web_config(app, host, port)
 
         if backend == "granian":
             import_str = _to_import_string(app) if not isinstance(app, str) else app
@@ -221,16 +221,13 @@ async def _run_in_loop(
 ) -> None:
     """Dispatch from within a running event loop."""
     backend = _resolve_backend(app)
+    host, port = _resolve_web_config(app, host, port)
 
     if backend == "uvicorn":
-        if host is None or port is None:
-            host, port = _resolve_web_config(app, host, port)
         await _run_uvicorn_async(app, host, port, **kwargs)
         return
 
     if backend == "granian":
-        if host is None or port is None:
-            host, port = _resolve_web_config(app, host, port)
         import_str = _to_import_string(app) if not isinstance(app, str) else app
         if import_str is None:
             logger.warning(
@@ -246,16 +243,12 @@ async def _run_in_loop(
         return
 
     if backend == "gunicorn":
-        if host is None or port is None:
-            host, port = _resolve_web_config(app, host, port)
         await loop.run_in_executor(
             None, lambda: _run_gunicorn(app, host, port, **kwargs)
         )
         return
 
     logger.warning("unknown_backend_fallback_uvicorn", backend=backend)
-    if host is None or port is None:
-        host, port = _resolve_web_config(app, host, port)
     await _run_uvicorn_async(app, host, port, **kwargs)
 
 
@@ -266,8 +259,7 @@ def _run_sync(
     **kwargs: Any,
 ) -> None:
     """Dispatch from sync context (no event loop running)."""
-    if host is None or port is None:
-        host, port = _resolve_web_config(app, host, port)
+    host, port = _resolve_web_config(app, host, port)
 
     backend = _resolve_backend(app)
     logger.info("server_backend_resolved", backend=backend, host=host, port=port)
@@ -313,8 +305,8 @@ def _run_granian(
 ) -> None:
     """Run via Granian (multiprocess)."""
     try:
-        from granian import Granian
-        from granian.constants import Interfaces
+        from granian import Granian  # type: ignore[import-not-found]
+        from granian.constants import Interfaces  # type: ignore[import-not-found]
     except ImportError as e:
         raise ImportError(
             "Granian is not installed. Install 'granian' to use this backend.",
@@ -339,7 +331,7 @@ def _run_uvicorn(
     **kwargs: Any,
 ) -> None:
     """Run via Uvicorn (sync context — creates its own event loop)."""
-    import uvicorn
+    import uvicorn  # type: ignore[import-not-found]
 
     logger.info("starting_uvicorn_server", host=host, port=port, kwargs=kwargs)
     config = uvicorn.Config(app, host=host, port=port, **kwargs)
@@ -356,7 +348,7 @@ async def _run_uvicorn_async(
     **kwargs: Any,
 ) -> None:
     """Run via Uvicorn (async context — reuses the running loop)."""
-    import uvicorn
+    import uvicorn  # type: ignore[import-not-found]
 
     logger.info("starting_uvicorn_server", host=host, port=port, kwargs=kwargs)
     config = uvicorn.Config(app, host=host, port=port, **kwargs)
@@ -373,7 +365,7 @@ def _run_uvicorn_via_thread(
     """Run Uvicorn in a background thread (for async-context callers)."""
     import concurrent.futures
 
-    import uvicorn
+    import uvicorn  # type: ignore[import-not-found]
 
     logger.info("starting_uvicorn_server", host=host, port=port, kwargs=kwargs)
 
@@ -400,6 +392,8 @@ def _run_gunicorn(
 ) -> None:
     """Run via Gunicorn with Uvicorn workers."""
     import subprocess  # noqa: S404 — registry-built argv list
+
+    import gunicorn  # type: ignore[import-not-found]  # noqa: F401
 
     workers = kwargs.get("workers", 1)
     cmd = [
