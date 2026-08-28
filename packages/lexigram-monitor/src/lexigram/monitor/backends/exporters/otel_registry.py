@@ -44,7 +44,7 @@ class ConsoleTracingExporterHandler:
             A ConsoleSpanExporter instance.
         """
         from opentelemetry.sdk.trace.export import (
-            ConsoleSpanExporter,  # type: ignore[import-not-found]
+            ConsoleSpanExporter,
         )
 
         return ConsoleSpanExporter()
@@ -76,7 +76,7 @@ class OTLPTracingExporterHandler:
         Returns:
             An OTLPSpanExporter instance.
         """
-        from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (  # type: ignore[import-not-found]
+        from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
             OTLPSpanExporter,
         )
 
@@ -125,7 +125,7 @@ class ConsoleMetricsExporterHandler:
             A ConsoleMetricExporter instance.
         """
         from opentelemetry.sdk.metrics.export import (
-            ConsoleMetricExporter,  # type: ignore[import-not-found]
+            ConsoleMetricExporter,
         )
 
         return ConsoleMetricExporter()
@@ -157,7 +157,7 @@ class OTLPMetricsExporterHandler:
         Returns:
             An OTLPMetricExporter instance.
         """
-        from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import (  # type: ignore[import-not-found]
+        from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import (
             OTLPMetricExporter,
         )
 

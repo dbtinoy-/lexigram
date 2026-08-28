@@ -20,9 +20,9 @@ from typing import Any
 from lexigram.logging import get_logger
 
 try:
-    from opentelemetry import metrics, trace  # type: ignore[import-not-found]
+    from opentelemetry import metrics, trace
     from opentelemetry.semconv.trace import (
-        SpanAttributes,  # type: ignore[import-not-found]
+        SpanAttributes,
     )
 
     _opentelemetry_available = True

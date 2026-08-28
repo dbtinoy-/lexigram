@@ -13,7 +13,7 @@
 | Package | Findings | Violations | Unused optional extras |
 |---|---|---|---|
 | lexigram | 14 | 0 | 0 |
-| lexigram-admin | 141 | 0 | 4 |
+| lexigram-admin | 162 | 0 | 5 |
 | lexigram-ai | 1 | 0 | 31 |
 | lexigram-ai-agents | 0 | 0 | 0 |
 | lexigram-ai-evaluation | 0 | 0 | 0 |
@@ -27,21 +27,21 @@
 | lexigram-ai-prompt | 0 | 0 | 0 |
 | lexigram-ai-rag | 11 | 0 | 7 |
 | lexigram-ai-relay | 0 | 0 | 0 |
-| lexigram-ai-relay-gateway | 19 | 0 | 0 |
+| lexigram-ai-relay-gateway | 21 | 0 | 0 |
 | lexigram-ai-session | 0 | 0 | 0 |
 | lexigram-ai-skills | 1 | 0 | 0 |
 | lexigram-ai-workers | 0 | 0 | 0 |
 | lexigram-audit | 1 | 0 | 0 |
-| lexigram-auth | 25 | 0 | 0 |
+| lexigram-auth | 27 | 0 | 0 |
 | lexigram-cache | 10 | 0 | 3 |
-| lexigram-cli | 34 | 0 | 0 |
+| lexigram-cli | 38 | 0 | 0 |
 | lexigram-contracts | 4 | 0 | 0 |
-| lexigram-events | 4 | 0 | 5 |
+| lexigram-events | 2 | 0 | 5 |
 | lexigram-features | 1 | 0 | 1 |
 | lexigram-graph | 2 | 0 | 0 |
 | lexigram-graphql | 24 | 0 | 1 |
 | lexigram-http | 3 | 0 | 1 |
-| lexigram-monitor | 23 | 1 | 3 |
+| lexigram-monitor | 24 | 0 | 3 |
 | lexigram-multimedia | 0 | 0 | 0 |
 | lexigram-multimedia-beat | 3 | 0 | 4 |
 | lexigram-multimedia-image | 4 | 0 | 0 |
@@ -50,20 +50,20 @@
 | lexigram-multimedia-tts | 11 | 0 | 7 |
 | lexigram-multimedia-upscale | 5 | 0 | 0 |
 | lexigram-multimedia-video | 11 | 0 | 3 |
-| lexigram-nosql | 3 | 0 | 3 |
+| lexigram-nosql | 2 | 0 | 3 |
 | lexigram-notification | 3 | 0 | 5 |
-| lexigram-queue | 1 | 0 | 0 |
+| lexigram-queue | 0 | 0 | 0 |
 | lexigram-resilience | 0 | 0 | 0 |
 | lexigram-search | 1 | 0 | 7 |
 | lexigram-secrets | 0 | 0 | 5 |
-| lexigram-sql | 17 | 0 | 0 |
+| lexigram-sql | 18 | 0 | 0 |
 | lexigram-storage | 9 | 0 | 3 |
 | lexigram-tasks | 7 | 0 | 3 |
 | lexigram-tenancy | 1 | 0 | 0 |
-| lexigram-testing | 47 | 0 | 9 |
+| lexigram-testing | 58 | 0 | 9 |
 | lexigram-ui | 12 | 0 | 2 |
 | lexigram-vector | 7 | 0 | 3 |
-| lexigram-web | 87 | 0 | 9 |
+| lexigram-web | 88 | 0 | 9 |
 | lexigram-webhook | 1 | 0 | 0 |
 | lexigram-workflow | 1 | 0 | 0 |
 
@@ -71,7 +71,7 @@
 
 | module | status | guard | location |
 |---|---|---|---|
-| `jinja2` | declared | module | core/lexigram/src/lexigram/codegen/base.py:10 |
+| `jinja2` | guarded | type-only | core/lexigram/src/lexigram/codegen/base.py:36 |
 | `structlog` | declared | module | core/lexigram/src/lexigram/logging/configurator.py:13 |
 | `structlog` | declared | module | core/lexigram/src/lexigram/logging/configurator.py:14 |
 | `structlog` | declared | module | core/lexigram/src/lexigram/logging/factory.py:12 |
@@ -90,9 +90,9 @@
 
 | module | status | guard | location |
 |---|---|---|---|
-| `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/auth/guards.py:14 |
-| `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/auth/guards.py:15 |
-| `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/auth/guards.py:16 |
+| `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/auth/guards.py:17 |
+| `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/auth/guards.py:18 |
+| `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/auth/route_guards.py:13 |
 | `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/auth/services/delegating_auth_adapter.py:20 |
 | `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/auth/services/delegating_auth_adapter.py:21 |
 | `segno` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/auth/services/mfa_service.py:13 |
@@ -119,6 +119,9 @@
 | `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/controllers/dashboard.py:11 |
 | `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/controllers/error.py:8 |
 | `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/controllers/error.py:9 |
+| `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/controllers/impersonation.py:7 |
+| `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/controllers/impersonation.py:8 |
+| `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/controllers/impersonation.py:9 |
 | `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/controllers/plugins.py:18 |
 | `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/controllers/plugins.py:19 |
 | `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/controllers/pool_health.py:11 |
@@ -129,6 +132,7 @@
 | `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/controllers/progress.py:10 |
 | `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/controllers/resource/bulk.py:7 |
 | `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/controllers/resource/bulk.py:8 |
+| `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/controllers/resource/core.py:7 |
 | `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/controllers/resource/detail.py:7 |
 | `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/controllers/resource/detail.py:8 |
 | `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/controllers/resource/imports.py:7 |
@@ -137,12 +141,25 @@
 | `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/controllers/resource/list.py:8 |
 | `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/controllers/resource/mutation.py:8 |
 | `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/controllers/resource/mutation.py:9 |
+| `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/controllers/route_collection.py:8 |
+| `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/controllers/route_collection.py:9 |
 | `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/controllers/search.py:12 |
 | `starlette` | declared | type-only | experimental/apps/lexigram-admin/src/lexigram/admin/controllers/search.py:17 |
 | `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/controllers/settings.py:11 |
 | `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/controllers/settings.py:12 |
-| `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/controllers/setup.py:13 |
 | `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/controllers/setup.py:14 |
+| `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/controllers/setup.py:15 |
+| `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/controllers/tenancy.py:7 |
+| `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/controllers/tenancy.py:8 |
+| `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/controllers/tenancy.py:9 |
+| `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/controllers/widget_content_handlers.py:8 |
+| `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/controllers/widget_content_handlers.py:9 |
+| `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/controllers/widget_customize_handlers.py:8 |
+| `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/controllers/widget_customize_handlers.py:9 |
+| `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/controllers/widget_handler_support.py:8 |
+| `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/controllers/widget_handler_support.py:9 |
+| `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/controllers/widget_pref_handlers.py:8 |
+| `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/controllers/widget_pref_handlers.py:9 |
 | `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/controllers/widgets.py:8 |
 | `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/controllers/widgets.py:9 |
 | `starlette` | declared | type-only | experimental/apps/lexigram-admin/src/lexigram/admin/core/rendering.py:9 |
@@ -152,17 +169,18 @@
 | `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/core/routing.py:7 |
 | `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/core/routing.py:8 |
 | `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/core/routing.py:9 |
+| `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/dashboard/page_fallbacks.py:11 |
+| `markupsafe` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/dashboard/page_handlers.py:8 |
+| `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/dashboard/page_handlers.py:9 |
+| `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/dashboard/page_handlers.py:10 |
 | `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/dashboard/page_renderer.py:10 |
-| `markupsafe` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/dashboard/route_integrator.py:9 |
-| `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/dashboard/route_integrator.py:10 |
-| `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/dashboard/route_integrator.py:11 |
 | `starlette` | declared | type-only | experimental/apps/lexigram-admin/src/lexigram/admin/dashboard/widget_stream.py:21 |
 | `starlette` | declared | type-only | experimental/apps/lexigram-admin/src/lexigram/admin/dashboard/widget_stream.py:22 |
 | `httpx` | declared | guard | experimental/apps/lexigram-admin/src/lexigram/admin/data/adapters/api_adapter.py:8 |
 | `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/engine/renderer.py:12 |
 | `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/engine/renderer.py:13 |
 | `markupsafe` | declared | guard | experimental/apps/lexigram-admin/src/lexigram/admin/engine/renderer.py:19 |
-| `pydantic` | declared | type-only | experimental/apps/lexigram-admin/src/lexigram/admin/forms/components.py:22 |
+| `pydantic` | declared | type-only | experimental/apps/lexigram-admin/src/lexigram/admin/forms/schema_generator.py:23 |
 | `markupsafe` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/lib/template/error.py:7 |
 | `markupsafe` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/lib/template/layout.py:9 |
 | `markupsafe` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/lib/template/profile.py:7 |
@@ -207,13 +225,16 @@
 | `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/relations/routes.py:8 |
 | `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/relations/routes.py:9 |
 | `starlette` | declared | type-only | experimental/apps/lexigram-admin/src/lexigram/admin/relations/routes.py:15 |
+| `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/resources/action_handlers.py:12 |
+| `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/resources/action_handlers.py:13 |
 | `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/resources/detail_renderer.py:7 |
 | `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/resources/field_renderer.py:7 |
 | `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/resources/form_renderer.py:7 |
-| `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/resources/handler.py:11 |
-| `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/resources/handler.py:12 |
-| `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/resources/list_renderer.py:7 |
+| `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/resources/handler.py:5 |
+| `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/resources/handler.py:6 |
+| `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/resources/list_renderer.py:10 |
 | `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/resources/permissions_renderer.py:12 |
+| `starlette` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/resources/wizard_renderer.py:7 |
 | `openpyxl` | guarded | guard | experimental/apps/lexigram-admin/src/lexigram/admin/services/export/adapters/excel.py:14 |
 | `openpyxl` | guarded | guard | experimental/apps/lexigram-admin/src/lexigram/admin/services/export/adapters/excel.py:15 |
 | `reportlab` | guarded | guard | experimental/apps/lexigram-admin/src/lexigram/admin/services/export/adapters/pdf.py:13 |
@@ -232,7 +253,7 @@
 | `htpy` | declared | module | experimental/apps/lexigram-admin/src/lexigram/admin/ui/organisms/dynamic_form.py:10 |
 | `htpy` | declared | type-only | experimental/apps/lexigram-admin/src/lexigram/admin/ui/views.py:16 |
 
-Optional extras not imported by package sources: `authlib`, `ldap3`, `pysaml2`, `xmlsec`
+Optional extras not imported by package sources: `authlib`, `ldap3`, `nh3`, `pysaml2`, `xmlsec`
 
 ## lexigram-ai
 
@@ -286,7 +307,7 @@ Optional extras not imported by package sources: `anthropic`, `cohere`, `groq`, 
 
 | module | status | guard | location |
 |---|---|---|---|
-| `typer` | declared | module | experimental/ai/lexigram-ai-mcp/src/lexigram/ai/mcp/cli/commands.py:11 |
+| `typer` | declared | module | experimental/ai/lexigram-ai-mcp/src/lexigram/ai/mcp/cli/commands.py:12 |
 
 ## lexigram-ai-memory
 
@@ -305,7 +326,7 @@ No third-party module-level imports.
 | module | status | guard | location |
 |---|---|---|---|
 | `aiofiles` | declared | guard | experimental/ai/lexigram-ai-rag/src/lexigram/ai/rag/loaders/_io_utils.py:9 |
-| `aiofiles` | declared | guard | experimental/ai/lexigram-ai-rag/src/lexigram/ai/rag/loaders/core.py:20 |
+| `aiofiles` | declared | guard | experimental/ai/lexigram-ai-rag/src/lexigram/ai/rag/loaders/core.py:19 |
 | `PIL` | guarded | type-only | experimental/ai/lexigram-ai-rag/src/lexigram/ai/rag/multimodal/embeddings/clip.py:18 |
 | `numpy` | declared | module | experimental/ai/lexigram-ai-rag/src/lexigram/ai/rag/multimodal/embeddings/multimodal.py:12 |
 | `librosa` | guarded | guard | experimental/ai/lexigram-ai-rag/src/lexigram/ai/rag/multimodal/loaders/audio.py:23 |
@@ -313,7 +334,7 @@ No third-party module-level imports.
 | `PIL` | guarded | type-only | experimental/ai/lexigram-ai-rag/src/lexigram/ai/rag/multimodal/loaders/image.py:38 |
 | `cv2` | guarded | guard | experimental/ai/lexigram-ai-rag/src/lexigram/ai/rag/multimodal/loaders/video.py:25 |
 | `numpy` | declared | guard | experimental/ai/lexigram-ai-rag/src/lexigram/ai/rag/multimodal/loaders/video.py:26 |
-| `yaml` | declared | module | experimental/ai/lexigram-ai-rag/src/lexigram/ai/rag/pipeline/builder.py:6 |
+| `yaml` | declared | module | experimental/ai/lexigram-ai-rag/src/lexigram/ai/rag/pipeline/builder_config.py:14 |
 | `numpy` | declared | module | experimental/ai/lexigram-ai-rag/src/lexigram/ai/rag/routing/strategies/semantic.py:8 |
 
 Optional extras not imported by package sources: `aiohttp`, `beautifulsoup4`, `flashrank`, `llmlingua`, `pypdf2`, `torch`, `transformers`
@@ -332,13 +353,15 @@ No third-party module-level imports.
 | `starlette` | declared | module | experimental/ai/lexigram-ai-relay-gateway/src/lexigram/ai/relay/gateway/web/image_endpoints.py:20 |
 | `starlette` | declared | module | experimental/ai/lexigram-ai-relay-gateway/src/lexigram/ai/relay/gateway/web/image_endpoints.py:21 |
 | `starlette` | declared | module | experimental/ai/lexigram-ai-relay-gateway/src/lexigram/ai/relay/gateway/web/image_endpoints.py:22 |
-| `starlette` | declared | module | experimental/ai/lexigram-ai-relay-gateway/src/lexigram/ai/relay/gateway/web/routes/builder.py:7 |
+| `starlette` | declared | module | experimental/ai/lexigram-ai-relay-gateway/src/lexigram/ai/relay/gateway/web/routes/builder.py:8 |
 | `starlette` | declared | module | experimental/ai/lexigram-ai-relay-gateway/src/lexigram/ai/relay/gateway/web/routes/common.py:9 |
 | `starlette` | declared | module | experimental/ai/lexigram-ai-relay-gateway/src/lexigram/ai/relay/gateway/web/routes/common.py:10 |
+| `starlette` | declared | module | experimental/ai/lexigram-ai-relay-gateway/src/lexigram/ai/relay/gateway/web/routes/health.py:19 |
+| `starlette` | declared | module | experimental/ai/lexigram-ai-relay-gateway/src/lexigram/ai/relay/gateway/web/routes/health.py:20 |
 | `starlette` | declared | module | experimental/ai/lexigram-ai-relay-gateway/src/lexigram/ai/relay/gateway/web/routes/jobs.py:7 |
 | `starlette` | declared | module | experimental/ai/lexigram-ai-relay-gateway/src/lexigram/ai/relay/gateway/web/routes/jobs.py:8 |
-| `starlette` | declared | module | experimental/ai/lexigram-ai-relay-gateway/src/lexigram/ai/relay/gateway/web/routes/models.py:5 |
-| `starlette` | declared | module | experimental/ai/lexigram-ai-relay-gateway/src/lexigram/ai/relay/gateway/web/routes/models.py:6 |
+| `starlette` | declared | module | experimental/ai/lexigram-ai-relay-gateway/src/lexigram/ai/relay/gateway/web/routes/models.py:7 |
+| `starlette` | declared | module | experimental/ai/lexigram-ai-relay-gateway/src/lexigram/ai/relay/gateway/web/routes/models.py:8 |
 | `starlette` | declared | module | experimental/ai/lexigram-ai-relay-gateway/src/lexigram/ai/relay/gateway/web/routes/passthrough.py:7 |
 | `starlette` | declared | module | experimental/ai/lexigram-ai-relay-gateway/src/lexigram/ai/relay/gateway/web/routes/passthrough.py:8 |
 | `starlette` | declared | module | experimental/ai/lexigram-ai-relay-gateway/src/lexigram/ai/relay/gateway/web/routes/relay.py:9 |
@@ -371,14 +394,17 @@ No third-party module-level imports.
 | module | status | guard | location |
 |---|---|---|---|
 | `jwt` | declared | module | packages/lexigram-auth/src/lexigram/auth/authn/_jwt_creation.py:13 |
-| `jwt` | declared | module | packages/lexigram-auth/src/lexigram/auth/authn/_jwt_lifecycle.py:13 |
+| `jwt` | declared | module | packages/lexigram-auth/src/lexigram/auth/authn/_jwt_refresh.py:11 |
+| `jwt` | declared | module | packages/lexigram-auth/src/lexigram/auth/authn/_jwt_revocation.py:11 |
+| `jwt` | declared | module | packages/lexigram-auth/src/lexigram/auth/authn/_jwt_verification.py:13 |
+| `jwt` | declared | module | packages/lexigram-auth/src/lexigram/auth/authn/_jwt_verification.py:14 |
+| `ldap3` | guarded | guard | packages/lexigram-auth/src/lexigram/auth/authn/_ldap_directory.py:12 |
+| `ldap3` | guarded | guard | packages/lexigram-auth/src/lexigram/auth/authn/_ldap_directory.py:13 |
+| `ldap3` | guarded | guard | packages/lexigram-auth/src/lexigram/auth/authn/_ldap_directory.py:14 |
 | `jwt` | declared | module | packages/lexigram-auth/src/lexigram/auth/authn/blacklist.py:16 |
 | `jwt` | declared | module | packages/lexigram-auth/src/lexigram/auth/authn/google_oauth.py:9 |
-| `ldap3` | guarded | guard | packages/lexigram-auth/src/lexigram/auth/authn/ldap.py:11 |
-| `ldap3` | guarded | guard | packages/lexigram-auth/src/lexigram/auth/authn/ldap.py:12 |
-| `ldap3` | guarded | guard | packages/lexigram-auth/src/lexigram/auth/authn/ldap.py:13 |
-| `authlib` | guarded | guard | packages/lexigram-auth/src/lexigram/auth/authn/oauth2.py:38 |
-| `authlib` | guarded | guard | packages/lexigram-auth/src/lexigram/auth/authn/oauth2.py:41 |
+| `authlib` | guarded | guard | packages/lexigram-auth/src/lexigram/auth/authn/oauth2.py:44 |
+| `authlib` | guarded | guard | packages/lexigram-auth/src/lexigram/auth/authn/oauth2.py:47 |
 | `cryptography` | declared | module | packages/lexigram-auth/src/lexigram/auth/authn/passkeys.py:60 |
 | `cryptography` | declared | module | packages/lexigram-auth/src/lexigram/auth/authn/passkeys.py:61 |
 | `argon2` | declared | guard | packages/lexigram-auth/src/lexigram/auth/authn/password_hasher.py:35 |
@@ -393,8 +419,7 @@ No third-party module-level imports.
 | `xmlsec` | guarded | guard | packages/lexigram-auth/src/lexigram/auth/authn/saml.py:22 |
 | `starlette` | declared | module | packages/lexigram-auth/src/lexigram/auth/authz/guards.py:30 |
 | `typer` | declared | module | packages/lexigram-auth/src/lexigram/auth/cli/commands.py:5 |
-| `jinja2` | declared | module | packages/lexigram-auth/src/lexigram/auth/cli/generators/guard.py:5 |
-| `pydantic` | declared | module | packages/lexigram-auth/src/lexigram/auth/di/sub_providers/authentication_provider.py:9 |
+| `pydantic` | declared | module | packages/lexigram-auth/src/lexigram/auth/di/sub_providers/authentication_provider.py:10 |
 
 ## lexigram-cache
 
@@ -404,12 +429,12 @@ No third-party module-level imports.
 | `pymemcache` | guarded | guard | packages/lexigram-cache/src/lexigram/cache/backends/memcached/backend.py:15 |
 | `pymemcache` | guarded | guard | packages/lexigram-cache/src/lexigram/cache/backends/memcached/backend.py:16 |
 | `typer` | declared | module | packages/lexigram-cache/src/lexigram/cache/cli/commands.py:5 |
-| `redis` | guarded | guard | packages/lexigram-cache/src/lexigram/cache/stores/redis_lock.py:24 |
 | `redis` | guarded | guard | packages/lexigram-cache/src/lexigram/cache/stores/redis_lock.py:25 |
-| `redis` | guarded | guard | packages/lexigram-cache/src/lexigram/cache/stores/redis_secrets.py:32 |
+| `redis` | guarded | guard | packages/lexigram-cache/src/lexigram/cache/stores/redis_lock.py:26 |
 | `redis` | guarded | guard | packages/lexigram-cache/src/lexigram/cache/stores/redis_secrets.py:33 |
-| `redis` | guarded | guard | packages/lexigram-cache/src/lexigram/cache/stores/redis_state.py:28 |
+| `redis` | guarded | guard | packages/lexigram-cache/src/lexigram/cache/stores/redis_secrets.py:34 |
 | `redis` | guarded | guard | packages/lexigram-cache/src/lexigram/cache/stores/redis_state.py:29 |
+| `redis` | guarded | guard | packages/lexigram-cache/src/lexigram/cache/stores/redis_state.py:30 |
 
 Optional extras not imported by package sources: `faiss-cpu`, `numpy`, `types-redis`
 
@@ -424,7 +449,11 @@ Optional extras not imported by package sources: `faiss-cpu`, `numpy`, `types-re
 | `typer` | declared | module | experimental/apps/lexigram-cli/src/lexigram/cli/commands/config.py:12 |
 | `yaml` | declared | module | experimental/apps/lexigram-cli/src/lexigram/cli/commands/config.py:13 |
 | `typer` | declared | module | experimental/apps/lexigram-cli/src/lexigram/cli/commands/contrib.py:16 |
-| `typer` | declared | module | experimental/apps/lexigram-cli/src/lexigram/cli/commands/db.py:11 |
+| `typer` | declared | module | experimental/apps/lexigram-cli/src/lexigram/cli/commands/db.py:10 |
+| `typer` | declared | module | experimental/apps/lexigram-cli/src/lexigram/cli/commands/db_bootstrap.py:8 |
+| `typer` | declared | module | experimental/apps/lexigram-cli/src/lexigram/cli/commands/db_commands_data.py:11 |
+| `typer` | declared | module | experimental/apps/lexigram-cli/src/lexigram/cli/commands/db_commands_migrations.py:9 |
+| `typer` | declared | module | experimental/apps/lexigram-cli/src/lexigram/cli/commands/db_commands_ops.py:10 |
 | `typer` | declared | module | experimental/apps/lexigram-cli/src/lexigram/cli/commands/dev.py:8 |
 | `typer` | declared | module | experimental/apps/lexigram-cli/src/lexigram/cli/commands/events.py:13 |
 | `typer` | declared | module | experimental/apps/lexigram-cli/src/lexigram/cli/commands/gen.py:5 |
@@ -438,13 +467,13 @@ Optional extras not imported by package sources: `faiss-cpu`, `numpy`, `types-re
 | `typer` | declared | module | experimental/apps/lexigram-cli/src/lexigram/cli/commands/shell.py:10 |
 | `typer` | declared | module | experimental/apps/lexigram-cli/src/lexigram/cli/commands/system.py:7 |
 | `yaml` | declared | module | experimental/apps/lexigram-cli/src/lexigram/cli/commands/system.py:8 |
-| `tomli` | declared | guard | experimental/apps/lexigram-cli/src/lexigram/cli/config.py:9 |
+| `tomli` | declared | guard | experimental/apps/lexigram-cli/src/lexigram/cli/config.py:10 |
 | `pydantic` | declared | type-only | experimental/apps/lexigram-cli/src/lexigram/cli/lib/config_gen.py:23 |
 | `aiofiles` | declared | module | experimental/apps/lexigram-cli/src/lexigram/cli/lib/config_loader.py:16 |
 | `yaml` | declared | module | experimental/apps/lexigram-cli/src/lexigram/cli/lib/config_loader.py:17 |
 | `rich` | declared | module | experimental/apps/lexigram-cli/src/lexigram/cli/lib/console.py:3 |
 | `rich` | declared | module | experimental/apps/lexigram-cli/src/lexigram/cli/lib/console.py:4 |
-| `jinja2` | declared | module | experimental/apps/lexigram-cli/src/lexigram/cli/lib/templates.py:5 |
+| `jinja2` | declared | module | experimental/apps/lexigram-cli/src/lexigram/cli/lib/templates.py:6 |
 | `rich` | declared | module | experimental/apps/lexigram-cli/src/lexigram/cli/output/manager.py:13 |
 | `rich` | declared | module | experimental/apps/lexigram-cli/src/lexigram/cli/output/manager.py:14 |
 | `rich` | declared | module | experimental/apps/lexigram-cli/src/lexigram/cli/output/manager.py:15 |
@@ -466,8 +495,6 @@ Optional extras not imported by package sources: `faiss-cpu`, `numpy`, `types-re
 | module | status | guard | location |
 |---|---|---|---|
 | `typer` | declared | module | packages/lexigram-events/src/lexigram/events/cli/commands.py:5 |
-| `jinja2` | declared | module | packages/lexigram-events/src/lexigram/events/cli/generators/command_handler.py:5 |
-| `jinja2` | declared | module | packages/lexigram-events/src/lexigram/events/cli/generators/query_handler.py:5 |
 | `motor` | guarded | type-only | packages/lexigram-events/src/lexigram/events/stores/mongodb/snapshot_store.py:17 |
 
 Optional extras not imported by package sources: `aio-pika`, `aiokafka`, `aiosqlite`, `asyncpg`, `azure-servicebus`
@@ -522,8 +549,8 @@ Optional extras not imported by package sources: `websockets`
 
 | module | status | guard | location |
 |---|---|---|---|
-| `jinja2` | declared | module | packages/lexigram-http/src/lexigram/http/cli/generators/api_client.py:9 |
 | `aiohttp` | declared | type-only | packages/lexigram-http/src/lexigram/http/client/base_url_client.py:28 |
+| `yarl` | declared | module | packages/lexigram-http/src/lexigram/http/client/http_client.py:26 |
 | `aiohttp` | declared | module | packages/lexigram-http/src/lexigram/http/pool/connection_pool.py:11 |
 
 Optional extras not imported by package sources: `pytest-aiohttp`
@@ -539,12 +566,13 @@ Optional extras not imported by package sources: `pytest-aiohttp`
 | `opentelemetry` | guarded | guard | packages/lexigram-monitor/src/lexigram/monitor/backends/opentelemetry.py:29 |
 | `opentelemetry` | guarded | guard | packages/lexigram-monitor/src/lexigram/monitor/backends/opentelemetry.py:30 |
 | `opentelemetry` | guarded | guard | packages/lexigram-monitor/src/lexigram/monitor/backends/opentelemetry.py:31 |
+| `opentelemetry` | guarded | guard | packages/lexigram-monitor/src/lexigram/monitor/backends/opentelemetry.py:34 |
 | `prometheus_client` | guarded | guard | packages/lexigram-monitor/src/lexigram/monitor/backends/prometheus.py:36 |
 | `prometheus_client` | guarded | guard | packages/lexigram-monitor/src/lexigram/monitor/backends/prometheus.py:37 |
 | `prometheus_client` | guarded | guard | packages/lexigram-monitor/src/lexigram/monitor/backends/prometheus.py:38 |
 | `prometheus_client` | guarded | guard | packages/lexigram-monitor/src/lexigram/monitor/backends/prometheus.py:39 |
 | `typer` | declared | module | packages/lexigram-monitor/src/lexigram/monitor/cli/commands.py:5 |
-| `structlog` | undeclared | module | packages/lexigram-monitor/src/lexigram/monitor/error_tracking.py:29 |
+| `structlog` | declared | module | packages/lexigram-monitor/src/lexigram/monitor/error_tracking.py:29 |
 | `opentelemetry` | guarded | guard | packages/lexigram-monitor/src/lexigram/monitor/instrumentation/database.py:23 |
 | `opentelemetry` | guarded | guard | packages/lexigram-monitor/src/lexigram/monitor/instrumentation/database.py:24 |
 | `starlette` | declared | module | packages/lexigram-monitor/src/lexigram/monitor/instrumentation/http.py:24 |
@@ -655,7 +683,6 @@ Optional extras not imported by package sources: `diffusers`, `torch`, `transfor
 |---|---|---|---|
 | `pymongo` | guarded | guard | packages/lexigram-nosql/src/lexigram/nosql/backends/mongodb/backend.py:10 |
 | `pymongo` | guarded | guard | packages/lexigram-nosql/src/lexigram/nosql/backends/mongodb/collection.py:9 |
-| `jinja2` | declared | module | packages/lexigram-nosql/src/lexigram/nosql/cli/generators/document_repository.py:9 |
 
 Optional extras not imported by package sources: `aioboto3`, `google-cloud-firestore`, `motor`
 
@@ -671,9 +698,7 @@ Optional extras not imported by package sources: `cryptography`, `pyjwt`, `sendg
 
 ## lexigram-queue
 
-| module | status | guard | location |
-|---|---|---|---|
-| `jinja2` | declared | module | packages/lexigram-queue/src/lexigram/queue/cli/generators/message_consumer.py:8 |
+No third-party module-level imports.
 
 ## lexigram-resilience
 
@@ -699,15 +724,16 @@ No third-party module-level imports.
 | `sqlalchemy` | declared | module | packages/lexigram-sql/src/lexigram/sql/admin/audit_store.py:14 |
 | `asyncpg` | guarded | guard | packages/lexigram-sql/src/lexigram/sql/backends/_postgres_connection.py:23 |
 | `asyncpg` | guarded | guard | packages/lexigram-sql/src/lexigram/sql/backends/postgres.py:39 |
-| `aiosqlite` | declared | guard | packages/lexigram-sql/src/lexigram/sql/backends/sqlite.py:23 |
+| `aiosqlite` | declared | guard | packages/lexigram-sql/src/lexigram/sql/backends/sqlite/_shims.py:8 |
 | `typer` | declared | module | packages/lexigram-sql/src/lexigram/sql/cli/commands.py:13 |
 | `alembic` | declared | guard | packages/lexigram-sql/src/lexigram/sql/migrations/engine.py:13 |
 | `alembic` | declared | guard | packages/lexigram-sql/src/lexigram/sql/migrations/engine.py:14 |
 | `alembic` | declared | guard | packages/lexigram-sql/src/lexigram/sql/migrations/introspector.py:12 |
-| `alembic` | declared | guard | packages/lexigram-sql/src/lexigram/sql/migrations/manager.py:55 |
+| `alembic` | declared | guard | packages/lexigram-sql/src/lexigram/sql/migrations/manager/_alembic.py:52 |
+| `alembic` | declared | guard | packages/lexigram-sql/src/lexigram/sql/migrations/manager/_simple.py:55 |
 | `aiomysql` | guarded | guard | packages/lexigram-sql/src/lexigram/sql/providers/mysql_provider.py:11 |
 | `asyncpg` | guarded | guard | packages/lexigram-sql/src/lexigram/sql/providers/postgres_provider.py:13 |
-| `aiosqlite` | declared | guard | packages/lexigram-sql/src/lexigram/sql/providers/sqlite_provider.py:14 |
+| `aiosqlite` | declared | guard | packages/lexigram-sql/src/lexigram/sql/providers/sqlite_provider.py:15 |
 | `sqlalchemy` | declared | module | packages/lexigram-sql/src/lexigram/sql/query/admin_builder.py:13 |
 | `anyio` | declared | module | packages/lexigram-sql/src/lexigram/sql/seeds/manager.py:10 |
 | `sqlalchemy` | declared | module | packages/lexigram-sql/src/lexigram/sql/seeds/manager.py:11 |
@@ -736,7 +762,7 @@ Optional extras not imported by package sources: `azure-storage-blob`, `gcloud-a
 | `aio_pika` | guarded | guard | packages/lexigram-tasks/src/lexigram/tasks/backends/rabbitmq.py:18 |
 | `redis` | guarded | guard | packages/lexigram-tasks/src/lexigram/tasks/backends/redis.py:39 |
 | `typer` | declared | module | packages/lexigram-tasks/src/lexigram/tasks/cli/commands.py:5 |
-| `psutil` | declared | guard | packages/lexigram-tasks/src/lexigram/tasks/concurrency/compute.py:24 |
+| `psutil` | declared | guard | packages/lexigram-tasks/src/lexigram/tasks/concurrency/compute.py:23 |
 | `redis` | guarded | type-only | packages/lexigram-tasks/src/lexigram/tasks/dlq/redis_dlq.py:12 |
 | `psutil` | declared | guard | packages/lexigram-tasks/src/lexigram/tasks/execution/pool.py:13 |
 | `croniter` | declared | guard | packages/lexigram-tasks/src/lexigram/tasks/scheduling/cron.py:30 |
@@ -753,12 +779,23 @@ Optional extras not imported by package sources: `pika`, `rq`, `types-croniter`
 
 | module | status | guard | location |
 |---|---|---|---|
-| `pytest` | declared | module | packages/lexigram-testing/src/lexigram/testing/clients/auth/fixtures.py:11 |
-| `pytest_asyncio` | declared | guard | packages/lexigram-testing/src/lexigram/testing/clients/auth/fixtures.py:19 |
-| `pytest` | declared | module | packages/lexigram-testing/src/lexigram/testing/clients/cache/fixtures.py:14 |
-| `pytest_asyncio` | declared | guard | packages/lexigram-testing/src/lexigram/testing/clients/cache/fixtures.py:27 |
-| `pytest` | declared | module | packages/lexigram-testing/src/lexigram/testing/clients/events/fixtures.py:17 |
-| `pytest_asyncio` | declared | guard | packages/lexigram-testing/src/lexigram/testing/clients/events/fixtures.py:164 |
+| `pytest` | declared | module | packages/lexigram-testing/src/lexigram/testing/clients/auth/fixtures/_async.py:12 |
+| `pytest_asyncio` | declared | guard | packages/lexigram-testing/src/lexigram/testing/clients/auth/fixtures/_async.py:20 |
+| `pytest` | declared | module | packages/lexigram-testing/src/lexigram/testing/clients/auth/fixtures/beds.py:7 |
+| `pytest` | declared | module | packages/lexigram-testing/src/lexigram/testing/clients/auth/fixtures/mocks.py:10 |
+| `pytest` | declared | module | packages/lexigram-testing/src/lexigram/testing/clients/auth/fixtures/tokens.py:12 |
+| `pytest` | declared | module | packages/lexigram-testing/src/lexigram/testing/clients/auth/fixtures/users.py:11 |
+| `pytest` | declared | module | packages/lexigram-testing/src/lexigram/testing/clients/cache/fixtures/_async.py:12 |
+| `pytest_asyncio` | declared | guard | packages/lexigram-testing/src/lexigram/testing/clients/cache/fixtures/_async.py:19 |
+| `pytest` | declared | module | packages/lexigram-testing/src/lexigram/testing/clients/cache/fixtures/data.py:11 |
+| `pytest` | declared | module | packages/lexigram-testing/src/lexigram/testing/clients/cache/fixtures/lifecycle.py:11 |
+| `pytest` | declared | module | packages/lexigram-testing/src/lexigram/testing/clients/cache/fixtures/scenarios.py:11 |
+| `pytest` | declared | module | packages/lexigram-testing/src/lexigram/testing/clients/events/fixtures/_async.py:14 |
+| `pytest_asyncio` | declared | guard | packages/lexigram-testing/src/lexigram/testing/clients/events/fixtures/_async.py:23 |
+| `pytest` | declared | module | packages/lexigram-testing/src/lexigram/testing/clients/events/fixtures/beds.py:11 |
+| `pytest` | declared | module | packages/lexigram-testing/src/lexigram/testing/clients/events/fixtures/data.py:12 |
+| `pytest` | declared | module | packages/lexigram-testing/src/lexigram/testing/clients/events/fixtures/handlers.py:12 |
+| `pytest` | declared | module | packages/lexigram-testing/src/lexigram/testing/clients/events/fixtures/scenarios.py:12 |
 | `pytest` | declared | module | packages/lexigram-testing/src/lexigram/testing/clients/search/fixtures.py:12 |
 | `pytest_asyncio` | declared | guard | packages/lexigram-testing/src/lexigram/testing/clients/search/fixtures.py:15 |
 | `pytest` | declared | module | packages/lexigram-testing/src/lexigram/testing/clients/storage/fixtures.py:9 |
@@ -818,7 +855,7 @@ Optional extras not imported by package sources: `aiokafka`, `aiosqlite`, `async
 | `markupsafe` | declared | module | experimental/apps/lexigram-ui/src/lexigram/ui/layouts/mixins.py:8 |
 | `markupsafe` | declared | module | experimental/apps/lexigram-ui/src/lexigram/ui/layouts/server_toasts.py:12 |
 | `htpy` | declared | module | experimental/apps/lexigram-ui/src/lexigram/ui/molecules/stack.py:11 |
-| `htpy` | declared | module | experimental/apps/lexigram-ui/src/lexigram/ui/state.py:7 |
+| `htpy` | declared | module | experimental/apps/lexigram-ui/src/lexigram/ui/state.py:6 |
 
 Optional extras not imported by package sources: `playwright`, `pytest-playwright`
 
@@ -848,7 +885,7 @@ Optional extras not imported by package sources: `asyncpg`, `numpy`, `weaviate-c
 | `starlette` | declared | module | packages/lexigram-web/src/lexigram/web/di/provider.py:8 |
 | `starlette` | declared | module | packages/lexigram-web/src/lexigram/web/di/provider.py:9 |
 | `starlette` | declared | type-only | packages/lexigram-web/src/lexigram/web/di/route_setup.py:11 |
-| `starlette` | declared | type-only | packages/lexigram-web/src/lexigram/web/errors/html_error_renderer.py:23 |
+| `starlette` | declared | type-only | packages/lexigram-web/src/lexigram/web/errors/html_error_renderer.py:30 |
 | `starlette` | declared | module | packages/lexigram-web/src/lexigram/web/integrations/auth.py:8 |
 | `starlette` | declared | type-only | packages/lexigram-web/src/lexigram/web/integrations/cache.py:13 |
 | `starlette` | declared | module | packages/lexigram-web/src/lexigram/web/integrations/debug.py:7 |
@@ -874,9 +911,10 @@ Optional extras not imported by package sources: `asyncpg`, `numpy`, `weaviate-c
 | `starlette` | declared | type-only | packages/lexigram-web/src/lexigram/web/middleware/manager.py:8 |
 | `starlette` | declared | module | packages/lexigram-web/src/lexigram/web/middleware/metrics.py:32 |
 | `starlette` | declared | type-only | packages/lexigram-web/src/lexigram/web/middleware/metrics.py:39 |
+| `starlette` | declared | module | packages/lexigram-web/src/lexigram/web/middleware/rate_limit.py:16 |
 | `starlette` | declared | module | packages/lexigram-web/src/lexigram/web/middleware/rate_limit.py:17 |
 | `starlette` | declared | module | packages/lexigram-web/src/lexigram/web/middleware/rate_limit.py:18 |
-| `starlette` | declared | module | packages/lexigram-web/src/lexigram/web/middleware/rate_limit.py:19 |
+| `starlette` | declared | module | packages/lexigram-web/src/lexigram/web/middleware/rate_limit_strategies.py:20 |
 | `starlette` | declared | module | packages/lexigram-web/src/lexigram/web/middleware/registry.py:11 |
 | `starlette` | declared | module | packages/lexigram-web/src/lexigram/web/middleware/request_context.py:16 |
 | `starlette` | declared | module | packages/lexigram-web/src/lexigram/web/middleware/request_id.py:11 |

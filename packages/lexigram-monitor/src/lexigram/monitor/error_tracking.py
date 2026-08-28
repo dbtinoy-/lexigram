@@ -168,7 +168,7 @@ def setup_error_tracking(config: ErrorTrackingConfig) -> ErrorTrackerProtocol:
     if not dsn or not dsn.strip():
         return NullErrorTracker()
     try:
-        import sentry_sdk  # type: ignore[import-not-found]
+        import sentry_sdk
     except ImportError:
         logger.warning(
             "error_tracking_skipped",

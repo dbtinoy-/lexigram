@@ -26,13 +26,13 @@ MeterProvider: Any = None
 TracerProvider: Any = None
 
 try:
-    from opentelemetry import metrics as _metrics  # type: ignore[import-not-found]
-    from opentelemetry import trace as _trace  # type: ignore[import-not-found]
+    from opentelemetry import metrics as _metrics
+    from opentelemetry import trace as _trace
     from opentelemetry.sdk.metrics import (
-        MeterProvider as _MP,  # type: ignore[import-not-found]  # noqa: N814
+        MeterProvider as _MP,  # noqa: N814
     )
     from opentelemetry.sdk.trace import (
-        TracerProvider as _TP,  # type: ignore[import-not-found]  # noqa: N814
+        TracerProvider as _TP,  # noqa: N814
     )
 
     metrics = _metrics
@@ -94,10 +94,10 @@ class OpenTelemetryBackend(MetricsBackendProtocol):
         elif self.endpoint:
             # Fallback legacy configuration
             try:
-                from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import (  # type: ignore[import-not-found]
+                from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import (
                     OTLPMetricExporter,
                 )
-                from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (  # type: ignore[import-not-found]
+                from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
                     OTLPSpanExporter,
                 )
                 from opentelemetry.sdk.trace.export import BatchSpanProcessor

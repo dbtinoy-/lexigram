@@ -25,10 +25,10 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 
 # Try to import opentelemetry, but handle the case where it's broken
 try:
-    from opentelemetry import metrics, trace  # type: ignore[import-not-found]
-    from opentelemetry.propagate import extract  # type: ignore[import-not-found]
+    from opentelemetry import metrics, trace
+    from opentelemetry.propagate import extract
     from opentelemetry.semconv.trace import (
-        SpanAttributes,  # type: ignore[import-not-found]
+        SpanAttributes,
     )
 
     _opentelemetry_available = True

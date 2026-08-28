@@ -18,7 +18,7 @@ from __future__ import annotations
 from typing import Any
 
 try:
-    from prometheus_client import (  # type: ignore[import-not-found]
+    from prometheus_client import (
         CONTENT_TYPE_LATEST,
         CollectorRegistry,
         Counter,
