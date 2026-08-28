@@ -44,7 +44,8 @@ curl -X POST localhost:7074/api/demo                  # run full lifecycle
 
 ```bash
 cd demos/event-driven-orders
-PYTHONPATH=src uv run python -m orders
+PYTHONPATH=src uv run python -m orders              # start server
+PYTHONPATH=src uv run python -m orders demo         # offline lifecycle walkthrough
 ```
 
 Open `http://localhost:7074` in your browser for the interactive console.

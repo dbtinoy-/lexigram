@@ -144,9 +144,12 @@ class RatesApiController(Controller):
             }
         )
 
-    @post("/demo")
-    async def demo(self, request: Request) -> JSONResponse:
-        """Run the five-act guided walkthrough narrating resilience + cache.
+    async def run_demo(self) -> bool:
+        """Run the five-act guided walkthrough and return whether it completed.
+
+        Keeping the walkthrough separate from its HTTP adapter lets the
+        standalone ``python -m rates demo`` command exercise the exact same
+        flow as the browser without starting a server.
 
         Acts:
 
@@ -186,9 +189,7 @@ class RatesApiController(Controller):
         if stale_result.is_err():
             logger.error("quote.unavailable", error=str(stale_result.unwrap_err()))
             self.faults.set(Scenario.HEALTHY)
-            return JSONResponse(
-                {"ok": False, "error": "no stale copy available", "act": 3}
-            )
+            return False
         stale = stale_result.unwrap()
         logger.info(
             "quote.stale_served",
@@ -217,7 +218,13 @@ class RatesApiController(Controller):
         )
 
         self.faults.set(Scenario.HEALTHY)
-        return JSONResponse({"ok": True, "acts": 5})
+        return True
+
+    @post("/demo")
+    async def demo(self, request: Request) -> JSONResponse:
+        """Run the walkthrough over HTTP for the browser console."""
+        ok = await self.run_demo()
+        return JSONResponse({"ok": ok, "acts": 5 if ok else 3})
 
     async def _fetch_and_log(self, pair: str) -> None:
         """Fetch one quote and narrate the outcome."""

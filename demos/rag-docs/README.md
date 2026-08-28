@@ -46,7 +46,8 @@ From this demo's root (so `application.yaml` is discovered):
 
 ```bash
 cd demos/rag-docs
-PYTHONPATH=src uv run python -m rag_docs
+PYTHONPATH=src uv run python -m rag_docs              # start server
+PYTHONPATH=src uv run python -m rag_docs demo         # offline cited walkthrough
 ```
 
 Open http://127.0.0.1:7075.  Type a question about Lexigram, pick a

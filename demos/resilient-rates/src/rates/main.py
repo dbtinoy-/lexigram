@@ -31,6 +31,21 @@ from rates.app import create_app
 logger = get_logger(__name__)
 
 
+async def run_cli_demo() -> None:
+    """Run the five-act walkthrough without starting an HTTP server."""
+    from rates.controllers import RatesApiController
+
+    app = create_app()
+    await app.start()
+    try:
+        controller = await app.container.resolve(RatesApiController)
+        if not await controller.run_demo():
+            raise RuntimeError("the resilient-rates demo stopped before act 5")
+        logger.info("demo.complete", acts=5)
+    finally:
+        await app.stop()
+
+
 async def serve() -> None:
     """Boot and serve until interrupted.
 
@@ -49,9 +64,14 @@ async def serve() -> None:
 
 
 def main() -> int:
-    """Sync entry point: translate asyncio interrupts into exit codes."""
+    """Run the server, or the offline walkthrough when ``demo`` is passed."""
     try:
-        asyncio.run(serve())
+        if sys.argv[1:] == ["demo"]:
+            asyncio.run(run_cli_demo())
+        elif sys.argv[1:] in ([], ["serve"]):
+            asyncio.run(serve())
+        else:
+            raise SystemExit(f"unknown command: {sys.argv[1]}")
     except KeyboardInterrupt:
         return 130
     return 0
@@ -61,4 +81,4 @@ if __name__ == "__main__":
     sys.exit(main())
 
 
-__all__ = ["main", "serve"]
+__all__ = ["main", "run_cli_demo", "serve"]

@@ -1,6 +1,7 @@
 """Module entry point.
 
-``python -m orders`` → boot the app and serve the order console.
+``python -m orders`` boots the app and serves the order console;
+``python -m orders demo`` runs the full lifecycle and exits.
 """
 
 from __future__ import annotations
