@@ -78,6 +78,15 @@ PYTHONPATH=src uv run python -m guard_gate
 # → http://127.0.0.1:8084
 ```
 
+## API Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/ask` | Handle an act-keyed or raw-text request through the guard pipeline |
+| POST | `/api/policy` | Flip protection on/off |
+| GET | `/api/state` | Toggle position plus budget arithmetic for the meter |
+| GET | `/api/audit` | Recent governance audit events |
+
 | Act | Outcome |
 |---|---|
 | Injection | blocked (`instruction_override` reason) |

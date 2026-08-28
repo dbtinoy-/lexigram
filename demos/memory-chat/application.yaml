@@ -1,3 +1,8 @@
+# ── Metadata ────────────────────────────────────────────────────────────────
+name: memory-chat
+version: 0.1.0
+description: Multi-owner chat with fact extraction and working memory
+# ────────────────────────────────────────────────────────────────────────────
 # ══════════════════════════════════════════════════════════════════════════════
 # Memory Chat Demo — Complete Configuration Reference
 # ══════════════════════════════════════════════════════════════════════════════
@@ -102,7 +107,7 @@ web:
   # Prevents brute-force and DoS attacks.  Longest-prefix-match selects
   # the rule for each request path.
   # rate_limit:
-  #   enabled: true
+  #   enabled: false
   #   default_limit: 100               # max requests per window
   #   default_window: 60               # window size (seconds)
   #   whitelist_ips: []                # exempt IPs

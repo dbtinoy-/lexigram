@@ -76,6 +76,29 @@ src/feedback_loop/
 PYTHONPATH=demos/feedback-loop/src uv run python -m feedback_loop
 ```
 
+## API Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/ask` | Answer a canned question, issuing its stable trace id |
+| POST | `/api/rate` | Capture a rating for a previously issued trace id |
+| GET | `/api/stats/{owner}` | Aggregate this owner's captured ratings |
+| POST | `/api/regress` | Promote low-rated exchanges into a tracked regression run |
+| GET | `/api/report/{run_id}` | Post-hoc error analysis for a tracked run |
+
+## Lexigram Concepts
+
+| Concept | Where in this demo | Your app |
+|---------|-------------------|----------|
+| Composition root | `app.py` | Replace controllers/providers list |
+| Module pattern | `FeedbackModule` | Add your own modules |
+| Provider lifecycle | `di/provider.py` | Replace with your registrations |
+| Result<T,E> pattern | `controllers/api.py` | Return Result from handlers |
+| Protocol binding | `repository/bot.py` | Swap impl for real Q&A backend |
+| Constructor injection | Everywhere | Declare deps as typed params |
+| Domain models | `schemas.py` | Frozen dataclasses as request DTOs |
+| Registry dispatch | `repository/bot.py` | Keyed strategy selection |
+
 ## Tests
 
 ```bash

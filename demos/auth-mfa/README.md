@@ -45,6 +45,17 @@ PYTHONPATH=src uv run python -m mfa_console
 
 Open http://127.0.0.1:8092.
 
+## API Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/login` | Password step; MFA-enabled users get a pending challenge cookie |
+| POST | `/api/mfa/challenge` | Verify a TOTP/backup code and upgrade to a full session |
+| GET | `/api/me` | Return the session user's identity |
+| GET | `/api/mfa/status` | MFA enrollment status and remaining backup codes |
+| POST | `/api/mfa/enroll` | Enable TOTP; returns secret + provisioning URI + backup codes once |
+| POST | `/api/mfa/disable` | Disable TOTP after re-verifying the password |
+
 - Log in as `mfa@mfa.demo` / `Demo-Password-1` → redirected to `/challenge`.
   The current code is computable from the boot-enrolled secret (tests do
   exactly this); in a browser use your authenticator after enrolling.

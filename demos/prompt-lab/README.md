@@ -40,6 +40,16 @@ then **Rollback** v2 and see its score drop back to v1's baseline.
 
 Override the port without touching yaml: `LEX_WEB__SERVER__PORT=9000`.
 
+## API Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/templates` | List all variants with their active revision number |
+| POST | `/api/render` | Render one variant at an optional revision with supplied vars |
+| GET | `/api/history/{variant}` | Revision history for one variant — active revision is flagged |
+| POST | `/api/rollback` | Roll one variant back by N revisions; return the new active rev |
+| POST | `/api/ab` | Score both variants over the seeded cases (byte-stable) |
+
 ## Layout — read it in this order
 
 Start at the composition root and follow the wiring outward.

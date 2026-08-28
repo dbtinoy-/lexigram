@@ -75,7 +75,7 @@ web:
 
   # ── Rate Limiting ──────────────────────────────────────────────────────────
   # rate_limit:
-  #   enabled: true
+  #   enabled: false
   #   default_limit: 100
   #   default_window: 60
   #   whitelist_ips: []

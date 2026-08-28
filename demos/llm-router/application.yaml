@@ -1,3 +1,8 @@
+# ── Metadata ────────────────────────────────────────────────────────────────
+name: llm-router
+version: 0.1.0
+description: Multi-provider LLM routing with style-based content generation
+# ────────────────────────────────────────────────────────────────────────────
 # ══════════════════════════════════════════════════════════════════════════════
 # LLM Router Demo — Complete Configuration Reference
 # ══════════════════════════════════════════════════════════════════════════════
@@ -62,7 +67,7 @@ web:
 
   # ── Rate Limiting ──────────────────────────────────────────────────────────
   # rate_limit:
-  #   enabled: true
+  #   enabled: false
   #   default_limit: 100
   #   default_window: 60
   #   whitelist_ips: []

@@ -1,3 +1,8 @@
+# ── Metadata ────────────────────────────────────────────────────────────────
+name: support-agent
+version: 0.1.0
+description: Agent with tool orchestration and step-by-step trace
+# ────────────────────────────────────────────────────────────────────────────
 # ══════════════════════════════════════════════════════════════════════════════
 # Support Agent Demo — Complete Configuration Reference
 # ══════════════════════════════════════════════════════════════════════════════
@@ -70,7 +75,7 @@ web:
 
   # ── Rate Limiting ──────────────────────────────────────────────────────────
   # rate_limit:
-  #   enabled: true
+  #   enabled: false
   #   default_limit: 100
   #   default_window: 60
   #   whitelist_ips: []
