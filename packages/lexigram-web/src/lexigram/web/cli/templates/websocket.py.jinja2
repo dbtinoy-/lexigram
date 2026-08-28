@@ -3,13 +3,16 @@
 This module defines a WebSocket handler for real-time {{ snake_name }} communication.
 """
 
+from __future__ import annotations
+
 from typing import Any, ClassVar
 
-from lexigram.web.websocket.handler import WebSocketHandler
 from lexigram.web.transport.websockets import WebSocket
+from lexigram.web.websocket import AbstractWebSocketHandler, websocket_handler
 
 
-class {{ name }}(WebSocketHandler):
+@websocket_handler("/ws/{{ snake_name }}")
+class {{ name }}(AbstractWebSocketHandler):
     """WebSocket handler for {{ name }}.
 
     This handler manages real-time communication for {{ snake_name_plural }}.
@@ -23,7 +26,7 @@ class {{ name }}(WebSocketHandler):
         """Called when a client connects.
 
         Override to handle connection setup. You MUST call
-        `await websocket.accept()` to accept the connection.
+        ``await websocket.accept()`` to accept the connection.
 
         Args:
             websocket: The WebSocket connection
