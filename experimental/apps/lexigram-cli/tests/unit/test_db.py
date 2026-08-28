@@ -52,12 +52,15 @@ class TestDbCommand:
         """Test db upgrade command."""
         mock_runner = AsyncMock()
         mock_runner.run_migrations.return_value = ["20230101_000000"]
-        mock_bootstrap.return_value = mock_runner
+        mock_orchestrator = AsyncMock()
+        mock_container = AsyncMock()
+        mock_bootstrap.return_value = (mock_runner, mock_orchestrator, mock_container)
 
         result = runner.invoke(app, ["upgrade"])
         assert result.exit_code == 0
         assert "Applied 20230101_000000" in result.output
         mock_runner.run_migrations.assert_called_once()
+        mock_orchestrator.shutdown_all.assert_called_once()
 
     @patch(
         "lexigram.cli.commands.db_bootstrap._bootstrap_migration_runner",
@@ -68,7 +71,9 @@ class TestDbCommand:
         mock_runner = AsyncMock()
         mock_runner.get_current_version.return_value = None
         mock_runner.get_pending_migrations.return_value = []
-        mock_bootstrap.return_value = mock_runner
+        mock_orchestrator = AsyncMock()
+        mock_container = AsyncMock()
+        mock_bootstrap.return_value = (mock_runner, mock_orchestrator, mock_container)
 
         result = runner.invoke(app, ["status"])
         assert result.exit_code == 0
@@ -76,6 +81,7 @@ class TestDbCommand:
             "Schema is up to date" in result.output
             or "No migrations applied" in result.output
         )
+        mock_orchestrator.shutdown_all.assert_called_once()
 
     @patch(
         "lexigram.cli.commands.db_bootstrap.get_migration_manager",

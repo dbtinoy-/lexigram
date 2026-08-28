@@ -180,6 +180,7 @@ async def _run_setup(package: str | None) -> None:
 
     db, provider = await db_bootstrap._bootstrap_db_provider()
 
+    failed = False
     try:
         for contribution in contributions:
             outcome = await _run_one_schema_setup(contribution, db)
@@ -189,8 +190,12 @@ async def _run_setup(package: str | None) -> None:
                 out.info(f"{contribution.name}: already present")
             else:
                 out.error(f"{contribution.name}: failed — {outcome.message}")
+                failed = True
     finally:
         await provider.shutdown()
+
+    if failed:
+        raise typer.Exit(1)
 
 
 async def _run_one_schema_setup(

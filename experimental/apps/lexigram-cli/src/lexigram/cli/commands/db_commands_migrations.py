@@ -82,13 +82,17 @@ def upgrade(
     out = OutputManager()
 
     async def _run() -> None:
-        runner = await db_bootstrap._bootstrap_migration_runner()
-        applied = await runner.run_migrations()
-        if applied:
-            for v in applied:
-                out.success(f"Applied {v}")
-        else:
-            out.info("No pending migrations.")
+        runner, orchestrator, _container = await db_bootstrap._bootstrap_migration_runner()
+        try:
+            applied = await runner.run_migrations()
+            if applied:
+                for v in applied:
+                    out.success(f"Applied {v}")
+            else:
+                out.info("No pending migrations.")
+        finally:
+            if orchestrator is not None:
+                await orchestrator.shutdown_all()
 
     asyncio.run(_run())
 
@@ -102,20 +106,24 @@ def downgrade(
     out = OutputManager()
 
     async def _run() -> None:
-        runner = await db_bootstrap._bootstrap_migration_runner()
-        current = await runner.get_current_version()
-        if not current:
-            out.info("No migrations to rollback.")
-            return
+        runner, orchestrator, _container = await db_bootstrap._bootstrap_migration_runner()
+        try:
+            current = await runner.get_current_version()
+            if not current:
+                out.info("No migrations to rollback.")
+                return
 
-        target = version  # None = roll back most recent
-        out.info(f"Rolling back to: {target or 'previous'}")
-        rolled_back = await runner.rollback(target)
-        if rolled_back:
-            for v in rolled_back:
-                out.success(f"Rolled back {v}")
-        else:
-            out.error("Rollback failed or version not found.")
+            target = version  # None = roll back most recent
+            out.info(f"Rolling back to: {target or 'previous'}")
+            rolled_back = await runner.rollback(target)
+            if rolled_back:
+                for v in rolled_back:
+                    out.success(f"Rolled back {v}")
+            else:
+                out.error("Rollback failed or version not found.")
+        finally:
+            if orchestrator is not None:
+                await orchestrator.shutdown_all()
 
     asyncio.run(_run())
 
@@ -128,21 +136,25 @@ def status(
     out = OutputManager()
 
     async def _run() -> None:
-        runner = await db_bootstrap._bootstrap_migration_runner()
-        current = await runner.get_current_version()
-        pending = await runner.get_pending_migrations()
+        runner, orchestrator, _container = await db_bootstrap._bootstrap_migration_runner()
+        try:
+            current = await runner.get_current_version()
+            pending = await runner.get_pending_migrations()
 
-        if current:
-            out.print(f"[green]Current version:[/green] {current}")
-        else:
-            out.warning("No migrations applied yet.")
+            if current:
+                out.print(f"[green]Current version:[/green] {current}")
+            else:
+                out.warning("No migrations applied yet.")
 
-        if pending:
-            out.warning(f"\nPending migrations: {len(pending)}")
-            for p in pending:
-                out.print(f"  ? {p}")
-        else:
-            out.print("[green]Schema is up to date.[/green]")
+            if pending:
+                out.warning(f"\nPending migrations: {len(pending)}")
+                for p in pending:
+                    out.print(f"  ? {p}")
+            else:
+                out.print("[green]Schema is up to date.[/green]")
+        finally:
+            if orchestrator is not None:
+                await orchestrator.shutdown_all()
 
     asyncio.run(_run())
 

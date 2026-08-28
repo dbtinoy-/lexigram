@@ -63,7 +63,7 @@ jobs:
             echo "groups=[]" >> "$GITHUB_OUTPUT"
           else
             echo "groups=[\"${groups#,}\"]" | sed 's/,/","/g' >> "$GITHUB_OUTPUT"
-          done
+          fi
 
   quality:
     name: Quality gate (format, lint, types)

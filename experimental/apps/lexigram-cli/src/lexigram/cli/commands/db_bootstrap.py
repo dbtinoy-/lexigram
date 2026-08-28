@@ -10,12 +10,16 @@ import typer
 from lexigram.cli.output import OutputManager
 
 
-async def _bootstrap_migration_runner() -> Any:
+async def _bootstrap_migration_runner() -> tuple[Any, Any, Any]:
     """Used for direct migration execution (run/rollback/status) via the DI container.
 
     Prefers the DI-managed runner when lexigram-sql is available so that
     connection pooling and observability hooks are active.  Falls back to the
     legacy factory when the package is not installed.
+
+    Returns:
+        A ``(runner, orchestrator, container)`` tuple so callers can
+        shut down the provider lifecycle when finished.
     """
     import os
 
@@ -34,13 +38,15 @@ async def _bootstrap_migration_runner() -> Any:
         orchestrator = ProviderOrchestrator(container)
         orchestrator.add(provider)
         await orchestrator.boot_all(container)
-        return await container.resolve(MigrationRunnerProtocol)
+        runner = await container.resolve(MigrationRunnerProtocol)
+        return runner, orchestrator, container
 
     except ImportError:
         # lexigram-sql not installed — fall back to legacy direct factory.
         try:
             db_cli = importlib.import_module("lexigram.sql.cli")
-            return db_cli.create_cli_migration_manager(db_url)
+            manager = db_cli.create_cli_migration_manager(db_url)
+            return manager, None, None
         except ImportError as e:
             out = OutputManager()
             out.error(
