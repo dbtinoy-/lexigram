@@ -5,10 +5,11 @@ Background
 ----------
 Standard import-linter / grimp cannot traverse ``pkgutil.extend_path``
 namespace packages.  grimp's ``ImportLibPackageFinder`` resolves a
-package to a single physical directory via ``find_spec`` and scans only
-that tree — missing every extension package (``lexigram.contracts``,
-``lexigram.cache``, ``lexigram.web``, etc.) that lives in its own
-``lexigram-*/src/lexigram`` directory.
+package through ``importlib.util.find_spec`` and treats any package
+with a non-namespace parent as a plain top-level module, so extension
+packages (``lexigram.contracts``, ``lexigram.cache``, ``lexigram.web``,
+etc.) that live in their own ``lexigram-*/src/lexigram`` directories
+are either missed or rejected as ``NotATopLevelModule``.
 
 Fix
 ----
@@ -23,9 +24,10 @@ Before grimp's finder runs, this script:
    name).  The view mirrors the runtime layout:
    ``lexigram/contracts/...``, ``lexigram/ai/governance/...``, etc.
 
-3. Patches ``ImportLibPackageFinder.determine_package_directory`` to
-   return the view for ``lexigram``.  Other packages use the original
-   ``find_spec`` logic unchanged.
+3. Patches ``ImportLibPackageFinder.determine_package_directories``
+   (grimp >= 3.13 returns a *set* of directories) to return the view
+   for ``lexigram`` and ``lexigram.*``.  Other packages use the
+   original ``find_spec`` logic unchanged.
 
 grimp walks the view with ``os.walk(followlinks=True)``, so the
 symlinked tree is fully visible to it. This gives grimp a complete
@@ -34,9 +36,8 @@ module view of the ``lexigram.*`` namespace so every contract in
 
 Usage
 -----
-    uv run python tools/lint_imports.py            # full check
-    uv run python tools/lint_imports.py --verbose  # verbose output
-    uv run python tools/lint_imports.py --no-cache # skip cache
+    uv run python dev/checks/lint_imports.py            # full check
+    uv run python dev/checks/lint_imports.py --verbose  # verbose output
 
 Any flags accepted by the ``lint-imports`` CLI can be passed through.
 """
@@ -52,40 +53,6 @@ import tempfile
 # Importing the root package runs pkgutil.extend_path and expands
 # lexigram.__path__ with every editable-installed sub-package src dir.
 import lexigram  # noqa: F401
-
-
-def _merge_directory(source: str, target: str) -> None:
-    """Merge *source* into *target*, symlinking entries by name.
-
-    Names that already exist in *target* are merged recursively when
-    both sides are directories; a symmetric leaf (file/dir mismatch)
-    keeps the first occurrence.
-    """
-    for entry in os.listdir(source):
-        src = os.path.join(source, entry)
-        dst = os.path.join(target, entry)
-        if not os.path.exists(dst):
-            os.symlink(src, dst)
-            continue
-        if os.path.isdir(src) and os.path.isdir(dst) and not os.path.islink(dst):
-            _merge_view(src, dst)
-
-
-def _merge_directory(source: str, target: str) -> None:
-    """Merge *source* into *target*, symlinking entries by name.
-
-    Names that already exist in *target* are merged recursively when
-    both sides are directories; a symmetric leaf (file/dir mismatch)
-    keeps the first occurrence.
-    """
-    for entry in os.listdir(source):
-        src = os.path.join(source, entry)
-        dst = os.path.join(target, entry)
-        if not os.path.exists(dst):
-            os.symlink(src, dst)
-            continue
-        if os.path.isdir(src) and os.path.isdir(dst):
-            _merge_directory(src, os.path.realpath(dst))
 
 
 def _build_view() -> str:
@@ -113,9 +80,11 @@ def _build_view() -> str:
             target = view if rel == "." else os.path.join(view, rel)
             if rel != ".":
                 os.makedirs(target, exist_ok=True)
-            dirnames[:] = [d for d in dirnames if not d.startswith(".")]
+            dirnames[:] = [
+                d for d in dirnames if not d.startswith(".") and d != "__pycache__"
+            ]
             for filename in filenames:
-                if filename.startswith("."):
+                if filename.startswith(".") or filename.endswith(".pyc"):
                     continue
                 dst = os.path.join(target, filename)
                 if not os.path.exists(dst):
@@ -129,13 +98,20 @@ _VIEW_ROOT = _build_view()
 # ── 2. Monkey-patch grimp's PackageFinder ───────────────────────────────────────
 from grimp.adaptors.packagefinder import ImportLibPackageFinder as _Finder  # noqa: E402
 
-_original_determine = _Finder.determine_package_directory
+_original_determine = _Finder.determine_package_directories
 
 
 def _namespace_aware_determine(
     self: _Finder, package_name: str, file_system: object
-) -> str:
+) -> set[str]:
     """Return the merged view directory for any ``lexigram.*`` package.
+
+    grimp >= 3.13 resolves packages through ``determine_package_directories``
+    (plural), which returns a *set* of physical directories.  For the
+    ``lexigram`` namespace we return the single merged view directory so
+    sub-packages spread across many physical ``lexigram-*/src`` trees
+    resolve as one tree; any other name uses the original
+    ``importlib.util.find_spec`` resolution.
 
     Args:
         package_name: Name of the package grimp is resolving.
@@ -143,9 +119,7 @@ def _namespace_aware_determine(
 
     Returns:
         For any ``lexigram.*`` module the matching directory inside the
-        merged view (so sub-packages spread across many physical
-        ``lexigram-*/src`` trees resolve as one tree); any other name
-        uses the original ``importlib.util.find_spec`` resolution.
+        merged view; for other names the original finder's result.
     """
     if package_name == "lexigram" or package_name.startswith("lexigram."):
         parts = package_name.split(".")
@@ -153,13 +127,13 @@ def _namespace_aware_determine(
         for part in parts[1:]:
             view_dir = os.path.join(view_dir, part)
         if os.path.isdir(view_dir):
-            return view_dir
+            return {view_dir}
     return _original_determine(  # type: ignore[return-value]
         self, package_name=package_name, file_system=file_system
     )
 
 
-_Finder.determine_package_directory = _namespace_aware_determine  # type: ignore[method-assign]
+_Finder.determine_package_directories = _namespace_aware_determine  # type: ignore[method-assign]
 
 # ── 3. Hand off to import-linter's standard CLI ─────────────────────────────────
 # lint_imports_command is a Click command; calling it with no arguments

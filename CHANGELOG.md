@@ -14,12 +14,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `lexigram-web` `PermissionGuard` now requires **all** listed permissions by default; `require_all=False` opts into the previous any-of behavior.
 - `lexigram-auth` `use_guards` / `require_auth` / `require_admin` now fail closed with a `ValueError` when no request context can be discovered instead of silently running the handler unguarded.
 - Local `make ci` / `make test-cov` coverage gate aligned with CI at a 70% floor.
+- Workspace version alignment: all 54 packages now carry `0.1.5007` (was a mix of `0.1.5003`–`0.1.5006`); `uv.lock` regenerated.
 
 ### Fixed
 - `lexigram-sql` `QueryEngine` now returns normalized `list[dict]` rows and correct scalar values against real backends (`aiosqlite`, `asyncpg`, `aiomysql`) instead of assuming a driver result exposes `.fetchall()` / dict rows.
 - `ConnectionProtocol` now reflects the actual `DatabaseConnection` surface (`execute`/`execute_many`/`fetch_one`/`fetch_all`/`close`).
 - CLI migration command formatting passes the locked ruff format gate.
 - README `in progres` typos.
+- Import-boundary enforcement repaired: `dev/checks/lint_imports.py` now works with grimp 3.13 (`determine_package_directories` API) and both it and the import-depth gate run in CI; `lexigram.graphql` no longer imports `lexigram.security` (SHA-256 cache keys now use stdlib `hashlib`).
+- `lexigram.contracts.ai.relay.dto.items` moved up one level so the relay DTO family stays within the 6-segment import-depth gate (`openai_responses` still re-exports `ResponsesItem`).
 
 ## [0.1.3] — 2026-08-19
 
