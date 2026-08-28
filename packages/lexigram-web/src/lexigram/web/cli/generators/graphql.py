@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from lexigram.codegen import GenerationResult, GeneratorBase, parse_fields
+from lexigram.contracts.cli.generators import resolve_options
 
 GRAPHQL_TYPE_MAP = {
     "str": "str",
@@ -110,7 +111,8 @@ class GraphQLGenerator(GeneratorBase):
                 "has_timestamps": True,
             },
         )
-        return self.write_file(file_path, content, dry_run=dry_run, force=force)
+        self.stage(file_path, content)
+        return self.finalize(self.commit(resolve_options(dry_run=dry_run, force=force)))
 
     @staticmethod
     def _pluralize(value: str) -> str:

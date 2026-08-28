@@ -2,17 +2,21 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 from lexigram.codegen import GenerationResult, GeneratorBase
+from lexigram.contracts.cli.generators import resolve_options
 
 
 class MiddlewareGenerator(GeneratorBase):
     """Generate a middleware class."""
 
-    template_name = "middleware.py.jinja2"
+    name = "middleware"
+    description = "Generate a web middleware component"
+    default_output_dir = "src/middleware"
 
-    def __init__(self, output_dir: str = "src/middleware") -> None:
+    def __init__(self, output_dir: str | Path = "src/middleware") -> None:
         super().__init__(output_dir=output_dir)
 
     def generate(
@@ -25,9 +29,21 @@ class MiddlewareGenerator(GeneratorBase):
         force: bool = False,
         **kwargs: object,
     ) -> GenerationResult:
+        """Generate a middleware module.
+
+        Args:
+            name: Middleware name (e.g. ``"Auth"`` or ``"auth"``).
+            doc: Optional module docstring note.
+            options: Optional configuration options for the middleware.
+            dry_run: Compute output paths without writing.
+            force: Overwrite an existing file.
+
+        Returns:
+            ``GenerationResult`` with created/skipped/overwritten paths.
+        """
         file_path = self.output_dir / f"{self._to_snake_case(name)}_middleware.py"
         content = self.render_template(
-            self.template_name,
+            "middleware.py.jinja2",
             {
                 "name": name,
                 "class_name": f"{self._to_pascal_case(name)}Middleware",
@@ -35,7 +51,8 @@ class MiddlewareGenerator(GeneratorBase):
                 "options": options,
             },
         )
-        return self.write_file(file_path, content, dry_run=dry_run, force=force)
+        self.stage(file_path, content)
+        return self.finalize(self.commit(resolve_options(dry_run=dry_run, force=force)))
 
 
 __all__ = ["MiddlewareGenerator"]

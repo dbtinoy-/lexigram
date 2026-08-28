@@ -2,18 +2,23 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
+from lexigram.contracts.cli.generators import resolve_options
 from lexigram.contracts.cli.parsers import parse_fields
 from lexigram.sql.cli.generators.base import GenerationResult, GeneratorBase
 
 
 class SeederGenerator(GeneratorBase):
-    """Generates a database seeder file."""
+    """Generate a database seeder file."""
 
     name = "seeder"
     description = "Generate a database seeder file"
     default_output_dir = "seeds"
+
+    def __init__(self, output_dir: str | Path = "seeds") -> None:
+        super().__init__(output_dir=output_dir)
 
     def get_name(self) -> str:
         return self.name
@@ -24,13 +29,22 @@ class SeederGenerator(GeneratorBase):
     def generate(
         self,
         name: str,
-        **kwargs: Any,
+        *,
+        dry_run: bool = False,
+        force: bool = False,
+        **options: Any,
     ) -> GenerationResult:
-        result = GenerationResult()
-        dry_run = bool(kwargs.get("dry_run", False))
-        force = bool(kwargs.get("force", False))
+        """Generate a database seeder module.
 
-        fields_raw = kwargs.get("fields") or kwargs.get("fields_str") or ""
+        Args:
+            name: Model/table name (e.g. ``"User"`` or ``"users"``).
+            dry_run: Compute output paths without writing.
+            force: Overwrite an existing file.
+
+        Returns:
+            ``GenerationResult`` with created/skipped/overwritten paths.
+        """
+        fields_raw = options.get("fields") or options.get("fields_str") or ""
         field_specs = parse_fields(fields_raw) if isinstance(fields_raw, str) else []
         fields = [
             {
@@ -46,30 +60,23 @@ class SeederGenerator(GeneratorBase):
         ]
 
         table_name = self._to_snake_case(name)
-        file_path = self.output_dir / f"{table_name}.py"
-
-        if file_path.exists() and not force:
-            result.files_skipped.append(file_path)
-            return result
-
-        if dry_run:
-            result.files_created.append(file_path)
-            return result
-
-        content = self.env.get_template("seeder.py.jinja2").render(
-            model_name=self._to_pascal_case(name),
-            file_name=table_name,
-            table_name=table_name,
-            fields=fields,
+        content = self.render_template(
+            "seeder.py.jinja2",
+            {
+                "model_name": self._to_pascal_case(name),
+                "file_name": table_name,
+                "table_name": table_name,
+                "fields": fields,
+            },
         )
-        file_path.parent.mkdir(parents=True, exist_ok=True)
-        file_path.write_text(content, encoding="utf-8")
-        result.files_created.append(file_path)
-        return result
+        file_path = self.output_dir / f"{table_name}.py"
+        self.stage(file_path, content)
+        return self.finalize(self.commit(resolve_options(dry_run=dry_run, force=force)))
 
     def _get_sample_value(
         self, model_name: str, field_name: str, field_type: str
     ) -> str:
+        """Return a sample literal for a field, keyed by name/type heuristics."""
         lowered_type = field_type.lower()
         lowered_name = field_name.lower()
         lowered_model = model_name.lower()
