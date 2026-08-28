@@ -156,7 +156,7 @@ lexigram
 
 ## Generator Inventory
 
-**Total: 42 generators**
+**Total: 43 generators**
 
 | Generator | Description |
 |-----------|-------------|
@@ -171,10 +171,11 @@ lexigram
 | `lexigram gen filter` | Generate a query filter for database models |
 | `lexigram gen seeder` | Generate a database seeder for test/dev data |
 | `lexigram gen health` | Generate a database health check |
-| `lexigram gen model` | Generate a SQLAlchemy model |
+| `lexigram gen model` | Generate a Pydantic entity model with Create/Update DTOs |
+| `lexigram gen migration` | Generate a chained alembic migration for an entity |
 | `lexigram gen service` | Generate a service with unit of work |
 | `lexigram gen controller` | Generate a web controller with route handlers |
-| `lexigram gen resource` | Generate a RESTful resource with CRUD endpoints |
+| `lexigram gen resource` | Generate a resource controller slice |
 | `lexigram gen middleware` | Generate a web middleware component |
 | `lexigram gen graphql` | Generate a GraphQL schema and resolvers |
 | `lexigram gen webhook` | Generate a webhook handler |
