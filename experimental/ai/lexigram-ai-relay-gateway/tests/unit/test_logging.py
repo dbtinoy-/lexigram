@@ -8,6 +8,7 @@ from typing import Any
 
 from starlette.requests import Request
 
+from lexigram.ai.relay.gateway.config import RelayGatewayConfig
 from lexigram.ai.relay.gateway.logging import RelayRequestLogger
 from lexigram.ai.relay.gateway.web.routes import (
     _with_auth_guard,
@@ -62,7 +63,11 @@ class FakeGateway:
 
 
 class FakeContainer:
-    """Container double resolving the log store binding."""
+    """Container double resolving the log store binding.
+
+    Also proves ``require_auth=False`` so these logging tests run through
+    the guarded route without auth interference.
+    """
 
     def __init__(self, store: FakeStore | None) -> None:
         self._store = store
@@ -70,6 +75,8 @@ class FakeContainer:
     async def resolve_optional(self, service_type: type[Any]) -> Any | None:
         if service_type is RelayRequestLogStoreProtocol:
             return self._store
+        if service_type is RelayGatewayConfig:
+            return RelayGatewayConfig(require_auth=False)
         return None
 
 

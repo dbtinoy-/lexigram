@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "lexigram-ui"
-version = "0.1.5003"
+version = "0.1.5007"
 description = "HTMX/htpy component library for Lexigram web applications"
 readme = "README.md"
 requires-python = ">=3.11"

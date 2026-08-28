@@ -5,7 +5,7 @@ Combines wizard logic, persistence, and rendering.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from lexigram.admin.schema import SchemaField
@@ -24,8 +24,8 @@ class WizardDraft:
     form_data: dict[str, Any]
     step_errors: dict[int, dict[str, str]] = field(default_factory=dict)
     completed_steps: list[int] = field(default_factory=list)
-    created_at: str = field(default_factory=lambda: datetime.now().isoformat())
-    updated_at: str = field(default_factory=lambda: datetime.now().isoformat())
+    created_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
+    updated_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> WizardDraft:
@@ -35,8 +35,8 @@ class WizardDraft:
             form_data=data["form_data"],
             step_errors={int(k): v for k, v in data.get("step_errors", {}).items()},
             completed_steps=data.get("completed_steps", []),
-            created_at=data.get("created_at", datetime.now().isoformat()),
-            updated_at=data.get("updated_at", datetime.now().isoformat()),
+            created_at=data.get("created_at", datetime.now(UTC).isoformat()),
+            updated_at=data.get("updated_at", datetime.now(UTC).isoformat()),
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -264,7 +264,7 @@ class FormWizard:
                 form_data=self.form_data,
                 step_errors=dict(self.step_errors.items()),
                 completed_steps=list(self.completed_steps),
-                updated_at=datetime.now().isoformat(),
+                updated_at=datetime.now(UTC).isoformat(),
             )
             self.draft_saver(draft)
 

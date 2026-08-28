@@ -1,9 +1,12 @@
-"""API Key model for Lexigram Auth."""
+"""API Key data model.
+
+Used for service-to-service authentication.
+"""
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 
 
 @dataclass(frozen=True)
@@ -30,7 +33,18 @@ class APIKey:
         """Check if the key is active and not expired or revoked."""
         if self.revoked_at is not None:
             return False
-        return not (self.expires_at is not None and self.expires_at < datetime.now())
+        if self.expires_at is None:
+            return True
+        # Stored timestamps may be aware (Postgres TIMESTAMPTZ, ISO-8601
+        # text normalised by the SQL repositories) or naive (in-memory
+        # stores).  Naive values are assumed to be UTC — the convention
+        # used everywhere else in this package.
+        expires_at = (
+            self.expires_at
+            if self.expires_at.tzinfo is not None
+            else self.expires_at.replace(tzinfo=UTC)
+        )
+        return expires_at > datetime.now(UTC)
 
 
 __all__ = [

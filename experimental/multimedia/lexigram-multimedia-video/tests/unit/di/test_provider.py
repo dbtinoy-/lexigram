@@ -1,8 +1,8 @@
+import shutil
 from unittest.mock import AsyncMock, MagicMock
 
 import aiohttp
 import pytest
-import shutil
 
 from lexigram.contracts.core.health import HealthStatus
 from lexigram.contracts.multimedia.protocols import VideoProcessor, VideoProvider
@@ -119,7 +119,12 @@ async def test_unknown_backend_raises_not_installed() -> None:
 
 
 @pytest.mark.asyncio
-async def test_register_binds_video_processor() -> None:
+async def test_register_binds_video_processor(mocker) -> None:
+    # Deterministic: assert the enabled path regardless of whether the
+    # runner image ships ffmpeg.  (test_local_http_backend_registers_without_ffmpeg
+    # covers the disabled path.)
+    mocker.patch("shutil.which", return_value="/usr/bin/ffmpeg")
+
     provider = VideoGenerationProvider(config=VideoConfig())
     container = _FakeContainer()
 

@@ -27,7 +27,8 @@ def bearer_token_from_scope(scope: dict) -> bytes | None:
             continue
         scheme, _, token = value.partition(b" ")
         if scheme.lower() == b"bearer" and token:
-            assert isinstance(token, bytes)
+            if not isinstance(token, bytes):
+                continue
             return token
     return None
 
