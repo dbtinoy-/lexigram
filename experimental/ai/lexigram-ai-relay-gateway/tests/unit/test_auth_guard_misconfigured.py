@@ -81,10 +81,11 @@ async def _ok_handler(request: Request) -> JSONResponse:
 
 
 async def test_auth_off_passes_through() -> None:
-    """No container / no config keeps the route open (auth explicitly off)."""
+    """No container / no config fails closed: require_auth defaults to True,
+    so the route returns 503 rather than silently passing through."""
     route = _with_auth_guard(_ok_handler)
     response = await route(_make_request(None))
-    assert response.status_code == 200
+    assert response.status_code == 503
 
 
 async def test_auth_off_when_require_auth_false() -> None:

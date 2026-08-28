@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from datetime import UTC, datetime
+import time
 from typing import TYPE_CHECKING, Any, cast
 from uuid import UUID
 import warnings
@@ -152,7 +153,7 @@ class RedisStateStore(RedisDriver, StateStoreProtocol):
 
     async def health_check(self, timeout: float = 5.0) -> HealthCheckResult:
         """Check the health of the state store"""
-        start_time = datetime.now().timestamp()
+        start_time = time.monotonic()
         try:
             client = await self._get_client()
             # Wrap ping in wait_for so internal coroutines are properly
@@ -162,7 +163,7 @@ class RedisStateStore(RedisDriver, StateStoreProtocol):
             )
             # Get some basic stats
             info = await cast("Awaitable[dict[str, Any]]", client.info())
-            duration_ms = (datetime.now().timestamp() - start_time) * 1000
+            duration_ms = (time.monotonic() - start_time) * 1000
             return HealthCheckResult(
                 component="state_store",
                 status=HealthStatus.HEALTHY,
@@ -174,10 +175,10 @@ class RedisStateStore(RedisDriver, StateStoreProtocol):
                     "url": self.url,
                 },
                 duration_ms=duration_ms,
-                checked_at=datetime.fromtimestamp(datetime.now().timestamp(), UTC),
+                checked_at=datetime.now(UTC),
             )
         except (ConnectionError, OSError, TimeoutError, RuntimeError) as exc:
-            duration_ms = (datetime.now().timestamp() - start_time) * 1000
+            duration_ms = (time.monotonic() - start_time) * 1000
             logger.exception("Redis health check failed")
             return HealthCheckResult(
                 component="state_store",
@@ -189,5 +190,5 @@ class RedisStateStore(RedisDriver, StateStoreProtocol):
                     "url": self.url,
                 },
                 duration_ms=duration_ms,
-                checked_at=datetime.fromtimestamp(datetime.now().timestamp(), UTC),
+                checked_at=datetime.now(UTC),
             )

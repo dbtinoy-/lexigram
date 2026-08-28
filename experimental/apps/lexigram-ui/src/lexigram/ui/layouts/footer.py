@@ -6,7 +6,7 @@ Renders the page footer with copyright, links, and version info.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 
 from markupsafe import escape
 
@@ -85,7 +85,7 @@ class FooterRenderer:
 
     def _render_copyright(self) -> str:
         """Render copyright text."""
-        current_year = datetime.now().year
+        current_year = datetime.now(UTC).year
 
         if (
             self.config.copyright_start_year

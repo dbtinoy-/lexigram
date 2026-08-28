@@ -26,7 +26,7 @@ SAMPLE_VALUES = {
     "float": "1.5",
     "bool": "True",
     "boolean": "True",
-    "datetime": "datetime.now()",
+    "datetime": "datetime(2024, 1, 1, tzinfo=UTC)",
     "text": '"sample text"',
 }
 

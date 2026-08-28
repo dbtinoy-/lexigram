@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
+import time
 from types import EllipsisType
 from typing import (
     TYPE_CHECKING,
@@ -298,12 +299,12 @@ class RedisLockStore:
 
     async def health_check(self, timeout: float = 5.0) -> HealthCheckResult:
         """Check the health of the lock store"""
-        start_time = datetime.now().timestamp()
+        start_time = time.monotonic()
         try:
             client = await self._get_client()
 
             await cast("Awaitable[Any]", client.ping())
-            duration_ms = (datetime.now().timestamp() - start_time) * 1000
+            duration_ms = (time.monotonic() - start_time) * 1000
             return HealthCheckResult(
                 component="lock_store",
                 status=HealthStatus.HEALTHY,
@@ -313,10 +314,10 @@ class RedisLockStore:
                     "url": self.url,
                 },
                 duration_ms=duration_ms,
-                checked_at=datetime.fromtimestamp(datetime.now().timestamp(), UTC),
+                checked_at=datetime.now(UTC),
             )
         except (ConnectionError, OSError, TimeoutError, RuntimeError) as e:
-            duration_ms = (datetime.now().timestamp() - start_time) * 1000
+            duration_ms = (time.monotonic() - start_time) * 1000
             logger.exception("Redis lock store health check failed")
             return HealthCheckResult(
                 component="lock_store",
@@ -328,5 +329,5 @@ class RedisLockStore:
                     "url": self.url,
                 },
                 duration_ms=duration_ms,
-                checked_at=datetime.fromtimestamp(datetime.now().timestamp(), UTC),
+                checked_at=datetime.now(UTC),
             )

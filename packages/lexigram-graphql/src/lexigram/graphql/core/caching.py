@@ -8,12 +8,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+import hashlib
 from typing import TYPE_CHECKING, Any
 
 from lexigram import serialization as json
 from lexigram.logging import get_logger
 from lexigram.primitives import clock as ambient_clock
-from lexigram.security.hashing import ambient as hashing
 
 if TYPE_CHECKING:
     from lexigram.contracts.infra.cache.protocols import CacheBackendProtocol
@@ -165,8 +165,7 @@ def compute_cache_key(
     """
     # Use the pre-computed hash when available (APQ fast path) to avoid
     # re-hashing the query string.
-    base_hash = query_hash or hashing.hash_hex(query)
-
+    base_hash = query_hash or hashlib.sha256(query.encode("utf-8")).hexdigest()
     key_parts = [base_hash]
 
     if variables:
@@ -187,7 +186,8 @@ def compute_cache_key(
         return f"gql:{base_hash[:32]}"
 
     key_string = "|".join(key_parts)
-    return f"gql:{hashing.hash_hex(key_string)[:32]}"
+    key_digest = hashlib.sha256(key_string.encode("utf-8")).hexdigest()
+    return f"gql:{key_digest[:32]}"
 
 
 class ResponseCache:

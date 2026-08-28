@@ -13,7 +13,8 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
+import time
 from typing import Any, Generic, Protocol, TypeVar
 
 from lexigram.admin.exceptions import AdminError, NotFoundError
@@ -109,7 +110,7 @@ class BulkActionProgress:
         self.total = total
         self.current = 0
         self.errors: list[str] = []
-        self.start_time = datetime.now()
+        self.start_time = time.monotonic()
 
     @property
     def percentage(self) -> float:
@@ -121,7 +122,7 @@ class BulkActionProgress:
     @property
     def elapsed_ms(self) -> float:
         """Get elapsed time in milliseconds."""
-        delta = datetime.now() - self.start_time
+        delta = time.monotonic() - self.start_time
         return delta.total_seconds() * 1000
 
     def increment(self, count: int = 1) -> Any:
@@ -164,7 +165,7 @@ class BulkActionManager(Generic[T]):
         batch_size: int = 100,
     ) -> Result[BulkActionResult, AdminError]:
         """Update multiple records with new field values."""
-        start_time = datetime.now()
+        start_time = time.monotonic()
         snapshot_id = None
 
         if create_snapshot:
@@ -173,7 +174,7 @@ class BulkActionManager(Generic[T]):
                 snapshot_id=snapshot_id,
                 action_name="bulk_edit",
                 record_ids=ids,
-                timestamp=datetime.now(),
+                timestamp=datetime.now(UTC),
             )
 
         total_updated = 0
@@ -186,7 +187,7 @@ class BulkActionManager(Generic[T]):
             progress.increment(len(batch_ids))
             await asyncio.sleep(0)
 
-        duration = (datetime.now() - start_time).total_seconds() * 1000
+        duration = (time.monotonic() - start_time).total_seconds() * 1000
 
         return Ok(
             BulkActionResult(
@@ -263,7 +264,7 @@ class BulkActionManager(Generic[T]):
         batch_size: int = 10,
     ) -> Result[BulkActionResult, AdminError]:
         """Execute bulk action with progress tracking."""
-        start_time = datetime.now()
+        start_time = time.monotonic()
         progress = BulkActionProgress(total=len(ids))
 
         progress_key = f"bulk_progress_{id(progress)}"
@@ -294,7 +295,7 @@ class BulkActionManager(Generic[T]):
         if self._cache_backend is not None:
             await self._cache_backend.set(progress_key, progress.to_dict(), 300)
 
-        duration = (datetime.now() - start_time).total_seconds() * 1000
+        duration = (time.monotonic() - start_time).total_seconds() * 1000
 
         return Ok(
             BulkActionResult(

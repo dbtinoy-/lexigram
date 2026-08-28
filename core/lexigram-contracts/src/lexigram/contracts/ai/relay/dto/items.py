@@ -1,4 +1,10 @@
-"""OpenAI Responses wire DTO family — response items."""
+"""OpenAI Responses wire DTO family — shared response/request items.
+
+Lives at the ``dto`` level (not under ``openai_responses``) so the
+module path stays within the 6-segment import-depth gate; the
+``openai_responses`` package re-exports ``ResponsesItem`` for the
+canonical public API.
+"""
 
 from __future__ import annotations
 
