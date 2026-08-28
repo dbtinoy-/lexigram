@@ -142,13 +142,21 @@ class ResourceBulkMixin:
 
         data_source = self.get_data_source()
 
-        if action == "delete":
+        if action in ("delete", "purge"):
+            # Honor the resource's per-record can_delete hook, mirroring
+            # the single-record delete path (ResourceMutationMixin /
+            # action_handlers._execute_delete).  Without this the bulk
+            # route — gated only by identity-level request authz — could
+            # bulk-delete records the resource policy forbids.
+            can_delete = getattr(self, "can_delete", None)
+            if can_delete:
+                for item_id in ids:
+                    item = await data_source.find_one(item_id)
+                    if item is not None and not can_delete(item):
+                        return f"Refused: record {item_id} is protected from deletion"
             count = await data_source.bulk_delete(ids)
-            return f"Deleted {count} items"
-
-        if action == "purge":
-            count = await data_source.bulk_delete(ids)
-            return f"Purged {count} items"
+            verb = "Purged" if action == "purge" else "Deleted"
+            return f"{verb} {count} items"
 
         if action == "restore":
             restored = 0
