@@ -65,8 +65,16 @@ make ci
 
 ### 5. Push and Create Pull Request
 ```bash
+# MANDATORY: Rebase before pushing — never use git merge
+git pull --rebase origin main
 git push origin feat/feature-name
 ```
+
+> **MANDATORY**: Never use `git merge`. Always `git pull --rebase origin main`
+> before pushing. Merge commits pollute history, block clean reverts, and
+> create noisy auto-generated messages like
+> `Merge branch 'xxx' of github.com:... into HEAD`.
+> If you see a merge commit in your PR, rebase it out before requesting review.
 
 Create a Pull Request with:
 - Clear title describing the change
