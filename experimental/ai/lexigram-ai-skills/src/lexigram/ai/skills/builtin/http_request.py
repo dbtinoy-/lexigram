@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 from typing import Any
+import urllib.error
+import urllib.request
 
 from lexigram.ai.skills.base import BaseSkill
 from lexigram.ai.skills.exceptions import SkillExecutionError
 from lexigram.contracts.ai.skills import SkillDefinition, SkillError, SkillResult
+from lexigram.contracts.security import is_safe_url_for_request
 from lexigram.logging import (
     get_logger,
 )
@@ -15,6 +18,30 @@ from lexigram.result import Err, Ok, Result
 logger = get_logger(__name__)
 
 _ALLOWED_METHODS = {"GET", "POST", "PUT", "PATCH", "DELETE"}
+
+
+class _SafeRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """urllib redirect handler that refuses private/reserved redirect targets.
+
+    ``urlopen`` follows redirects automatically; the pre-request SSRF check
+    only covers the initial URL, so a public URL redirecting to an internal
+    host (metadata endpoint, loopback service) would otherwise bypass it.
+    Each ``Location`` target is re-validated with
+    :func:`is_safe_url_for_request` and the redirect is aborted when unsafe.
+    """
+
+    def redirect_request(
+        self,
+        req: urllib.request.Request,
+        fp: Any,
+        code: int,
+        msg: str,
+        headers: Any,
+        newurl: str,
+    ) -> urllib.request.Request | None:
+        if not is_safe_url_for_request(newurl):
+            raise urllib.error.URLError(f"Unsafe redirect target: {newurl}")
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
 
 
 class HTTPRequestSkill(BaseSkill):
@@ -109,13 +136,25 @@ class HTTPRequestSkill(BaseSkill):
                 SkillExecutionError(f"URL must start with http:// or https://: {url!r}")
             )
 
+        if not is_safe_url_for_request(url):
+            return Err(
+                SkillExecutionError(
+                    f"URL is not publicly reachable (SSRF guard): {url!r}"
+                )
+            )
+
         body_bytes = body_raw.encode() if body_raw else None
+
+        # Guarded opener: refuses redirects whose target is a private or
+        # reserved address (metadata endpoint, loopback service, ...).
+        _opener = urllib.request.build_opener(_SafeRedirectHandler)
+
         req = urllib.request.Request(url, data=body_bytes, method=method)  # noqa: S310
         for header_name, header_value in headers.items():
             req.add_header(header_name, header_value)
 
         def _do_request() -> tuple[int, str]:
-            with urllib.request.urlopen(req, timeout=timeout) as resp:  # noqa: S310
+            with _opener.open(req, timeout=timeout) as resp:  # noqa: S310
                 return resp.status, resp.read().decode(errors="replace")
 
         try:

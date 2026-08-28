@@ -6,8 +6,6 @@ from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
-import pytest
-
 from lexigram.ai.session.config import SessionConfig
 from lexigram.ai.session.context import SessionContext
 from lexigram.ai.session.middleware.session_middleware import (
@@ -44,7 +42,7 @@ class TestSessionMiddlewareExtraction:
 
     async def test_session_id_extracted_from_header(self) -> None:
         session_id = str(uuid4())
-        mgr, state = _make_manager(session_id)
+        mgr, _ = _make_manager(session_id)
         cfg = SessionConfig(header_name="X-Session-ID", auto_checkpoint_interval=None)
         mw = SessionMiddleware(session_manager=mgr, config=cfg)
 
@@ -56,7 +54,7 @@ class TestSessionMiddlewareExtraction:
 
     async def test_session_id_extracted_from_query_param(self) -> None:
         session_id = str(uuid4())
-        mgr, state = _make_manager(session_id)
+        mgr, _ = _make_manager(session_id)
         cfg = SessionConfig(auto_checkpoint_interval=None)
         mw = SessionMiddleware(session_manager=mgr, config=cfg)
 
@@ -67,7 +65,7 @@ class TestSessionMiddlewareExtraction:
 
     async def test_session_id_extracted_from_cookie(self) -> None:
         session_id = str(uuid4())
-        mgr, state = _make_manager(session_id)
+        mgr, _ = _make_manager(session_id)
         cfg = SessionConfig(cookie_name="lexsession", auto_checkpoint_interval=None)
         mw = SessionMiddleware(session_manager=mgr, config=cfg)
 
@@ -78,7 +76,7 @@ class TestSessionMiddlewareExtraction:
         mgr.get_state.assert_awaited_once_with(session_id)
 
     async def test_auto_creates_session_when_no_id_provided(self) -> None:
-        mgr, state = _make_manager()
+        mgr, _ = _make_manager()
         cfg = SessionConfig(auto_checkpoint_interval=None)
         mw = SessionMiddleware(session_manager=mgr, config=cfg)
 
@@ -89,7 +87,7 @@ class TestSessionMiddlewareExtraction:
         assert scope["session"] is not None
 
     async def test_scope_session_is_session_context(self) -> None:
-        mgr, state = _make_manager()
+        mgr, _ = _make_manager()
         cfg = SessionConfig(auto_checkpoint_interval=None)
         mw = SessionMiddleware(session_manager=mgr, config=cfg)
 
@@ -143,6 +141,7 @@ class TestCookieInjectSend:
             cookie_name="lexsession",
             session_id="abc123",
             ttl=3600,
+            secure=False,
         )
 
         await wrapper({"type": "http.response.start", "status": 200, "headers": []})
@@ -166,6 +165,7 @@ class TestCookieInjectSend:
             cookie_name="s",
             session_id="id1",
             ttl=60,
+            secure=False,
         )
 
         start_msg = {"type": "http.response.start", "status": 200, "headers": []}
@@ -185,7 +185,7 @@ class TestCookieInjectSend:
             calls.append(msg)
 
         wrapper = _CookieInjectSend(
-            mock_send, cookie_name="s", session_id="x", ttl=60
+            mock_send, cookie_name="s", session_id="x", ttl=60, secure=False
         )
         body_msg = {"type": "http.response.body", "body": b"hello"}
         await wrapper(body_msg)
