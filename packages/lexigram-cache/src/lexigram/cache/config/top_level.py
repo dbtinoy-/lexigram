@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import Any, ClassVar, cast
 
 from lexigram.cache import constants as const
-from lexigram.cache.config.backends import CacheBackendConfig
+from lexigram.cache.config.backends import CacheBackendConfig, resolve_backend_type
 from lexigram.cache.config.service import CacheServiceConfig
 from lexigram.cache.types import BackendType
 from lexigram.config import BaseConfig
@@ -65,12 +65,17 @@ class CacheConfig(BaseConfig):
         """Block insecure cache configurations in production."""
         if self.environment == Environment.PRODUCTION:
             for backend in self.backends:
-                if backend.type != BackendType.REDIS:
+                if resolve_backend_type(backend) != BackendType.REDIS:
                     continue
-                if (
-                    backend.redis_password
-                    and backend.redis_password.lower() in const.INSECURE_PASSWORDS
-                ):
+                # Support both the flattened union (redis_password/redis_url)
+                # and the dedicated RedisBackendConfig (password/url).
+                password = getattr(backend, "password", None) or getattr(
+                    backend, "redis_password", None
+                )
+                url = getattr(backend, "url", None) or getattr(
+                    backend, "redis_url", None
+                )
+                if password and password.lower() in const.INSECURE_PASSWORDS:
                     raise ValueError(
                         const.ERROR_MSG_INSECURE_PASSWORD.format(
                             backend="Redis",
@@ -78,9 +83,8 @@ class CacheConfig(BaseConfig):
                             env_var=f"{const.ENV_PREFIX}BACKENDS__<idx>__REDIS_PASSWORD",
                         ),
                     )
-                if backend.redis_url and any(
-                    f":{d}@" in backend.redis_url.lower()
-                    for d in const.INSECURE_PASSWORDS
+                if url and any(
+                    f":{d}@" in url.lower() for d in const.INSECURE_PASSWORDS
                 ):
                     raise ValueError(
                         const.ERROR_MSG_INSECURE_URL.format(
