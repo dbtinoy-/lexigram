@@ -17,6 +17,7 @@ class SearchBar(Component):
         placeholder: str = "Search...",
         show_icon: bool = True,
         show_clear: bool = False,
+        aria_label: str = "Search",
         **props: Any,
     ) -> None:
         """
@@ -28,6 +29,8 @@ class SearchBar(Component):
             placeholder: Placeholder text
             show_icon: Whether to show search icon
             show_clear: Whether to show clear button
+            aria_label: Accessible name for the search input (placeholders
+                are not reliable labels for assistive technology).
             **props: Additional props (HTMX attributes, etc.)
         """
         super().__init__(
@@ -36,6 +39,7 @@ class SearchBar(Component):
             placeholder=placeholder,
             show_icon=show_icon,
             show_clear=show_clear,
+            aria_label=aria_label,
             **props,
         )
         self.name = name
@@ -43,6 +47,7 @@ class SearchBar(Component):
         self.placeholder = placeholder
         self.show_icon = show_icon
         self.show_clear = show_clear
+        self.aria_label = aria_label
 
     def render(self) -> Any:
         """Render search bar."""
@@ -56,6 +61,7 @@ class SearchBar(Component):
             "error",
             "disabled",
             "required",
+            "aria_label",
         ]
         text_input_props = {
             k: v for k, v in self.props.items() if k not in excluded_props
@@ -67,6 +73,7 @@ class SearchBar(Component):
         wrapper_props = {
             "x_data": f"{{ query: {dumps_str(self.value)} }}",
             "class_": "relative group",
+            "role": "search",
         }
 
         # Inject x-model into input props
@@ -83,6 +90,7 @@ class SearchBar(Component):
             autocomplete="off",
             id=f"{Zones.SEARCH.id}-input",
             hx_preserve="true",
+            aria_label=self.aria_label,
             **text_input_props,
         )
 

@@ -222,7 +222,15 @@ class DashboardController(AdminController):
             )
             widgets_section = el(
                 "div",
-                StatCardGrid(default_stats, cols=4),
+                StatCardGrid(
+                    default_stats,
+                    cols=4,
+                    data_source=(
+                        f"{admin_prefix_from_request(request)}/widgets/stats"
+                    ),
+                    refresh_interval=120,
+                    aria_label="Overview statistics",
+                ),
                 chart_row,
                 bottom_row,
                 class_="space-y-6",

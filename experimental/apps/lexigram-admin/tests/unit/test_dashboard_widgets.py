@@ -34,7 +34,7 @@ class TestStatCard:
         assert "text-success" in html
 
     def test_renders_change_indicator_negative(self) -> None:
-        stat = Stat(label="Errors", value="10", change="−3%", change_positive=False)
+        stat = Stat(label="Errors", value="10", change="-3%", change_positive=False)
         html = str(StatCard(stat).render())
         assert "↓" in html
         assert "text-destructive" in html
@@ -82,6 +82,22 @@ class TestStatCardGrid:
         stats = [Stat(label="X", value="0")]
         html = str(StatCardGrid(stats).render())
         assert "lg:grid-cols-4" in html
+
+    def test_data_source_renders_live_grid(self) -> None:
+        stats = [Stat(label="X", value="0")]
+        html = str(
+            StatCardGrid(
+                stats,
+                cols=4,
+                data_source="/admin/widgets/stats",
+                refresh_interval=60,
+            ).render()
+        )
+        assert 'hx-get="/admin/widgets/stats"' in html
+        assert 'hx-trigger="load, every 60000ms"' in html
+        assert "htmx-indicator" in html
+        assert 'role="region"' in html
+        assert "Loading…" in html
 
 
 # ---------------------------------------------------------------------------
