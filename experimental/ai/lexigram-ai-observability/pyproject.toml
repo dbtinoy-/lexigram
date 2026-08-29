@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "lexigram-ai-observability"
-version = "0.1.5007"
+version = "0.1.5008"
 description = "AI observability for the Lexigram Framework — tracing, metrics, and monitoring"
 readme = "README.md"
 requires-python = ">=3.11"

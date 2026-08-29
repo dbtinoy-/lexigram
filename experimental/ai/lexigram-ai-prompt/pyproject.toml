@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "lexigram-ai-prompt"
-version = "0.1.5007"
+version = "0.1.5008"
 description = "AI prompt management for the Lexigram Framework — templates, composition, optimization"
 readme = "README.md"
 requires-python = ">=3.11"

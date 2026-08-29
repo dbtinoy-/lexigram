@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "lexigram-ai-guard"
-version = "0.1.5007"
+version = "0.1.5008"
 description = "AI input/output guard pipeline for the Lexigram Framework — LLM safety and content filtering"
 readme = "README.md"
 requires-python = ">=3.11"
