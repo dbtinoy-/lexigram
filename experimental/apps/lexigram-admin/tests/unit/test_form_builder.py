@@ -103,3 +103,43 @@ class TestFormBuilder:
         form = FormBuilder.create().text("title", label="Title").build()
         assert isinstance(form.fields["title"], SchemaField)
         assert form.fields["title"].label == "Title"
+
+    def test_group_renders_titled_sections_in_declaration_order(self) -> None:
+        form = (
+            FormBuilder(UserForm)
+            .group("identity", "name", "email", label="Identity")
+            .group("account", "age", "active", label="Account")
+            .build()
+            .bind({"name": "Ada"})
+        )
+        html = form.render_html("/submit")
+        identity_at = html.index("Identity")
+        account_at = html.index("Account")
+        identity_field_at = html.index('name="name"')
+        account_field_at = html.index('name="age"')
+        # Section order follows declaration order
+        assert identity_at < account_at
+        assert identity_field_at < account_field_at
+        assert "hx-post" not in html
+
+    def test_group_without_label_titlecases_group_name(self) -> None:
+        form = FormBuilder(UserForm).group("billing_info", "email").build()
+        html = form.render_html("/submit")
+        assert "Billing Info" in html
+
+    def test_ungrouped_fields_render_after_sections(self) -> None:
+        form = (
+            FormBuilder(UserForm)
+            .group("identity", "name")
+            .build()
+        )
+        html = form.render_html("/submit")
+        # 'joined_at' is not grouped; it appears after the section heading
+        assert html.index("Identity") < html.index('name="joined_at"')
+
+    def test_render_htmx_uses_same_grouping_with_hx_post(self) -> None:
+        form = FormBuilder(UserForm).group("identity", "name", "email").build()
+        html = form.render_htmx("/submit", target="#form-result")
+        assert "Identity" in html
+        assert 'hx-post="/submit"' in html
+        assert 'hx-target="#form-result"' in html

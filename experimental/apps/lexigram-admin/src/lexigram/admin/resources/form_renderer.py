@@ -365,8 +365,10 @@ class FormRenderer(WizardRendererMixin):
                 ordered_names: list[str] = []
                 exclude_names = set(getattr(resource, "form_exclude_fields", ()) or ())
                 for field_schema in schema.fields:
-                    # Skip framework-managed / excluded fields
+                    # Skip framework-managed / excluded / form-hidden fields
                     if field_schema.name in exclude_names:
+                        continue
+                    if not getattr(field_schema, "visible_in_form", True):
                         continue
 
                     # --- Field-level RBAC enforcement ---

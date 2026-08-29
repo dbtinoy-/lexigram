@@ -141,6 +141,24 @@ class TestFormSchemaGenerator:
         field = schema.get_field("owner_id")
         assert field.resource == "owners"
 
+    def test_json_schema_extra_visible_in_form_false(self):
+        from pydantic import BaseModel as PydanticModel
+        from pydantic import Field as PydanticField
+
+        class Secretive(PydanticModel):
+            username: str
+            internal_note: str = PydanticField(
+                default="",
+                json_schema_extra={"visible_in_form": False},
+            )
+
+        gen = FormSchemaGenerator()
+        schema = gen.from_pydantic(Secretive)
+        note = schema.get_field("internal_note")
+        assert note is not None
+        assert note.visible_in_form is False
+        assert schema.get_field("username").visible_in_form is True
+
 
 class TestFormValidationEngine:
     @pytest.mark.asyncio
@@ -196,6 +214,46 @@ class TestFormLayoutBuilder:
         assert len(layout) == 2
         assert layout[0].title == "Identity"
         assert len(layout[1].tabs) == 2
+
+    def test_form_base_renders_declared_layout(self):
+        from lexigram.admin.forms import FormBase, FormLayoutBuilder
+        from lexigram.admin.schema import TextField
+
+        class _ProfileForm(FormBase):
+            username = TextField(name="username", label="Username", required=True)
+            email = TextField(name="email", label="Email", required=False)
+            layout = FormLayoutBuilder.create().section(
+                "Identity", ["username", "email"]
+            ).build()
+
+        html = str(_ProfileForm(data={"username": "ada"}).render())
+        assert "Identity" in html
+        assert 'name="username"' in html
+        assert 'value="ada"' in html
+
+    def test_form_base_layout_constructor_override(self):
+        from lexigram.admin.forms import FormBase, FormLayoutBuilder
+        from lexigram.admin.schema import TextField
+
+        class _ProfileForm(FormBase):
+            name = TextField(name="name", label="Name", required=True)
+
+        layout = FormLayoutBuilder.create().section("General", ["name"]).build()
+        html = str(_ProfileForm(layout=layout).render())
+        assert "General" in html
+        assert 'name="name"' in html
+
+    def test_form_base_renders_validation_errors(self):
+        from lexigram.admin.forms import FormBase
+        from lexigram.admin.schema import TextField
+
+        class _ProfileForm(FormBase):
+            email = TextField(name="email", label="Email", required=True)
+
+        form = _ProfileForm(data={"email": ""})
+        form.is_valid()
+        html = str(form.render())
+        assert "This field is required." in html
 
 
 class TestFormStore:
