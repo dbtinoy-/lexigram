@@ -120,21 +120,16 @@ class GeneratorAdapter(CodeGenerator):
 
 
 class GeneratorRegistry:
-    """Registry for CLI generator definitions contributed by CliContributors."""
+    """Registry for CLI generator definitions contributed by CliContributors.
+
+    Instances are populated exclusively through contributor discovery
+    (:func:`lexigram.cli.contributors.discovery.populate_cli_registries`) —
+    the generator set is plugin-defined (entry points across packages), so
+    there is no static built-in set and therefore no ``with_defaults()``.
+    """
 
     def __init__(self) -> None:
         self._generators: dict[str, GeneratorDefinition] = {}
-
-    @classmethod
-    def with_defaults(cls) -> GeneratorRegistry:
-        """Create a pre-populated instance containing all core generators."""
-        from lexigram.cli.contributors.core import CoreCliContributor  # noqa: PLC0415
-
-        instance = cls()
-        contributor = CoreCliContributor()
-        for generator_definition in contributor.get_generators():
-            instance.register(generator_definition)
-        return instance
 
     def register(self, generator: GeneratorDefinition) -> None:
         """Register a generator definition."""
@@ -159,12 +154,6 @@ class GeneratorRegistry:
     def list_generators(self) -> list[GeneratorDefinition]:
         """Return all registered generators in insertion order."""
         return list(self._generators.values())
-
-    @classmethod
-    def get_all(cls) -> dict[str, GeneratorDefinition]:
-        """Return all registered generators from the default registry."""
-        registry = cls.with_defaults()
-        return dict(registry._generators)
 
     @staticmethod
     def _load_generator_class(generator_path: str) -> type:

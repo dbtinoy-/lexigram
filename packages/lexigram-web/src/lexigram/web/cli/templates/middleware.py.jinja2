@@ -4,37 +4,35 @@
 {{ doc }}
 {% endif %}
 """
+
 from __future__ import annotations
 
 import time
-from typing import Any, Callable
+from typing import Any
 
-from lexigram.web.protocols import ASGIApp, Request, Response
+from starlette.types import ASGIApp, Receive, Scope, Send
+
 from lexigram.logging import get_logger
 
+logger = get_logger(__name__)
 
-logger = get_logger("{{ class_name }}Middleware")
 
+class {{ class_name }}:
+    """{{ class_name }} for request/response processing.
 
-class {{ class_name }}Middleware:
-    """{{ class_name }} middleware for request/response processing.
-    
-    This middleware performs the following operations:
-    1. Pre-request: Process request before it reaches the handler
-    2. Request: Pass request to the next middleware/handler
-    3. Post-response: Process response before returning to client
-    
-    Add your custom logic in the appropriate methods.
+    This is the canonical Lexigram middleware shape: a plain ASGI class that
+    wraps ``app`` and intercepts ``scope``/``receive``/``send``.  Register it
+    with the web provider, e.g. ``WebProvider(middleware=[{{ class_name }}])``,
+    so it composes into the middleware stack.
     """
-    
+
     def __init__(
         self,
         app: ASGIApp,
-        {% if options %}options: dict[str, Any] | None = None,
-        {% endif %}
-    ):
+        {% if options %}options: dict[str, Any] | None = None,{% endif %}
+    ) -> None:
         """Initialize the middleware.
-        
+
         Args:
             app: The ASGI application.
             {% if options %}options: Optional configuration options.{% endif %}
@@ -43,140 +41,90 @@ class {{ class_name }}Middleware:
         {% if options %}
         self.options = options or {}
         # Configure middleware behavior from options
-        self.enabled = self.options.get("enabled", True)
-        self.timeout = self.options.get("timeout", 30)
+        self.enabled = bool(self.options.get("enabled", True))
         {% else %}
         self.enabled = True
         {% endif %}
-    
-    async def __call__(self, request: Request, call_next: Callable) -> Response:
-        """Process the request and response.
-        
+
+    async def __call__(
+        self,
+        scope: Scope,
+        receive: Receive,
+        send: Send,
+    ) -> None:
+        """Process the ASGI request and response.
+
         Args:
-            request: The incoming request.
-            call_next: The next middleware or handler.
-            
-        Returns:
-            The response.
+            scope: The ASGI connection scope.
+            receive: The ASGI receive callable.
+            send: The ASGI send callable.
         """
-        if not self.enabled:
-            return await call_next(request)
-        
-        # Pre-request processing
-        request = await self._pre_request(request)
-        
-        # Track timing
+        if scope["type"] != "http" or not self.enabled:
+            await self.app(scope, receive, send)
+            return
+
         start_time = time.perf_counter()
-        
+        response_status = 500
+
+        # Pre-request processing
+        self._pre_request(scope)
+
+        async def send_wrapper(message: dict[str, Any]) -> None:
+            """Wrap ``send`` to observe the response status."""
+            nonlocal response_status
+            if message["type"] == "http.response.start":
+                response_status = message["status"]
+            await send(message)
+
         try:
-            # Process request
-            response = await call_next(request)
-            
-            # Post-response processing
-            response = await self._post_request(request, response)
-            
-            return response
-            
-        except Exception as e:  # noqa: BLE001
-            # Exception handling
-            await self._handle_exception(request, e)
+            await self.app(scope, receive, send_wrapper)
+        except Exception as exc:  # noqa: BLE001
+            # Exception handling before the response is sent
+            await self._handle_exception(scope, exc)
             raise
         finally:
             # Always log request duration
             duration = time.perf_counter() - start_time
-            await self._log_request(request, duration)
-    
-    async def _pre_request(self, request: Request) -> Request:
-        """Process request before it reaches the handler.
-        
-        Args:
-            request: The incoming request.
-            
-        Returns:
-            The processed request.
+            self._log_request(scope, response_status, duration)
+
+    def _pre_request(self, scope: Scope) -> None:
+        """Process the scope before it reaches the handler.
+
+        Add custom pre-request logic here:
+        - Add request ID for tracing (via ``scope``/``state``)
+        - Validate headers
+        - Check rate limits
+        - Authenticate request
         """
-        # Add custom pre-request logic here:
-        # - Add request ID for tracing
-        # - Validate headers
-        # - Check rate limits
-        # - Authenticate request
-        
         # Example:
-        # request.state.request_id = str(uuid.uuid4())
-        
-        return request
-    
-    async def _post_request(
+        # scope.setdefault("state", {})["request_id"] = str(uuid.uuid4())
+
+    async def _handle_exception(self, scope: Scope, exc: Exception) -> None:
+        """Handle exceptions raised by the application.
+
+        Args:
+            scope: The ASGI connection scope.
+            exc: The raised exception.
+        """
+        logger.error("{{ class_name }}_exception", error=str(exc))
+
+    def _log_request(
         self,
-        request: Request,
-        response: Response,
-    ) -> Response:
-        """Process response before returning to client.
-        
+        scope: Scope,
+        response_status: int,
+        duration: float,
+    ) -> None:
+        """Log request duration and status.
+
         Args:
-            request: The original request.
-            response: The response from the handler.
-            
-        Returns:
-            The processed response.
+            scope: The ASGI connection scope.
+            response_status: The response status code.
+            duration: Request duration in seconds.
         """
-        # Add custom post-response logic here:
-        # - Add custom headers
-        # - Modify response body
-        # - Cache response
-        
-        # Example:
-        # response.headers["X-Request-ID"] = request.state.request_id
-        
-        return response
-    
-    async def _handle_exception(self, request: Request, exc: Exception) -> None:
-        """Handle exceptions that occur during request processing.
-        
-        Args:
-            request: The request that caused the exception.
-            exc: The exception that occurred.
-        """
-        # Add custom exception handling here:
-        # - Log error details
-        # - Send error notifications
-        # - Clean up resources
-        
-        logger.exception(
-            f"Error processing {request.url.path}: {exc}",
-            extra={"path": request.url.path},
+        logger.info(
+            "{{ class_name }}_request",
+            path=scope.get("path"),
+            method=scope.get("method"),
+            status=response_status,
+            duration_ms=round(duration * 1000, 2),
         )
-    
-    async def _log_request(self, request: Request, duration: float) -> None:
-        """Log request details for monitoring.
-        
-        Args:
-            request: The completed request.
-            duration: Request processing duration in seconds.
-        """
-        # Add custom logging here:
-        # - Log to metrics service
-        # - Log slow requests
-        # - Log error rates
-        
-        if duration > 1.0:  # Log slow requests
-            logger.warning(
-                f"Slow request: {request.method} {request.url.path} took {duration:.3f}s"
-            )
-
-
-# Factory function for creating middleware with options
-def create_{{ name | lower }}_middleware(
-    app: ASGIApp,
-    **options: Any,
-) -> {{ class_name }}Middleware:
-    """Factory function to create {{ class_name }}Middleware with options.
-    
-    Args:
-        app: The ASGI application.
-        **options: Middleware configuration options.
-        
-    Returns:
-        Configured middleware instance.
-    """
-    return {{ class_name }}Middleware(app, options=options)

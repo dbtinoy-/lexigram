@@ -165,45 +165,47 @@ class SimpleFormatter(OutputFormatter):
 class FormatterRegistry:
     """Registry for output formatters.
 
-    Provides a pluggable way to add new formatters.
+    Instances are always empty — use :meth:`with_defaults` for the
+    in-package built-ins or :meth:`register` for plugin formatters.
     """
 
-    _formatters: dict[str, OutputFormatter] = {}
-    _initialized: bool = False
+    def __init__(self) -> None:
+        self._formatters: dict[str, OutputFormatter] = {}
 
-    @classmethod
-    def register(cls, formatter: type[OutputFormatter]) -> None:
+    def register(self, formatter: type[OutputFormatter]) -> None:
         """Register a formatter class."""
         instance = formatter()
-        cls._formatters[formatter.name] = instance
+        self._formatters[formatter.name] = instance
 
-    @classmethod
-    def get(cls, name: str) -> OutputFormatter | None:
+    def get(self, name: str) -> OutputFormatter | None:
         """Get a formatter by name."""
-        cls.register_defaults()
-        return cls._formatters.get(name)
+        return self._formatters.get(name)
 
-    @classmethod
-    def get_all(cls) -> dict[str, OutputFormatter]:
+    def get_all(self) -> dict[str, OutputFormatter]:
         """Get all registered formatters."""
-        cls.register_defaults()
-        return cls._formatters.copy()
+        return self._formatters.copy()
 
-    @classmethod
-    def get_choices(cls) -> list[str]:
+    def get_choices(self) -> list[str]:
         """Get list of available formatter names."""
-        cls.register_defaults()
-        return list(cls._formatters.keys())
+        return list(self._formatters.keys())
 
     @classmethod
-    def register_defaults(cls) -> None:
-        """Initialize default formatters if not already done."""
-        if not cls._initialized:
-            cls.register(JSONFormatter)
-            cls.register(YAMLFormatter)
-            cls.register(TableFormatter)
-            cls.register(SimpleFormatter)
-            cls._initialized = True
+    def _default_entries(cls) -> tuple[type[OutputFormatter], ...]:
+        """The complete in-package built-in set, declared exactly once."""
+        return (
+            JSONFormatter,
+            YAMLFormatter,
+            TableFormatter,
+            SimpleFormatter,
+        )
+
+    @classmethod
+    def with_defaults(cls) -> FormatterRegistry:
+        """Return an instance populated with the built-in formatters."""
+        registry = cls()
+        for entry in cls._default_entries():
+            registry.register(entry)
+        return registry
 
 
 def format_output(
@@ -212,7 +214,8 @@ def format_output(
     options: FormatOptions | None = None,
 ) -> str:
     """Format data using the specified formatter."""
-    formatter = FormatterRegistry.get(format_name)
+    registry = FormatterRegistry.with_defaults()
+    formatter = registry.get(format_name)
     if not formatter:
         raise ValueError(f"Unknown format: {format_name}")
     return formatter.format(data, options)

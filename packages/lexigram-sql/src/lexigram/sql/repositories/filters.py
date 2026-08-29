@@ -120,18 +120,28 @@ class FilterOperatorRegistry:
 
     def __init__(self) -> None:
         self._handlers: dict[str, FilterOperatorHandler] = {}
-        self._register_default_handlers()
 
-    def _register_default_handlers(self) -> None:
-        """Register default filter operator handlers."""
-        self.register_handler("gt", GreaterThanHandler())
-        self.register_handler("gte", GreaterThanOrEqualHandler())
-        self.register_handler("lt", LessThanHandler())
-        self.register_handler("lte", LessThanOrEqualHandler())
-        self.register_handler("in", InHandler())
-        self.register_handler("contains", ContainsHandler())
-        self.register_handler("icontains", IContainsHandler())
-        self.register_handler("isnull", IsNullHandler())
+    @classmethod
+    def _default_entries(cls) -> dict[str, FilterOperatorHandler]:
+        """Declare the built-in filter operator handlers."""
+        return {
+            "gt": GreaterThanHandler(),
+            "gte": GreaterThanOrEqualHandler(),
+            "lt": LessThanHandler(),
+            "lte": LessThanOrEqualHandler(),
+            "in": InHandler(),
+            "contains": ContainsHandler(),
+            "icontains": IContainsHandler(),
+            "isnull": IsNullHandler(),
+        }
+
+    @classmethod
+    def with_defaults(cls) -> FilterOperatorRegistry:
+        """Create a registry pre-populated with the built-in handlers."""
+        registry = cls()
+        for key, handler in cls._default_entries().items():
+            registry.register_handler(key, handler)
+        return registry
 
     def register_handler(self, op: str, handler: FilterOperatorHandler) -> None:
         """Register a filter operator handler."""

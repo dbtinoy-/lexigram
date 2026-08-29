@@ -45,7 +45,7 @@ class _CacheRegistrationMixin:
         container.singleton(CacheConfig, self.config)
 
         # Register backend registry
-        self._backend_registry = BackendRegistry()
+        self._backend_registry = BackendRegistry.with_defaults()
         container.singleton(BackendRegistry, self._backend_registry)
 
         # Register CacheStatusRegistry in the container (D4.1).

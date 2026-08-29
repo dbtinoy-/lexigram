@@ -16,7 +16,7 @@ class TestDataLoaderGenerator:
 
     def test_default_output_dir(self) -> None:
         gen = DataLoaderGenerator()
-        assert gen.default_output_dir == "src/graphql/dataloaders"
+        assert gen.default_output_dir == "src/schema/dataloaders"
 
     def test_get_name_method(self) -> None:
         gen = DataLoaderGenerator()

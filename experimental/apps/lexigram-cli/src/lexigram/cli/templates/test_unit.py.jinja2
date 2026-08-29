@@ -4,246 +4,235 @@
 {{ doc }}
 {% endif %}
 """
-from datetime import UTC, datetime
+from __future__ import annotations
+
+import json
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from starlette.requests import Request
+
 {% if test_type == 'model' %}
-from {{ package_name }}.models.{{ model_name }}_model import {{ class_name }}Model
+from models.{{ model_name }} import {{ class_name }}
 {% elif test_type == 'service' %}
-from {{ package_name }}.services.{{ model_name }}_service import {{ class_name }}Service
+from services.{{ model_name }}_service import {{ class_name }}Service
 {% elif test_type == 'controller' %}
-from {{ package_name }}.controllers.{{ model_name }}_controller import {{ class_name }}Controller
+from controllers.{{ model_name }}_controller import {{ class_name }}Controller
+from lexigram.web.exceptions import NotFoundError
 {% else %}
 # Import your modules here
 {% endif %}
 
 
 {% if test_type == 'model' %}
-class Test{{ class_name }}Model:
-    """Tests for {{ class_name }}Model."""
-    
+class Test{{ class_name }}:
+    """Tests for the {{ class_name }} entity model."""
+
     @pytest.fixture
     def sample_data(self) -> dict[str, Any]:
-        """Create sample data for testing."""
+        """Create sample data for the entity."""
         return {
             {% for field in fields %}
             "{{ field.name }}": {{ field.sample_value }},
             {% endfor %}
         }
-    
+
     @pytest.fixture
-    def model_instance(self, sample_data: dict[str, Any]) -> {{ class_name }}Model:
-        """Create a model instance for testing."""
-        return {{ class_name }}Model(**sample_data)
-    
-    def test_model_creation(self, model_instance: {{ class_name }}Model):
-        """Test model instance creation."""
-        assert model_instance is not None
+    def model_instance(self, sample_data: dict[str, Any]) -> {{ class_name }}:
+        """Create an entity instance for testing."""
+        return {{ class_name }}(**sample_data)
+
+    def test_model_creation(self, model_instance: {{ class_name }}):
+        """Test entity instantiation and default fields."""
+        assert model_instance.id
+        assert model_instance.created_at is not None
+        assert model_instance.updated_at is not None
+
+    def test_model_dump(self, model_instance: {{ class_name }}):
+        """Test model_dump serialization."""
+        data = model_instance.model_dump()
+        assert isinstance(data, dict)
+        assert "id" in data
         {% for field in fields[:3] %}
-        assert model_instance.{{ field.name }} == {{ field.sample_value }}
+        assert data["{{ field.name }}"] == {{ field.sample_value }}
         {% endfor %}
-    
-    def test_to_dict(self, model_instance: {{ class_name }}Model):
-        """Test converting model to dictionary."""
-        result = model_instance.to_dict()
-        
-        assert isinstance(result, dict)
-        assert "id" in result
-        {% for field in fields[:3] %}
-        assert "{{ field.name }}" in result
-        {% endfor %}
-    
-    def test_from_dict(self, sample_data: dict[str, Any]):
-        """Test creating model from dictionary."""
-        model = {{ class_name }}Model.from_dict(sample_data)
-        
-        assert isinstance(model, {{ class_name }}Model)
-        {% for field in fields[:3] %}
-        assert model.{{ field.name }} == sample_data["{{ field.name }}"]
-        {% endfor %}
-    
-    def test_repr(self, model_instance: {{ class_name }}Model):
-        """Test string representation."""
-        repr_str = repr(model_instance)
-        
-        assert "{{ class_name }}Model" in repr_str
-        assert "id=" in repr_str
-    
-    def test_timestamps_present(self, model_instance: {{ class_name }}Model):
-        """Test that timestamp fields are present."""
-        assert hasattr(model_instance, "created_at")
-        assert hasattr(model_instance, "updated_at")
+
+    def test_model_validate(self, sample_data: dict[str, Any]):
+        """Test model_validate round-trip."""
+        model = {{ class_name }}.model_validate(sample_data)
+        assert isinstance(model, {{ class_name }})
 
 {% elif test_type == 'service' %}
 class Test{{ class_name }}Service:
-    """Tests for {{ class_name }}Service."""
-    
+    """Tests for the {{ class_name }}Service."""
+
     @pytest.fixture
-    def mock_unit_of_work(self) -> MagicMock:
-        """Create a mock unit of work."""
-        uow = MagicMock()
-        uow.__aenter__ = AsyncMock(return_value=None)
-        uow.__aexit__ = AsyncMock(return_value=None)
-        
-        # Mock repository
-        mock_repo = MagicMock()
-        uow.get_repository.return_value = mock_repo
-        mock_repo.list = AsyncMock(return_value=[])
-        mock_repo.get = AsyncMock(return_value=None)
-        mock_repo.add = AsyncMock()
-        mock_repo.update = AsyncMock()
-        mock_repo.delete = AsyncMock()
-        mock_repo.count = AsyncMock(return_value=0)
-        
-        return uow
-    
+    def provider(self) -> MagicMock:
+        """Create a mocked database provider."""
+        provider = MagicMock()
+        result = MagicMock()
+        result.rows = []
+        provider.execute_query = AsyncMock(return_value=result)
+        return provider
+
     @pytest.fixture
-    def service(self, mock_unit_of_work: MagicMock) -> {{ class_name }}Service:
-        """Create service instance with mock."""
-        return {{ class_name }}Service(unit_of_work=mock_unit_of_work)
-    
+    def service(self, provider: MagicMock) -> {{ class_name }}Service:
+        """Create a service backed by the mocked provider."""
+        return {{ class_name }}Service(provider=provider)
+
     @pytest.mark.asyncio
     async def test_list(self, service: {{ class_name }}Service):
-        """Test listing {{ resource_name }}."""
+        """Test listing rows."""
         result = await service.list(limit=10, offset=0)
-        
         assert isinstance(result, list)
-    
+
     @pytest.mark.asyncio
-    async def test_get(self, service: {{ class_name }}Service):
-        """Test getting a single {{ resource_name }}."""
+    async def test_get_not_found(
+        self,
+        service: {{ class_name }}Service,
+        provider: MagicMock,
+    ):
+        """Test getting a missing row."""
+        provider.execute_query.return_value.rows = []
         result = await service.get(1)
-        
-        assert result is None  # Not found
-    
+        assert result is None
+
     @pytest.mark.asyncio
-    async def test_create(self, service: {{ class_name }}Service):
-        """Test creating a {{ resource_name }}."""
+    async def test_create(
+        self,
+        service: {{ class_name }}Service,
+        provider: MagicMock,
+    ):
+        """Test creating a row."""
         data = {
             {% for field in fields[:3] %}
             "{{ field.name }}": {{ field.sample_value }},
             {% endfor %}
         }
-        
-        result = await service.create(data)
-        
-        assert result is not None
-    
+        with patch(
+            "services.{{ model_name }}_service.SimpleUnitOfWork"
+        ) as uow_cls:
+            uow = uow_cls.return_value
+            uow.__aenter__ = AsyncMock(return_value=uow)
+            uow.__aexit__ = AsyncMock(return_value=None)
+            uow.commit = AsyncMock()
+            result = await service.create(data)
+        assert result == data
+        uow.commit.assert_awaited_once()
+
     @pytest.mark.asyncio
-    async def test_update(self, service: {{ class_name }}Service):
-        """Test updating a {{ resource_name }}."""
-        data = {"name": "Updated Name"}
-        
-        result = await service.update(1, data)
-        
-        assert result is None  # Not found
-    
-    @pytest.mark.asyncio
-    async def test_delete(self, service: {{ class_name }}Service):
-        """Test deleting a {{ resource_name }}."""
-        result = await service.delete(1)
-        
-        assert result is False  # Not found
-    
-    @pytest.mark.asyncio
-    async def test_validate_data_with_missing_fields(self, service: {{ class_name }}Service):
-        """Test validation fails with missing required fields."""
-        data = {}  # Missing required fields
-        
-        with pytest.raises(ValueError, match="Missing required fields"):
-            await service.create(data)
-    
-    @pytest.mark.asyncio
-    async def test_validate_data_partial(self, service: {{ class_name }}Service):
-        """Test partial validation passes for updates."""
-        data = {"name": "New Name"}
-        
-        # Should not raise for partial updates
-        service._validate_data(data, partial=True)
+    async def test_delete(
+        self,
+        service: {{ class_name }}Service,
+        provider: MagicMock,
+    ):
+        """Test deleting a row."""
+        with patch(
+            "services.{{ model_name }}_service.SimpleUnitOfWork"
+        ) as uow_cls:
+            uow = uow_cls.return_value
+            uow.__aenter__ = AsyncMock(return_value=uow)
+            uow.__aexit__ = AsyncMock(return_value=None)
+            uow.commit = AsyncMock()
+            await service.delete(1)
+        uow.commit.assert_awaited_once()
 
 {% elif test_type == 'controller' %}
+async def _json_request(payload: dict[str, Any]) -> Request:
+    """Build a JSON request for controller tests."""
+    sent = False
+
+    async def receive() -> dict[str, Any]:
+        nonlocal sent
+        if not sent:
+            sent = True
+            return {
+                "type": "http.request",
+                "body": json.dumps(payload).encode(),
+                "more_body": False,
+            }
+        return {"type": "http.disconnect"}
+
+    return Request(
+        {
+            "type": "http",
+            "method": "POST",
+            "path": "/",
+            "headers": [],
+            "query_string": b"",
+            "scheme": "http",
+            "server": ("testserver", 80),
+            "client": ("testclient", 50000),
+        },
+        receive=receive,
+    )
+
+
 class Test{{ class_name }}Controller:
-    """Tests for {{ class_name }}Controller."""
-    
+    """Tests for the {{ class_name }}Controller."""
+
     @pytest.fixture
-    def mock_service(self) -> MagicMock:
-        """Create a mock service."""
-        service = MagicMock()
-        service.list = AsyncMock(return_value=[])
-        service.get = AsyncMock(return_value=None)
-        service.create = AsyncMock()
-        service.update = AsyncMock()
-        service.delete = AsyncMock(return_value=True)
-        return service
-    
+    def repo(self) -> MagicMock:
+        """Create a mocked repository."""
+        repo = MagicMock()
+        repo.list = AsyncMock(return_value=[])
+        repo.get = AsyncMock(return_value=None)
+        repo.create = AsyncMock(return_value={"id": "1"})
+        repo.update = AsyncMock(return_value=None)
+        repo.delete = AsyncMock(return_value=True)
+        return repo
+
     @pytest.fixture
-    def controller(self, mock_service: MagicMock) -> {{ class_name }}Controller:
-        """Create controller instance with mock."""
-        return {{ class_name }}Controller(service=mock_service)
-    
+    def controller(self, repo: MagicMock) -> {{ class_name }}Controller:
+        """Create a controller backed by the mocked repository."""
+        return {{ class_name }}Controller(repo=repo)
+
     @pytest.mark.asyncio
-    async def test_list_{{ resource_name }}(self, controller: {{ class_name }}Controller):
-        """Test listing {{ resource_name }}."""
-        result = await controller.list_{{ resource_name }}(limit=10, offset=0)
-        
+    async def test_list(self, controller: {{ class_name }}Controller):
+        """Test listing items."""
+        result = await controller.list(limit=10)
         assert isinstance(result, dict)
         assert "items" in result
         assert "limit" in result
-        assert "offset" in result
-    
+
     @pytest.mark.asyncio
-    async def test_get_{{ resource_name }}_not_found(self, controller: {{ class_name }}Controller):
-        """Test getting non-existent {{ resource_name }}."""
-        from lexigram.web.exceptions import NotFoundError
-        
+    async def test_get_not_found(self, controller: {{ class_name }}Controller):
+        """Test getting a missing item."""
         with pytest.raises(NotFoundError):
-            await controller.get_{{ resource_name }}(id=999)
-    
+            await controller.get("missing")
+
     @pytest.mark.asyncio
-    async def test_create_{{ resource_name }}(self, controller: {{ class_name }}Controller):
-        """Test creating {{ resource_name }}."""
-        data = {
-            {% for field in fields[:3] %}
-            "{{ field.name }}": {{ field.sample_value }},
-            {% endfor %}
-        }
-        
-        result = await controller.create_{{ resource_name }}(data)
-        
-        assert result is not None
-    
+    async def test_create(self, controller: {{ class_name }}Controller):
+        """Test creating an item."""
+        request = await _json_request({"name": "Sample"})
+        result = await controller.create(request)
+        assert result == {"id": "1"}
+
     @pytest.mark.asyncio
-    async def test_create_{{ resource_name }}_no_data(self, controller: {{ class_name }}Controller):
-        """Test creating {{ resource_name }} with no data."""
-        from lexigram.web.exceptions import BadRequestError
-        
-        with pytest.raises(BadRequestError):
-            await controller.create_{{ resource_name }}({})
-    
-    @pytest.mark.asyncio
-    async def test_update_{{ resource_name }}_not_found(self, controller: {{ class_name }}Controller):
-        """Test updating non-existent {{ resource_name }}."""
-        from lexigram.web.exceptions import NotFoundError
-        
+    async def test_update_not_found(self, controller: {{ class_name }}Controller):
+        """Test updating a missing item."""
+        request = await _json_request({"name": "Updated"})
         with pytest.raises(NotFoundError):
-            await controller.update_{{ resource_name }}(id=999, data={})
-    
+            await controller.update("missing", request)
+
     @pytest.mark.asyncio
-    async def test_delete_{{ resource_name }}_not_found(self, controller: {{ class_name }}Controller):
-        """Test deleting non-existent {{ resource_name }}."""
-        from lexigram.web.exceptions import NotFoundError
-        
+    async def test_delete(self, controller: {{ class_name }}Controller):
+        """Test deleting an item."""
+        result = await controller.delete("1")
+        assert result["message"]
+
+    @pytest.mark.asyncio
+    async def test_delete_not_found(
+        self,
+        controller: {{ class_name }}Controller,
+        repo: MagicMock,
+    ):
+        """Test deleting a missing item."""
+        repo.delete = AsyncMock(return_value=False)
         with pytest.raises(NotFoundError):
-            await controller.delete_{{ resource_name }}(id=999)
+            await controller.delete("missing")
 
 {% else %}
-# Custom test cases for {{ class_name }}
-class Test{{ class_name }}:
-    """Tests for {{ class_name }}."""
-    
-    def test_example(self):
-        """Example test."""
-        assert True
+# Add your module-specific tests here
 {% endif %}

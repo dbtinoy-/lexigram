@@ -127,27 +127,25 @@ class TestPollingWatcher:
 
 class TestWatcherRegistry:
     def test_get_default_watchers(self) -> None:
-        reg = WatcherRegistry()
+        reg = WatcherRegistry.with_defaults()
         assert reg.get("polling") is not None
 
     def test_get_nonexistent(self) -> None:
-        reg = WatcherRegistry()
+        reg = WatcherRegistry.with_defaults()
         assert reg.get("nonexistent") is None
 
     def test_get_all(self) -> None:
-        reg = WatcherRegistry()
+        reg = WatcherRegistry.with_defaults()
         all_watchers = reg.get_all()
         assert "polling" in all_watchers
 
     def test_get_choices(self) -> None:
-        reg = WatcherRegistry()
+        reg = WatcherRegistry.with_defaults()
         choices = reg.get_choices()
         assert "polling" in choices
 
     def test_custom_registration(self) -> None:
-        reg = WatcherRegistry()
-        reg._initialized = False
-        reg._watchers = {}
+        reg = WatcherRegistry.with_defaults()
 
         class FakeWatcher(Watcher):
             name = "fake"

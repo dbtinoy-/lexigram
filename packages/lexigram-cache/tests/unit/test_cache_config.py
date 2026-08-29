@@ -21,6 +21,7 @@ from lexigram.cache.config import (
     make_cache_service_config,
 )
 from lexigram.cache.types import BackendType
+from lexigram.contracts.core.config import Environment
 
 
 class TestCacheOperationConfig:
@@ -289,6 +290,62 @@ class TestCacheConfig:
                     CacheBackendConfig(name="b", type=BackendType.REDIS, default=False),
                 ]
             )
+
+    def test_production_blocks_insecure_redis_password(self) -> None:
+        with pytest.raises(ValueError, match="Insecure Redis password"):
+            CacheConfig(
+                env=Environment.PRODUCTION,
+                backends=[
+                    CacheBackendConfig(
+                        name="redis",
+                        type=BackendType.REDIS,
+                        default=True,
+                        redis_password="change-me",
+                    ),
+                ],
+            )
+
+    def test_production_blocks_insecure_redis_url(self) -> None:
+        with pytest.raises(ValueError, match="Insecure Redis URL"):
+            CacheConfig(
+                env=Environment.PRODUCTION,
+                backends=[
+                    CacheBackendConfig(
+                        name="redis",
+                        type=BackendType.REDIS,
+                        default=True,
+                        redis_url="redis://:password@localhost:6379/0",
+                    ),
+                ],
+            )
+
+    def test_production_accepts_secure_redis(self) -> None:
+        config = CacheConfig(
+            env=Environment.PRODUCTION,
+            backends=[
+                CacheBackendConfig(
+                    name="redis",
+                    type=BackendType.REDIS,
+                    default=True,
+                    redis_password="strong-secret",
+                ),
+            ],
+        )
+        assert config.environment == Environment.PRODUCTION
+
+    def test_non_production_allows_insecure_redis(self) -> None:
+        config = CacheConfig(
+            env=Environment.DEVELOPMENT,
+            backends=[
+                CacheBackendConfig(
+                    name="redis",
+                    type=BackendType.REDIS,
+                    default=True,
+                    redis_password="password",
+                ),
+            ],
+        )
+        assert config.environment == Environment.DEVELOPMENT
 
 
 class TestBackendTypeMap:

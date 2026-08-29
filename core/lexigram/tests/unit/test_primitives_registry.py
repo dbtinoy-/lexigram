@@ -112,7 +112,9 @@ class TestRegistryRegisterFactory:
         """register_factory raises on duplicate key."""
         registry = Registry[str, str]()
         registry.register_factory("key", lambda: "value")
-        with pytest.raises(RegistryAlreadyExistsError, match=r"Factory.*already registered"):
+        with pytest.raises(
+            RegistryAlreadyExistsError, match=r"Factory.*already registered"
+        ):
             registry.register_factory("key", lambda: "other")
 
     def test_register_factory_on_frozen_raises(self) -> None:
@@ -377,3 +379,57 @@ class TestRegistryIteration:
         registry.register("b", "2")
         keys = list(registry.keys())
         assert set(keys) == {"a", "b"}
+
+
+class _BuiltinRegistry(Registry[str, str]):
+    """Minimal registry declaring a static built-in set."""
+
+    @classmethod
+    def _default_entries(cls) -> dict[str, str]:
+        return {"alpha": "a", "beta": "b"}
+
+
+class _PluginRegistry(Registry[str, str]):
+    """Minimal registry without a built-in set (plugin-driven)."""
+
+
+class TestRegistryConstruction:
+    """Tests for the two construction idioms (explicit vs. with_defaults)."""
+
+    def test_plain_registry_has_no_default_entries_hook(self) -> None:
+        """Registry without _default_entries must not advertise with_defaults."""
+        with pytest.raises(NotImplementedError, match="does not declare"):
+            Registry[str, str].with_defaults()
+
+    def test_with_defaults_prepopulates_declared_entries(self) -> None:
+        """with_defaults() returns exactly the declared built-in set."""
+        registry = _BuiltinRegistry.with_defaults()
+        assert registry.get("alpha") == "a"
+        assert registry.get("beta") == "b"
+        assert len(registry) == 2
+
+    def test_with_defaults_returns_fresh_instance(self) -> None:
+        """with_defaults() never shares state between instances."""
+        first = _BuiltinRegistry.with_defaults()
+        second = _BuiltinRegistry.with_defaults()
+        first.register("gamma", "c")
+        assert second.get("gamma") is None
+
+    def test_init_is_always_empty(self) -> None:
+        """A registry constructed directly starts empty, even with defaults."""
+        assert len(_BuiltinRegistry()) == 0
+
+    def test_plugin_registry_populated_explicitly(self) -> None:
+        """Plugin registries are filled via register()/register_many()."""
+        registry = _PluginRegistry()
+        registry.register("plugin_a", "1")
+        registry.register_many([("plugin_b", "2"), ("plugin_c", "3")])
+        assert set(registry.keys()) == {"plugin_a", "plugin_b", "plugin_c"}
+        assert registry.get("plugin_c") == "3"
+
+    def test_register_many_duplicate_raises(self) -> None:
+        """register_many enforces the same duplicate rules as register()."""
+        registry = _PluginRegistry()
+        registry.register_many([("k", "1")])
+        with pytest.raises(RegistryAlreadyExistsError, match="already registered"):
+            registry.register_many([("k", "2")])

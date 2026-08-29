@@ -4368,7 +4368,7 @@ provides-extras = ["dev", "codegen", "test", "docs", "security", "web", "db", "c
 
 [[package]]
 name = "lexigram-admin"
-version = "0.1.5007"
+version = "0.1.5009"
 source = { editable = "experimental/apps/lexigram-admin" }
 dependencies = [
     { name = "aiofiles" },
@@ -5273,7 +5273,7 @@ test = [
 
 [[package]]
 name = "lexigram-ai-mcp"
-version = "0.1.5007"
+version = "0.1.5008"
 source = { editable = "experimental/ai/lexigram-ai-mcp" }
 dependencies = [
     { name = "jinja2" },
@@ -5985,7 +5985,7 @@ test = [
 
 [[package]]
 name = "lexigram-audit"
-version = "0.1.5007"
+version = "0.1.5008"
 source = { editable = "packages/lexigram-audit" }
 dependencies = [
     { name = "lexigram" },
@@ -6055,7 +6055,7 @@ test = [
 
 [[package]]
 name = "lexigram-auth"
-version = "0.1.5007"
+version = "0.1.5009"
 source = { editable = "packages/lexigram-auth" }
 dependencies = [
     { name = "argon2-cffi" },
@@ -6175,7 +6175,7 @@ test = [
 
 [[package]]
 name = "lexigram-cache"
-version = "0.1.5007"
+version = "0.1.5008"
 source = { editable = "packages/lexigram-cache" }
 dependencies = [
     { name = "jinja2" },
@@ -6289,7 +6289,7 @@ test = [
 
 [[package]]
 name = "lexigram-cli"
-version = "0.1.5007"
+version = "0.1.5008"
 source = { editable = "experimental/apps/lexigram-cli" }
 dependencies = [
     { name = "aiofiles" },
@@ -6443,7 +6443,7 @@ test = [
 
 [[package]]
 name = "lexigram-events"
-version = "0.1.5007"
+version = "0.1.5009"
 source = { editable = "packages/lexigram-events" }
 dependencies = [
     { name = "jinja2" },
@@ -6571,7 +6571,7 @@ test = [
 
 [[package]]
 name = "lexigram-features"
-version = "0.1.5007"
+version = "0.1.5008"
 source = { editable = "packages/lexigram-features" }
 dependencies = [
     { name = "lexigram" },
@@ -6709,7 +6709,7 @@ test = [
 
 [[package]]
 name = "lexigram-graphql"
-version = "0.1.5007"
+version = "0.1.5013"
 source = { editable = "packages/lexigram-graphql" }
 dependencies = [
     { name = "graphql-core" },
@@ -6809,13 +6809,14 @@ test = [
 
 [[package]]
 name = "lexigram-http"
-version = "0.1.5007"
+version = "0.1.5009"
 source = { editable = "packages/lexigram-http" }
 dependencies = [
     { name = "aiohttp" },
     { name = "jinja2" },
     { name = "lexigram" },
     { name = "lexigram-contracts" },
+    { name = "yarl" },
 ]
 
 [package.optional-dependencies]
@@ -6860,6 +6861,7 @@ requires-dist = [
     { name = "pytest-cov", marker = "extra == 'test'", specifier = ">=4.0.0" },
     { name = "pytest-mock", marker = "extra == 'test'", specifier = ">=3.10.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.8.0" },
+    { name = "yarl", specifier = ">=1.9.0" },
 ]
 provides-extras = ["test", "dev"]
 
@@ -6879,12 +6881,13 @@ test = [
 
 [[package]]
 name = "lexigram-monitor"
-version = "0.1.5007"
+version = "0.1.5008"
 source = { editable = "packages/lexigram-monitor" }
 dependencies = [
     { name = "lexigram" },
     { name = "lexigram-contracts" },
     { name = "starlette" },
+    { name = "structlog" },
     { name = "typer" },
     { name = "typing-extensions" },
 ]
@@ -6971,6 +6974,7 @@ requires-dist = [
     { name = "pytest-mock", marker = "extra == 'test'", specifier = ">=3.10.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.1.0" },
     { name = "starlette", specifier = ">=0.28.0" },
+    { name = "structlog", specifier = ">=25.1.0" },
     { name = "typer", specifier = ">=0.9.0" },
     { name = "typing-extensions", specifier = ">=4.0.0" },
 ]
@@ -7616,7 +7620,7 @@ test = [
 
 [[package]]
 name = "lexigram-nosql"
-version = "0.1.5007"
+version = "0.1.5008"
 source = { editable = "packages/lexigram-nosql" }
 dependencies = [
     { name = "jinja2" },
@@ -7703,7 +7707,7 @@ test = [
 
 [[package]]
 name = "lexigram-notification"
-version = "0.1.5007"
+version = "0.1.5008"
 source = { editable = "packages/lexigram-notification" }
 dependencies = [
     { name = "aiofiles" },
@@ -7805,7 +7809,7 @@ test = [
 
 [[package]]
 name = "lexigram-queue"
-version = "0.1.5007"
+version = "0.1.5008"
 source = { editable = "packages/lexigram-queue" }
 dependencies = [
     { name = "jinja2" },
@@ -7927,7 +7931,7 @@ test = [
 
 [[package]]
 name = "lexigram-search"
-version = "0.1.5007"
+version = "0.1.5008"
 source = { editable = "packages/lexigram-search" }
 dependencies = [
     { name = "jinja2" },
@@ -8159,7 +8163,7 @@ test = [
 
 [[package]]
 name = "lexigram-sql"
-version = "0.1.5007"
+version = "0.1.5009"
 source = { editable = "packages/lexigram-sql" }
 dependencies = [
     { name = "aiosqlite" },
@@ -8269,7 +8273,7 @@ test = [
 
 [[package]]
 name = "lexigram-storage"
-version = "0.1.5007"
+version = "0.1.5008"
 source = { editable = "packages/lexigram-storage" }
 dependencies = [
     { name = "aiofiles" },
@@ -8375,7 +8379,7 @@ test = [
 
 [[package]]
 name = "lexigram-tasks"
-version = "0.1.5007"
+version = "0.1.5009"
 source = { editable = "packages/lexigram-tasks" }
 dependencies = [
     { name = "croniter" },
@@ -8487,7 +8491,7 @@ test = [
 
 [[package]]
 name = "lexigram-tenancy"
-version = "0.1.5007"
+version = "0.1.5008"
 source = { editable = "packages/lexigram-tenancy" }
 dependencies = [
     { name = "lexigram" },
@@ -8803,7 +8807,7 @@ test = [
 
 [[package]]
 name = "lexigram-vector"
-version = "0.1.5007"
+version = "0.1.5008"
 source = { editable = "packages/lexigram-vector" }
 dependencies = [
     { name = "aiohttp" },
@@ -8913,7 +8917,7 @@ test = [
 
 [[package]]
 name = "lexigram-web"
-version = "0.1.5007"
+version = "0.1.5012"
 source = { editable = "packages/lexigram-web" }
 dependencies = [
     { name = "aiofiles" },
@@ -9117,7 +9121,7 @@ test = [
 
 [[package]]
 name = "lexigram-workflow"
-version = "0.1.5007"
+version = "0.1.5008"
 source = { editable = "packages/lexigram-workflow" }
 dependencies = [
     { name = "lexigram" },

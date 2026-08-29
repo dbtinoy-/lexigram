@@ -17,6 +17,13 @@ from lexigram.cli.registry.server import (
     ServerRegistry,
     discover_entry_point,
 )
+
+
+def _server_registry() -> ServerRegistry:
+    """Fresh default-populated server registry for a command invocation."""
+    return ServerRegistry.with_defaults()
+
+
 from lexigram.cli.runtime import handle_errors
 
 app = typer.Typer(name="run", invoke_without_command=True)
@@ -105,21 +112,21 @@ def main(
     # Select server backend
     server_backend = None
     if server:
-        server_backend = ServerRegistry.get(server)
+        server_backend = _server_registry().get(server)
         if not server_backend:
-            available = ", ".join(b.name for b in ServerRegistry.get_available())
+            available = ", ".join(b.name for b in _server_registry().get_available())
             out.error(f"Unknown server: {server}", hint=f"Available: {available}")
             raise typer.Exit(1)
 
     if not server_backend:
         # Prefer granian → uvicorn
         for preferred in ("granian", "uvicorn"):
-            b = ServerRegistry.get(preferred)
+            b = _server_registry().get(preferred)
             if b and b.is_available():
                 server_backend = b
                 break
         if not server_backend:
-            server_backend = ServerRegistry.get_default()
+            server_backend = _server_registry().get_default()
 
     out.print(f"[info]Server: [bold]{server_backend.name}[/bold]  {host}:{port}")
 

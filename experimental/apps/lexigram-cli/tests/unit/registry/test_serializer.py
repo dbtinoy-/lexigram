@@ -198,31 +198,29 @@ class TestTOMLSerializer:
 
 class TestSerializerRegistry:
     def test_get_default_serializers(self) -> None:
-        reg = SerializerRegistry()
+        reg = SerializerRegistry.with_defaults()
         json_s = reg.get("json")
         assert json_s is not None
         assert json_s.name == "json"
 
     def test_get_nonexistent(self) -> None:
-        reg = SerializerRegistry()
+        reg = SerializerRegistry.with_defaults()
         assert reg.get("nonexistent") is None
 
     def test_get_all(self) -> None:
-        reg = SerializerRegistry()
+        reg = SerializerRegistry.with_defaults()
         all_s = reg.get_all()
         assert "json" in all_s
         assert "yaml" in all_s
 
     def test_get_choices(self) -> None:
-        reg = SerializerRegistry()
+        reg = SerializerRegistry.with_defaults()
         choices = reg.get_choices()
         assert "json" in choices
         assert "yaml" in choices
 
     def test_custom_registration(self) -> None:
-        reg = SerializerRegistry()
-        reg._initialized = False
-        reg._serializers = {}
+        reg = SerializerRegistry.with_defaults()
 
         class FakeSerializer(AsyncStringSerializerProtocol):
             name = "fake"

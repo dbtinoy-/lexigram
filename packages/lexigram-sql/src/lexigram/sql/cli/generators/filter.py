@@ -2,17 +2,22 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
+from lexigram.contracts.cli.generators import resolve_options
 from lexigram.sql.cli.generators.base import GenerationResult, GeneratorBase
 
 
 class FilterGenerator(GeneratorBase):
-    """Generator for exception filters."""
+    """Generate an exception filter."""
 
     name = "filter"
     description = "Generate an exception filter for error handling"
     default_output_dir = "src/filters"
+
+    def __init__(self, output_dir: str | Path = "src/filters") -> None:
+        super().__init__(output_dir=output_dir)
 
     def get_name(self) -> str:
         return self.name
@@ -23,33 +28,35 @@ class FilterGenerator(GeneratorBase):
     def generate(
         self,
         name: str,
+        *,
         exception_type: str = "Exception",
-        **kwargs: Any,
+        dry_run: bool = False,
+        force: bool = False,
+        **options: Any,
     ) -> GenerationResult:
+        """Generate an exception filter module.
+
+        Args:
+            name: Filter name (e.g. ``"NotFound"`` or ``"not_found"``).
+            exception_type: Exception class the filter handles.
+            dry_run: Compute output paths without writing.
+            force: Overwrite an existing file.
+
+        Returns:
+            ``GenerationResult`` with created/skipped/overwritten paths.
+        """
         file_path = self.output_dir / f"{self._to_snake_case(name)}.py"
-        result = GenerationResult()
-        dry_run = bool(kwargs.get("dry_run", False))
-        force = bool(kwargs.get("force", False))
-
-        if file_path.exists() and not force:
-            result.files_skipped.append(file_path)
-            return result
-
-        rendered = self.env.get_template("filter.py.jinja2").render(
-            name=name,
-            exception_type=exception_type,
-            snake_name=self._to_snake_case(name),
-            snake_name_plural=f"{self._to_snake_case(name)}s",
+        content = self.render_template(
+            "filter.py.jinja2",
+            {
+                "name": name,
+                "exception_type": exception_type,
+                "snake_name": self._to_snake_case(name),
+                "snake_name_plural": f"{self._to_snake_case(name)}s",
+            },
         )
-
-        if dry_run:
-            result.files_created.append(file_path)
-            return result
-
-        self.output_dir.mkdir(parents=True, exist_ok=True)
-        file_path.write_text(rendered, encoding="utf-8")
-        result.files_created.append(file_path)
-        return result
+        self.stage(file_path, content)
+        return self.finalize(self.commit(resolve_options(dry_run=dry_run, force=force)))
 
 
 __all__ = ["FilterGenerator"]

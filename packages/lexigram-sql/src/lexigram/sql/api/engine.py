@@ -147,10 +147,9 @@ class QueryEngine:
         if not rows:
             return None
         first = rows[0]
-        if isinstance(first, dict):
-            # Prefer the conventional "count" key, otherwise first column.
-            return first.get("count", next(iter(first.values())))
-        return first
+        # Rows are always dicts (normalised by ``_query_rows``); prefer the
+        # conventional "count" key, otherwise the first column value.
+        return first.get("count", next(iter(first.values())))
 
 
 __all__ = ["QueryEngine"]

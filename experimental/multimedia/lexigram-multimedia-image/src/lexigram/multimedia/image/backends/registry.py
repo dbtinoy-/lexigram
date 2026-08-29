@@ -29,7 +29,11 @@ class ImageBackendRegistry:
         registry = cls()
 
         async def _local_http(
-            config: Any, secret_store: Any, retry: Any, circuit_breaker: Any, **_kw: Any,
+            config: Any,
+            secret_store: Any,
+            retry: Any,
+            circuit_breaker: Any,
+            **_kw: Any,
         ) -> Any:
             from lexigram.multimedia.image.providers.local_http import (
                 LocalHttpImageProvider,
@@ -43,14 +47,20 @@ class ImageBackendRegistry:
             )
 
         async def _stability(
-            config: Any, secret_store: Any, retry: Any, circuit_breaker: Any, **_kw: Any,
+            config: Any,
+            secret_store: Any,
+            retry: Any,
+            circuit_breaker: Any,
+            **_kw: Any,
         ) -> Any:
             from lexigram.di.provider_utils import resolve_credential
             from lexigram.multimedia.image.providers.stability import (
                 StabilityImageProvider,
             )
 
-            api_key = await resolve_credential(secret_store, config.stability_api_key_secret_name)
+            api_key = await resolve_credential(
+                secret_store, config.stability_api_key_secret_name
+            )
             return StabilityImageProvider(
                 api_key=api_key or "",
                 timeout=config.timeout,
@@ -59,12 +69,18 @@ class ImageBackendRegistry:
             )
 
         async def _openai(
-            config: Any, secret_store: Any, retry: Any, circuit_breaker: Any, **_kw: Any,
+            config: Any,
+            secret_store: Any,
+            retry: Any,
+            circuit_breaker: Any,
+            **_kw: Any,
         ) -> Any:
             from lexigram.di.provider_utils import resolve_credential
             from lexigram.multimedia.image.providers.openai import OpenAIImageProvider
 
-            api_key = await resolve_credential(secret_store, config.openai_api_key_secret_name)
+            api_key = await resolve_credential(
+                secret_store, config.openai_api_key_secret_name
+            )
             return OpenAIImageProvider(
                 api_key=api_key or "",
                 model=config.openai_model,
@@ -75,7 +91,11 @@ class ImageBackendRegistry:
             )
 
         async def _comfyui(
-            config: Any, secret_store: Any, retry: Any, circuit_breaker: Any, **_kw: Any,
+            config: Any,
+            secret_store: Any,
+            retry: Any,
+            circuit_breaker: Any,
+            **_kw: Any,
         ) -> Any:
             from lexigram.multimedia.image.providers.comfyui import ComfyUiImageProvider
 
@@ -102,7 +122,12 @@ class ImageBackendRegistry:
         self._builders[backend] = builder
 
     async def create_backend(
-        self, backend: str, config: Any, secret_store: Any, retry: Any, circuit_breaker: Any,
+        self,
+        backend: str,
+        config: Any,
+        secret_store: Any,
+        retry: Any,
+        circuit_breaker: Any,
     ) -> Any:
         """Build an image provider for a backend name."""
         builder = self._builders.get(backend)

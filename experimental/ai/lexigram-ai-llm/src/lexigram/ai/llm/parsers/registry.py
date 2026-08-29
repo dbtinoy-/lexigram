@@ -91,22 +91,26 @@ class ParserRegistry:
         logger.debug("parser_unregistered", name=name)
 
     @classmethod
-    def with_defaults(cls) -> ParserRegistry:
-        """Create a registry with default parsers pre-registered.
-
-        Returns:
-            A new ParserRegistry with default parsers.
-        """
+    def _default_entries(cls) -> dict[str, Any]:
+        """Declare the built-in output parsers."""
         from lexigram.ai.llm.parsers.csv import CSVOutputParser
         from lexigram.ai.llm.parsers.enum import EnumOutputParser
         from lexigram.ai.llm.parsers.json import JSONOutputParser
         from lexigram.ai.llm.parsers.pydantic import PydanticOutputParser
 
+        return {
+            "json": JSONOutputParser(),
+            "pydantic": PydanticOutputParser,
+            "enum": EnumOutputParser,
+            "csv": CSVOutputParser(),
+        }
+
+    @classmethod
+    def with_defaults(cls) -> ParserRegistry:
+        """Create a registry with default parsers pre-registered."""
         registry = cls()
-        registry.register("json", JSONOutputParser())
-        registry.register("pydantic", PydanticOutputParser)
-        registry.register("enum", EnumOutputParser)
-        registry.register("csv", CSVOutputParser())
+        for name, parser in cls._default_entries().items():
+            registry.register(name, parser)
         return registry
 
 

@@ -3,7 +3,9 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import patch
 
-from lexigram.nosql.cli.generators.document_repository import DocumentRepositoryGenerator
+from lexigram.nosql.cli.generators.document_repository import (
+    DocumentRepositoryGenerator,
+)
 
 
 class TestDocumentRepositoryGenerator:
@@ -11,7 +13,7 @@ class TestDocumentRepositoryGenerator:
         self.generator = DocumentRepositoryGenerator()
 
     def test_name(self) -> None:
-        assert self.generator.name == "document-repository"
+        assert self.generator.name == "document_repo"
 
     def test_description(self) -> None:
         assert self.generator.description == "Generate a NoSQL document repository"
@@ -35,13 +37,13 @@ class TestDocumentRepositoryGenerator:
 
     def test_generate_creates_file(self, tmp_path: Path) -> None:
         output_dir = str(tmp_path)
+        generator = DocumentRepositoryGenerator(output_dir=output_dir)
         with patch.object(
-            self.generator,
+            generator,
             "render_template",
             return_value="generated content",
         ):
-
-            result = self.generator.generate("product", output_dir=output_dir)
+            result = generator.generate("product")
 
             expected_file = tmp_path / "product_repository.py"
             assert expected_file.exists()
@@ -53,27 +55,25 @@ class TestDocumentRepositoryGenerator:
         repo_file = tmp_path / "product_repository.py"
         repo_file.write_text("existing content")
 
+        generator = DocumentRepositoryGenerator(output_dir=output_dir)
         with patch.object(
-            self.generator,
+            generator,
             "render_template",
             return_value="new content",
         ):
-
-            result = self.generator.generate("product", output_dir=output_dir)
+            result = generator.generate("product")
 
             assert repo_file.read_text() == "existing content"
             assert result.files_created is None or len(result.files_created) == 0
 
     def test_generate_with_fields_str(self, tmp_path: Path) -> None:
         output_dir = str(tmp_path)
+        generator = DocumentRepositoryGenerator(output_dir=output_dir)
         with patch.object(
-            self.generator,
+            generator,
             "render_template",
             return_value="generated with fields",
         ):
-
-            self.generator.generate(
-                "item", output_dir=output_dir, fields_str="name:str,price:float"
-            )
+            generator.generate("item", fields_str="name:str,price:float")
             result_file = tmp_path / "item_repository.py"
             assert result_file.exists()

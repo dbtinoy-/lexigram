@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
-import pytest
-
 from lexigram.cli.registry.server import (
     GranianBackend,
     GunicornBackend,
@@ -14,16 +12,6 @@ from lexigram.cli.registry.server import (
     ServerRegistry,
     UvicornBackend,
 )
-
-
-@pytest.fixture(autouse=True)
-def reset_server_registry() -> None:
-    """Reset ServerRegistry class state between tests."""
-    original_backends = ServerRegistry._backends.copy()
-    original_initialized = ServerRegistry._initialized
-    yield
-    ServerRegistry._backends = original_backends
-    ServerRegistry._initialized = original_initialized
 
 
 class TestServerConfig:
@@ -162,64 +150,46 @@ class TestGranianBackend:
 class TestServerRegistry:
     """Registry operations and default registration."""
 
-    def test_register_defaults_populates_all_four_backends(self) -> None:
-        ServerRegistry._backends = {}
-        ServerRegistry._initialized = False
-        ServerRegistry.register_defaults()
-        names = set(ServerRegistry._backends.keys())
-        assert names == {"uvicorn", "hypercorn", "granian", "gunicorn"}
-
-    def test_register_defaults_is_idempotent(self) -> None:
-        ServerRegistry._backends = {}
-        ServerRegistry._initialized = False
-        ServerRegistry.register_defaults()
-        ServerRegistry.register_defaults()  # second call is a no-op
-        assert len(ServerRegistry._backends) == 4
+    def test_with_defaults_populates_all_four_backends(self) -> None:
+        registry = ServerRegistry.with_defaults()
+        assert set(registry.get_all()) == {"uvicorn", "hypercorn", "granian", "gunicorn"}
 
     def test_get_returns_backend_by_name(self) -> None:
-        ServerRegistry._backends = {}
-        ServerRegistry._initialized = False
-        backend = ServerRegistry.get("uvicorn")
+        registry = ServerRegistry.with_defaults()
+        backend = registry.get("uvicorn")
         assert backend is not None
         assert backend.name == "uvicorn"
 
     def test_get_returns_none_for_unknown(self) -> None:
-        ServerRegistry._backends = {}
-        ServerRegistry._initialized = False
-        ServerRegistry.register_defaults()
-        assert ServerRegistry.get("nonexistent") is None
+        registry = ServerRegistry.with_defaults()
+        assert registry.get("nonexistent") is None
 
     def test_get_all_returns_copy(self) -> None:
-        ServerRegistry._backends = {}
-        ServerRegistry._initialized = False
-        ServerRegistry.register_defaults()
-        all_backends = ServerRegistry.get_all()
+        registry = ServerRegistry.with_defaults()
+        all_backends = registry.get_all()
         assert len(all_backends) == 4
         # Modifying the copy must not affect the registry
         all_backends["injected"] = object()  # type: ignore[assignment]
-        assert "injected" not in ServerRegistry._backends
+        assert "injected" not in registry.get_all()
 
     def test_register_custom_backend(self) -> None:
-        ServerRegistry._backends = {}
-        ServerRegistry._initialized = False
+        registry = ServerRegistry()
 
         class MyBackend(UvicornBackend):
             name = "my_backend"
 
-        ServerRegistry.register(MyBackend)
-        assert "my_backend" in ServerRegistry._backends
+        registry.register(MyBackend)
+        assert "my_backend" in registry.get_all()
 
     def test_get_available_filters_unavailable(self) -> None:
         """is_available() == False backends are excluded from get_available()."""
-        ServerRegistry._backends = {}
-        ServerRegistry._initialized = False
-        ServerRegistry.register_defaults()
+        registry = ServerRegistry.with_defaults()
 
         with patch.object(UvicornBackend, "is_available", return_value=True), \
              patch.object(HypercornBackend, "is_available", return_value=False), \
              patch.object(GranianBackend, "is_available", return_value=False), \
              patch.object(GunicornBackend, "is_available", return_value=False):
-            available = ServerRegistry.get_available()
+            available = registry.get_available()
 
         assert len(available) == 1
         assert available[0].name == "uvicorn"

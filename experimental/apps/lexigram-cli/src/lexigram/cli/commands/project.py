@@ -10,6 +10,12 @@ from lexigram.cli.lib.console import console
 from lexigram.cli.output import OutputManager
 from lexigram.cli.registry.task import TaskRunnerRegistry
 
+
+def _runner_registry() -> TaskRunnerRegistry:
+    """Fresh default-populated task runner registry for a command invocation."""
+    return TaskRunnerRegistry.with_defaults()
+
+
 app = typer.Typer()
 
 
@@ -23,11 +29,11 @@ def test(
     """Run project tests."""
     out = OutputManager()
 
-    runner_obj = TaskRunnerRegistry.get(runner)
+    runner_obj = _runner_registry().get(runner)
     if not runner_obj:
         out.error(f"Unknown test runner: {runner}")
         out.info(
-            f"Available runners: {', '.join(r.name for r in TaskRunnerRegistry.get_all().values())}",
+            f"Available runners: {', '.join(r.name for r in _runner_registry().get_all().values())}",
         )
         raise typer.Exit(1)
 
@@ -57,11 +63,11 @@ def lint(
     """Run project linting."""
     out = OutputManager()
 
-    runner_obj = TaskRunnerRegistry.get(runner)
+    runner_obj = _runner_registry().get(runner)
     if not runner_obj:
         out.error(f"Unknown linter: {runner}")
         out.info(
-            f"Available linters: {', '.join(r.name for r in TaskRunnerRegistry.get_all().values())}",
+            f"Available linters: {', '.join(r.name for r in _runner_registry().get_all().values())}",
         )
         raise typer.Exit(1)
 
@@ -90,11 +96,11 @@ def typecheck(
     """Run type checking."""
     out = OutputManager()
 
-    runner_obj = TaskRunnerRegistry.get(runner)
+    runner_obj = _runner_registry().get(runner)
     if not runner_obj:
         out.error(f"Unknown type checker: {runner}")
         out.info(
-            f"Available type checkers: {', '.join(r.name for r in TaskRunnerRegistry.get_all().values())}",
+            f"Available type checkers: {', '.join(r.name for r in _runner_registry().get_all().values())}",
         )
         raise typer.Exit(1)
 
@@ -139,7 +145,7 @@ def run_all() -> None:
     results: list[tuple[str, bool]] = []
 
     for runner_name in ["pytest", "ruff", "mypy"]:
-        runner = TaskRunnerRegistry.get(runner_name)
+        runner = _runner_registry().get(runner_name)
         if runner and runner.is_available():
             out.info(f"Running {runner_name}...")
             result = runner.run()

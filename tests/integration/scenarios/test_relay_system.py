@@ -104,8 +104,11 @@ class TestRelayBoot:
         assert {"relay-gateway", "ai-governance"} <= admin_ids
 
         # Provider boot must not require any optional LLM SDK import.
+        # Compare against the pre-boot snapshot: earlier tests in the same
+        # session may legitimately have imported an SDK already.
+        imported_by_boot = set(sys.modules) - harness.modules_before_boot
         for sdk in ("openai", "anthropic", "google.genai"):
-            assert sdk not in sys.modules, f"{sdk} was imported at boot"
+            assert sdk not in imported_by_boot, f"{sdk} was imported at boot"
 
 
 class TestRelayBufferedRoute:

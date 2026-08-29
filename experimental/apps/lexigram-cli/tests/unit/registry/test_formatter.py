@@ -138,29 +138,27 @@ class TestSimpleFormatter:
 
 class TestFormatterRegistry:
     def test_get_default_formatters(self) -> None:
-        reg = FormatterRegistry()
+        reg = FormatterRegistry.with_defaults()
         assert reg.get("json") is not None
         assert reg.get("yaml") is not None
         assert reg.get("table") is not None
 
     def test_get_nonexistent(self) -> None:
-        reg = FormatterRegistry()
+        reg = FormatterRegistry.with_defaults()
         assert reg.get("nonexistent") is None
 
     def test_get_all(self) -> None:
-        reg = FormatterRegistry()
+        reg = FormatterRegistry.with_defaults()
         all_f = reg.get_all()
         assert "json" in all_f
 
     def test_get_choices(self) -> None:
-        reg = FormatterRegistry()
+        reg = FormatterRegistry.with_defaults()
         choices = reg.get_choices()
         assert "json" in choices
 
     def test_custom_registration(self) -> None:
-        reg = FormatterRegistry()
-        reg._initialized = False
-        reg._formatters = {}
+        reg = FormatterRegistry.with_defaults()
 
         class FakeFormatter(OutputFormatter):
             name = "fake"

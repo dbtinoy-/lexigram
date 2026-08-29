@@ -39,16 +39,24 @@ class AdapterRegistry:
         self._wirers: dict[str, _AdapterWirer] = {}
 
     @classmethod
-    def with_defaults(cls) -> AdapterRegistry:
-        """Create a registry pre-populated with built-in adapter wirers."""
+    def _default_entries(cls) -> dict[str, _AdapterWirer]:
+        """Declare the built-in adapter wirers (kafka, rabbitmq)."""
         from lexigram.events.adapters.adapter_wirers import (
             wire_kafka,
             wire_rabbitmq,
         )
 
+        return {
+            "kafka": wire_kafka,
+            "rabbitmq": wire_rabbitmq,
+        }
+
+    @classmethod
+    def with_defaults(cls) -> AdapterRegistry:
+        """Create a registry pre-populated with built-in adapter wirers."""
         registry = cls()
-        registry.register("kafka", wire_kafka)
-        registry.register("rabbitmq", wire_rabbitmq)
+        for key, value in cls._default_entries().items():
+            registry.register(key, value)
         return registry
 
     def register(self, key: str, wirer: _AdapterWirer) -> None:

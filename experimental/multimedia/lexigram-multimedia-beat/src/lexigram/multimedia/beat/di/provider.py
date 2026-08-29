@@ -58,7 +58,9 @@ class BeatAnalysisGenerationProvider(Provider):
         container.singleton(BeatAnalysisConfig, self._config)
 
         self._retry = await resolve_optional(container, RetryPolicyProtocol)
-        self._circuit_breaker = await resolve_optional(container, CircuitBreakerProtocol)
+        self._circuit_breaker = await resolve_optional(
+            container, CircuitBreakerProtocol
+        )
 
         self._backend = cast(
             "BeatAnalysisProvider",
@@ -88,10 +90,16 @@ class BeatAnalysisGenerationProvider(Provider):
 
         try:
             async with (
-                aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=timeout)) as session,
+                aiohttp.ClientSession(
+                    timeout=aiohttp.ClientTimeout(total=timeout)
+                ) as session,
                 session.get(f"{self._config.madmom_base_url}/health") as resp,
             ):
-                status = HealthStatus.HEALTHY if resp.status == 200 else HealthStatus.DEGRADED
+                status = (
+                    HealthStatus.HEALTHY
+                    if resp.status == 200
+                    else HealthStatus.DEGRADED
+                )
         except (TimeoutError, OSError, aiohttp.ClientError):
             status = HealthStatus.DEGRADED
         return HealthCheckResult(component=self.name, status=status)

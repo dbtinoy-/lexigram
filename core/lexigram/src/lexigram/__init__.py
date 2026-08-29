@@ -69,7 +69,10 @@ _EXPORTS: Final[dict[str, _ExportSpec]] = {
     "LexigramException": ("lexigram.exceptions", "LexigramException"),
     "LoggingConfig": ("lexigram.config", "LoggingConfig"),
     "LoggingProvider": ("lexigram.logging.di.provider", "LoggingProvider"),
-    "LoggerFactoryProtocol": ("lexigram.contracts.core.logging", "LoggerFactoryProtocol"),
+    "LoggerFactoryProtocol": (
+        "lexigram.contracts.core.logging",
+        "LoggerFactoryProtocol",
+    ),
     "LoggerProtocol": ("lexigram.contracts.core.logging", "LoggerProtocol"),
     "RedactorProtocol": ("lexigram.contracts.core.logging", "RedactorProtocol"),
     "MiddlewareChain": ("lexigram.middleware.core.chain", "MiddlewareChain"),

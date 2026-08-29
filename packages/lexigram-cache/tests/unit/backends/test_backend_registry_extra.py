@@ -63,7 +63,7 @@ def test_memcached_registry_can_create_only_memcached() -> None:
 
 
 def test_backend_registry_registers_defaults() -> None:
-    registry = BackendRegistry()
+    registry = BackendRegistry.with_defaults()
     for bt in (
         const.BACKEND_TYPE_MEMORY,
         const.BACKEND_TYPE_REDIS,
@@ -73,7 +73,7 @@ def test_backend_registry_registers_defaults() -> None:
 
 
 def test_backend_registry_register_key_value_form() -> None:
-    registry = BackendRegistry()
+    registry = BackendRegistry.with_defaults()
     registry.register("custom", MemoryBackendRegistry())
     assert isinstance(registry.get("custom"), MemoryBackendRegistry)
 
@@ -97,15 +97,15 @@ def test_backend_registry_register_unknown_factory_raises() -> None:
             raise AssertionError("should never be called")
 
     with pytest.raises(ValueError, match="Cannot infer backend type key"):
-        BackendRegistry().register(UnknownFactory())
+        BackendRegistry.with_defaults().register(UnknownFactory())
 
 
 def test_backend_registry_get_backend_returns_instance() -> None:
-    backend = BackendRegistry().get_backend(const.BACKEND_TYPE_MEMORY)
+    backend = BackendRegistry.with_defaults().get_backend(const.BACKEND_TYPE_MEMORY)
     assert isinstance(backend, MemoryCacheBackend)
 
 
 def test_backend_registry_get_backend_unknown_raises() -> None:
-    registry = BackendRegistry()
+    registry = BackendRegistry.with_defaults()
     with pytest.raises(ValueError, match="Unknown cache backend"):
         registry.get_backend("unknown-type")

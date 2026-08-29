@@ -6,10 +6,11 @@ from pathlib import Path
 from typing import Any
 
 from lexigram.codegen.base import GenerationResult, GeneratorBase
+from lexigram.contracts.cli.generators import resolve_options
 
 
 class MCPServerGenerator(GeneratorBase):
-    """Generates a standalone MCP server script with module-level decorators.
+    """Generate a standalone MCP server script with module-level decorators.
 
     Usage::
 
@@ -25,40 +26,33 @@ class MCPServerGenerator(GeneratorBase):
     """
 
     name = "mcp-server"
+    description = "Generate a standalone MCP server script"
+    default_output_dir = "src"
 
-    def __init__(self, output_dir: str = "src") -> None:
-        super().__init__(
-            output_dir=output_dir,
-            template_root=Path(__file__).parent.parent / "templates",
-        )
+    def __init__(self, output_dir: str | Path = "src") -> None:
+        super().__init__(output_dir=output_dir)
 
     def generate(
         self,
         name: str,
+        *,
         dry_run: bool = False,
         force: bool = False,
-        **_kwargs: Any,
+        **options: Any,
     ) -> GenerationResult:
         """Generate a standalone MCP server script.
 
         Args:
             name: Base name for the server / module, e.g. ``"data_tools"``.
-            dry_run: When ``True``, compute output paths without writing.
-            force: When ``True``, overwrite an existing file.
+            dry_run: Compute output paths without writing.
+            force: Overwrite an existing file.
 
         Returns:
-            ``GenerationResult`` with paths of created/skipped files.
+            ``GenerationResult`` with created/skipped/overwritten paths.
         """
-        result = GenerationResult()
         module_name = self._to_snake_case(name).removesuffix("_tools")
 
-        file_name = f"{module_name}_tools.py"
-        file_path = self.output_dir / file_name
-
-        if file_path.exists() and not force:
-            result.files_skipped.append(file_path)
-            return result
-
+        # Build a URI-friendly resource name (simple pluralisation)
         resource_name = module_name.replace("_", " ")
         if not resource_name.endswith("s"):
             resource_name += "s"
@@ -69,15 +63,10 @@ class MCPServerGenerator(GeneratorBase):
             "resource_name": resource_name,
             "resource_uri": f"{module_name}://",
         }
+        content = self.render_template("mcp_server.py.jinja2", context)
+        file_path = self.output_dir / f"{module_name}_tools.py"
+        self.stage(file_path, content)
+        return self.finalize(self.commit(resolve_options(dry_run=dry_run, force=force)))
 
-        template = self.env.get_template("mcp_server.py.jinja2")
-        content = template.render(**context)
 
-        if not dry_run:
-            self.output_dir.mkdir(parents=True, exist_ok=True)
-            file_path.write_text(content)
-            result.files_created.append(file_path)
-        else:
-            result.files_created.append(file_path)
-
-        return result
+__all__ = ["MCPServerGenerator"]

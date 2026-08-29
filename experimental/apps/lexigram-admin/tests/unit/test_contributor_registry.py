@@ -76,7 +76,7 @@ class TestContributorRegistry:
         assert registry.get_by_group("nonexistent") == []
 
     def test_with_defaults_creates_empty(self) -> None:
-        registry = ContributorRegistry.with_defaults()
+        registry = ContributorRegistry()
         assert isinstance(registry, ContributorRegistry)
 
     def test_duplicate_register_overwrites(self) -> None:

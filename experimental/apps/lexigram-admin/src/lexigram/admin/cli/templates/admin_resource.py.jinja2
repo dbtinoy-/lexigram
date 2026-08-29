@@ -9,63 +9,58 @@ Usage:
         >>> provider.add_resource({{ resource_name }})
 """
 
-from datetime import datetime, timezone
+from __future__ import annotations
+
 from typing import Any
 
-from pydantic import BaseModel, Field
-
-from lexigram.admin import Resource, ResourcePermissions
-from lexigram.admin.resources.base import SoftDeleteEntity
-from lexigram.admin.ui.actions import DeleteAction, EditAction, ViewAction
-from lexigram.admin.ui.columns import (
-    BooleanColumn,
-    DateColumn,
-    TextColumn,
-)
-from lexigram.admin.ui.filters import BooleanFilter, DateFilter, TextFilter
+from lexigram.admin.actions import CreateAction, DeleteAction, EditAction
+from lexigram.admin.rbac.schema import ResourcePermissions
+from lexigram.admin.resources.base import Resource
+from lexigram.admin.schema import BooleanField, DateField, TextField
+from lexigram.admin.ui.filters import RangeFilter, ToggleFilter
+from lexigram.ui import BooleanColumn, DateColumn, TextColumn
 
 
-# Form Schema
-class {{ form_class_name }}(BaseModel):
-    """Form schema for {{ model_name }}."""
-{% for field in fields %}
-    {{ field.name }}: {{ field.pydantic_type }} = Field(
-        {{ field.form_field_kwargs }}
-    )
-{%- endfor %}
-
-
-# Resource Class
 class {{ resource_name }}(Resource):
     """Admin resource for {{ model_name }}.
 
     Provides:
     - List view with sortable columns
-    - Create/Edit form with validation
+    - Create/Edit form derived from `fields`
     - Filter and search capabilities
-    - Bulk actions support
+    - Row actions support
     """
 
-    # Model
-    model = {{ model_class_name }}
+    # Model: point this at your entity/model class (e.g. AdminUserEntity).
+    model = None
 
-    # UI Configuration
-    icon = "{{ icon }}"
+    # Registration metadata
+    name = "{{ file_name }}"
     label = "{{ label }}"
+    icon = "{{ icon }}"
     visible_in_sidebar = {{ visible_in_sidebar }}
 
-    # Table Columns
-    columns = [
-        {%- for field in columns %}
-        {{ field }},
+    # Declarative schema — columns, filters and forms derive from `fields`.
+    fields: list[Any] = [
+        {%- for field in fields %}
+        {{ field.declaration }},
         {%- endfor %}
     ]
 
-    # Row Actions
+    # Table Columns
+    columns = [
+        {%- for column in columns %}
+        {{ column }},
+        {%- endfor %}
+    ]
+
+    # Row / header actions
     actions = [
-        ViewAction(),
         EditAction(),
         DeleteAction(),
+    ]
+    header_actions = [
+        CreateAction(label="{{ label }}"),
     ]
 
     # Filters
@@ -75,20 +70,18 @@ class {{ resource_name }}(Resource):
         {%- endfor %}
     ]
 
-    # Form Configuration
-    form_class = {{ form_class_name }}
+    # Form / pagination configuration
     form_display_mode = "{{ form_display_mode }}"
-
-    # Pagination
     page_size = {{ page_size }}
     default_sort = "{{ default_sort }}"
 
     # Permissions
     permissions = ResourcePermissions(
-        view=["admin:{{ permission_prefix }}:view"],
-        create=["admin:{{ permission_prefix }}:create"],
-        edit=["admin:{{ permission_prefix }}:edit"],
-        delete=["admin:{{ permission_prefix }}:delete"],
+        can_list={"*"},
+        can_view={"*"},
+        can_create={"{{ permission_prefix }}:create"},
+        can_edit={"{{ permission_prefix }}:edit"},
+        can_delete={"{{ permission_prefix }}:delete"},
     )
 
     # Hooks
@@ -102,7 +95,7 @@ class {{ resource_name }}(Resource):
         # Log the creation, send notifications, etc.
         pass
 
-    async def before_update(self, id: Any, data: dict) -> dict:
+    async def before_update(self, item_id: Any, data: dict) -> dict:
         """Hook called before updating a record."""
         return data
 
@@ -110,13 +103,13 @@ class {{ resource_name }}(Resource):
         """Hook called after updating a record."""
         pass
 
-    async def before_delete(self, id: Any) -> None:
+    async def before_delete(self, item_id: Any) -> None:
         """Hook called before deleting a record."""
         pass
 
-    async def after_delete(self, id: Any) -> None:
+    async def after_delete(self, item_id: Any) -> None:
         """Hook called after deleting a record."""
         pass
 
 
-__all__ = ["{{ resource_name }}", "{{ form_class_name }}"]
+__all__ = ["{{ resource_name }}"]

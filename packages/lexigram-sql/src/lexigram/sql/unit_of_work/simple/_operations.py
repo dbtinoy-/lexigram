@@ -92,13 +92,23 @@ class OperationHandlerRegistry:
 
     def __init__(self) -> None:
         self._handlers: dict[str, Any] = {}
-        self._register_default_handlers()
 
-    def _register_default_handlers(self) -> None:
-        """Register default operation handlers."""
-        self.register_handler("insert", InsertOperationHandler())
-        self.register_handler("update", UpdateOperationHandler())
-        self.register_handler("delete", DeleteOperationHandler())
+    @classmethod
+    def _default_entries(cls) -> dict[str, Any]:
+        """Declare the built-in operation handlers."""
+        return {
+            "insert": InsertOperationHandler(),
+            "update": UpdateOperationHandler(),
+            "delete": DeleteOperationHandler(),
+        }
+
+    @classmethod
+    def with_defaults(cls) -> OperationHandlerRegistry:
+        """Create a registry pre-populated with the built-in handlers."""
+        registry = cls()
+        for operation_type, handler in cls._default_entries().items():
+            registry.register_handler(operation_type, handler)
+        return registry
 
     def register_handler(self, operation_type: str, handler: Any) -> None:
         """Register an operation handler."""
@@ -156,13 +166,23 @@ class TableNamingStrategyRegistry:
 
     def __init__(self) -> None:
         self._handlers: dict[str, Any] = {}
-        self._register_default_handlers()
 
-    def _register_default_handlers(self) -> None:
-        """Register default table naming strategy handlers."""
-        self.register_handler("snake_case", SnakeCaseNamingHandler())
-        self.register_handler("plural", PluralNamingHandler())
-        self.register_handler("lower", LowercaseNamingHandler())
+    @classmethod
+    def _default_entries(cls) -> dict[str, Any]:
+        """Declare the built-in table naming strategy handlers."""
+        return {
+            "snake_case": SnakeCaseNamingHandler(),
+            "plural": PluralNamingHandler(),
+            "lower": LowercaseNamingHandler(),
+        }
+
+    @classmethod
+    def with_defaults(cls) -> TableNamingStrategyRegistry:
+        """Create a registry pre-populated with the built-in handlers."""
+        registry = cls()
+        for strategy, handler in cls._default_entries().items():
+            registry.register_handler(strategy, handler)
+        return registry
 
     def register_handler(self, strategy: str, handler: Any) -> None:
         """Register a table naming strategy handler."""
@@ -179,8 +199,8 @@ class TableNamingStrategyRegistry:
 
 
 # Module-level registries
-_table_naming_registry = TableNamingStrategyRegistry()
-_operation_handler_registry = OperationHandlerRegistry()
+_table_naming_registry = TableNamingStrategyRegistry.with_defaults()
+_operation_handler_registry = OperationHandlerRegistry.with_defaults()
 
 # Re-export from utils for internal use
 _entity_to_dict = entity_to_dict

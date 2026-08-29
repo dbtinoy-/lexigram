@@ -28,16 +28,6 @@ class RerankingStrategyRegistry:
         """Initialize an empty handler registry."""
         self._handlers: list = []
 
-    @classmethod
-    def with_defaults(cls) -> RerankingStrategyRegistry:
-        """Create a RerankingStrategyRegistry with default handlers.
-
-        Returns:
-            A RerankingStrategyRegistry with no default handlers.
-            Handlers are registered conditionally by the provider.
-        """
-        return cls()
-
     def register(self, handler: object) -> None:
         """Register a handler instance.
 

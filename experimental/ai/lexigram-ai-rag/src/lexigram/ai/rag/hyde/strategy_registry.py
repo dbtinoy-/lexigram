@@ -120,15 +120,20 @@ class HyDEStrategyRegistry:
         self._handlers: list[HyDEStrategyHandler] = []
 
     @classmethod
+    def _default_entries(cls) -> dict[str, object]:
+        """Declare the built-in strategy handlers."""
+        return {
+            "SingleHyDEStrategyHandler": SingleHyDEStrategyHandler(),
+            "MultipleHyDEStrategyHandler": MultipleHyDEStrategyHandler(),
+            "WeightedHyDEStrategyHandler": WeightedHyDEStrategyHandler(),
+            "ReverseHyDEStrategyHandler": ReverseHyDEStrategyHandler(),
+        }
+
+    @classmethod
     def with_defaults(cls) -> HyDEStrategyRegistry:
         """Create a registry pre-populated with all built-in strategy handlers."""
         registry = cls()
-        registry._handlers = [
-            SingleHyDEStrategyHandler(),
-            MultipleHyDEStrategyHandler(),
-            WeightedHyDEStrategyHandler(),
-            ReverseHyDEStrategyHandler(),
-        ]
+        registry._handlers = list(cls._default_entries().values())
         return registry
 
     def register(self, handler: HyDEStrategyHandler) -> None:

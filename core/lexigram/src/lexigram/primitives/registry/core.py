@@ -66,6 +66,29 @@ class Registry(Generic[K, V]):
     For most framework-internal use adopt the **decorator pattern** when
     registering at module load time and the **factory pattern** when
     registration must be deferred or is conditional on runtime configuration.
+
+    Construction
+    ------------
+    A registry instance is **always empty** — ``__init__`` never registers
+    anything.  There are exactly two ways to obtain a populated instance:
+
+    **1. Explicit population (plugin/contributor registries)** — entries are
+    supplied by outside code through ``register()`` / ``register_many()``::
+
+        registry = MyPluginRegistry()
+        registry.register_many(discover_plugins())  # entry points, loaders
+
+    **2. ``with_defaults()`` (in-package built-in registries)** — when every
+    entry is a *complete, static set shipped by the same package*::
+
+        registry = MyBuiltinRegistry.with_defaults()
+
+    Both idioms are interpreted as a single rule: ``with_defaults()`` returns
+    exactly the complete in-package built-in set declared by
+    :meth:`_default_entries`, while plugin registries declare no built-in set
+    and are populated by their loader.  Calling ``with_defaults()`` on a
+    registry without a built-in set raises ``NotImplementedError`` rather
+    than silently returning a partial registry.
     """
 
     def __init__(
@@ -92,6 +115,45 @@ class Registry(Generic[K, V]):
                 self._on_register_hooks.append(method)
             if getattr(method, "__is_unregister_hook__", False):
                 self._on_unregister_hooks.append(method)
+
+    @classmethod
+    def with_defaults(cls) -> Registry[K, V]:
+        """Create a registry pre-populated with the class's built-in set.
+
+        Returns exactly what :meth:`_default_entries` declares.  Registries
+        whose entries are contributed externally (plugins, entry points) do
+        not override :meth:`_default_entries`; calling ``with_defaults()`` on
+        them raises ``NotImplementedError`` so the registry is never silently
+        partial — populate those explicitly with ``register()``.
+
+        Returns:
+            A new, empty-at-init registry containing every declared default.
+
+        Raises:
+            NotImplementedError: When the class declares no built-in set.
+        """
+        registry = cls()
+        for key, value in cls._default_entries().items():
+            registry.register(key, value)
+        return registry
+
+    @classmethod
+    def _default_entries(cls) -> dict[K, V]:
+        """Declare the complete in-package built-in set.
+
+        Subclasses with a static built-in set override this and return every
+        entry the package ships for this registry.  Import built-ins lazily
+        inside the method to avoid import cycles.
+
+        Raises:
+            NotImplementedError: Base implementation — override to declare
+                defaults.
+        """
+        msg = (
+            f"{cls.__name__} does not declare a built-in default set; "
+            "populate it explicitly via register()/register_many()."
+        )
+        raise NotImplementedError(msg)
 
     @property
     def name(self) -> str:
@@ -140,7 +202,8 @@ class Registry(Generic[K, V]):
         with self._lock:
             if self._frozen:
                 raise RegistryAlreadyExistsError(
-                    f"Registry '{self._name}' is frozen — no further registrations allowed.",
+                    f"Registry '{self._name}' is frozen — no further "
+                    "registrations allowed.",
                 )
             if not overwrite and (key in self._items or key in self._factories):
                 raise RegistryAlreadyExistsError(
@@ -167,7 +230,8 @@ class Registry(Generic[K, V]):
         with self._lock:
             if self._frozen:
                 raise RegistryAlreadyExistsError(
-                    f"Registry '{self._name}' is frozen — no further registrations allowed.",
+                    f"Registry '{self._name}' is frozen — no further "
+                    "registrations allowed.",
                 )
             if not overwrite and (key in self._factories or key in self._items):
                 raise RegistryAlreadyExistsError(
@@ -176,6 +240,20 @@ class Registry(Generic[K, V]):
 
             self._factories[key] = factory
             self._trigger_on_register(key, factory)
+
+    def register_many(self, entries: Iterable[tuple[K, V]]) -> None:
+        """Register multiple ``(key, value)`` pairs in one call.
+
+        Use for plugin/contributor population: loaders collect entries
+        outside the registry and hand them over in bulk.  Duplicate keys
+        follow the same rules as :meth:`register` (raises unless
+        ``allow_overwrite``).
+
+        Args:
+            entries: Iterable of ``(key, value)`` pairs.
+        """
+        for key, value in entries:
+            self.register(key, value)
 
     def unregister(self, key: K) -> V | None:
         """Unregister and return an item."""
@@ -354,7 +432,10 @@ class Registry(Generic[K, V]):
             return iter(list(self._items.keys()))
 
     def __repr__(self) -> str:
-        return f"<{self.__class__.__name__} name={self._name!r} items={len(self._items)} factories={len(self._factories)}>"
+        return (
+            f"<{self.__class__.__name__} name={self._name!r} "
+            f"items={len(self._items)} factories={len(self._factories)}>"
+        )
 
 
 def on_register(func: Callable[[Any, K, V], None]) -> Callable[[Any, K, V], None]:
@@ -383,10 +464,15 @@ class BackendRegistry(Registry[str, Any]):
         class CacheBackendRegistry(BackendRegistry):
             def __init__(self) -> None:
                 super().__init__(name="cache.backends")
-                self.register("redis", RedisCacheBackend)
-                self.register("memory", MemoryCacheBackend)
 
-        registry = CacheBackendRegistry()
+            @classmethod
+            def _default_entries(cls) -> dict[str, type]:
+                return {
+                    "redis": RedisCacheBackend,
+                    "memory": MemoryCacheBackend,
+                }
+
+        registry = CacheBackendRegistry.with_defaults()
         backend_cls = registry.select({"type": "redis", "url": "redis://..."})
     """
 
@@ -441,10 +527,12 @@ class StrategyRegistry(Registry[Any, Any]):
         class ChunkingRegistry(StrategyRegistry):
             def __init__(self) -> None:
                 super().__init__(name="chunking.strategies")
-                self.register("fixed", FixedSizeChunker)
-                self.register("semantic", SemanticChunker)
 
-        registry = ChunkingRegistry()
+            @classmethod
+            def default_strategies(cls) -> dict[str, type]:
+                return {"fixed": FixedSizeChunker, "semantic": SemanticChunker}
+
+        registry = ChunkingRegistry.with_defaults()
         chunker = registry.instantiate("fixed", chunk_size=512)
     """
 
@@ -473,16 +561,33 @@ class StrategyRegistry(Registry[Any, Any]):
         """
         self.register(key, strategy_cls)
 
-    def default_strategies(self) -> dict[Any, Any]:
-        """Return built-in default strategies.
+    @classmethod
+    def _default_entries(cls) -> dict[Any, Any]:
+        """Delegate the built-in set to the declarative strategy hook."""
+        return cls.default_strategies()
 
-        Subclasses override this to declare framework-bundled strategies
-        that are pre-registered at initialization time.
+    @classmethod
+    def default_strategies(cls) -> dict[Any, Any]:
+        """Declare the complete in-package built-in strategy set.
+
+        Every concrete strategy registry overrides this with the full set of
+        strategies the package ships (lazy-importing the classes inside the
+        method).  ``with_defaults()`` builds the pre-populated registry from
+        exactly this mapping; an unimplemented hook raises so a registry is
+        never silently empty when its defaults are expected.
 
         Returns:
             Mapping of key → strategy class.
+
+        Raises:
+            NotImplementedError: Base implementation — override to declare
+                the built-in strategies.
         """
-        return {}
+        msg = (
+            f"{cls.__name__} does not declare built-in strategies; "
+            "override default_strategies() or register strategies explicitly."
+        )
+        raise NotImplementedError(msg)
 
 
 __all__ = [

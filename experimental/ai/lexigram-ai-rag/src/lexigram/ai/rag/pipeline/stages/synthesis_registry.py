@@ -136,15 +136,20 @@ class SynthesisStrategyRegistry:
         self._handlers: list[SynthesisStrategyHandler] = []
 
     @classmethod
+    def _default_entries(cls) -> dict[str, object]:
+        """Declare the built-in strategy handlers."""
+        return {
+            "direct": DirectSynthesisStrategyHandler(),
+            "extractive": ExtractiveSynthesisStrategyHandler(),
+            "abstractive": AbstractiveSynthesisStrategyHandler(),
+            "hybrid": HybridSynthesisStrategyHandler(),
+        }
+
+    @classmethod
     def with_defaults(cls) -> SynthesisStrategyRegistry:
         """Create a registry pre-populated with all built-in strategy handlers."""
         registry = cls()
-        registry._handlers = [
-            DirectSynthesisStrategyHandler(),
-            ExtractiveSynthesisStrategyHandler(),
-            AbstractiveSynthesisStrategyHandler(),
-            HybridSynthesisStrategyHandler(),
-        ]
+        registry._handlers = list(cls._default_entries().values())
         return registry
 
     def register(self, handler: SynthesisStrategyHandler) -> None:

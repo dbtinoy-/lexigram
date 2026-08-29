@@ -211,16 +211,32 @@ class TestCoreCliContributor:
         assert first == second
         assert first is not second
 
-    def test_with_defaults_registry_contains_core_generators(self) -> None:
-        """GeneratorRegistry.with_defaults() must be pre-populated with all core generators."""
-        registry = GeneratorRegistry.with_defaults()
-        registered_names = {g.name for g in registry.list_generators()}
+    def test_populate_registers_core_generators(self) -> None:
+        """populate_cli_registries() must register core generators via discovery."""
+        from lexigram.cli.contributors.discovery import populate_cli_registries
+
+        contributor_registry = CliContributorRegistry()
+        generator_registry = GeneratorRegistry()
+        populate_cli_registries(
+            contributor_registry,
+            generator_registry,
+            contributors=[CoreCliContributor()],
+        )
+        registered_names = {g.name for g in generator_registry.list_generators()}
         assert registered_names == _EXPECTED_CORE_NAMES
 
-    def test_with_defaults_registry_is_independent_of_bare_registry(self) -> None:
-        """with_defaults() must not affect a bare GeneratorRegistry()."""
+    def test_populate_does_not_affect_unrelated_registry(self) -> None:
+        """A fresh GeneratorRegistry() stays empty until populated."""
+        from lexigram.cli.contributors.discovery import populate_cli_registries
+
         bare = GeneratorRegistry()
-        _ = GeneratorRegistry.with_defaults()
+        contributor_registry = CliContributorRegistry()
+        generator_registry = GeneratorRegistry()
+        populate_cli_registries(
+            contributor_registry,
+            generator_registry,
+            contributors=[CoreCliContributor()],
+        )
         assert bare.list_generators() == []
 
 

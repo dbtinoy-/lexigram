@@ -28,40 +28,11 @@ class AgentStrategyRegistry(StrategyRegistry):
         super().__init__(name="agent.strategies", allow_overwrite=True)
 
     # ------------------------------------------------------------------
-    # Factory
+    # Built-in strategies
     # ------------------------------------------------------------------
 
     @classmethod
-    def with_defaults(cls) -> AgentStrategyRegistry:
-        """Create a registry pre-populated with the built-in strategies.
-
-        Returns:
-            A new registry with ``react``, ``plan-execute``, and
-            ``reflexion`` strategies registered.
-        """
-        instance = cls()
-        instance._register_defaults()
-        return instance
-
-    def _register_defaults(self) -> None:
-        """Populate the registry with built-in strategy classes."""
-        from lexigram.ai.agents.strategies.function_calling import (
-            FunctionCallingStrategy,
-        )
-        from lexigram.ai.agents.strategies.plan_execute import PlanAndExecuteStrategy
-        from lexigram.ai.agents.strategies.react import ReActStrategy
-        from lexigram.ai.agents.strategies.reflexion import ReflexionStrategy
-
-        self.register("react", ReActStrategy)
-        self.register("function_calling", FunctionCallingStrategy)
-        self.register("plan-execute", PlanAndExecuteStrategy)
-        self.register("reflexion", ReflexionStrategy)
-
-    # ------------------------------------------------------------------
-    # Overrides
-    # ------------------------------------------------------------------
-
-    def default_strategies(self) -> dict[str, type]:
+    def default_strategies(cls) -> dict[str, type]:
         """Return built-in strategy key → class mapping.
 
         Returns:

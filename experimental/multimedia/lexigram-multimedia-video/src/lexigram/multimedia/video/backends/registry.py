@@ -73,7 +73,9 @@ class VideoBackendRegistry:
             )
 
             api_key = (
-                await resolve_credential(secret_store, config.runway_api_key_secret_name)
+                await resolve_credential(
+                    secret_store, config.runway_api_key_secret_name
+                )
                 or ""
             )
             return RunwayVideoProvider(
@@ -94,7 +96,9 @@ class VideoBackendRegistry:
             from lexigram.multimedia.video.providers.openai import OpenAIVideoProvider
 
             api_key = (
-                await resolve_credential(secret_store, config.openai_api_key_secret_name)
+                await resolve_credential(
+                    secret_store, config.openai_api_key_secret_name
+                )
                 or ""
             )
             return OpenAIVideoProvider(

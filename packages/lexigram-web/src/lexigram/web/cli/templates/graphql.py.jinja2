@@ -28,8 +28,8 @@ class {{ class_name }}Type:
     {% endfor %}
     
     {% if has_timestamps %}
-    created_at: strawberry.auto
-    updated_at: strawberry.auto
+    created_at: datetime
+    updated_at: datetime
     {% endif %}
     
     @strawberry.field(description="Get the {{ resource_name }} by ID")
@@ -103,7 +103,7 @@ class {{ class_name }}Connection(relay.Connection):
     Provides cursor-based pagination for large datasets.
     """
     
-    edges: List[relay.Node[{{ class_name }}Type]]
+    edges: List[relay.Edge[{{ class_name }}Type]]
 
 
 @strawberry.type
@@ -166,11 +166,16 @@ class Query:
         return None
     
     @strawberry.relay.connection(
-        description="Get paginated {{ resource_name }} using relay"
+        {{ class_name }}Connection,
+        description="Get paginated {{ resource_name }} using relay",
     )
     async def {{ resource_name }}_connection(
         self,
         info: strawberry.Info,
+        before: Optional[str] = None,
+        after: Optional[str] = None,
+        first: Optional[int] = None,
+        last: Optional[int] = None,
     ) -> AsyncIterator[{{ class_name }}Type]:
         """Get paginated {{ resource_name }} with relay cursor-based pagination.
         

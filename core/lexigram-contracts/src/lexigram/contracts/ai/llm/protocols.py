@@ -265,7 +265,7 @@ class TokenCounterProtocol(Protocol):
         """Count tokens in a text string."""
         ...
 
-    def count_messages(self, messages: list[ChatMessageProtocol]) -> int:
+    def count_messages(self, messages: Sequence[ChatMessageProtocol]) -> int:
         """Count tokens in a list of chat messages, including message overhead."""
         ...
 

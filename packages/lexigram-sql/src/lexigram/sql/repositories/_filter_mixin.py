@@ -18,7 +18,9 @@ logger = get_logger(__name__)
 class _FilterMixin:
     """Provides ``_apply_filters_to_query`` for SQL repositories."""
 
-    _filter_registry: ClassVar[FilterOperatorRegistry] = FilterOperatorRegistry()
+    _filter_registry: ClassVar[FilterOperatorRegistry] = (
+        FilterOperatorRegistry.with_defaults()
+    )
 
     async def _apply_filters_to_query(
         self,

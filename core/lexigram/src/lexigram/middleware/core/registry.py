@@ -159,18 +159,26 @@ class MiddlewareRegistry(Registry[str, tuple[int, Any]]):
         return MiddlewareChain(self.all())
 
     @classmethod
-    def with_defaults(cls) -> MiddlewareRegistry:
-        """Pre-populate with standard infrastructure middleware."""
+    def _default_entries(cls) -> dict[str, tuple[int, Any]]:
+        """Declare the built-in infrastructure middleware (priority, instance)."""
         from lexigram.middleware.builtins import (
             CorrelationIdMiddleware,
             LoggingMiddleware,
             TimingMiddleware,
         )
 
+        return {
+            "logging": (10, LoggingMiddleware()),
+            "correlation_id": (20, CorrelationIdMiddleware()),
+            "timing": (90, TimingMiddleware()),
+        }
+
+    @classmethod
+    def with_defaults(cls) -> MiddlewareRegistry:
+        """Pre-populate with standard infrastructure middleware."""
         registry = cls()
-        registry.register("logging", LoggingMiddleware(), priority=10)
-        registry.register("correlation_id", CorrelationIdMiddleware(), priority=20)
-        registry.register("timing", TimingMiddleware(), priority=90)
+        for name, (priority, middleware) in cls._default_entries().items():
+            registry.register(name, middleware, priority=priority)
         return registry
 
     @classmethod

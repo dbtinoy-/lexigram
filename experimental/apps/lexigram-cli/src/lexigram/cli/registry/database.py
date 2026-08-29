@@ -327,59 +327,61 @@ class MySQLBackend(DatabaseBackend):
 class DatabaseRegistry:
     """Registry for database backends.
 
-    Provides a pluggable way to add support for new database types.
+    Instances are always empty — use :meth:`with_defaults` for the
+    in-package built-ins or :meth:`register` for plugin backends.
     """
 
-    _backends: dict[str, DatabaseBackend] = {}
-    _initialized: bool = False
+    def __init__(self) -> None:
+        self._backends: dict[str, DatabaseBackend] = {}
 
-    @classmethod
-    def register(cls, backend: type[DatabaseBackend]) -> None:
+    def register(self, backend: type[DatabaseBackend]) -> None:
         """Register a database backend."""
         instance = backend()
-        cls._backends[backend.name] = instance
+        self._backends[backend.name] = instance
         for alias in backend.aliases:
-            cls._backends[alias] = instance
+            self._backends[alias] = instance
 
-    @classmethod
-    def get(cls, name: str) -> DatabaseBackend | None:
+    def get(self, name: str) -> DatabaseBackend | None:
         """Get a backend by name."""
-        cls.register_defaults()
-        return cls._backends.get(name)
+        return self._backends.get(name)
 
-    @classmethod
-    def get_all(cls) -> dict[str, DatabaseBackend]:
+    def get_all(self) -> dict[str, DatabaseBackend]:
         """Get all registered backends."""
-        return cls._backends.copy()
+        return self._backends.copy()
 
-    @classmethod
-    def register_defaults(cls) -> None:
-        """Initialize default backends if not already done."""
-        if not cls._initialized:
-            cls.register(SQLiteBackend)
-            cls.register(PostgreSQLBackend)
-            cls.register(MySQLBackend)
-            cls._initialized = True
-
-    @classmethod
-    def detect_from_url(cls, url: str) -> DatabaseBackend:
+    def detect_from_url(self, url: str) -> DatabaseBackend:
         """Detect and return the appropriate backend from a database URL."""
-        cls.register_defaults()
-
         if url.startswith("sqlite"):
-            return cls._backends["sqlite"]
+            return self._backends["sqlite"]
 
         match = re.match(r"^(\w+):", url)
         if match:
             backend_name = match.group(1).lower()
-            if backend_name in cls._backends:
-                return cls._backends[backend_name]
+            if backend_name in self._backends:
+                return self._backends[backend_name]
 
-        for backend in cls._backends.values():
+        for backend in self._backends.values():
             if backend.get_client_binary():
                 return backend
 
-        return cls._backends["sqlite"]
+        return self._backends["sqlite"]
+
+    @classmethod
+    def _default_entries(cls) -> tuple[type[DatabaseBackend], ...]:
+        """The complete in-package built-in set, declared exactly once."""
+        return (
+            SQLiteBackend,
+            PostgreSQLBackend,
+            MySQLBackend,
+        )
+
+    @classmethod
+    def with_defaults(cls) -> DatabaseRegistry:
+        """Return an instance populated with the built-in backends."""
+        registry = cls()
+        for entry in cls._default_entries():
+            registry.register(entry)
+        return registry
 
 
 class DatabaseConnection:
@@ -387,7 +389,7 @@ class DatabaseConnection:
 
     def __init__(self, url: str | None = None, config_path: Path | None = None) -> None:
         self.url = url or self._get_url_from_env_or_config(config_path)
-        self.backend = DatabaseRegistry.detect_from_url(self.url)
+        self.backend = DatabaseRegistry.with_defaults().detect_from_url(self.url)
         self.params = self.backend.parse_url(self.url)
         self._provider: Any = None
         self._provider_async = None

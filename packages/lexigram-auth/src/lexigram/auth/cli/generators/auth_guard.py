@@ -2,42 +2,51 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
-from lexigram.codegen.base import GenerationResult, GeneratorBase
+from lexigram.codegen import GenerationResult, GeneratorBase
+from lexigram.contracts.cli.generators import resolve_options
 
 
 class AuthGuardGenerator(GeneratorBase):
-    """Generator for authentication guards."""
+    """Generate an authentication guard."""
 
     name = "auth_guard"
     description = "Generate an authentication/authorization guard"
     default_output_dir = "src/guards"
 
-    def generate(self, name: str, **options: Any) -> GenerationResult:
+    def __init__(self, output_dir: str | Path = "src/guards") -> None:
+        super().__init__(output_dir=output_dir)
+
+    def generate(
+        self,
+        name: str,
+        *,
+        dry_run: bool = False,
+        force: bool = False,
+        **options: Any,
+    ) -> GenerationResult:
         """Generate an authentication guard module.
 
         Args:
-            name: Guard name (e.g. ``"ApiKey"``).
-            **options: ``dry_run`` previews without writing; ``force``
-                overwrites an existing file.
+            name: Guard name (e.g. ``"ApiKey"`` or ``"api_key"``).
+            dry_run: Compute output paths without writing.
+            force: Overwrite an existing file.
 
         Returns:
-            A :class:`GenerationResult` describing the written file.
+            ``GenerationResult`` with created/skipped/overwritten paths.
         """
         guard_name = self._to_pascal_case(name)
         guard_snake = self._to_snake_case(name)
-        context = {
+        context: dict[str, Any] = {
             "guard_name": guard_name,
             "guard_name_snake": guard_snake,
-            "package_name": self._get_package_name(self.output_dir),
         }
         content = self.render_template("auth_guard.py.jinja2", context)
         file_path = self.output_dir / f"{guard_snake}_auth_guard.py"
-        if file_path.exists() and not options.get("force", False):
-            return GenerationResult()
-        if options.get("dry_run", False):
-            return GenerationResult()
-        self.output_dir.mkdir(parents=True, exist_ok=True)
-        file_path.write_text(content, encoding="utf-8")
-        return GenerationResult(files_created=[file_path])
+        self.stage(file_path, content)
+        return self.finalize(self.commit(resolve_options(dry_run=dry_run, force=force)))
+
+
+__all__ = ["AuthGuardGenerator"]
