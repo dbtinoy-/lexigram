@@ -119,7 +119,7 @@ jobs:
         run: uv run python dev/checks/env_binding.py --example .env.example
 
       - name: typecheck
-        run: uv run mypy core/lexigram/src/
+        run: make type
 
   tests:
     name: tests (${{ matrix.group }})
