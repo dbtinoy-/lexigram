@@ -8,13 +8,15 @@ tone-to-color decision lives in the ``_TONE_*`` mapping tables below.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 from lexigram.contracts.admin.health_payload import HealthCheckPayload
 from lexigram.contracts.admin.widget_content import (
     ChartContent,
+    ChartPoint,
     EmptyContent,
     MessageContent,
+    Stat,
     StatContent,
     TableContent,
     Tone,
@@ -109,6 +111,33 @@ _TABLE_CELL_CLASS = "px-6 py-4 whitespace-nowrap align-middle"
 _TABLE_ZEBRA_CLASS = "bg-muted-30"
 _HEALTH_BADGE_CLASS = "health-check-badge"
 _HEALTH_DETAIL_CLASS = "text-sm text-muted-foreground"
+
+
+def render_chart_fragment(
+    chart_type: Literal["bar", "line", "pie", "area"], points: list[ChartPoint]
+) -> str:
+    """Render a chart fragment for live ``ChartWidget`` bodies.
+
+    Convenience helper for chart-data endpoints: builds a
+    :class:`~lexigram.contracts.admin.widget_content.ChartContent` from raw
+    points and delegates to the shared content dispatcher, so empty point
+    sets and unknown primitives degrade consistently.
+    """
+    return _render_chart_content(
+        ChartContent(chart_type=chart_type, points=tuple(points))
+    )
+
+
+def render_stat_fragment(stats: list[Stat]) -> str:
+    """Render a stat-grid fragment for live ``StatsOverviewWidget`` bodies.
+
+    Convenience helper for stat endpoints, mirroring
+    :func:`render_chart_fragment`: builds a
+    :class:`~lexigram.contracts.admin.widget_content.StatContent` and
+    delegates to the shared dispatcher so tone/delta rendering stays in one
+    place.
+    """
+    return _render_stat_content(StatContent(stats=tuple(stats)))
 
 
 def render_content(content: WidgetContent) -> str:
@@ -250,4 +279,4 @@ def _render_chart_content(content: ChartContent) -> str:
     return render_to_string(chart_cls(points))
 
 
-__all__ = ["render_content"]
+__all__ = ["render_chart_fragment", "render_content", "render_stat_fragment"]

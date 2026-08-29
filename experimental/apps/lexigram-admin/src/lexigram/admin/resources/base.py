@@ -109,6 +109,10 @@ class Resource(
     # When set, columns and filters are derived automatically.
     fields: list[Any] = []
 
+    # Declarative generated-form layout: FormSection groups (title, columns,
+    # field names). Empty means the renderer lists fields flat.
+    form_sections: list[Any] = []
+
     page_size: int = 20
     default_sort: str | None = None
 
@@ -150,6 +154,7 @@ class Resource(
         "relations",
         "search_fields",
         "form_exclude_fields",
+        "form_sections",
     )
 
     def __init_subclass__(cls, **kwargs: Any) -> None:

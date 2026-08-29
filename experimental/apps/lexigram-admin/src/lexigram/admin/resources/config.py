@@ -1,18 +1,40 @@
 """Admin resource and table configuration types.
 
-Provides :class:`TableConfiguration` (static DataTable config) and
+Provides :class:`TableConfiguration` (static DataTable config),
+:class:`FormSection` (declarative generated-form grouping) and
 :class:`ResourceConfig` (fluent builder for resource metadata).
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Literal
 
 from lexigram.domain import DomainModel
 from lexigram.validation import ConfigDict, Field
 
-__all__ = ["ResourceConfig", "TableConfiguration"]
+__all__ = ["FormSection", "ResourceConfig", "TableConfiguration"]
+
+
+@dataclass(frozen=True)
+class FormSection:
+    """A named grouping of form fields in the generated-form layout.
+
+    Args:
+        title: Section heading rendered above the fields.
+        description: Optional one-line description under the title.
+        columns: Grid columns (1 renders stacked, 2+ uses a responsive grid).
+        fields: Field names rendered inside the section, in display order.
+    """
+
+    title: str | None = None
+    description: str | None = None
+    columns: int = 1
+    fields: tuple[str, ...] = field(default_factory=tuple)
+
+    def __post_init__(self) -> None:
+        if self.columns < 1:
+            object.__setattr__(self, "columns", 1)
 
 
 @dataclass(init=False)
@@ -81,6 +103,7 @@ class ResourceConfig:
         self._views_list: list[Any] = []
         self._action_layout: str = "horizontal"
         self._form_display_mode: str = "modal"
+        self._form_sections: list[FormSection] = []
         self._name: str | None = None
         self._group: str | None = None
         self._group_label: str | None = None
@@ -253,6 +276,37 @@ class ResourceConfig:
             self._form_display_mode = mode
         return self
 
+    def section(
+        self,
+        fields: list[str],
+        *,
+        title: str | None = None,
+        description: str | None = None,
+        columns: int = 1,
+    ) -> ResourceConfig:
+        """Add a form section to the generated-form layout.
+
+        Args:
+            fields: Field names rendered inside the section, in display order.
+            title: Section heading (defaults to none).
+            description: Optional one-line description.
+            columns: Grid columns (1 stacked, 2+ responsive grid).
+        """
+        self._form_sections.append(
+            FormSection(
+                title=title,
+                description=description,
+                columns=columns,
+                fields=tuple(fields),
+            )
+        )
+        return self
+
+    def sections(self, sections: list[FormSection]) -> ResourceConfig:
+        """Replace the generated-form layout sections."""
+        self._form_sections = list(sections)
+        return self
+
     @property
     def display_name(self) -> str | None:
         """Return the configured display name."""
@@ -277,3 +331,8 @@ class ResourceConfig:
     def views_list(self) -> list[Any]:
         """Return the configured views."""
         return self._views_list
+
+    @property
+    def form_sections(self) -> list[FormSection]:
+        """Return the configured generated-form layout sections."""
+        return list(self._form_sections)

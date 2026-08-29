@@ -45,6 +45,7 @@ class TableConfigMixin:
     empty_state_message: str | None
     empty_state_icon: str | None
     form_display_mode: str
+    form_sections: list[Any]
 
     @classmethod
     def get_table_config(cls) -> TableConfiguration:
@@ -161,6 +162,22 @@ class TableConfigMixin:
             if cfg
             else cls.form_display_mode
         )
+
+    @classmethod
+    def get_form_sections(cls) -> list[Any]:
+        """Return the declared generated-form layout sections.
+
+        Resolves ``config.form_sections`` over the class-level
+        ``form_sections`` attribute. Returns an empty list when no layout is
+        declared (the renderer falls back to a flat field list).
+        """
+        cfg = cls.config
+        value = (
+            cls._get_config_value(cfg, "form_sections", cls.form_sections)
+            if cfg
+            else cls.form_sections
+        )
+        return list(value or [])
 
     @classmethod
     def get_layout_manager(cls) -> LayoutManager:

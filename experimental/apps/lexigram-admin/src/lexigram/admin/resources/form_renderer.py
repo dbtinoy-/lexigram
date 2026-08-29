@@ -361,7 +361,8 @@ class FormRenderer(WizardRendererMixin):
                                 )
 
                 # Build field components from schema
-                field_components = []
+                rendered_fields: dict[str, Any] = {}
+                ordered_names: list[str] = []
                 exclude_names = set(getattr(resource, "form_exclude_fields", ()) or ())
                 for field_schema in schema.fields:
                     # Skip framework-managed / excluded fields
@@ -397,9 +398,22 @@ class FormRenderer(WizardRendererMixin):
                     if field_component:
                         if errors and field_schema.name in errors:
                             field_component.error = errors[field_schema.name]
-                        field_components.append(field_component.render())
+                        rendered_fields[field_schema.name] = field_component.render()
+                        ordered_names.append(field_schema.name)
 
                 submit_label = "Update" if mode == "edit" else "Create"
+
+                # Declared form layout (FormSection groups) wins; otherwise
+                # fields render flat in schema order.
+                layout_sections = self._resolve_form_sections(resource)
+                if layout_sections:
+                    body_fields = self._render_layout_fields(
+                        layout_sections,
+                        rendered_fields,
+                        ordered_names,
+                    )
+                else:
+                    body_fields = [rendered_fields[n] for n in ordered_names]
 
                 # Create Form component with fields.  HTMX submits swap the
                 # validation-error response back into the slide-over zone so
@@ -411,7 +425,7 @@ class FormRenderer(WizardRendererMixin):
                     hx_target="#slide-over-container",
                     hx_swap="innerHTML",
                 )
-                form.children = field_components
+                form.children = body_fields
                 return form
 
             except AdminValidationError as e:
@@ -427,6 +441,87 @@ class FormRenderer(WizardRendererMixin):
             "No form configuration available for this resource.",
             class_="text-muted-foreground",
         )
+
+    @staticmethod
+    def _resolve_form_sections(resource: Any) -> list[Any]:
+        """Resolve declared form layout sections for a resource."""
+        getter = getattr(resource, "get_form_sections", None)
+        if callable(getter):
+            sections = getter()
+            if isinstance(sections, list):
+                return sections
+        return list(getattr(resource, "form_sections", ()) or ())
+
+    @staticmethod
+    def _render_layout_fields(
+        sections: list[Any],
+        rendered_fields: dict[str, Any],
+        ordered_names: list[str],
+    ) -> list[Any]:
+        """Render fields grouped into declared sections, then leftovers.
+
+        Each declared section becomes one :class:`Section` layout node
+        (``lexigram.admin.forms.layout``) whose ``FieldNode`` children resolve
+        to the already-rendered field atoms, so the generated form shares the
+        exact section visuals and ``visible_when`` semantics of declarative
+        ``FormBase`` layouts. Fields not referenced by any section are
+        appended after the sections (in schema order) so nothing declared on
+        the model is lost.
+        """
+
+        from lexigram.admin.forms.layout import FieldNode, Section
+        from lexigram.ui import el
+
+        class _RenderedField:
+            def __init__(self, element: Any) -> None:
+                self._element = element
+
+            def render_form(
+                self,
+                value: Any = None,
+                *,
+                errors: list[str] | None = None,
+            ) -> Any:
+                return self._element
+
+        class _FieldsForm:
+            def __init__(self, fields: dict[str, Any]) -> None:
+                self.fields = fields
+
+        assigned: set[str] = set()
+        body: list[Any] = []
+        for section in sections:
+            section_names = [
+                name
+                for name in getattr(section, "fields", ())
+                if name in rendered_fields
+            ]
+            if not section_names:
+                continue
+            assigned.update(section_names)
+            try:
+                columns = max(1, min(4, int(getattr(section, "columns", 1) or 1)))
+            except (TypeError, ValueError):
+                columns = 1
+            node = Section(
+                title=getattr(section, "title", None),
+                description=getattr(section, "description", None),
+                columns=columns,
+                children=[
+                    FieldNode(field_name=name) for name in section_names
+                ],
+            )
+            form = _FieldsForm(
+                {name: _RenderedField(rendered_fields[name]) for name in section_names}
+            )
+            body.append(node.render(form))  # type: ignore[arg-type]
+
+        leftovers = [
+            rendered_fields[name] for name in ordered_names if name not in assigned
+        ]
+        if leftovers:
+            body.append(el("div", *leftovers, class_="space-y-6"))
+        return body
 
     def _create_field_component(self, field_schema, value) -> Any:
         """Create a field component from a SchemaField.
