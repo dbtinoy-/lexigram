@@ -1197,8 +1197,6 @@ Before writing or modifying code, verify:
 
 - Make things work, make things right, and make them fast
 
----
-
 
 
 ---
