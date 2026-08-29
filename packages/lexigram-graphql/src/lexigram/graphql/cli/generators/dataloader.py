@@ -21,9 +21,9 @@ class DataLoaderGenerator(GeneratorBase):
 
     name = "dataloader"
     description = "Generate a GraphQL DataLoaderProtocol to solve N+1 problems"
-    default_output_dir = "src/graphql/dataloaders"
+    default_output_dir = "src/schema/dataloaders"
 
-    def __init__(self, output_dir: str | Path = "src/graphql/dataloaders") -> None:
+    def __init__(self, output_dir: str | Path = "src/schema/dataloaders") -> None:
         super().__init__(output_dir=output_dir)
 
     def get_name(self) -> str:

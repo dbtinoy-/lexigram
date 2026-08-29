@@ -96,7 +96,7 @@ def test_resource_generator_uses_package_local_controller() -> None:
         ("controller", "src/controllers"),
         ("resource", "src"),
         ("middleware", "src/middleware"),
-        ("graphql", "src/graphql"),
+        ("graphql", "src/schema"),
         ("webhook", "src/webhooks"),
         ("websocket", "src/websocket"),
         ("exception_filter", "src/filters"),

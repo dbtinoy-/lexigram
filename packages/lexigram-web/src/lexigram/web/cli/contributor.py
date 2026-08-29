@@ -35,7 +35,7 @@ _SPECS: tuple[tuple[str, str, str, str], ...] = (
         "graphql",
         "Generate a GraphQL schema and resolvers",
         "lexigram.web.cli.generators.graphql:GraphQLGenerator",
-        "src/graphql",
+        "src/schema",
     ),
     (
         "webhook",

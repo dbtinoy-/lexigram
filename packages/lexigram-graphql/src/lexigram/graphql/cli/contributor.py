@@ -10,7 +10,7 @@ _SPECS: tuple[tuple[str, str, str, str], ...] = (
         "dataloader",
         "Generate a GraphQL DataLoaderProtocol to solve N+1 problems",
         "lexigram.graphql.cli.generators.dataloader:DataLoaderGenerator",
-        "src/graphql/dataloaders",
+        "src/schema/dataloaders",
     ),
 )
 
