@@ -42,11 +42,13 @@ class Form(Generic[T]):
         columns: int,
         submit_label: str,
         cancel_url: str | None,
+        group_labels: dict[str, str] | None = None,
     ):
         self.model = model
         self.fields = {f.name: f for f in fields}
         self.field_list = fields
         self.groups = groups
+        self.group_labels = group_labels or {}
         self.layout = layout
         self.columns = columns
         self.submit_label = submit_label
@@ -109,16 +111,95 @@ class Form(Generic[T]):
 
         return FormResult(success=False, errors=errors)
 
+    def _render_field_el(self, name: str) -> Any:
+        """Render a single field with its bound value and errors."""
+        return el(
+            "div",
+            self.fields[name].render_form(
+                self.values.get(name),
+                errors=self.errors.get(name),
+            ),
+            class_="form-field",
+        )
+
     def _render_field_els(self) -> list[Any]:
-        """Render all field elements with current bound values."""
-        return [
-            el(
-                "div",
-                field.render_form(self.values.get(name)),
-                class_="form-field",
+        """Render fields as flat rows, or grouped sections when declared.
+
+        When ``groups`` is non-empty each group renders as a titled section
+        containing its fields in declaration order; fields not assigned to a
+        group render after the sections so nothing is dropped.
+        """
+        if not self.groups:
+            return [
+                self._render_field_el(name)
+                for name, field in self.fields.items()
+                if field.visible_in_form
+            ]
+
+        assigned: set[str] = set()
+        body: list[Any] = []
+        grid_style = (
+            f"display:grid;grid-template-columns:repeat({self.columns},1fr);gap:1rem"
+        )
+        for group_name, field_names in self.groups.items():
+            group_fields = [
+                self._render_field_el(name)
+                for name in field_names
+                if name in self.fields and self.fields[name].visible_in_form
+            ]
+            if not group_fields:
+                continue
+            assigned.update(
+                name
+                for name in field_names
+                if name in self.fields and self.fields[name].visible_in_form
             )
+            body.append(
+                el(
+                    "div",
+                    el(
+                        "h3",
+                        self.group_labels.get(group_name)
+                        or group_name.replace("_", " ").title(),
+                        class_="text-lg font-medium text-foreground",
+                    ),
+                    el(
+                        "div",
+                        *group_fields,
+                        class_="form-group-fields",
+                        style=grid_style,
+                    ),
+                    class_="form-group",
+                )
+            )
+
+        leftovers = [
+            self._render_field_el(name)
             for name, field in self.fields.items()
+            if name not in assigned and field.visible_in_form
         ]
+        if leftovers:
+            body.extend(leftovers)
+        return body
+
+    def _fields_container_el(self, field_els: list[Any]) -> Any:
+        """Wrap rendered fields: grid when flat, stacked when grouped.
+
+        Grouped forms render each group as its own grid (see
+        :meth:`_render_field_els`); the outer container stays stacked so
+        sections never sit side-by-side.
+        """
+        if self.groups:
+            return el("div", *field_els, class_="form-fields space-y-6")
+        return el(
+            "div",
+            *field_els,
+            class_="form-fields",
+            style=(
+                f"display:grid;grid-template-columns:repeat({self.columns},1fr);"
+                "gap:1rem"
+            ),
+        )
 
     def render_html(self, action: str, method: str = "POST") -> str:
         """Render form as HTML."""
@@ -133,12 +214,7 @@ class Form(Generic[T]):
         return render_to_string(
             el(
                 "form",
-                el(
-                    "div",
-                    *field_els,
-                    class_="form-fields",
-                    style=f"display:grid;grid-template-columns:repeat({self.columns},1fr);gap:1rem",
-                ),
+                self._fields_container_el(field_els),
                 el("div", *btns, class_="form-actions", style="margin-top:1.5rem"),
                 action=action,
                 method=method,
@@ -166,12 +242,7 @@ class Form(Generic[T]):
             el(
                 "form",
                 el("div", "Saving...", id=spinner_id, class_="htmx-indicator"),
-                el(
-                    "div",
-                    *field_els,
-                    class_="form-fields",
-                    style=f"display:grid;grid-template-columns:repeat({self.columns},1fr);gap:1rem",
-                ),
+                self._fields_container_el(field_els),
                 el("div", *btns, class_="form-actions", style="margin-top:1.5rem"),
                 **{
                     "hx-post": action,

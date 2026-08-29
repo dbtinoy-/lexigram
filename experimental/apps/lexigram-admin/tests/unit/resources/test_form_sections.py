@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 import pytest
 from starlette.requests import Request as StarletteRequest
 
@@ -53,6 +53,24 @@ class _WithClassAttr(Resource):
 class _NoLayout(Resource):
     name = "profiles"
     model = _Profile
+
+
+class _HiddenField(BaseModel):
+    username: str
+    internal_note: str = ""
+
+
+class _HiddenField(BaseModel):
+    username: str
+    internal_note: str = Field(
+        default="",
+        json_schema_extra={"visible_in_form": False},
+    )
+
+
+class _WithHidden(Resource):
+    name = "profiles"
+    model = _HiddenField
 
 
 def _create_request() -> StarletteRequest:
@@ -146,3 +164,17 @@ class TestFormSections:
         cfg.sections([first])
         cfg.sections([second])
         assert cfg.form_sections == [second]
+
+
+class TestVisibleInForm:
+    @pytest.mark.asyncio
+    async def test_json_schema_extra_hides_field_from_generated_form(self) -> None:
+        renderer = FormRenderer(
+            AdminConfig(prefix="/admin", title="Test"),
+            "profiles",
+            AdminRenderer(),
+        )
+        response = await renderer.render_create(_create_request(), _WithHidden)
+        html = response.body.decode("utf-8", "replace")
+        assert 'name="username"' in html
+        assert 'name="internal_note"' not in html

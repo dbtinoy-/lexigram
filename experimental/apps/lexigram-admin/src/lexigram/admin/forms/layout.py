@@ -39,9 +39,13 @@ class FieldNode(AbstractLayoutNode):
     def render(self, form: FormBase) -> Any:
         try:
             field = form.fields[self.field_name]
-            rendered = field.render_form(
-                self.props.get("value"), errors=self.props.get("errors")
-            )
+            value = self.props.get("value")
+            if value is None and hasattr(form, "values"):
+                value = form.values.get(self.field_name)
+            errors = self.props.get("errors")
+            if errors is None and hasattr(form, "errors"):
+                errors = form.errors.get(self.field_name)
+            rendered = field.render_form(value, errors=errors)
             if self.visible_when:
                 return el(
                     "div", rendered, **{"x-show": self.visible_when, "x-cloak": True}

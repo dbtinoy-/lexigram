@@ -147,7 +147,7 @@ class FormSchemaGenerator:
         default = (
             field_info.default if field_info.default is not PydanticUndefined else None
         )
-        return self._build_field(
+        field = self._build_field(
             name,
             field_info.annotation,
             label=label,
@@ -155,6 +155,12 @@ class FormSchemaGenerator:
             help_text=field_info.description,
             default=default,
         )
+        # Field-level visibility: json_schema_extra={"visible_in_form": False}
+        # hides a field from generated forms (still present on the model).
+        extra = getattr(field_info, "json_schema_extra", None)
+        if isinstance(extra, dict) and not extra.get("visible_in_form", True):
+            field = dataclasses.replace(field, visible_in_form=False)
+        return field
 
     def _parse_dataclass_field(
         self,

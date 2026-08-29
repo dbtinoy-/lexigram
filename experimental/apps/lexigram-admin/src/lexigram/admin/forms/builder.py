@@ -97,6 +97,7 @@ class FormBuilder(AbstractBuilder["Form[T]"], Generic[T]):
         self._field_configs: dict[str, FieldConfig] = {}
         self._excluded: set[str] = set()
         self._groups: dict[str, list[str]] = {}
+        self._group_labels: dict[str, str] = {}
         self._layout: str = "vertical"  # "vertical", "horizontal", "grid"
         self._columns: int = 1
         self._submit_label: str = "Submit"
@@ -205,6 +206,8 @@ class FormBuilder(AbstractBuilder["Form[T]"], Generic[T]):
     ) -> FormBuilder[T]:
         """Group fields together."""
         self._groups[name] = list(fields)
+        if label is not None:
+            self._group_labels[name] = label
         for field_name in fields:
             if field_name in self._field_configs:
                 self._field_configs[field_name].group = name
@@ -238,6 +241,7 @@ class FormBuilder(AbstractBuilder["Form[T]"], Generic[T]):
         builder._field_configs = {}
         builder._excluded = set()
         builder._groups = {}
+        builder._group_labels = {}
         builder._layout = "vertical"
         builder._columns = 1
         builder._submit_label = "Submit"
@@ -277,6 +281,7 @@ class FormBuilder(AbstractBuilder["Form[T]"], Generic[T]):
             model=self.model,
             fields=fields,
             groups=self._groups,
+            group_labels=self._group_labels,
             layout=self._layout,
             columns=self._columns,
             submit_label=self._submit_label,

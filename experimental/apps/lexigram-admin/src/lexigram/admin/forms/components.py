@@ -54,6 +54,7 @@ class FormBase(Component, metaclass=FormMeta):
         method: str = "POST",
         hx_post: str | None = None,
         hx_target: str | None = None,
+        layout: Any = None,
         **props: Any,
     ) -> None:
         super().__init__(**props)
@@ -63,6 +64,9 @@ class FormBase(Component, metaclass=FormMeta):
         self.method = method
         self.hx_post = hx_post
         self.hx_target = hx_target
+        # Class-level layout (list of AbstractLayoutNode) can be overridden
+        # per instance via the constructor.
+        self.layout = layout if layout is not None else getattr(type(self), "layout", None)
         self.fields: dict[str, SchemaField] = dict(self._declared_fields)
         self.values: dict[str, Any] = {}
         self.errors: dict[str, list[str]] = {}
@@ -146,8 +150,12 @@ class FormBase(Component, metaclass=FormMeta):
                 form_body = str(layout)
         else:
             form_content = [
-                field_schema.render_form(self.values.get(name))
+                field_schema.render_form(
+                    self.values.get(name),
+                    errors=self.errors.get(name),
+                )
                 for name, field_schema in self.fields.items()
+                if field_schema.visible_in_form
             ]
             form_body = el("div", *form_content, class_="space-y-4")
 
