@@ -102,7 +102,7 @@ class DefaultMiddlewareStack:
         from lexigram.web.middleware.di_scope import DIScopeMiddleware
         from lexigram.web.middleware.registry import MiddlewareAdapterRegistry
 
-        registry = MiddlewareAdapterRegistry()
+        registry = MiddlewareAdapterRegistry.with_defaults()
 
         # Start from user-supplied extras (order preserved)
         middlewares: list[Any] = list(self._extra_middlewares)

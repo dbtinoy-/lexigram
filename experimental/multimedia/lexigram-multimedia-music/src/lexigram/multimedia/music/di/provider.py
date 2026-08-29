@@ -5,11 +5,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, cast
 
 from lexigram.contracts.core.health import HealthCheckResult, HealthStatus
-from lexigram.contracts.multimedia.exceptions import ProviderNotInstalledError
 from lexigram.contracts.multimedia.protocols import MusicProvider
 from lexigram.di.provider import Provider
-from lexigram.di.provider_utils import resolve_credential, resolve_optional
+from lexigram.di.provider_utils import resolve_optional
 from lexigram.logging import get_logger
+from lexigram.multimedia.music.backends.registry import MusicBackendRegistry
 from lexigram.multimedia.music.config import MusicConfig
 from lexigram.multimedia.music.tasks import MusicGenerationTask
 
@@ -36,18 +36,21 @@ class AudioMusicProvider(Provider):
     config_key: str | None = "multimedia_music"
     config_model: type | None = MusicConfig
 
-    def __init__(self, config: MusicConfig | None = None) -> None:
+    def __init__(
+        self,
+        config: MusicConfig | None = None,
+        *,
+        backend_registry: MusicBackendRegistry | None = None,
+    ) -> None:
         super().__init__(name="music")
         self._requested_config = config
-        # No default baking: the orchestrator injects the yaml section into
-        # ``provider.config`` after construction, before ``register()``.
         self._config = config
+        self._backend_registry = backend_registry or MusicBackendRegistry.with_defaults()
         self._backend: MusicProvider | None = None
         self._task_handler: MusicGenerationTask | None = None
         self._secret_store: AsyncSecretStoreProtocol | None = None
         self._retry: RetryPolicyProtocol | None = None
         self._circuit_breaker: CircuitBreakerProtocol | None = None
-        self._credential_resolved: bool = False
 
     async def register(self, container: ContainerRegistrarProtocol) -> None:
         from lexigram.contracts.infra.resilience.protocols import (
@@ -61,76 +64,20 @@ class AudioMusicProvider(Provider):
 
         self._secret_store = await resolve_optional(container, AsyncSecretStoreProtocol)
         self._retry = await resolve_optional(container, RetryPolicyProtocol)
-        self._circuit_breaker = await resolve_optional(
-            container, CircuitBreakerProtocol
+        self._circuit_breaker = await resolve_optional(container, CircuitBreakerProtocol)
+
+        self._backend = cast(
+            "MusicProvider",
+            await self._backend_registry.create_backend(
+                self._config.backend,
+                self._config,
+                self._secret_store,
+                self._retry,
+                self._circuit_breaker,
+            ),
         )
 
-        if self._config.backend == "local-http":
-            from lexigram.multimedia.music.providers.local_http import (
-                LocalHttpMusicProvider,
-            )
-
-            self._backend = cast(
-                "MusicProvider",
-                LocalHttpMusicProvider(
-                    base_url=self._config.local_http_base_url,
-                    timeout=self._config.timeout,
-                    retry=self._retry,
-                    circuit_breaker=self._circuit_breaker,
-                ),
-            )
-        elif self._config.backend == "stability-audio":
-            from lexigram.multimedia.music.providers.stability_audio import (
-                StabilityAudioMusicProvider,
-            )
-
-            api_key = await resolve_credential(
-                self._secret_store, self._config.stability_api_key_secret_name
-            )
-            self._credential_resolved = bool(api_key)
-            self._backend = cast(
-                "MusicProvider",
-                StabilityAudioMusicProvider(
-                    api_key=api_key or "",
-                    timeout=self._config.timeout,
-                    retry=self._retry,
-                    circuit_breaker=self._circuit_breaker,
-                ),
-            )
-        elif self._config.backend == "ace-step":
-            from lexigram.multimedia.music.providers.ace_step import (
-                AceStepMusicProvider,
-            )
-
-            self._backend = cast(
-                "MusicProvider",
-                AceStepMusicProvider(
-                    base_url=self._config.ace_step_base_url,
-                    timeout=self._config.timeout,
-                    retry=self._retry,
-                    circuit_breaker=self._circuit_breaker,
-                ),
-            )
-        elif self._config.backend == "stable-audio-open":
-            from lexigram.multimedia.music.providers.stable_audio_open import (
-                StableAudioOpenMusicProvider,
-            )
-
-            self._backend = cast(
-                "MusicProvider",
-                StableAudioOpenMusicProvider(
-                    base_url=self._config.stable_audio_open_base_url,
-                    timeout=self._config.timeout,
-                    retry=self._retry,
-                    circuit_breaker=self._circuit_breaker,
-                ),
-            )
-        else:
-            raise ProviderNotInstalledError(
-                f"Unknown or unimplemented music backend: {self._config.backend!r}"
-            )
-
-        assert self._backend is not None  # noqa: S101  # raised via ProviderNotInstalledError above
+        assert self._backend is not None  # noqa: S101
         container.singleton(MusicProvider, self._backend)
 
         self._task_handler = MusicGenerationTask(backend=self._backend)
@@ -150,32 +97,19 @@ class AudioMusicProvider(Provider):
             "stable-audio-open": self._config.stable_audio_open_base_url,
         }
         if self._config.backend in http_backends:
-            status = await self._check_http_health(
-                http_backends[self._config.backend], timeout
-            )
+            status = await self._check_http_health(http_backends[self._config.backend], timeout)
             return HealthCheckResult(component=self.name, status=status)
 
-        return HealthCheckResult(
-            component=self.name,
-            status=HealthStatus.HEALTHY
-            if self._credential_resolved
-            else HealthStatus.DEGRADED,
-        )
+        return HealthCheckResult(component=self.name, status=HealthStatus.HEALTHY)
 
     async def _check_http_health(self, base_url: str, timeout: float) -> HealthStatus:
         import aiohttp
 
         try:
             async with (
-                aiohttp.ClientSession(
-                    timeout=aiohttp.ClientTimeout(total=timeout)
-                ) as session,
+                aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=timeout)) as session,
                 session.get(f"{base_url}/health") as resp,
             ):
-                return (
-                    HealthStatus.HEALTHY
-                    if resp.status == 200
-                    else HealthStatus.DEGRADED
-                )
+                return HealthStatus.HEALTHY if resp.status == 200 else HealthStatus.DEGRADED
         except (TimeoutError, OSError, aiohttp.ClientError):
             return HealthStatus.DEGRADED

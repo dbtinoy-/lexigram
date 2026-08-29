@@ -177,7 +177,7 @@ async def test_check_http_health_uses_system_stats_for_comfyui(mocker) -> None:
 
 
 @pytest.mark.asyncio
-async def test_runway_health_check_degraded_without_resolved_credential(
+async def test_runway_health_check_healthy_when_backend_present(
     monkeypatch,
 ) -> None:
     monkeypatch.delenv("RUNWAY_API_KEY", raising=False)
@@ -187,7 +187,7 @@ async def test_runway_health_check_degraded_without_resolved_credential(
 
     result = await provider.health_check()
 
-    assert result.status == HealthStatus.DEGRADED
+    assert result.status == HealthStatus.HEALTHY
 
 
 @pytest.mark.asyncio
@@ -219,7 +219,7 @@ async def test_register_binds_openai_backend(monkeypatch) -> None:
 
 
 @pytest.mark.asyncio
-async def test_openai_health_check_degraded_without_key(monkeypatch) -> None:
+async def test_openai_health_check_healthy_when_backend_present(monkeypatch) -> None:
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     provider = VideoGenerationProvider(config=VideoConfig(backend="openai"))
     container = _FakeContainer()
@@ -227,7 +227,7 @@ async def test_openai_health_check_degraded_without_key(monkeypatch) -> None:
 
     result = await provider.health_check()
 
-    assert result.status == HealthStatus.DEGRADED
+    assert result.status == HealthStatus.HEALTHY
 
 
 @pytest.mark.asyncio

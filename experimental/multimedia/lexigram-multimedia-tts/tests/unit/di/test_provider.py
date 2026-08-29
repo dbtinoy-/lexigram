@@ -150,14 +150,14 @@ async def test_register_binds_openai_backend(monkeypatch) -> None:
 
 
 @pytest.mark.asyncio
-async def test_openai_health_check_degraded_without_key() -> None:
+async def test_openai_health_check_healthy_when_backend_present() -> None:
     provider = AudioTTSProvider(config=TTSConfig(backend="openai"))
     container = _FakeContainer()
     await provider.register(container)
 
     result = await provider.health_check()
 
-    assert result.status == HealthStatus.DEGRADED
+    assert result.status == HealthStatus.HEALTHY
 
 
 @pytest.mark.asyncio

@@ -8,8 +8,8 @@ from typing import TYPE_CHECKING, Any
 from lexigram.contracts.core import HealthCheckResult, HealthStatus, ProviderPriority
 from lexigram.contracts.data.graph.protocols import GraphStoreProtocol
 from lexigram.di.provider import Provider
+from lexigram.graph.backends.registry import GraphStoreRegistry
 from lexigram.graph.config import GraphConfig
-from lexigram.graph.constants import BACKEND_MEMORY, BACKEND_NEO4J
 from lexigram.logging.factory import get_logger
 
 if TYPE_CHECKING:
@@ -17,8 +17,6 @@ if TYPE_CHECKING:
         ContainerRegistrarProtocol,
         ContainerResolverProtocol,
     )
-    from lexigram.graph.backends.memory.backend import InMemoryGraphStore
-    from lexigram.graph.backends.neo4j.backend import Neo4jGraphStore
 
 logger = get_logger(__name__)
 
@@ -71,20 +69,9 @@ class GraphProvider(Provider):
             return
 
         backend = self._effective_config.backend
-
-        if backend == BACKEND_NEO4J:
-            container.singleton(
-                GraphStoreProtocol,
-                factory=lambda: self._create_neo4j_store(self._effective_config),
-            )
-        elif backend == BACKEND_MEMORY:
-            container.singleton(
-                GraphStoreProtocol,
-                factory=self._create_memory_store,
-            )
-        else:
-            msg = f"Unknown graph backend: {backend}"
-            raise ValueError(msg)
+        registry = GraphStoreRegistry.with_defaults()
+        store = registry.create_store(backend, self._effective_config)
+        container.singleton(GraphStoreProtocol, factory=lambda: store)
 
         logger.info("graph_provider_registered", backend=backend)
 
@@ -185,19 +172,3 @@ class GraphProvider(Provider):
                 error=str(exc),
                 duration_ms=(time.perf_counter() - start) * 1000,
             )
-
-    @staticmethod
-    def _create_neo4j_store(config: GraphConfig) -> Neo4jGraphStore:
-        from lexigram.graph.backends.neo4j import (
-            Neo4jGraphStore,  # noqa: PLC0415 — optional heavy dep; neo4j driver is only imported when neo4j backend is selected
-        )
-
-        return Neo4jGraphStore(config=config.neo4j)
-
-    @staticmethod
-    def _create_memory_store() -> InMemoryGraphStore:
-        from lexigram.graph.backends.memory import (
-            InMemoryGraphStore,  # noqa: PLC0415 — optional dep; deferred to avoid importing driver modules at module load time
-        )
-
-        return InMemoryGraphStore()

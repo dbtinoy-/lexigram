@@ -5,11 +5,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, cast
 
 from lexigram.contracts.core.health import HealthCheckResult, HealthStatus
-from lexigram.contracts.multimedia.exceptions import ProviderNotInstalledError
 from lexigram.contracts.multimedia.protocols import TTSProvider
 from lexigram.di.provider import Provider
-from lexigram.di.provider_utils import resolve_credential, resolve_optional
+from lexigram.di.provider_utils import resolve_optional
 from lexigram.logging import get_logger
+from lexigram.multimedia.tts.backends.registry import TTSBackendRegistry
 from lexigram.multimedia.tts.config import TTSConfig
 from lexigram.multimedia.tts.tasks import TTSGenerationTask
 
@@ -36,15 +36,20 @@ class AudioTTSProvider(Provider):
     config_key: str | None = "multimedia_tts"
     config_model: type | None = TTSConfig
 
-    def __init__(self, config: TTSConfig | None = None) -> None:
+    def __init__(
+        self,
+        config: TTSConfig | None = None,
+        *,
+        backend_registry: TTSBackendRegistry | None = None,
+    ) -> None:
         super().__init__(name="tts")
         self._requested_config = config
-        # No default baking: the orchestrator injects the yaml section into
-        # ``provider.config`` after construction, before ``register()``.
         self._config = config
+        self._backend_registry = (
+            backend_registry or TTSBackendRegistry.with_defaults()
+        )
         self._backend: TTSProvider | None = None
-        self._elevenlabs_api_key: str | None = None
-        self._openai_api_key: str | None = None
+        self._api_keys: dict[str, str] = {}
         self._task_handler: TTSGenerationTask | None = None
         self._secret_store: AsyncSecretStoreProtocol | None = None
         self._retry: RetryPolicyProtocol | None = None
@@ -66,127 +71,16 @@ class AudioTTSProvider(Provider):
             container, CircuitBreakerProtocol
         )
 
-        if self._config.backend == "local-http":
-            from lexigram.multimedia.tts.providers.local_http import (
-                LocalHttpTTSProvider,
-            )
-
-            self._backend = cast(
-                "TTSProvider",
-                LocalHttpTTSProvider(
-                    base_url=self._config.local_http_base_url,
-                    timeout=self._config.timeout,
-                    retry=self._retry,
-                    circuit_breaker=self._circuit_breaker,
-                ),
-            )
-        elif self._config.backend == "elevenlabs":
-            try:
-                from lexigram.multimedia.tts.providers.elevenlabs import (
-                    ElevenLabsTTSProvider,
-                )
-            except ImportError as exc:
-                raise ProviderNotInstalledError(
-                    "ElevenLabs backend selected but its extra is not installed. "
-                    "Install: pip install lexigram-multimedia-tts[elevenlabs]"
-                ) from exc
-
-            api_key = await resolve_credential(
-                self._secret_store, self._config.elevenlabs_api_key_secret_name
-            )
-            self._elevenlabs_api_key = api_key
-            if not self._config.elevenlabs_voice_id:
-                raise ProviderNotInstalledError(
-                    "TTSConfig.elevenlabs_voice_id is required when backend='elevenlabs'"
-                )
-            self._backend = cast(
-                "TTSProvider",
-                ElevenLabsTTSProvider(
-                    api_key=api_key or "",
-                    voice_id=self._config.elevenlabs_voice_id,
-                    timeout=self._config.timeout,
-                    retry=self._retry,
-                    circuit_breaker=self._circuit_breaker,
-                ),
-            )
-        elif self._config.backend == "openai":
-            from lexigram.multimedia.tts.providers.openai import OpenAITTSProvider
-
-            api_key = await resolve_credential(
-                self._secret_store, self._config.openai_api_key_secret_name
-            )
-            self._openai_api_key = api_key
-            self._backend = cast(
-                "TTSProvider",
-                OpenAITTSProvider(
-                    api_key=api_key or "",
-                    voice=self._config.openai_voice,
-                    model=self._config.openai_model,
-                    base_url=self._config.openai_base_url,
-                    timeout=self._config.timeout,
-                    retry=self._retry,
-                    circuit_breaker=self._circuit_breaker,
-                ),
-            )
-        elif self._config.backend == "chatterbox":
-            from lexigram.multimedia.tts.providers.chatterbox import (
-                ChatterboxTTSProvider,
-            )
-
-            self._backend = cast(
-                "TTSProvider",
-                ChatterboxTTSProvider(
-                    base_url=self._config.chatterbox_base_url,
-                    exaggeration=self._config.chatterbox_exaggeration,
-                    cfg_weight=self._config.chatterbox_cfg_weight,
-                    temperature=self._config.chatterbox_temperature,
-                    timeout=self._config.timeout,
-                    retry=self._retry,
-                    circuit_breaker=self._circuit_breaker,
-                ),
-            )
-        elif self._config.backend == "kokoro":
-            from lexigram.multimedia.tts.providers.kokoro import KokoroTTSProvider
-
-            self._backend = cast(
-                "TTSProvider",
-                KokoroTTSProvider(
-                    base_url=self._config.kokoro_base_url,
-                    default_voice=self._config.kokoro_default_voice,
-                    timeout=self._config.timeout,
-                    retry=self._retry,
-                    circuit_breaker=self._circuit_breaker,
-                ),
-            )
-        elif self._config.backend == "f5-tts":
-            from lexigram.multimedia.tts.providers.f5_tts import F5TTSProvider
-
-            self._backend = cast(
-                "TTSProvider",
-                F5TTSProvider(
-                    base_url=self._config.f5_tts_base_url,
-                    timeout=self._config.timeout,
-                    retry=self._retry,
-                    circuit_breaker=self._circuit_breaker,
-                ),
-            )
-        elif self._config.backend == "piper":
-            from lexigram.multimedia.tts.providers.piper import PiperTTSProvider
-
-            self._backend = cast(
-                "TTSProvider",
-                PiperTTSProvider(
-                    base_url=self._config.piper_base_url,
-                    default_voice=self._config.piper_default_voice,
-                    timeout=self._config.timeout,
-                    retry=self._retry,
-                    circuit_breaker=self._circuit_breaker,
-                ),
-            )
-        else:
-            raise ProviderNotInstalledError(
-                f"Unknown or unimplemented TTS backend: {self._config.backend!r}"
-            )
+        self._backend = cast(
+            "TTSProvider",
+            await self._backend_registry.create_backend(
+                self._config.backend,
+                self._config,
+                self._secret_store,
+                self._retry,
+                self._circuit_breaker,
+            ),
+        )
 
         container.singleton(TTSProvider, self._backend)
 
@@ -217,17 +111,10 @@ class AudioTTSProvider(Provider):
             )
             return HealthCheckResult(component=self.name, status=status)
 
-        # API backends: verify credentials are present, never make a billed call.
-        has_key = bool(
-            self._elevenlabs_api_key
-            if self._config.backend == "elevenlabs"
-            else self._openai_api_key
-            if self._config.backend == "openai"
-            else True
-        )
+        # API backends: credentials resolved at construction time.
         return HealthCheckResult(
             component=self.name,
-            status=HealthStatus.HEALTHY if has_key else HealthStatus.DEGRADED,
+            status=HealthStatus.HEALTHY,
         )
 
     async def _check_http_health(self, base_url: str, timeout: float) -> HealthStatus:

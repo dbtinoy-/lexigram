@@ -12,14 +12,12 @@ from lexigram.contracts.notification.protocols import (
 )
 from lexigram.di.provider import Provider
 from lexigram.logging import get_logger
+from lexigram.notification.backends.push.registry import PushBackendRegistry
 from lexigram.notification.config import (
-    APNsDriverConfig,
-    FCMDriverConfig,
     NamedPushConfig,
     NamedSMSConfig,
     NotificationConfig,
     TwilioDriverConfig,
-    WebPushDriverConfig,
 )
 
 if TYPE_CHECKING:
@@ -34,21 +32,6 @@ try:
     from lexigram.notification.backends.sms.twilio import TwilioSMS
 except ImportError:
     TwilioSMS = None  # type: ignore[assignment,misc]
-
-try:
-    from lexigram.notification.backends.push.fcm import FCMPush
-except ImportError:
-    FCMPush = None  # type: ignore[assignment,misc]
-
-try:
-    from lexigram.notification.backends.push.apns import APNsPush
-except ImportError:
-    APNsPush = None  # type: ignore[assignment,misc]
-
-try:
-    from lexigram.notification.backends.push.web_push import WebPushChannel
-except ImportError:
-    WebPushChannel = None  # type: ignore[assignment,misc]
 
 
 class NotificationProvider(Provider):
@@ -74,12 +57,16 @@ class NotificationProvider(Provider):
     config_key: str | None = "notification"
     config_model: type | None = NotificationConfig
 
-    def __init__(self, config: NotificationConfig | None = None) -> None:
+    def __init__(
+        self,
+        config: NotificationConfig | None = None,
+        *,
+        push_registry: PushBackendRegistry | None = None,
+    ) -> None:
         super().__init__()
         self._requested_config = config
-        # Kept ``None`` for zero-config construction so the orchestrator can
-        # inject the yaml section before register() resolves it.
         self._config: NotificationConfig | None = config
+        self._push_registry = push_registry or PushBackendRegistry.with_defaults()
         self._sms_services: list[tuple[str, Any]] = []
         self._push_services: list[tuple[str, Any]] = []
 
@@ -112,53 +99,7 @@ class NotificationProvider(Provider):
 
     def _create_push(self, entry: NamedPushConfig) -> Any:
         """Instantiate the correct push implementation for a config."""
-        if entry.driver == "fcm":
-            if FCMPush is None:
-                raise ImportError("FCMPush unavailable")
-            fcm_cfg = entry.fcm or FCMDriverConfig()
-            server_key = (
-                fcm_cfg.server_key.get_secret_value()
-                if hasattr(fcm_cfg.server_key, "get_secret_value")
-                and fcm_cfg.server_key is not None
-                else (fcm_cfg.server_key or "")
-            )
-            return FCMPush(server_key=server_key or "", timeout=fcm_cfg.timeout)
-        if entry.driver == "apns":
-            if APNsPush is None:
-                raise ImportError(
-                    "APNsPush unavailable — install lexigram-notification[apns]"
-                )
-            apns_cfg = entry.apns or APNsDriverConfig()
-            return APNsPush(
-                team_id=apns_cfg.team_id or "",
-                key_id=apns_cfg.key_id or "",
-                apns_auth_key=(
-                    apns_cfg.apns_auth_key.get_secret_value()
-                    if hasattr(apns_cfg.apns_auth_key, "get_secret_value")
-                    and apns_cfg.apns_auth_key is not None
-                    else str(apns_cfg.apns_auth_key or "")
-                ),
-                bundle_id=apns_cfg.bundle_id or "",
-                sandbox=apns_cfg.sandbox,
-                timeout=apns_cfg.timeout,
-            )
-        if entry.driver == "web_push":
-            if WebPushChannel is None:
-                raise ImportError(
-                    "WebPushChannel unavailable — install lexigram-notification[web-push]"
-                )
-            wp_cfg = entry.web_push or WebPushDriverConfig()
-            return WebPushChannel(
-                vapid_private_key=getattr(
-                    wp_cfg.vapid_private_key,
-                    "get_secret_value",
-                    lambda: wp_cfg.vapid_private_key,  # type: ignore[arg-type]
-                )(),
-                vapid_public_key=wp_cfg.vapid_public_key or "",
-                vapid_claims_subject=wp_cfg.vapid_claims_subject or "",
-                http_timeout=wp_cfg.timeout,
-            )
-        raise ValueError(f"Unsupported push driver: {entry.driver!r}")
+        return self._push_registry.create_backend(entry.driver, entry)
 
     async def register(self, container: ContainerRegistrarProtocol) -> None:
         """Bind all SMS and push backends into the container."""

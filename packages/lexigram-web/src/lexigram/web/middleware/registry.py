@@ -80,8 +80,24 @@ class MiddlewareAdapterRegistry:
     """Registry for middleware adapters."""
 
     def __init__(self) -> None:
+        """Initialise an empty registry.
+
+        Use :meth:`with_defaults` for a pre-populated instance with
+        built-in middleware adapters.
+        """
         self._adapters: list[_MiddlewareAdapterProtocol] = []
-        self._register_defaults()
+
+    @classmethod
+    def with_defaults(cls) -> MiddlewareAdapterRegistry:
+        """Return a registry populated with the built-in adapters.
+
+        Returns:
+            A :class:`MiddlewareAdapterRegistry` pre-registered with
+            Starlette, DIScope, HTTP, and Tuple adapters.
+        """
+        registry = cls()
+        registry._register_defaults()
+        return registry
 
     def _register_defaults(self) -> None:
         # Default order matters: more specific adapters first

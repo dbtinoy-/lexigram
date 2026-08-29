@@ -3,14 +3,14 @@
 from __future__ import annotations
 
 import shutil
-from typing import TYPE_CHECKING, TypedDict, cast
+from typing import TYPE_CHECKING, cast
 
 from lexigram.contracts.core.health import HealthCheckResult, HealthStatus
-from lexigram.contracts.multimedia.exceptions import ProviderNotInstalledError
 from lexigram.contracts.multimedia.protocols import VideoProcessor, VideoProvider
 from lexigram.di.provider import Provider
-from lexigram.di.provider_utils import resolve_credential, resolve_optional
+from lexigram.di.provider_utils import resolve_optional
 from lexigram.logging import get_logger
+from lexigram.multimedia.video.backends.registry import VideoBackendRegistry
 from lexigram.multimedia.video.config import VideoConfig
 from lexigram.multimedia.video.processing.ffmpeg import FFmpegVideoProcessor
 from lexigram.multimedia.video.tasks import (
@@ -34,12 +34,6 @@ logger = get_logger(__name__)
 __all__ = ["VideoGenerationProvider"]
 
 
-class _TimeoutKwargs(TypedDict, total=False):
-    """Keyword arguments for backend constructor timeouts."""
-
-    timeout: float
-
-
 class VideoGenerationProvider(Provider):
     """Provider that registers a configured VideoProvider backend."""
 
@@ -47,12 +41,18 @@ class VideoGenerationProvider(Provider):
     config_key: str | None = "multimedia_video"
     config_model: type | None = VideoConfig
 
-    def __init__(self, config: VideoConfig | None = None) -> None:
+    def __init__(
+        self,
+        config: VideoConfig | None = None,
+        *,
+        backend_registry: VideoBackendRegistry | None = None,
+    ) -> None:
         super().__init__(name="video")
         self._requested_config = config
-        # No default baking: the orchestrator injects the yaml section into
-        # ``provider.config`` after construction, before ``register()``.
         self._config = config
+        self._backend_registry = (
+            backend_registry or VideoBackendRegistry.with_defaults()
+        )
         self._backend: VideoProvider | None = None
         self._task_handler: VideoGenerationTask | None = None
         self._processing_backend: VideoProcessor | None = None
@@ -60,7 +60,6 @@ class VideoGenerationProvider(Provider):
         self._secret_store: AsyncSecretStoreProtocol | None = None
         self._retry: RetryPolicyProtocol | None = None
         self._circuit_breaker: CircuitBreakerProtocol | None = None
-        self._credential_resolved: bool = False
 
     async def register(self, container: ContainerRegistrarProtocol) -> None:
         from lexigram.contracts.infra.resilience.protocols import (
@@ -70,11 +69,6 @@ class VideoGenerationProvider(Provider):
         from lexigram.contracts.security.stores import AsyncSecretStoreProtocol
 
         self._config = self._requested_config or self._config or VideoConfig()
-        self._timeout_kwargs: _TimeoutKwargs = (
-            {"timeout": self._config.timeout}
-            if self._config.timeout is not None
-            else {}
-        )
         container.singleton(VideoConfig, self._config)
 
         self._secret_store = await resolve_optional(container, AsyncSecretStoreProtocol)
@@ -83,127 +77,16 @@ class VideoGenerationProvider(Provider):
             container, CircuitBreakerProtocol
         )
 
-        if self._config.backend == "local-http":
-            from lexigram.multimedia.video.providers.local_http import (
-                LocalHttpVideoProvider,
-            )
-
-            self._backend = cast(
-                "VideoProvider",
-                LocalHttpVideoProvider(
-                    base_url=self._config.local_http_base_url,
-                    **self._timeout_kwargs,
-                    retry=self._retry,
-                    circuit_breaker=self._circuit_breaker,
-                ),
-            )
-        elif self._config.backend == "runway":
-            from lexigram.multimedia.video.providers.runway import (
-                RunwayVideoProvider,
-            )
-
-            api_key = (
-                await resolve_credential(
-                    self._secret_store, self._config.runway_api_key_secret_name
-                )
-                or ""
-            )
-            self._credential_resolved = bool(api_key)
-            self._backend = cast(
-                "VideoProvider",
-                RunwayVideoProvider(
-                    api_key=api_key,
-                    **self._timeout_kwargs,
-                    retry=self._retry,
-                    circuit_breaker=self._circuit_breaker,
-                ),
-            )
-        elif self._config.backend == "openai":
-            from lexigram.multimedia.video.providers.openai import OpenAIVideoProvider
-
-            api_key = (
-                await resolve_credential(
-                    self._secret_store, self._config.openai_api_key_secret_name
-                )
-                or ""
-            )
-            self._credential_resolved = bool(api_key)
-            self._backend = cast(
-                "VideoProvider",
-                OpenAIVideoProvider(
-                    api_key=api_key or "",
-                    model=self._config.openai_model,
-                    base_url=self._config.openai_base_url,
-                    **self._timeout_kwargs,
-                    retry=self._retry,
-                    circuit_breaker=self._circuit_breaker,
-                ),
-            )
-        elif self._config.backend == "wan22":
-            from lexigram.multimedia.video.providers.wan22 import Wan22VideoProvider
-
-            self._credential_resolved = True
-            self._backend = cast(
-                "VideoProvider",
-                Wan22VideoProvider(
-                    base_url=self._config.wan22_base_url,
-                    **self._timeout_kwargs,
-                    retry=self._retry,
-                    circuit_breaker=self._circuit_breaker,
-                ),
-            )
-        elif self._config.backend == "cogvideox":
-            from lexigram.multimedia.video.providers.cogvideox import (
-                CogVideoXVideoProvider,
-            )
-
-            self._credential_resolved = True
-            self._backend = cast(
-                "VideoProvider",
-                CogVideoXVideoProvider(
-                    base_url=self._config.cogvideox_base_url,
-                    **self._timeout_kwargs,
-                    retry=self._retry,
-                    circuit_breaker=self._circuit_breaker,
-                ),
-            )
-        elif self._config.backend == "svd":
-            from lexigram.multimedia.video.providers.svd import SVDVideoProvider
-
-            self._credential_resolved = True
-            self._backend = cast(
-                "VideoProvider",
-                SVDVideoProvider(
-                    base_url=self._config.svd_base_url,
-                    **self._timeout_kwargs,
-                    retry=self._retry,
-                    circuit_breaker=self._circuit_breaker,
-                ),
-            )
-        elif self._config.backend == "comfyui":
-            from lexigram.multimedia.video.providers.comfyui import (
-                ComfyUiVideoProvider,
-            )
-
-            self._credential_resolved = True
-            self._backend = cast(
-                "VideoProvider",
-                ComfyUiVideoProvider(
-                    base_url=self._config.comfyui_base_url,
-                    checkpoint=self._config.comfyui_checkpoint,
-                    workflow_path=self._config.comfyui_workflow_path,
-                    fps=self._config.comfyui_fps,
-                    motion_bucket_id=self._config.comfyui_motion_bucket_id,
-                    poll_interval=self._config.comfyui_poll_interval,
-                    **self._timeout_kwargs,
-                    retry=self._retry,
-                    circuit_breaker=self._circuit_breaker,
-                ),
-            )
-        else:
-            raise ProviderNotInstalledError(
-                f"Unknown or unimplemented video backend: {self._config.backend!r}"
-            )
+        self._backend = cast(
+            "VideoProvider",
+            await self._backend_registry.create_backend(
+                self._config.backend,
+                self._config,
+                self._secret_store,
+                self._retry,
+                self._circuit_breaker,
+            ),
+        )
 
         assert self._backend is not None  # noqa: S101  # raised via ProviderNotInstalledError above
         container.singleton(VideoProvider, self._backend)
@@ -251,9 +134,7 @@ class VideoGenerationProvider(Provider):
 
         return HealthCheckResult(
             component=self.name,
-            status=HealthStatus.HEALTHY
-            if self._credential_resolved
-            else HealthStatus.DEGRADED,
+            status=HealthStatus.HEALTHY,
         )
 
     async def _check_http_health(self, base_url: str, timeout: float) -> HealthStatus:
