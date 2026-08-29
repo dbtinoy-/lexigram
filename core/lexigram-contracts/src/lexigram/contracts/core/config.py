@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import StrEnum
 import os
-from typing import Any, Protocol, TypeVar, runtime_checkable
+from typing import Any, Protocol, TypeVar, overload, runtime_checkable
 
 T = TypeVar("T")
 
@@ -126,11 +126,17 @@ class ConfigProtocol(Protocol):
         """
         ...
 
+    @overload
+    def get_section(self, name: str, model_cls: None = None) -> dict[str, Any] | None: ...
+
+    @overload
+    def get_section(self, name: str, model_cls: type[T]) -> T: ...
+
     def get_section(
         self,
         name: str,
         model_cls: type[T] | None = None,
-    ) -> T | dict[str, Any]:
+    ) -> T | dict[str, Any] | None:
         """Get a typed configuration section.
 
         Args:
@@ -139,7 +145,8 @@ class ConfigProtocol(Protocol):
 
         Returns:
             A model instance when *model_cls* is provided, otherwise a raw
-            dict or the attribute value.
+            dict or the attribute value; ``None`` when the section is absent
+            and no model class was supplied.
         """
         ...
 

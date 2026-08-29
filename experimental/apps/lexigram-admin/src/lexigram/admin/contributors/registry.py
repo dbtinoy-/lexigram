@@ -10,17 +10,13 @@ from lexigram.contracts.admin.protocols import AdminContributorProtocol
 class ContributorRegistry:
     """Registry that collects and manages admin contributors.
 
-    Follows the Registry pattern (AGENTS.md §6.3): empty ``__init__``,
-    ``with_defaults()`` classmethod for pre-populated instances.
+    Follows the Registry pattern (AGENTS.md §6.3): empty ``__init__`` and no
+    in-package built-in set — contributors are registered explicitly by
+    providers, so there is no ``with_defaults()``.
     """
 
     def __init__(self) -> None:
         self._contributors: dict[str, AdminContributorProtocol] = {}
-
-    @classmethod
-    def with_defaults(cls) -> ContributorRegistry:
-        """Create a registry (no built-in contributors by default)."""
-        return cls()
 
     def register(self, contributor: AdminContributorProtocol) -> None:
         """Register a contributor, keyed by its name."""

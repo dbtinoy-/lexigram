@@ -8,6 +8,9 @@ import pytest
 from lexigram.contracts.cli.protocols import CliContributorProtocol
 from lexigram.web.cli.contributor import WebCliContributor
 from lexigram.web.cli.generators.controller import ControllerGenerator
+from lexigram.web.cli.generators.error import ErrorGenerator
+from lexigram.web.cli.generators.exception_filter import ExceptionFilterGenerator
+from lexigram.web.cli.generators.interceptor import InterceptorGenerator
 from lexigram.web.cli.generators.resource import ResourceGenerator
 
 
@@ -28,6 +31,9 @@ def test_web_contributor_exposes_expected_generators() -> None:
         "graphql",
         "webhook",
         "websocket",
+        "exception_filter",
+        "interceptor",
+        "error",
     }
 
 
@@ -43,6 +49,9 @@ def test_web_contributor_paths_are_package_local() -> None:
         "lexigram.web.cli.generators.graphql:GraphQLGenerator",
         "lexigram.web.cli.generators.webhook:WebhookGenerator",
         "lexigram.web.cli.generators.websocket:WebSocketHandlerGenerator",
+        "lexigram.web.cli.generators.exception_filter:ExceptionFilterGenerator",
+        "lexigram.web.cli.generators.interceptor:InterceptorGenerator",
+        "lexigram.web.cli.generators.error:ErrorGenerator",
     }
 
 
@@ -52,6 +61,27 @@ def test_web_pyproject_declares_cli_contributor_entry_point() -> None:
     group = data["project"]["entry-points"]["lexigram.cli.contributors"]
 
     assert group["web"] == "lexigram.web.cli.contributor:WebCliContributor"
+
+
+def test_exception_filter_generator_defaults() -> None:
+    generator = ExceptionFilterGenerator()
+
+    assert generator.name == "exception_filter"
+    assert generator.default_output_dir == "src/filters"
+
+
+def test_interceptor_generator_defaults() -> None:
+    generator = InterceptorGenerator()
+
+    assert generator.name == "interceptor"
+    assert generator.default_output_dir == "src/interceptors"
+
+
+def test_error_generator_defaults() -> None:
+    generator = ErrorGenerator()
+
+    assert generator.name == "error"
+    assert generator.default_output_dir == "src/errors"
 
 
 def test_resource_generator_uses_package_local_controller() -> None:
@@ -66,14 +96,19 @@ def test_resource_generator_uses_package_local_controller() -> None:
         ("controller", "src/controllers"),
         ("resource", "src"),
         ("middleware", "src/middleware"),
-        ("graphql", "src/graphql"),
+        ("graphql", "src/schema"),
         ("webhook", "src/webhooks"),
         ("websocket", "src/websocket"),
+        ("exception_filter", "src/filters"),
+        ("interceptor", "src/interceptors"),
+        ("error", "src/errors"),
     ],
 )
 def test_web_generator_defaults(name: str, default_output_dir: str) -> None:
     contributor = WebCliContributor()
-    definitions = {definition.name: definition for definition in contributor.get_generators()}
+    definitions = {
+        definition.name: definition for definition in contributor.get_generators()
+    }
 
     assert definitions[name].default_output_dir == default_output_dir
     assert definitions[name].contributor == "web"

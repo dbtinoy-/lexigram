@@ -40,10 +40,11 @@ class TestLexigramConfigDefaults:
         # Default URL should be sqlite
         assert "sqlite" in db.backend.url.get_secret_value().lower()
 
-    def test_get_section_absent_without_model_returns_empty_dict(self) -> None:
+    def test_get_section_absent_without_model_returns_none(self) -> None:
+        """A missing untyped section yields None (ConfigProtocol contract)."""
         cfg = LexigramConfig()
         result = cfg.get_section("nonexistent_section")
-        assert result == {}
+        assert result is None
 
     def test_has_section_returns_false_for_absent_key(self) -> None:
         cfg = LexigramConfig()

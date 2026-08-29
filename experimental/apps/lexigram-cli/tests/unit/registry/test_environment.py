@@ -142,75 +142,62 @@ class TestTestEnvironment:
 
 class TestEnvironmentRegistry:
     def test_register_and_get(self) -> None:
-        EnvironmentRegistry._environments = {}
-        EnvironmentRegistry._initialized = False
-        EnvironmentRegistry.register(DevelopmentEnvironment)
-        env = EnvironmentRegistry.get("development")
+        registry = EnvironmentRegistry()
+        registry.register(DevelopmentEnvironment)
+        env = registry.get("development")
         assert env is not None
         assert env.name == "development"
 
     def test_get_nonexistent(self) -> None:
-        EnvironmentRegistry._environments = {}
-        EnvironmentRegistry._initialized = False
-        assert EnvironmentRegistry.get("nonexistent") is None
+        registry = EnvironmentRegistry()
+        assert registry.get("nonexistent") is None
 
     def test_get_all(self) -> None:
-        EnvironmentRegistry._environments = {}
-        EnvironmentRegistry._initialized = False
-        EnvironmentRegistry.register(DevelopmentEnvironment)
-        all_envs = EnvironmentRegistry.get_all()
+        registry = EnvironmentRegistry()
+        registry.register(DevelopmentEnvironment)
+        all_envs = registry.get_all()
         assert "development" in all_envs
 
     def test_get_choices(self) -> None:
-        EnvironmentRegistry._environments = {}
-        EnvironmentRegistry._initialized = False
-        choices = EnvironmentRegistry.get_choices()
+        registry = EnvironmentRegistry.with_defaults()
+        choices = registry.get_choices()
         assert "development" in choices
 
-    def test_register_defaults(self) -> None:
-        EnvironmentRegistry._environments = {}
-        EnvironmentRegistry._initialized = False
-        EnvironmentRegistry.register_defaults()
-        assert EnvironmentRegistry._initialized is True
-        assert EnvironmentRegistry.get("development") is not None
-        assert EnvironmentRegistry.get("production") is not None
+    def test_with_defaults_populates_all_environments(self) -> None:
+        registry = EnvironmentRegistry.with_defaults()
+        assert registry.get("development") is not None
+        assert registry.get("production") is not None
 
     def test_set_current(self) -> None:
-        EnvironmentRegistry._environments = {}
-        EnvironmentRegistry._initialized = False
-        EnvironmentRegistry.register(DevelopmentEnvironment)
+        registry = EnvironmentRegistry.with_defaults()
         with patch("lexigram.cli.registry.environment.os.environ") as mock_env:
-            EnvironmentRegistry.set_current("development")
+            registry.set_current("development")
             mock_env.__setitem__.assert_called_with("LEX_ENV", "development")
 
     def test_set_current_unknown(self) -> None:
+        registry = EnvironmentRegistry.with_defaults()
         with pytest.raises(ValueError):
-            EnvironmentRegistry.set_current("nonexistent")
+            registry.set_current("nonexistent")
 
     def test_get_current(self) -> None:
+        registry = EnvironmentRegistry.with_defaults()
         with patch("lexigram.cli.registry.environment.os.environ.get", return_value="test"):
-            assert EnvironmentRegistry.get_current() == "test"
+            assert registry.get_current() == "test"
 
     def test_get_current_default(self) -> None:
-        EnvironmentRegistry._current = "development"
+        registry = EnvironmentRegistry.with_defaults()
         with patch.dict("lexigram.cli.registry.environment.os.environ", {}, clear=True):
-            assert EnvironmentRegistry.get_current() == "development"
+            assert registry.get_current() == "development"
 
     def test_get_current_env(self) -> None:
-        EnvironmentRegistry._environments = {}
-        EnvironmentRegistry._initialized = False
-        EnvironmentRegistry.register(DevelopmentEnvironment)
+        registry = EnvironmentRegistry.with_defaults()
         with patch("lexigram.cli.registry.environment.os.environ.get", return_value="development"):
-            env = EnvironmentRegistry.get_current_env()
+            env = registry.get_current_env()
             assert env is not None
             assert env.name == "development"
 
-
 class TestEnvironmentManager:
     def test_switch_success(self) -> None:
-        EnvironmentRegistry._environments = {}
-        EnvironmentRegistry._initialized = False
-        EnvironmentRegistry.register(DevelopmentEnvironment)
         with patch("lexigram.cli.registry.environment.os.environ"):
             manager = EnvironmentManager()
             result = manager.switch("development")
@@ -222,9 +209,6 @@ class TestEnvironmentManager:
         assert result is False
 
     def test_validate_current(self) -> None:
-        EnvironmentRegistry._environments = {}
-        EnvironmentRegistry._initialized = False
-        EnvironmentRegistry.register(DevelopmentEnvironment)
         with patch("lexigram.cli.registry.environment.os.environ.get", return_value="development"):
             manager = EnvironmentManager()
             valid, msg = manager.validate_current()
@@ -237,9 +221,6 @@ class TestEnvironmentManager:
             assert valid is False
 
     def test_get_config(self) -> None:
-        EnvironmentRegistry._environments = {}
-        EnvironmentRegistry._initialized = False
-        EnvironmentRegistry.register(DevelopmentEnvironment)
         with patch("lexigram.cli.registry.environment.os.environ.get", return_value="development"):
             manager = EnvironmentManager()
             cfg = manager.get_config()

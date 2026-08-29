@@ -202,3 +202,71 @@ class TestRunServer:
         config = fake_uvicorn.configs[0]
         assert config.host == "127.0.0.1"
         assert config.port == 8000
+
+    @pytest.mark.asyncio
+    async def test_run_server_rejects_running_loop(self) -> None:
+        """Sync run_server must not silently block a running event loop."""
+        from lexigram.web.server.runner import run_server
+
+        with pytest.raises(RuntimeError, match="run_server_async"):
+            run_server("module:app")
+
+
+class TestRunServerAsync:
+    """Test suite for run_server_async (async entry point)."""
+
+    @pytest.mark.asyncio
+    async def test_serves_uvicorn_in_loop(self) -> None:
+        """Async run_server_async serves Uvicorn in the calling loop."""
+        fake_uvicorn = _FakeUvicorn()
+
+        with patch.dict(
+            "sys.modules",
+            {
+                "uvicorn": fake_uvicorn.make_module(),
+                "granian": None,
+                "granian.constants": None,
+            },
+        ):
+            from lexigram.web.server import run_server_async
+
+            await run_server_async("module:app", host="127.0.0.1", port=9100)
+
+        assert len(fake_uvicorn.configs) == 1
+        config = fake_uvicorn.configs[0]
+        assert config.app == "module:app"
+        assert config.host == "127.0.0.1"
+        assert config.port == 9100
+
+    @pytest.mark.asyncio
+    async def test_granian_runs_in_executor(self) -> None:
+        """Async run_server_async runs Granian off the calling loop."""
+        mock_granian_cls = MagicMock()
+        mock_granian_instance = MagicMock()
+        mock_granian_cls.return_value = mock_granian_instance
+        mock_interfaces = MagicMock()
+        mock_interfaces.ASGI = "asgi"
+
+        mock_granian_module = MagicMock()
+        mock_granian_module.Granian = mock_granian_cls
+        mock_constants_module = MagicMock()
+        mock_constants_module.Interfaces = mock_interfaces
+
+        with patch.dict(
+            "sys.modules",
+            {
+                "granian": mock_granian_module,
+                "granian.constants": mock_constants_module,
+            },
+        ):
+            from lexigram.web.server import run_server_async
+
+            await run_server_async("module:app", host="127.0.0.1", port=9200, workers=2)
+
+        mock_granian_cls.assert_called_once()
+        call_args = mock_granian_cls.call_args
+        assert call_args[0][0] == "module:app"
+        assert call_args[1]["address"] == "127.0.0.1"
+        assert call_args[1]["port"] == 9200
+        assert call_args[1]["workers"] == 2
+        mock_granian_instance.serve.assert_called_once()

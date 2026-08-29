@@ -336,18 +336,6 @@ class HandlerRegistry:
         """Get all registered event handlers."""
         return {k: list(v) for k, v in self._event_handlers.items()}
 
-    @classmethod
-    def with_defaults(cls) -> HandlerRegistry:
-        """Create a registry with no pre-registered handlers.
-
-        Returns a fresh instance ready for handler registration via
-        the @event_handler decorator or register() method.
-
-        Returns:
-            A new HandlerRegistry instance.
-        """
-        return cls()
-
 
 def clear_handler_registry() -> None:
     """Clear all registered handlers from the global handler registry.

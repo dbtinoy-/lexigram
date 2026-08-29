@@ -45,9 +45,7 @@ class AudioTTSProvider(Provider):
         super().__init__(name="tts")
         self._requested_config = config
         self._config = config
-        self._backend_registry = (
-            backend_registry or TTSBackendRegistry.with_defaults()
-        )
+        self._backend_registry = backend_registry or TTSBackendRegistry.with_defaults()
         self._backend: TTSProvider | None = None
         self._api_keys: dict[str, str] = {}
         self._task_handler: TTSGenerationTask | None = None

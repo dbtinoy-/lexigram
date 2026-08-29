@@ -211,66 +211,69 @@ class GunicornBackend(ServerBackend):
 class ServerRegistry:
     """Registry for server backends.
 
-    Provides a pluggable way to add support for new server types.
+    Instances are always empty — use :meth:`with_defaults` for the
+    in-package built-ins or :meth:`register` for plugin backends.
     """
 
-    _backends: dict[str, ServerBackend] = {}
-    _initialized: bool = False
+    def __init__(self) -> None:
+        self._backends: dict[str, ServerBackend] = {}
 
-    @classmethod
-    def register(cls, backend: type[ServerBackend]) -> None:
+    def register(self, backend: type[ServerBackend]) -> None:
         """Register a server backend class."""
         instance = backend()
-        cls._backends[backend.name] = instance
+        self._backends[backend.name] = instance
 
-    @classmethod
-    def get(cls, name: str) -> ServerBackend | None:
+    def get(self, name: str) -> ServerBackend | None:
         """Get a backend by name."""
-        cls.register_defaults()
-        return cls._backends.get(name)
+        return self._backends.get(name)
 
-    @classmethod
-    def get_all(cls) -> dict[str, ServerBackend]:
+    def get_all(self) -> dict[str, ServerBackend]:
         """Get all registered backends."""
-        return cls._backends.copy()
+        return self._backends.copy()
 
-    @classmethod
-    def get_available(cls) -> list[ServerBackend]:
+    def get_available(self) -> list[ServerBackend]:
         """Get all available (installed) backends."""
-        cls.register_defaults()
-        return [b for b in cls._backends.values() if b.is_available()]
+        return [b for b in self._backends.values() if b.is_available()]
 
-    @classmethod
-    def get_default(cls) -> ServerBackend:
+    def get_default(self) -> ServerBackend:
         """Get the default backend (prefer granian, then uvicorn, then first available)."""
         for preferred in ("granian", "uvicorn"):
-            b = cls._backends.get(preferred)
+            b = self._backends.get(preferred)
             if b and b.is_available():
                 return b
-        available = cls.get_available()
+        available = self.get_available()
         if available:
             return available[0]
-        return cls._backends["uvicorn"]
+        return self._backends["uvicorn"]
 
     @classmethod
-    def register_defaults(cls) -> None:
-        """Initialize default backends if not already done."""
-        if not cls._initialized:
-            cls.register(UvicornBackend)
-            cls.register(HypercornBackend)
-            cls.register(GranianBackend)
-            cls.register(GunicornBackend)
-            cls._initialized = True
+    def _default_entries(cls) -> tuple[type[ServerBackend], ...]:
+        """The complete in-package built-in set, declared exactly once."""
+        return (
+            UvicornBackend,
+            HypercornBackend,
+            GranianBackend,
+            GunicornBackend,
+        )
+
+    @classmethod
+    def with_defaults(cls) -> ServerRegistry:
+        """Return an instance populated with the built-in backends."""
+        registry = cls()
+        for entry in cls._default_entries():
+            registry.register(entry)
+        return registry
 
 
 class ServerManager:
     """Manager for running ASGI servers."""
 
     def __init__(self, backend: ServerBackend | str | None = None) -> None:
+        registry = ServerRegistry.with_defaults()
         if backend is None:
-            self.backend = ServerRegistry.get_default()
+            self.backend = registry.get_default()
         elif isinstance(backend, str):
-            backend_instance = ServerRegistry.get(backend)
+            backend_instance = registry.get(backend)
             if backend_instance is None:
                 raise ValueError(f"Unknown server backend: {backend}")
             self.backend = backend_instance

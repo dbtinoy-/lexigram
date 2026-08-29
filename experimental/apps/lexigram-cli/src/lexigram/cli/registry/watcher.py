@@ -185,7 +185,6 @@ class WatcherRegistry:
 
     def __init__(self) -> None:
         self._watchers: dict[str, type[Watcher]] = {}
-        self._initialized: bool = False
 
     def register(self, watcher: type[Watcher]) -> None:
         """Register a watcher class."""
@@ -193,30 +192,36 @@ class WatcherRegistry:
 
     def get(self, name: str) -> type[Watcher] | None:
         """Get a watcher class by name."""
-        self.register_defaults()
         return self._watchers.get(name)
 
     def get_all(self) -> dict[str, type[Watcher]]:
         """Get all registered watchers."""
-        self.register_defaults()
         return self._watchers.copy()
 
     def get_choices(self) -> list[str]:
         """Get list of available watcher names."""
-        self.register_defaults()
         return list(self._watchers.keys())
 
-    def register_defaults(self) -> None:
-        """Initialize default watchers if not already done."""
-        if not self._initialized:
-            self.register(WatchfilesWatcher)
-            self.register(PollingWatcher)
-            self._initialized = True
+    @classmethod
+    def _default_entries(cls) -> tuple[type[Watcher], ...]:
+        """The complete in-package built-in set, declared exactly once."""
+        return (
+            WatchfilesWatcher,
+            PollingWatcher,
+        )
+
+    @classmethod
+    def with_defaults(cls) -> WatcherRegistry:
+        """Return an instance populated with the built-in watchers."""
+        registry = cls()
+        for entry in cls._default_entries():
+            registry.register(entry)
+        return registry
 
 
 def create_watcher(name: str = "auto", config: WatchConfig | None = None) -> Watcher:
     """Factory function to create a watcher."""
-    registry = WatcherRegistry()
+    registry = WatcherRegistry.with_defaults()
     if name == "auto":
         if WatchfilesWatcher.name in registry.get_choices():
             name = "watchfiles"

@@ -195,7 +195,6 @@ class SerializerRegistry:
 
     def __init__(self) -> None:
         self._serializers: dict[str, AsyncStringSerializerProtocol] = {}
-        self._initialized: bool = False
 
     def register(self, serializer: type[AsyncStringSerializerProtocol]) -> None:
         """Register a serializer class."""
@@ -204,34 +203,40 @@ class SerializerRegistry:
 
     def get(self, name: str) -> AsyncStringSerializerProtocol | None:
         """Get a serializer by name."""
-        self.register_defaults()
         return self._serializers.get(name)
 
     def get_all(self) -> dict[str, AsyncStringSerializerProtocol]:
         """Get all registered serializers."""
-        self.register_defaults()
         return self._serializers.copy()
 
     def get_choices(self) -> list[str]:
         """Get list of available serializer names."""
-        self.register_defaults()
         return list(self._serializers.keys())
 
-    def register_defaults(self) -> None:
-        """Initialize default serializers if not already done."""
-        if not self._initialized:
-            self.register(JSONSerializer)
-            self.register(CompactJSONSerializer)
-            self.register(YAMLSerializer)
-            self.register(MessagePackSerializer)
-            self.register(CBORSerializer)
-            self.register(TOMLSerializer)
-            self._initialized = True
+    @classmethod
+    def _default_entries(cls) -> tuple[type[AsyncStringSerializerProtocol], ...]:
+        """The complete in-package built-in set, declared exactly once."""
+        return (
+            JSONSerializer,
+            CompactJSONSerializer,
+            YAMLSerializer,
+            MessagePackSerializer,
+            CBORSerializer,
+            TOMLSerializer,
+        )
+
+    @classmethod
+    def with_defaults(cls) -> SerializerRegistry:
+        """Return an instance populated with the built-in serializers."""
+        registry = cls()
+        for entry in cls._default_entries():
+            registry.register(entry)
+        return registry
 
 
 def serialize(data: Any, file_format: str = "json") -> str | bytes:
     """Serialize data using the specified format."""
-    serializer = SerializerRegistry().get(file_format)
+    serializer = SerializerRegistry.with_defaults().get(file_format)
     if not serializer:
         raise ValueError(f"Unknown format: {file_format}")
     return serializer.serialize(data)
@@ -239,7 +244,7 @@ def serialize(data: Any, file_format: str = "json") -> str | bytes:
 
 def deserialize(data: str | bytes, file_format: str = "json") -> Any:
     """Deserialize data using the specified format."""
-    serializer = SerializerRegistry().get(file_format)
+    serializer = SerializerRegistry.with_defaults().get(file_format)
     if not serializer:
         raise ValueError(f"Unknown format: {file_format}")
     return serializer.deserialize(data)

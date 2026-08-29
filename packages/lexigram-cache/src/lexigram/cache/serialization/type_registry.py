@@ -25,15 +25,6 @@ class TypeRegistry:
         """Initialize an empty registry."""
         self._models: dict[tuple[str, str], type[Any]] = {}
 
-    @classmethod
-    def with_defaults(cls) -> TypeRegistry:
-        """Return an empty registry.
-
-        No framework model types are registered by default: reconstruction
-        is deny-by-default until the application registers its models.
-        """
-        return cls()
-
     def register(self, model_cls: type) -> None:
         """Register a model class for reconstruction.
 
@@ -67,6 +58,6 @@ class TypeRegistry:
         self._models.clear()
 
 
-DEFAULT_REGISTRY = TypeRegistry.with_defaults()
+DEFAULT_REGISTRY = TypeRegistry()
 
 __all__ = ["DEFAULT_REGISTRY", "TypeRegistry"]

@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import difflib
 import os
-from typing import Any, ClassVar, TypeVar, cast
+from typing import Any, ClassVar, TypeVar, cast, overload
 
 from lexigram.app.config.discovery import ModuleDiscoveryConfig
 from lexigram.app.config.models import HealthConfig
@@ -113,10 +113,21 @@ class LexigramConfig(BaseConfig):
         """Return ``True`` when debug mode is enabled."""
         return self.debug
 
+    @overload
+    def get_section(self, name: str, model_cls: None = None) -> dict[str, Any] | None: ...
+
+    @overload
+    def get_section(self, name: str, model_cls: type[T]) -> T: ...
+
     def get_section(
         self, name: str, model_cls: type[T] | None = None
-    ) -> T | dict[str, Any]:
-        """Get a configuration section coerced into a specific model."""
+    ) -> T | dict[str, Any] | None:
+        """Get a configuration section coerced into a specific model.
+
+        Returns ``None`` for an absent section when *model_cls* is not
+        supplied; with *model_cls*, an absent section yields ``model_cls()``
+        defaults.
+        """
         # Support dotted path traversal (e.g. "ai.rag" → config["ai"]["rag"])
         if "." in name:
             parent_key, child_key = name.split(".", 1)
@@ -135,9 +146,9 @@ class LexigramConfig(BaseConfig):
             model_cls = self._config_registry.get(name)
 
         if model_cls is None:
-            # Return dict or attribute value; empty dict for missing sections
+            # Return the raw dict/attribute value, or None when absent.
             if data is None:
-                return {}
+                return None
             return cast("T | dict[str, Any]", data)
 
         if isinstance(data, model_cls):

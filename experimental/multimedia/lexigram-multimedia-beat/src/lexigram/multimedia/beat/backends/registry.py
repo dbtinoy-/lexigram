@@ -29,7 +29,10 @@ class BeatBackendRegistry:
         registry = cls()
 
         async def _librosa(
-            config: Any, retry: Any, circuit_breaker: Any, **_kw: Any,
+            config: Any,
+            retry: Any,
+            circuit_breaker: Any,
+            **_kw: Any,
         ) -> Any:
             from lexigram.multimedia.beat.providers.librosa import (
                 LibrosaBeatAnalysisProvider,
@@ -42,7 +45,10 @@ class BeatBackendRegistry:
             )
 
         async def _madmom(
-            config: Any, retry: Any, circuit_breaker: Any, **_kw: Any,
+            config: Any,
+            retry: Any,
+            circuit_breaker: Any,
+            **_kw: Any,
         ) -> Any:
             from lexigram.multimedia.beat.providers.madmom import (
                 MadmomBeatAnalysisProvider,
@@ -64,7 +70,11 @@ class BeatBackendRegistry:
         self._builders[backend] = builder
 
     async def create_backend(
-        self, backend: str, config: Any, retry: Any, circuit_breaker: Any,
+        self,
+        backend: str,
+        config: Any,
+        retry: Any,
+        circuit_breaker: Any,
     ) -> Any:
         """Build a beat analysis provider for a backend name."""
         builder = self._builders.get(backend)

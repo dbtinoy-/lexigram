@@ -50,11 +50,20 @@ class RelayAppHarness:
         fakes: The fakes injected into the composition.
     """
 
-    def __init__(self, app: object, fakes: RelayFakes) -> None:
+    def __init__(
+        self,
+        app: object,
+        fakes: RelayFakes,
+        modules_before_boot: frozenset[str] = frozenset(),
+    ) -> None:
         """Bind the harness and its container and fakes."""
         self.app = app
         self.container = app.container  # type: ignore[attr-defined]
         self.fakes = fakes
+        #: ``sys.modules`` keys captured before provider boot, so tests can
+        #: distinguish modules imported by boot from modules imported by
+        #: earlier tests in the same pytest session.
+        self.modules_before_boot: frozenset[str] = modules_before_boot
 
 
 class StubFlagManager:

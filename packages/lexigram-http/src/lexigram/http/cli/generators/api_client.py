@@ -3,79 +3,62 @@
 from __future__ import annotations
 
 from pathlib import Path
-import re
 from typing import Any
 
-from lexigram.codegen import FieldSpec, parse_fields
-from lexigram.codegen.base import GenerationResult, GeneratorBase
+from lexigram.codegen import FieldSpec, GenerationResult, GeneratorBase, parse_fields
+from lexigram.contracts.cli.generators import resolve_options
 
 
 class APIClientGenerator(GeneratorBase):
-    """Generator for creating external API client wrappers."""
+    """Generate an external API client wrapper."""
 
     name = "api_client"
     description = "Generate an external API client"
     default_output_dir = "src/clients"
 
-    @staticmethod
-    def _to_pascal_case(name: str) -> str:
-        normalized = APIClientGenerator._to_snake_case(name)
-        return "".join(part.capitalize() for part in normalized.split("_") if part)
-
-    @staticmethod
-    def _to_snake_case(name: str) -> str:
-        compact = re.sub(r"[\s-]+", "_", name)
-        separated = re.sub(r"([A-Z])", r"_\1", compact)
-        return separated.lower().strip("_")
+    def __init__(self, output_dir: str | Path = "src/clients") -> None:
+        super().__init__(output_dir=output_dir)
 
     def generate(
         self,
         name: str,
-        output_dir: str = "src/clients",
+        *,
         fields_str: str | None = None,
+        dry_run: bool = False,
+        force: bool = False,
         **options: Any,
     ) -> GenerationResult:
-        """Generate an API client."""
-        # Parse fields if provided (API methods)
-        fields = []
-        if fields_str:
-            fields = parse_fields(fields_str)
-        else:
-            # Default fields for a basic client
-            fields = [
+        """Generate an API client module.
+
+        Args:
+            name: Client name (e.g. ``"StripeClient"`` or ``"stripe_client"``).
+            fields_str: Optional ``name:type`` field list in parser syntax.
+            dry_run: Compute output paths without writing.
+            force: Overwrite an existing file.
+
+        Returns:
+            ``GenerationResult`` with created/skipped/overwritten paths.
+        """
+        fields = (
+            parse_fields(fields_str)
+            if fields_str
+            else [
                 FieldSpec(name="base_url", type="str", required=True),
                 FieldSpec(name="api_key", type="str", required=False),
             ]
-
-        # Determine auth type
-        auth_type = options.get("auth", "apikey")
-
-        # Create output directory
-        output_path = Path(output_dir)
-        output_path.mkdir(parents=True, exist_ok=True)
-
-        # Client class name
+        )
+        auth_type = str(options.get("auth", "apikey"))
         client_name = self._to_pascal_case(name)
-        client_filename = f"{self._to_snake_case(name)}_client.py"
-
-        # Template context
-        context = {
+        context: dict[str, Any] = {
             "client_name": client_name,
             "client_name_snake": self._to_snake_case(name),
-            "package_name": self._get_package_name(output_dir),
             "fields": fields,
             "auth_type": auth_type,
         }
-
-        # Render template
         content = self.render_template("api_client.py.jinja2", context)
+        file_path = self.output_dir / f"{self._to_snake_case(name)}_client.py"
+        self.stage(file_path, content)
+        return self.finalize(self.commit(resolve_options(dry_run=dry_run, force=force)))
 
-        # Write file
-        file_path = output_path / client_filename
-        if file_path.exists() and not options.get("force", False):
-            return GenerationResult()
 
-        with open(file_path, "w") as f:
-            f.write(content)
-
-        return GenerationResult(files_created=[output_path])
+__all__ = ["APIClientGenerator"]

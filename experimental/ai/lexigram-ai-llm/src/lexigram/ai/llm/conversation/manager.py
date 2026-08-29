@@ -100,8 +100,8 @@ class ConversationManager:
         if token_counter is None:
             from lexigram.ai.llm.pricing.tokens import CharEstimateCounter
 
-            token_counter = CharEstimateCounter()  # type: ignore[assignment]
-        self._token_counter: TokenCounterProtocol = token_counter  # type: ignore[assignment]
+            token_counter = CharEstimateCounter()
+        self._token_counter: TokenCounterProtocol = token_counter
 
         # Initialize stats
         self._stats = ConversationStats()
@@ -330,12 +330,12 @@ class ConversationManager:
 
     def _update_token_count_sync(self) -> None:
         """Update total token count synchronously (for initialization)."""
-        self._stats.total_tokens = self._token_counter.count_messages(self._messages)  # type: ignore[arg-type]
+        self._stats.total_tokens = self._token_counter.count_messages(self._messages)
         self._stats.total_messages = len(self._messages)
 
     async def _update_token_count(self) -> None:
         """Update total token count."""
-        self._stats.total_tokens = self._token_counter.count_messages(self._messages)  # type: ignore[arg-type]
+        self._stats.total_tokens = self._token_counter.count_messages(self._messages)
         self._stats.total_messages = len(self._messages)
 
     async def _trim_if_needed(self) -> None:

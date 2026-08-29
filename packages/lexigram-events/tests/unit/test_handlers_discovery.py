@@ -85,8 +85,8 @@ class TestHandlerRegistry:
         assert registry._discovered_modules == set()
 
     def test_handler_registry_with_defaults(self):
-        """Test HandlerRegistry.with_defaults creates empty registry."""
-        registry = HandlerRegistry.with_defaults()
+        """Test HandlerRegistry() creates empty registry."""
+        registry = HandlerRegistry()
         assert registry._command_handlers is not None
         assert registry._query_handlers is not None
 

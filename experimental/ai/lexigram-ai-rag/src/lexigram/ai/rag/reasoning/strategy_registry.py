@@ -113,15 +113,20 @@ class ReasoningStrategyRegistry:
         self._handlers: list[ReasoningStrategyHandler] = []
 
     @classmethod
+    def _default_entries(cls) -> dict[str, object]:
+        """Declare the built-in strategy handlers."""
+        return {
+            "multi_hop": MultiHopReasoningHandler(),
+            "chain_of_thought": ChainOfThoughtReasoningHandler(),
+            "decomposition": DecompositionReasoningHandler(),
+            "iterative_refinement": IterativeRefinementReasoningHandler(),
+        }
+
+    @classmethod
     def with_defaults(cls) -> ReasoningStrategyRegistry:
         """Create a registry pre-populated with all built-in strategy handlers."""
         registry = cls()
-        registry._handlers = [
-            MultiHopReasoningHandler(),
-            ChainOfThoughtReasoningHandler(),
-            DecompositionReasoningHandler(),
-            IterativeRefinementReasoningHandler(),
-        ]
+        registry._handlers = list(cls._default_entries().values())
         return registry
 
     def register(self, handler: ReasoningStrategyHandler) -> None:

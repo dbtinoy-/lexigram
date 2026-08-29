@@ -22,7 +22,7 @@ class TestInitCommand:
         result = self.runner.invoke(app, ["--minimal"])
         assert result.exit_code == 0
         content = (tmp_path / "application.yaml").read_text()
-        assert "project:" in content
+        assert "app_name:" in content
         # Minimal should be short
         assert len(content.splitlines()) < 20
 
@@ -31,7 +31,7 @@ class TestInitCommand:
         result = self.runner.invoke(app, ["--full"])
         assert result.exit_code == 0
         content = (tmp_path / "application.yaml").read_text()
-        assert "database:" in content
+        assert "sql:" in content
         assert "web:" in content
 
     def test_init_refuses_overwrite(self, tmp_path, monkeypatch):

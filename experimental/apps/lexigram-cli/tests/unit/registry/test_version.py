@@ -59,59 +59,53 @@ class TestGitVersionSource:
 
 class TestVersionRegistry:
     def test_register_and_get(self) -> None:
-        VersionRegistry._sources = {}
-        VersionRegistry._initialized = False
+        registry = VersionRegistry()
         source = MagicMock(spec=VersionSource)
-        VersionRegistry.register("test", source)
-        assert VersionRegistry.get("test") is source
+        registry.register("test", source)
+        assert registry.get("test") is source
 
     def test_get_nonexistent(self) -> None:
-        VersionRegistry._sources = {}
-        VersionRegistry._initialized = False
-        assert VersionRegistry.get("nonexistent") is None
+        registry = VersionRegistry()
+        assert registry.get("nonexistent") is None
 
     def test_get_all(self) -> None:
-        VersionRegistry._sources = {}
-        VersionRegistry._initialized = False
+        registry = VersionRegistry()
         source = MagicMock(spec=VersionSource)
-        VersionRegistry.register("a", source)
-        all_sources = VersionRegistry.get_all()
+        registry.register("a", source)
+        all_sources = registry.get_all()
         assert "a" in all_sources
 
-    def test_register_defaults(self) -> None:
-        VersionRegistry._sources = {}
-        VersionRegistry._initialized = False
-        VersionRegistry.register_defaults()
-        assert VersionRegistry._initialized is True
-        assert VersionRegistry.get("lexigram") is not None
-        assert VersionRegistry.get("python") is not None
-
+    def test_with_defaults_populates_all_sources(self) -> None:
+        registry = VersionRegistry.with_defaults()
+        assert registry.get("lexigram") is not None
+        assert registry.get("python") is not None
 
 class TestGetVersion:
     @patch("lexigram.cli.registry.version.PyPackageVersionSource.get_version", return_value="1.0")
     def test_get_version_registered(self, mock_get: MagicMock) -> None:
-        VersionRegistry._sources = {"test": MagicMock()}
-        VersionRegistry._sources["test"].get_version.return_value = "2.0"
-        VersionRegistry._initialized = True
-        result = get_version("test")
+        registry = VersionRegistry()
+        source = MagicMock()
+        source.get_version.return_value = "2.0"
+        registry.register("test", source)
+        with patch.object(VersionRegistry, "with_defaults", return_value=registry):
+            result = get_version("test")
         assert result == "2.0"
 
     @patch("lexigram.cli.registry.version.PyPackageVersionSource.get_version", return_value="3.0")
     def test_get_version_unregistered(self, mock_get: MagicMock) -> None:
-        VersionRegistry._sources = {}
-        VersionRegistry._initialized = False
-        with patch.object(VersionRegistry, "get", return_value=None):
+        registry = VersionRegistry()
+        with patch.object(VersionRegistry, "with_defaults", return_value=registry):
             result = get_version("unknown_pkg")
-            assert result is not None
+        assert result is not None
 
 
 class TestGetAllVersions:
     def test_returns_dict(self) -> None:
-        VersionRegistry._sources = {}
-        VersionRegistry._initialized = True
+        registry = VersionRegistry()
         source = MagicMock(spec=VersionSource)
         source.get_version.return_value = "1.0"
-        VersionRegistry.register("pkg", source)
-        versions = get_all_versions()
+        registry.register("pkg", source)
+        with patch.object(VersionRegistry, "with_defaults", return_value=registry):
+            versions = get_all_versions()
         assert "pkg" in versions
         assert versions["pkg"] == "1.0"

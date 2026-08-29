@@ -29,7 +29,10 @@ class UpscaleBackendRegistry:
         registry = cls()
 
         async def _real_esrgan(
-            config: Any, retry: Any, circuit_breaker: Any, **_kw: Any,
+            config: Any,
+            retry: Any,
+            circuit_breaker: Any,
+            **_kw: Any,
         ) -> Any:
             from lexigram.multimedia.upscale.providers.real_esrgan import (
                 RealEsrganUpscaleProvider,
@@ -43,7 +46,10 @@ class UpscaleBackendRegistry:
             )
 
         async def _hat(
-            config: Any, retry: Any, circuit_breaker: Any, **_kw: Any,
+            config: Any,
+            retry: Any,
+            circuit_breaker: Any,
+            **_kw: Any,
         ) -> Any:
             from lexigram.multimedia.upscale.providers.hat import HatUpscaleProvider
 
@@ -63,7 +69,11 @@ class UpscaleBackendRegistry:
         self._builders[backend] = builder
 
     async def create_backend(
-        self, backend: str, config: Any, retry: Any, circuit_breaker: Any,
+        self,
+        backend: str,
+        config: Any,
+        retry: Any,
+        circuit_breaker: Any,
     ) -> Any:
         """Build an upscale provider for a backend name."""
         builder = self._builders.get(backend)

@@ -112,9 +112,7 @@ def _explicitly_requests_integration(config: pytest.Config) -> bool:
     if any(arg in ("-m", "--markexpr", "-k", "--keyword") for arg in invocation):
         return True
 
-    invocation_paths = {
-        str(arg).replace("\\", "/").rstrip("/") for arg in invocation
-    }
+    invocation_paths = {str(arg).replace("\\", "/").rstrip("/") for arg in invocation}
     for candidate in config.args:
         path = str(candidate).replace("\\", "/").rstrip("/")
         if path not in invocation_paths:
@@ -188,3 +186,37 @@ def setup_container_context() -> Generator[Any, None, None]:
     yield container
     # Clean up
     Context.reset("container", token)
+
+
+def pytest_asyncio_loop_factories(
+    config: pytest.Config, item: pytest.Item
+) -> dict[str, object]:
+    """Provide a default loop factory that closes asyncio's default executor.
+
+    pytest-asyncio 1.x runs each async test on a fresh ``asyncio.Runner``.
+    ``Runner.__exit__`` closes the loop but never calls
+    ``shutdown_default_executor()``, so any test that used
+    ``asyncio.to_thread()`` / ``run_in_executor(None, ...)`` leaves a
+    non-daemon ``asyncio_0`` worker thread alive for the rest of the
+    session (tripping the repo-wide thread-teardown guard). Wrapping the
+    loop's ``close()`` shuts the executor down together with the loop; it is
+    a no-op for loops that never created a default executor.
+    """
+    import asyncio
+
+    def _factory():
+        loop = asyncio.new_event_loop()
+        orig_close = loop.close
+
+        def _close() -> None:
+            if not loop.is_closed() and not loop.is_running():
+                try:
+                    loop.run_until_complete(loop.shutdown_default_executor())
+                except Exception:  # noqa: BLE001 — best-effort cleanup
+                    pass
+            orig_close()
+
+        loop.close = _close  # type: ignore[method-assign]
+        return loop
+
+    return {"default": _factory}

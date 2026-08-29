@@ -89,20 +89,26 @@ class IsolationStrategyRegistry:
         return self._tenant_strategies.get(tenant_id, default)
 
     @classmethod
-    def with_defaults(cls) -> IsolationStrategyRegistry:
-        """Create a registry pre-populated with the row-level strategy.
+    def _default_entries(cls) -> dict[str, TenantIsolationStrategyProtocol]:
+        """Declare the built-in isolation strategies.
 
         Schema and database strategies are NOT included because they require
         lexigram-sql and environment-specific provisioning logic.
 
         Returns:
-            A :class:`IsolationStrategyRegistry` with ``"row_level"``
-            registered.
+            Only ``"row_level"`` by default.
         """
         from lexigram.tenancy.isolation.row_level import RowLevelIsolationStrategy
 
+        strategy = RowLevelIsolationStrategy()
+        return {strategy.name: strategy}
+
+    @classmethod
+    def with_defaults(cls) -> IsolationStrategyRegistry:
+        """Create a registry pre-populated with the row-level strategy."""
         registry = cls()
-        registry.register(RowLevelIsolationStrategy())
+        for strategy in cls._default_entries().values():
+            registry.register(strategy)
         return registry
 
 

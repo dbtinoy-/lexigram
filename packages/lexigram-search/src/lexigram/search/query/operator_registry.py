@@ -158,23 +158,31 @@ class QueryOperatorRegistry:
 
     def __init__(self) -> None:
         self._handlers: list[QueryOperatorHandler] = []
-        self._register_defaults()
 
-    def _register_defaults(self) -> None:
-        self._handlers = [
-            InOperatorHandler(),
-            NotInOperatorHandler(),
-            RangeOperatorHandler(),
-            ExistsOperatorHandler(),
-            NotExistsOperatorHandler(),
-            NotEqualOperatorHandler(),
-            GreaterThanOperatorHandler(),
-            GreaterEqualOperatorHandler(),
-            LessThanOperatorHandler(),
-            LessEqualOperatorHandler(),
-            ContainsOperatorHandler(),
-            DefaultOperatorHandler(),
-        ]
+    @classmethod
+    def _default_entries(cls) -> dict[str, QueryOperatorHandler]:
+        """Declare the built-in query operator handlers."""
+        return {
+            "in": InOperatorHandler(),
+            "not_in": NotInOperatorHandler(),
+            "range": RangeOperatorHandler(),
+            "exists": ExistsOperatorHandler(),
+            "not_exists": NotExistsOperatorHandler(),
+            "not_equal": NotEqualOperatorHandler(),
+            "greater_than": GreaterThanOperatorHandler(),
+            "greater_equal": GreaterEqualOperatorHandler(),
+            "less_than": LessThanOperatorHandler(),
+            "less_equal": LessEqualOperatorHandler(),
+            "contains": ContainsOperatorHandler(),
+            "default": DefaultOperatorHandler(),
+        }
+
+    @classmethod
+    def with_defaults(cls) -> QueryOperatorRegistry:
+        """Create a registry pre-populated with the built-in handlers."""
+        registry = cls()
+        registry._handlers = list(cls._default_entries().values())
+        return registry
 
     def register(self, handler: QueryOperatorHandler) -> None:
         """Register a new operator handler."""
@@ -239,7 +247,7 @@ class QueryOperatorRegistry:
                 raise ValueError(f"Unsupported filter expression type: {type(expr)}")
 
 
-_query_operator_registry = QueryOperatorRegistry()
+_query_operator_registry = QueryOperatorRegistry.with_defaults()
 
 
 def get_query_operator_registry() -> QueryOperatorRegistry:

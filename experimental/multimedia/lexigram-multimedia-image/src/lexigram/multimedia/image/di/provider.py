@@ -45,7 +45,9 @@ class ImageGenerationProvider(Provider):
         super().__init__(name="image")
         self._requested_config = config
         self._config = config
-        self._backend_registry = backend_registry or ImageBackendRegistry.with_defaults()
+        self._backend_registry = (
+            backend_registry or ImageBackendRegistry.with_defaults()
+        )
         self._backend: ImageProvider | None = None
         self._task_handler: ImageGenerationTask | None = None
         self._secret_store: AsyncSecretStoreProtocol | None = None
@@ -64,7 +66,9 @@ class ImageGenerationProvider(Provider):
 
         self._secret_store = await resolve_optional(container, AsyncSecretStoreProtocol)
         self._retry = await resolve_optional(container, RetryPolicyProtocol)
-        self._circuit_breaker = await resolve_optional(container, CircuitBreakerProtocol)
+        self._circuit_breaker = await resolve_optional(
+            container, CircuitBreakerProtocol
+        )
 
         self._backend = cast(
             "ImageProvider",
@@ -96,7 +100,9 @@ class ImageGenerationProvider(Provider):
             "comfyui": self._config.comfyui_base_url,
         }
         if self._config.backend in http_backends:
-            status = await self._check_http_health(http_backends[self._config.backend], timeout)
+            status = await self._check_http_health(
+                http_backends[self._config.backend], timeout
+            )
             return HealthCheckResult(component=self.name, status=status)
 
         return HealthCheckResult(component=self.name, status=HealthStatus.HEALTHY)
@@ -104,12 +110,20 @@ class ImageGenerationProvider(Provider):
     async def _check_http_health(self, base_url: str, timeout: float) -> HealthStatus:
         import aiohttp
 
-        endpoint = "/system_stats" if base_url == self._config.comfyui_base_url else "/health"
+        endpoint = (
+            "/system_stats" if base_url == self._config.comfyui_base_url else "/health"
+        )
         try:
             async with (
-                aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=timeout)) as session,
+                aiohttp.ClientSession(
+                    timeout=aiohttp.ClientTimeout(total=timeout)
+                ) as session,
                 session.get(f"{base_url}{endpoint}") as resp,
             ):
-                return HealthStatus.HEALTHY if resp.status == 200 else HealthStatus.DEGRADED
+                return (
+                    HealthStatus.HEALTHY
+                    if resp.status == 200
+                    else HealthStatus.DEGRADED
+                )
         except (TimeoutError, OSError, aiohttp.ClientError):
             return HealthStatus.DEGRADED

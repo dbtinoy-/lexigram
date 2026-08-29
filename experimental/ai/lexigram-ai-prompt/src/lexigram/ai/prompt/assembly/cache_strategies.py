@@ -120,7 +120,7 @@ class OpenAICacheStrategy:
         """Validate prefix length and return messages unchanged."""
         if token_counter and static_count > 0:
             static_messages = messages[:static_count]
-            static_tokens = token_counter.count_messages(static_messages)  # type: ignore[arg-type]
+            static_tokens = token_counter.count_messages(static_messages)
             if static_tokens < 1024:
                 logger.warning(
                     "openai_cache_prefix_too_short",
@@ -192,7 +192,7 @@ class GeminiCacheStrategy:
         """Flag large static blocks for context caching."""
         if token_counter and static_count > 0:
             static_messages = messages[:static_count]
-            total_tokens = token_counter.count_messages(static_messages)  # type: ignore[arg-type]
+            total_tokens = token_counter.count_messages(static_messages)
             if total_tokens > GEMINI_CONTEXT_CACHE_MIN_TOKENS:
                 logger.info(
                     "gemini_context_cache_recommended",
@@ -260,16 +260,24 @@ class ProviderCacheStrategyRegistry:
         self._default: CacheStrategy = PassthroughCacheStrategy()
 
     @classmethod
+    def _default_entries(cls) -> dict[str, CacheStrategy]:
+        """Declare the built-in provider cache strategies."""
+        return {
+            "anthropic": AnthropicCacheStrategy(),
+            "openai": OpenAICacheStrategy(),
+            "azure": OpenAICacheStrategy(),
+            "deepseek": DeepSeekCacheStrategy(),
+            "gemini": GeminiCacheStrategy(),
+            "mistral": MistralCacheStrategy(),
+            "*": PassthroughCacheStrategy(),
+        }
+
+    @classmethod
     def with_defaults(cls) -> ProviderCacheStrategyRegistry:
         """Create a registry pre-populated with all provider strategies."""
         registry = cls()
-        registry.register("anthropic", AnthropicCacheStrategy())
-        registry.register("openai", OpenAICacheStrategy())
-        registry.register("azure", OpenAICacheStrategy())
-        registry.register("deepseek", DeepSeekCacheStrategy())
-        registry.register("gemini", GeminiCacheStrategy())
-        registry.register("mistral", MistralCacheStrategy())
-        registry.register("*", PassthroughCacheStrategy())
+        for provider, strategy in cls._default_entries().items():
+            registry.register(provider, strategy)
         return registry
 
     def register(self, provider: str, strategy: CacheStrategy) -> None:

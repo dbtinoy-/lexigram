@@ -19,6 +19,8 @@ class _MonitorAttrsMixin:
     tracer: Any
     trace_provider: Any
     _config: Any
+    _requested_config: Any
+    _config_from_factory: bool
     _hook_handlers: Any
     _hook_registry: Any
     _metrics_exporter_registry: Any

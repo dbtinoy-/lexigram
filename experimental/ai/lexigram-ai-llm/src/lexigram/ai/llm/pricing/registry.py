@@ -60,27 +60,46 @@ class TokenCounterRegistry:
         self._patterns: list[tuple[re.Pattern[str], str]] = []
 
     @classmethod
-    def with_defaults(cls) -> TokenCounterRegistry:
-        """Create registry with all available tokenizer backends.
+    def _default_entries(
+        cls,
+    ) -> dict[str, TokenCounterProtocol]:
+        """Declare the available token counter backends.
 
-        Registers:
-        - char_estimate (always available, fallback)
-        - tiktoken (if installed, for OpenAI/Anthropic models)
-        - huggingface (if installed, for HuggingFace models)
-        - mistral (if installed, for Mistral models)
-
-        Returns:
-            TokenCounterRegistry pre-populated with default backends.
+        char_estimate is always available; tiktoken/huggingface/mistral are
+        included only when their optional dependencies are installed.
         """
         from lexigram.ai.llm.pricing.tokens import CharEstimateCounter
 
-        registry = cls()
-        registry.register("char_estimate", CharEstimateCounter())  # type: ignore[arg-type]
-
+        entries: dict[str, TokenCounterProtocol] = {
+            "char_estimate": CharEstimateCounter(),
+        }
         if _tiktoken_available():
             from lexigram.ai.llm.pricing.tokens import TiktokenCounter
 
-            registry.register("tiktoken", TiktokenCounter())  # type: ignore[arg-type]
+            entries["tiktoken"] = TiktokenCounter()
+        if _transformers_available():
+            from lexigram.ai.llm.pricing.tokens import HuggingFaceCounter
+
+            entries["huggingface"] = HuggingFaceCounter()
+        if _mistral_available():
+            from lexigram.ai.llm.pricing.tokens import MistralCounter
+
+            entries["mistral"] = MistralCounter()
+        return entries
+
+    @classmethod
+    def with_defaults(cls) -> TokenCounterRegistry:
+        """Create registry with all available tokenizer backends.
+
+        Registers every backend declared by :meth:`_default_entries` and
+        maps the model families each backend serves.
+        """
+        registry = cls()
+        declared = cls._default_entries()
+        for key, counter in declared.items():
+            registry.register(key, counter)
+
+        if "tiktoken" in declared:
             registry.map_models(r"gpt-.*|o[0-9].*|text-embedding-.*", "tiktoken")
             logger.debug("token_counter_registry_tiktoken_registered")
         else:
@@ -89,20 +108,14 @@ class TokenCounterRegistry:
                 fallback="char_estimate",
             )
 
-        if _transformers_available():
-            from lexigram.ai.llm.pricing.tokens import HuggingFaceCounter
-
-            registry.register("huggingface", HuggingFaceCounter())  # type: ignore[arg-type]
+        if "huggingface" in declared:
             registry.map_models(
                 r"llama-.*|qwen-.*|deepseek-.*|gemma-.*",
                 "huggingface",
             )
             logger.debug("token_counter_registry_huggingface_registered")
 
-        if _mistral_available():
-            from lexigram.ai.llm.pricing.tokens import MistralCounter
-
-            registry.register("mistral", MistralCounter())  # type: ignore[arg-type]
+        if "mistral" in declared:
             registry.map_models(r"mistral-.*|codestral-.*", "mistral")
             logger.debug("token_counter_registry_mistral_registered")
 
@@ -147,4 +160,4 @@ class TokenCounterRegistry:
             return self._backends["char_estimate"]
         from lexigram.ai.llm.pricing.tokens import CharEstimateCounter
 
-        return CharEstimateCounter()  # type: ignore[return-value]
+        return CharEstimateCounter()

@@ -55,14 +55,17 @@ lexigram
 │   └── filter         Generate a query filter for database models
 │   └── seeder         Generate a database seeder for test/dev data
 │   └── health         Generate a database health check
-│   └── model          Generate a SQLAlchemy model
+│   └── model          Generate a Pydantic entity model with Create/Update DTOs
 │   └── service        Generate a service with unit of work
 │   └── controller     Generate a web controller with route handlers
-│   └── resource       Generate a RESTful resource with CRUD endpoints
+│   └── resource       Generate a resource controller slice
 │   └── middleware     Generate a web middleware component
 │   └── graphql        Generate a GraphQL schema and resolvers
 │   └── webhook        Generate a webhook handler
 │   └── websocket      Generate a WebSocket handler
+│   └── exception_filter Generate a web exception filter
+│   └── interceptor      Generate a web request/response interceptor
+│   └── error           Generate a custom HTTP error
 │   └── workflow_def   Generate a workflow definition with steps and transitions
 │   └── pipeline       Generate a pipeline with sequential processing stages
 │   └── saga_step      Generate a saga step with compensating transaction
@@ -75,6 +78,8 @@ lexigram
 │   └── event          Generate a domain event class
 │   └── command        Generate a CQRS command handler
 │   └── query          Generate a CQRS query handler
+│   └── projection       Generate an event projection for read models
+│   └── audited         Generate an audited async handler
 │   └── provider       Generate provider
 │   └── test           Generate test
 │   └── admin_action   Generate a custom admin action
@@ -156,7 +161,7 @@ lexigram
 
 ## Generator Inventory
 
-**Total: 42 generators**
+**Total: 48 generators**
 
 | Generator | Description |
 |-----------|-------------|
@@ -171,14 +176,18 @@ lexigram
 | `lexigram gen filter` | Generate a query filter for database models |
 | `lexigram gen seeder` | Generate a database seeder for test/dev data |
 | `lexigram gen health` | Generate a database health check |
-| `lexigram gen model` | Generate a SQLAlchemy model |
+| `lexigram gen model` | Generate a Pydantic entity model with Create/Update DTOs |
+| `lexigram gen migration` | Generate a chained alembic migration for an entity |
 | `lexigram gen service` | Generate a service with unit of work |
 | `lexigram gen controller` | Generate a web controller with route handlers |
-| `lexigram gen resource` | Generate a RESTful resource with CRUD endpoints |
+| `lexigram gen resource` | Generate a resource controller slice |
 | `lexigram gen middleware` | Generate a web middleware component |
 | `lexigram gen graphql` | Generate a GraphQL schema and resolvers |
 | `lexigram gen webhook` | Generate a webhook handler |
 | `lexigram gen websocket` | Generate a WebSocket handler |
+| `lexigram gen exception_filter` | Generate a web exception filter |
+| `lexigram gen interceptor` | Generate a web request/response interceptor |
+| `lexigram gen error` | Generate a custom HTTP error |
 | `lexigram gen workflow_def` | Generate a workflow definition with steps and transitions |
 | `lexigram gen pipeline` | Generate a pipeline with sequential processing stages |
 | `lexigram gen saga_step` | Generate a saga step with compensating transaction |
@@ -191,6 +200,8 @@ lexigram
 | `lexigram gen event` | Generate a domain event class |
 | `lexigram gen command` | Generate a CQRS command handler |
 | `lexigram gen query` | Generate a CQRS query handler |
+| `lexigram gen projection` | Generate an event projection for read models |
+| `lexigram gen audited` | Generate an audited async handler |
 | `lexigram gen provider` | Generate provider |
 | `lexigram gen test` | Generate test |
 | `lexigram gen admin_action` | Generate a custom admin action |

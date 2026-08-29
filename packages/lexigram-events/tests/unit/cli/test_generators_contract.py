@@ -15,4 +15,4 @@ def test_all_generators_render(tmp_path: Path) -> None:
     count = assert_contributor_generators_render(
         EventsCliContributor(), tmp_path=tmp_path
     )
-    assert count >= 5
+    assert count >= 6

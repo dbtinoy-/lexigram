@@ -45,7 +45,9 @@ class UpscaleGenerationProvider(Provider):
         super().__init__(name="upscale")
         self._requested_config = config
         self._config = config
-        self._backend_registry = backend_registry or UpscaleBackendRegistry.with_defaults()
+        self._backend_registry = (
+            backend_registry or UpscaleBackendRegistry.with_defaults()
+        )
         self._backend: UpscaleProvider | None = None
         self._task_handler: UpscaleTask | None = None
         self._retry: RetryPolicyProtocol | None = None
@@ -62,7 +64,9 @@ class UpscaleGenerationProvider(Provider):
         container.singleton(UpscaleConfig, self._config)
 
         self._retry = await resolve_optional(container, RetryPolicyProtocol)
-        self._circuit_breaker = await resolve_optional(container, CircuitBreakerProtocol)
+        self._circuit_breaker = await resolve_optional(
+            container, CircuitBreakerProtocol
+        )
 
         self._backend = cast(
             "UpscaleProvider",
@@ -115,10 +119,16 @@ class UpscaleGenerationProvider(Provider):
 
         try:
             async with (
-                aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=timeout)) as session,
+                aiohttp.ClientSession(
+                    timeout=aiohttp.ClientTimeout(total=timeout)
+                ) as session,
                 session.get(f"{base_url}/health") as resp,
             ):
-                status = HealthStatus.HEALTHY if resp.status == 200 else HealthStatus.DEGRADED
+                status = (
+                    HealthStatus.HEALTHY
+                    if resp.status == 200
+                    else HealthStatus.DEGRADED
+                )
         except (TimeoutError, OSError, aiohttp.ClientError):
             status = HealthStatus.DEGRADED
         return HealthCheckResult(component=self.name, status=status)

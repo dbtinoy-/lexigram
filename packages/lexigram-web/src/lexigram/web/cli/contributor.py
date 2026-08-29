@@ -35,7 +35,7 @@ _SPECS: tuple[tuple[str, str, str, str], ...] = (
         "graphql",
         "Generate a GraphQL schema and resolvers",
         "lexigram.web.cli.generators.graphql:GraphQLGenerator",
-        "src/graphql",
+        "src/schema",
     ),
     (
         "webhook",
@@ -49,6 +49,24 @@ _SPECS: tuple[tuple[str, str, str, str], ...] = (
         "lexigram.web.cli.generators.websocket:WebSocketHandlerGenerator",
         "src/websocket",
     ),
+    (
+        "exception_filter",
+        "Generate a web exception filter",
+        "lexigram.web.cli.generators.exception_filter:ExceptionFilterGenerator",
+        "src/filters",
+    ),
+    (
+        "interceptor",
+        "Generate a web request/response interceptor",
+        "lexigram.web.cli.generators.interceptor:InterceptorGenerator",
+        "src/interceptors",
+    ),
+    (
+        "error",
+        "Generate a custom HTTP error",
+        "lexigram.web.cli.generators.error:ErrorGenerator",
+        "src/errors",
+    ),
 )
 
 _OPTIONS: dict[str, tuple[GeneratorOption, ...]] = {
@@ -58,6 +76,36 @@ _OPTIONS: dict[str, tuple[GeneratorOption, ...]] = {
         GeneratorOption(name="doc", type_hint="str", description="Class docstring"),
     ),
     "resource": (_FIELDS_OPTION,),
+    "exception_filter": (
+        GeneratorOption(
+            name="exception_type",
+            type_hint="str",
+            description="Exception class name the filter handles",
+        ),
+        GeneratorOption(
+            name="status_code",
+            type_hint="int",
+            description="HTTP status code used in the default error response",
+        ),
+    ),
+    "interceptor": (),
+    "error": (
+        GeneratorOption(
+            name="status_code",
+            type_hint="int",
+            description="HTTP status code of the error",
+        ),
+        GeneratorOption(
+            name="code",
+            type_hint="str",
+            description="Machine-readable error code",
+        ),
+        GeneratorOption(
+            name="error_code",
+            type_hint="str",
+            description="Registry error code (LEX_ERR_WEB_...)",
+        ),
+    ),
 }
 
 # Titles that make() cannot derive exactly.

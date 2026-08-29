@@ -68,11 +68,6 @@ class AdminErrorHandler:
         ] = {}
         self._default_handler = self._handle_default
 
-    @classmethod
-    def with_defaults(cls) -> AdminErrorHandler:
-        """Return a new instance with default handlers registered."""
-        return cls()
-
     def register(
         self,
         exception_type: type[Exception],
@@ -149,7 +144,7 @@ def with_admin_error_handling(
     """
     from functools import wraps
 
-    _handler = handler or AdminErrorHandler.with_defaults()
+    _handler = handler or AdminErrorHandler()
 
     def decorator(func: Callable[..., T]) -> Callable[..., T]:
         @wraps(func)

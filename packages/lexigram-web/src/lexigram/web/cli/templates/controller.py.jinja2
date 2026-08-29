@@ -18,7 +18,8 @@ from lexigram.web.exceptions import (
     NotFoundError,
 )
 
-from .repositories.{{ model_name }}_repository import {{ class_name }}Repository
+# resolves against the app source root (src/repositories by default)
+from repositories.{{ model_name }}_repository import {{ class_name }}Repository
 
 
 def _to_dict(item: Any) -> dict[str, Any]:

@@ -167,44 +167,46 @@ class MypyRunner(TaskRunner):
 class TaskRunnerRegistry:
     """Registry for task runners.
 
-    Provides a pluggable way to add new task runners.
+    Instances are always empty — use :meth:`with_defaults` for the
+    in-package built-ins or :meth:`register` for plugin runners.
     """
 
-    _runners: dict[str, TaskRunner] = {}
-    _initialized: bool = False
+    def __init__(self) -> None:
+        self._runners: dict[str, TaskRunner] = {}
 
-    @classmethod
-    def register(cls, runner: type[TaskRunner]) -> None:
+    def register(self, runner: type[TaskRunner]) -> None:
         """Register a task runner class."""
         instance = runner()
-        cls._runners[runner.name] = instance
+        self._runners[runner.name] = instance
 
-    @classmethod
-    def get(cls, name: str) -> TaskRunner | None:
+    def get(self, name: str) -> TaskRunner | None:
         """Get a runner by name."""
-        cls.register_defaults()
-        return cls._runners.get(name)
+        return self._runners.get(name)
 
-    @classmethod
-    def get_all(cls) -> dict[str, TaskRunner]:
+    def get_all(self) -> dict[str, TaskRunner]:
         """Get all registered runners."""
-        cls.register_defaults()
-        return cls._runners.copy()
+        return self._runners.copy()
 
-    @classmethod
-    def get_available(cls) -> list[TaskRunner]:
+    def get_available(self) -> list[TaskRunner]:
         """Get all available (installed) runners."""
-        cls.register_defaults()
-        return [r for r in cls._runners.values() if r.is_available()]
+        return [r for r in self._runners.values() if r.is_available()]
 
     @classmethod
-    def register_defaults(cls) -> None:
-        """Initialize default runners if not already done."""
-        if not cls._initialized:
-            cls.register(PytestRunner)
-            cls.register(RuffRunner)
-            cls.register(MypyRunner)
-            cls._initialized = True
+    def _default_entries(cls) -> tuple[type[TaskRunner], ...]:
+        """The complete in-package built-in set, declared exactly once."""
+        return (
+            PytestRunner,
+            RuffRunner,
+            MypyRunner,
+        )
+
+    @classmethod
+    def with_defaults(cls) -> TaskRunnerRegistry:
+        """Return an instance populated with the built-in runners."""
+        registry = cls()
+        for entry in cls._default_entries():
+            registry.register(entry)
+        return registry
 
 
 __all__ = [

@@ -88,23 +88,26 @@ class MiddlewareAdapterRegistry:
         self._adapters: list[_MiddlewareAdapterProtocol] = []
 
     @classmethod
-    def with_defaults(cls) -> MiddlewareAdapterRegistry:
-        """Return a registry populated with the built-in adapters.
+    def _default_entries(cls) -> dict[str, _MiddlewareAdapterProtocol]:
+        """Declare the built-in middleware adapters, most specific first."""
+        return {
+            "starlette": _StarletteMiddlewareAdapter(),
+            "di_scope": _DIScopeMiddlewareAdapter(),
+            "http": _HTTPMiddlewareAdapterBase(),
+            "tuple": _TupleMiddlewareAdapter(),
+        }
 
-        Returns:
-            A :class:`MiddlewareAdapterRegistry` pre-registered with
-            Starlette, DIScope, HTTP, and Tuple adapters.
+    @classmethod
+    def with_defaults(cls) -> MiddlewareAdapterRegistry:
+        """Create a registry pre-populated with the built-in adapters.
+
+        Default order matters: more specific adapters register first so
+        custom adapters (inserted at the head) take precedence.
         """
         registry = cls()
-        registry._register_defaults()
+        for adapter in cls._default_entries().values():
+            registry.add_adapter(adapter)
         return registry
-
-    def _register_defaults(self) -> None:
-        # Default order matters: more specific adapters first
-        self.add_adapter(_StarletteMiddlewareAdapter())
-        self.add_adapter(_DIScopeMiddlewareAdapter())
-        self.add_adapter(_HTTPMiddlewareAdapterBase())
-        self.add_adapter(_TupleMiddlewareAdapter())
 
     def add_adapter(self, adapter: _MiddlewareAdapterProtocol) -> None:
         """Add a custom middleware adapter."""

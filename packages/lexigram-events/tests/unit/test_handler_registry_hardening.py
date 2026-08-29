@@ -35,29 +35,29 @@ class SampleEvent(Event):
 
 
 class TestHandlerRegistryWithDefaults:
-    """Tests for HandlerRegistry.with_defaults() classmethod."""
+    """Tests for HandlerRegistry() classmethod."""
 
     def test_with_defaults_returns_handler_registry(self) -> None:
         """with_defaults() should return a HandlerRegistry instance."""
-        registry = HandlerRegistry.with_defaults()
+        registry = HandlerRegistry()
         assert isinstance(registry, HandlerRegistry)
 
     def test_with_defaults_creates_fresh_instance(self) -> None:
         """with_defaults() should create separate instances."""
-        r1 = HandlerRegistry.with_defaults()
-        r2 = HandlerRegistry.with_defaults()
+        r1 = HandlerRegistry()
+        r2 = HandlerRegistry()
         assert r1 is not r2
 
     def test_with_defaults_creates_empty_registry(self) -> None:
         """with_defaults() should create a registry with no handlers."""
-        registry = HandlerRegistry.with_defaults()
+        registry = HandlerRegistry()
         assert registry.get_command_handlers() == {}
         assert registry.get_query_handlers() == {}
         assert registry.get_event_handlers() == {}
 
     def test_with_defaults_registry_can_register_handlers(self) -> None:
         """Registries from with_defaults() should accept handler registration."""
-        registry = HandlerRegistry.with_defaults()
+        registry = HandlerRegistry()
 
         def dummy_handler(cmd: SampleCommand) -> None:
             pass
@@ -190,9 +190,9 @@ class TestIntegration:
         assert len(get_all_handlers("command")) == 1
 
     def test_handler_registry_with_defaults_independent(self) -> None:
-        """HandlerRegistry.with_defaults() instances should be independent."""
-        r1 = HandlerRegistry.with_defaults()
-        r2 = HandlerRegistry.with_defaults()
+        """HandlerRegistry() instances should be independent."""
+        r1 = HandlerRegistry()
+        r2 = HandlerRegistry()
 
         def handler1(cmd: SampleCommand) -> None:
             pass

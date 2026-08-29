@@ -2,42 +2,51 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
-from lexigram.codegen.base import GenerationResult, GeneratorBase
+from lexigram.codegen import GenerationResult, GeneratorBase
+from lexigram.contracts.cli.generators import resolve_options
 
 
 class FeatureFlagGenerator(GeneratorBase):
-    """Generator for feature flag definitions."""
+    """Generate a feature flag definition."""
 
     name = "feature_flag"
     description = "Generate a feature flag definition"
     default_output_dir = "src/features"
 
-    def generate(self, name: str, **options: Any) -> GenerationResult:
+    def __init__(self, output_dir: str | Path = "src/features") -> None:
+        super().__init__(output_dir=output_dir)
+
+    def generate(
+        self,
+        name: str,
+        *,
+        dry_run: bool = False,
+        force: bool = False,
+        **options: Any,
+    ) -> GenerationResult:
         """Generate a feature flag definition module.
 
         Args:
-            name: Flag name (e.g. ``"NewCheckout"``).
-            **options: ``dry_run`` previews without writing; ``force``
-                overwrites an existing file.
+            name: Flag name (e.g. ``"NewCheckout"`` or ``"new_checkout"``).
+            dry_run: Compute output paths without writing.
+            force: Overwrite an existing file.
 
         Returns:
-            A :class:`GenerationResult` describing the written file.
+            ``GenerationResult`` with created/skipped/overwritten paths.
         """
         flag_name = self._to_pascal_case(name)
         flag_snake = self._to_snake_case(name)
-        context = {
+        context: dict[str, Any] = {
             "flag_name": flag_name,
             "flag_name_snake": flag_snake,
-            "package_name": self._get_package_name(self.output_dir),
         }
         content = self.render_template("feature_flag.py.jinja2", context)
         file_path = self.output_dir / f"{flag_snake}_flag.py"
-        if file_path.exists() and not options.get("force", False):
-            return GenerationResult()
-        if options.get("dry_run", False):
-            return GenerationResult()
-        self.output_dir.mkdir(parents=True, exist_ok=True)
-        file_path.write_text(content, encoding="utf-8")
-        return GenerationResult(files_created=[file_path])
+        self.stage(file_path, content)
+        return self.finalize(self.commit(resolve_options(dry_run=dry_run, force=force)))
+
+
+__all__ = ["FeatureFlagGenerator"]

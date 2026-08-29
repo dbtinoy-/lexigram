@@ -1,49 +1,69 @@
+"""Query handler generator (CQRS read side)."""
+
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
-from lexigram.codegen import FieldSpec, parse_fields
-from lexigram.codegen.base import GenerationResult, GeneratorBase
+from lexigram.codegen import FieldSpec, GenerationResult, GeneratorBase, parse_fields
+from lexigram.contracts.cli.generators import resolve_options
 
 
 class QueryHandlerGenerator(GeneratorBase):
+    """Generate a query handler (CQRS).
+
+    The emitted module follows the convention demonstrated in
+    ``demos/event-driven-orders`` read side: frozen ``kw_only`` query
+    dataclasses plus handlers that never mutate state.
+    """
+
     name = "query"
     description = "Generate a query handler (CQRS)"
     default_output_dir = "src/queries"
 
+    def __init__(self, output_dir: str | Path = "src/queries") -> None:
+        super().__init__(output_dir=output_dir)
+
     def generate(
         self,
         name: str,
+        *,
         fields_str: str | None = None,
+        dry_run: bool = False,
+        force: bool = False,
         **options: Any,
     ) -> GenerationResult:
-        fields: list[FieldSpec] = []
-        if fields_str:
-            fields = parse_fields(fields_str)
-        else:
-            fields = [FieldSpec(name="id", type="str", required=False)]
+        """Generate a query handler module.
 
-        output_path = self.output_dir
+        Args:
+            name: Query name, e.g. ``"GetUser"`` or ``"get_user"``.
+            fields_str: Optional ``name:type`` field list in parser syntax.
+            dry_run: Compute output paths without writing.
+            force: Overwrite an existing file.
+
+        Returns:
+            ``GenerationResult`` with created/skipped/overwritten paths.
+        """
+        fields: list[FieldSpec] = (
+            parse_fields(fields_str)
+            if fields_str
+            else [FieldSpec(name="id", type="str", required=False)]
+        )
         query_name = self._to_pascal_case(name)
-        query_filename = f"{self._to_snake_case(name)}.py"
+        query_snake = self._to_snake_case(name)
 
-        context = {
+        context: dict[str, Any] = {
             "query_name": query_name,
-            "query_name_snake": self._to_snake_case(name),
-            "package_name": self._get_package_name(self.output_dir),
-            "fields": fields,
+            "query_name_snake": query_snake,
+            "fields": [
+                {"name": field.name, "type": field.type, "required": field.required}
+                for field in fields
+            ],
         }
-
         content = self.render_template("query_handler.py.jinja2", context)
+        file_path = self.output_dir / f"{query_snake}.py"
+        self.stage(file_path, content)
+        return self.finalize(self.commit(resolve_options(dry_run=dry_run, force=force)))
 
-        file_path = output_path / query_filename
-        if file_path.exists() and not options.get("force", False):
-            return GenerationResult()
 
-        if not options.get("dry_run", False):
-            output_path.mkdir(parents=True, exist_ok=True)
-            with open(file_path, "w") as f:
-                f.write(content)
-            return GenerationResult(files_created=[file_path])
-
-        return GenerationResult()
+__all__ = ["QueryHandlerGenerator"]

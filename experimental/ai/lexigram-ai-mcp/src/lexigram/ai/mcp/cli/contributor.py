@@ -31,7 +31,7 @@ class McpCliContributor:
                 description="Generate a standalone MCP server script with module-level decorators",
                 contributor="mcp",
                 generator_path="lexigram.ai.mcp.cli.generators.mcp_server:MCPServerGenerator",
-                default_output_dir="src/mcp",
+                default_output_dir="src",
             ),
         ]
 

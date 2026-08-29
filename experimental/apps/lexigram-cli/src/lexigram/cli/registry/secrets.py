@@ -154,7 +154,6 @@ class SecretsRegistry:
 
     _backend: SecretBackend = EnvVarSecretBackend()
     _secret_definitions: dict[str, SecretInfo] = {}
-    _initialized: bool = False
 
     @classmethod
     def set_backend(cls, backend: SecretBackend) -> None:

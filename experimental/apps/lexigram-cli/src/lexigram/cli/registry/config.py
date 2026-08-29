@@ -338,7 +338,6 @@ class ConfigValidatorRegistry:
 
     def __init__(self) -> None:
         self._validators: list[type[ConfigValidator]] = []
-        self._initialized: bool = False
 
     def register(self, validator: type[ConfigValidator]) -> None:
         """Register a validator class."""
@@ -346,19 +345,27 @@ class ConfigValidatorRegistry:
 
     def get_all_validators(self) -> list[type[ConfigValidator]]:
         """Get all registered validator classes."""
-        self.register_defaults()
         return self._validators.copy()
 
-    def register_defaults(self) -> None:
-        """Initialize default validators if not already done."""
-        if not self._initialized:
-            self.register(RequiredFieldsValidator)
-            self.register(SecretValidationValidator)
-            self.register(ProductionValidator)
-            self.register(DatabaseConfigValidator)
-            self.register(AuthConfigValidator)
-            self.register(EnvironmentVariablesValidator)
-            self._initialized = True
+    @classmethod
+    def _default_entries(cls) -> tuple[type[ConfigValidator], ...]:
+        """The complete in-package built-in set, declared exactly once."""
+        return (
+            RequiredFieldsValidator,
+            SecretValidationValidator,
+            ProductionValidator,
+            DatabaseConfigValidator,
+            AuthConfigValidator,
+            EnvironmentVariablesValidator,
+        )
+
+    @classmethod
+    def with_defaults(cls) -> ConfigValidatorRegistry:
+        """Return an instance populated with the built-in validators."""
+        registry = cls()
+        for entry in cls._default_entries():
+            registry.register(entry)
+        return registry
 
 
 def validate_config(
@@ -366,7 +373,7 @@ def validate_config(
     env: str = "development",
 ) -> dict[str, list[ValidationIssue]]:
     """Run all validators and return issues organized by validator name."""
-    validators = ConfigValidatorRegistry().get_all_validators()
+    validators = ConfigValidatorRegistry.with_defaults().get_all_validators()
     results: dict[str, list[ValidationIssue]] = {}
 
     for validator_class in validators:

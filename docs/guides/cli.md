@@ -33,20 +33,28 @@ Global flags work on every subcommand:
 
 ## 2. Scaffolding a New Project
 
-`lexigram new project` renders a project template from `lexigram-cli/templates/project/`:
+`lexigram new project` renders a project from the canonical scaffold
+(`lexigram/cli/scaffold.py`) — every template is generated from the same
+generator→path map as `lexigram gen`:
 
 ```bash
-lexigram new project my-app                          # default template: web-api
-lexigram new project my-app --template api           # JSON API only
-lexigram new project my-app --template full          # web + db + auth + cache
-lexigram new project my-app --interactive            # prompt for template/db/auth
+lexigram new project my-app --structure structured   # default: component packages
+lexigram new project my-app --template api --structure minimal
+lexigram new project my-platform --template full --structure modular
 ```
 
 | Flag | Default | Notes |
 | --- | --- | --- |
-| `--template`, `-t` | `web-api` | one of `api`, `web-api`, `full` |
+| `--template`, `-t` | `web-api` | one of `minimal`, `api`, `web-api`, `graphql`, `worker`, `full`, `fullstack` |
+| `--structure`, `-s` | `structured` | `minimal` (single package), `structured` (generator-native), `modular` (bounded contexts) |
 | `--directory`, `-d` | `.` | parent directory for the new project |
-| `--interactive`, `-i` | `false` | prompts for template, database (`sqlite`/`postgres`/`none`), and auth (`none`/`jwt`) |
+| `--interactive`, `-i` | `false` | prompts for the template |
+
+For modular projects, `lexigram new module <name>` creates a feature module
+(`protocols.py`, `provider.py`, `services.py`) and registers it with the
+composition root; `lexigram gen controller users --module auth` writes
+module-local components (`auth/controllers/users_controller.py`) while
+cross-cutting generators write into `src/<app>/shared/`.
 
 To scaffold a reusable extension package instead of an application:
 

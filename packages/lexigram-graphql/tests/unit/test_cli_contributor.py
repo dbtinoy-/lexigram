@@ -18,7 +18,7 @@ class TestGraphQLCliContributor:
         assert gen.name == "dataloader"
         assert gen.title == "Generate Dataloader"
         assert gen.contributor == "graphql"
-        assert gen.default_output_dir == "src/graphql/dataloaders"
+        assert gen.default_output_dir == "src/schema/dataloaders"
         assert (
             gen.generator_path
             == "lexigram.graphql.cli.generators.dataloader:DataLoaderGenerator"

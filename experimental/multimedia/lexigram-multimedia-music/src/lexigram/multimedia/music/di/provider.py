@@ -45,7 +45,9 @@ class AudioMusicProvider(Provider):
         super().__init__(name="music")
         self._requested_config = config
         self._config = config
-        self._backend_registry = backend_registry or MusicBackendRegistry.with_defaults()
+        self._backend_registry = (
+            backend_registry or MusicBackendRegistry.with_defaults()
+        )
         self._backend: MusicProvider | None = None
         self._task_handler: MusicGenerationTask | None = None
         self._secret_store: AsyncSecretStoreProtocol | None = None
@@ -64,7 +66,9 @@ class AudioMusicProvider(Provider):
 
         self._secret_store = await resolve_optional(container, AsyncSecretStoreProtocol)
         self._retry = await resolve_optional(container, RetryPolicyProtocol)
-        self._circuit_breaker = await resolve_optional(container, CircuitBreakerProtocol)
+        self._circuit_breaker = await resolve_optional(
+            container, CircuitBreakerProtocol
+        )
 
         self._backend = cast(
             "MusicProvider",
@@ -97,7 +101,9 @@ class AudioMusicProvider(Provider):
             "stable-audio-open": self._config.stable_audio_open_base_url,
         }
         if self._config.backend in http_backends:
-            status = await self._check_http_health(http_backends[self._config.backend], timeout)
+            status = await self._check_http_health(
+                http_backends[self._config.backend], timeout
+            )
             return HealthCheckResult(component=self.name, status=status)
 
         return HealthCheckResult(component=self.name, status=HealthStatus.HEALTHY)
@@ -107,9 +113,15 @@ class AudioMusicProvider(Provider):
 
         try:
             async with (
-                aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=timeout)) as session,
+                aiohttp.ClientSession(
+                    timeout=aiohttp.ClientTimeout(total=timeout)
+                ) as session,
                 session.get(f"{base_url}/health") as resp,
             ):
-                return HealthStatus.HEALTHY if resp.status == 200 else HealthStatus.DEGRADED
+                return (
+                    HealthStatus.HEALTHY
+                    if resp.status == 200
+                    else HealthStatus.DEGRADED
+                )
         except (TimeoutError, OSError, aiohttp.ClientError):
             return HealthStatus.DEGRADED
