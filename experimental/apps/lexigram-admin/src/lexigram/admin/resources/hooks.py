@@ -46,11 +46,25 @@ class ResourceHooksMixin:
         Override in subclasses to add custom validation logic.
         """
         from lexigram.admin.exceptions import AdminValidationError
-        from lexigram.admin.resources.form_coercion import _coerce_form_data
+        from lexigram.admin.resources.form_guard import (
+            PROTECTED_FORM_FIELDS,
+            sanitize_form_data,
+        )
         from lexigram.contracts.exceptions.domain import FieldError
         from lexigram.result import Err, Ok
 
-        coerced = _coerce_form_data(data, self.model)
+        # Mass-assignment protection: strip framework-managed columns (and
+        # unknown keys when a model is bound) before coercion + validation.
+        coerced = sanitize_form_data(
+            data,
+            model=self.model,
+            protected_fields=getattr(
+                self, "protected_form_fields", PROTECTED_FORM_FIELDS
+            ),
+            allow_extra_fields=bool(
+                getattr(self, "form_allow_extra_fields", False)
+            ),
+        )
         if self.model is None:
             return Ok(coerced)
 

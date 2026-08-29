@@ -81,7 +81,7 @@ class TestClusterConstruction:
 
 
 class TestResourceCluster:
-    """Resource.cluster attribute and backward compatibility with group."""
+    """Resource.cluster attribute (``group`` alias retired)."""
 
     def test_resource_has_cluster_attribute(self) -> None:
         assert hasattr(Resource, "cluster")
@@ -89,26 +89,11 @@ class TestResourceCluster:
     def test_cluster_defaults_to_none(self) -> None:
         assert Resource.cluster is None
 
-    def test_resource_has_group_attribute(self) -> None:
-        assert hasattr(Resource, "group")
-
-    def test_group_defaults_to_none(self) -> None:
-        assert Resource.group is None
+    def test_resource_has_no_group_alias(self) -> None:
+        assert not hasattr(Resource, "group")
 
     def test_cluster_can_be_set_at_definition_time(self) -> None:
         class ClusteredResource(Resource):
             cluster = "content"
 
         assert ClusteredResource.cluster == "content"
-
-    def test_group_is_synced_from_cluster(self) -> None:
-        class ClusteredResource(Resource):
-            cluster = "content"
-
-        assert ClusteredResource.group == "content"
-
-    def test_cluster_is_synced_from_group(self) -> None:
-        class GroupedResource(Resource):
-            group = "users"
-
-        assert GroupedResource.cluster == "users"

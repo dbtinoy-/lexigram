@@ -15,7 +15,24 @@ from starlette.responses import HTMLResponse
 from lexigram.admin.resources.form_coercion import (
     _validation_errors_to_dict,
 )
+from lexigram.admin.resources.urls import (
+    admin_prefix_from_request,
+    admin_url,
+)
 from lexigram.logging import get_logger
+
+__all__ = [
+    "CloneActionHandler",
+    "CreateActionHandler",
+    "DeleteActionHandler",
+    "DetailActionHandler",
+    "EditActionHandler",
+    "ImportActionHandler",
+    "ListActionHandler",
+    "PurgeActionHandler",
+    "ResourceActionHandler",
+    "RestoreActionHandler",
+]
 
 logger = get_logger(__name__)
 
@@ -91,15 +108,20 @@ class CreateActionHandler:
             record = await resource._data_source.create(validated)
             await resource.after_create(record)
 
-            resource_prefix = request.scope.get(
-                "admin_resource_prefix", resource.name or ""
-            )
+            from starlette.responses import RedirectResponse
 
-            from starlette.responses import HTMLResponse
-
-            return HTMLResponse(
-                f'<html><head><meta http-equiv="refresh" content="0;url=/admin/{resource_prefix}"></head><body></body></html>'
+            url = admin_url(
+                admin_prefix_from_request(request),
+                resource.name or "",
             )
+            if request.headers.get("HX-Request") == "true":
+                response = HTMLResponse("")
+                response.headers["HX-Redirect"] = url
+                response.headers["HX-Trigger"] = (
+                    '{"show-toast":{"message":"Created successfully","type":"success"}}'
+                )
+                return response
+            return RedirectResponse(url=url, status_code=302)
 
         return await self.form_renderer.render_create(request, resource)
 
@@ -148,13 +170,21 @@ class EditActionHandler:
             updated_record = await resource._data_source.update(item_id, validated)
             await resource.after_update(updated_record)
 
-            resource_prefix = request.scope.get(
-                "admin_resource_prefix", resource.name or ""
-            )
+            from starlette.responses import RedirectResponse
 
-            return HTMLResponse(
-                f'<html><head><meta http-equiv="refresh" content="0;url=/admin/{resource_prefix}"></head><body></body></html>'
+            url = admin_url(
+                admin_prefix_from_request(request),
+                resource.name or "",
+                f"{item_id}",
             )
+            if request.headers.get("HX-Request") == "true":
+                response = HTMLResponse("")
+                response.headers["HX-Redirect"] = url
+                response.headers["HX-Trigger"] = (
+                    '{"show-toast":{"message":"Updated successfully","type":"success"}}'
+                )
+                return response
+            return RedirectResponse(url=url, status_code=302)
 
         return await self.form_renderer.render_edit(request, resource, item_id)
 
@@ -179,15 +209,14 @@ class CloneActionHandler:
 
         new_record = await resource.duplicate(item_id)
         new_id = str(getattr(new_record, "id", "?"))
-        resource_prefix = request.scope.get(
-            "admin_resource_prefix", resource.name or ""
-        )
         from starlette.responses import RedirectResponse
 
-        return RedirectResponse(
-            url=f"/admin/{resource_prefix}/{new_id}/edit",
-            status_code=302,
+        url = admin_url(
+            admin_prefix_from_request(request),
+            resource.name or "",
+            f"{new_id}/edit",
         )
+        return RedirectResponse(url=url, status_code=302)
 
 
 class RestoreActionHandler:
@@ -210,15 +239,14 @@ class RestoreActionHandler:
 
         restored = await resource.restore(item_id)
         new_id = str(getattr(restored, "id", "?"))
-        resource_prefix = request.scope.get(
-            "admin_resource_prefix", resource.name or ""
-        )
         from starlette.responses import RedirectResponse
 
-        return RedirectResponse(
-            url=f"/admin/{resource_prefix}/{new_id}/edit",
-            status_code=302,
+        url = admin_url(
+            admin_prefix_from_request(request),
+            resource.name or "",
+            f"{new_id}/edit",
         )
+        return RedirectResponse(url=url, status_code=302)
 
 
 class PurgeActionHandler:
@@ -240,15 +268,13 @@ class PurgeActionHandler:
             )
 
         await resource.purge(item_id)
-        resource_prefix = request.scope.get(
-            "admin_resource_prefix", resource.name or ""
-        )
         from starlette.responses import RedirectResponse
 
-        return RedirectResponse(
-            url=f"/admin/{resource_prefix}",
-            status_code=302,
+        url = admin_url(
+            admin_prefix_from_request(request),
+            resource.name or "",
         )
+        return RedirectResponse(url=url, status_code=302)
 
 
 class ImportActionHandler:
@@ -357,8 +383,11 @@ class DeleteActionHandler:
             except Exception:  # noqa: S110 — intentional best-effort fallback
                 pass
 
-        resource_prefix = request.scope.get("admin_resource_prefix", "")
-        delete_url = f"/admin/{resource_prefix}/{item_id}/delete"
+        delete_url = admin_url(
+            admin_prefix_from_request(request),
+            resource.name or "",
+            f"{item_id}/delete",
+        )
 
         from lexigram.admin.ui.organisms.admin_slide_over import render_delete_confirm
 
@@ -388,8 +417,7 @@ class DeleteActionHandler:
                     )
                     return response
                 return HTMLResponse(
-                    '<html><head><meta http-equiv="refresh" content="0;url=/admin/"></head>'
-                    "<body>This record cannot be deleted</body></html>",
+                    "<body>This record cannot be deleted</body>",
                     status_code=409,
                 )
 
@@ -402,18 +430,21 @@ class DeleteActionHandler:
                 await after_delete(item_id)
 
             is_htmx = request.headers.get("HX-Request") == "true"
-            resource_prefix = request.scope.get("admin_resource_prefix", "")
+            url = admin_url(
+                admin_prefix_from_request(request),
+                resource.name or "",
+            )
 
             if is_htmx:
                 response = HTMLResponse("")
                 response.headers["HX-Trigger"] = (
                     '{"refresh-list":true,"show-toast":{"message":"Deleted successfully","type":"success"}}'
                 )
-                response.headers["HX-Redirect"] = f"/admin/{resource_prefix}"
+                response.headers["HX-Redirect"] = url
                 return response
 
             return HTMLResponse(
-                f'<html><head><meta http-equiv="refresh" content="0;url=/admin/{resource_prefix}"></head><body></body></html>'
+                f'<html><head><meta http-equiv="refresh" content="0;url={url}"></head><body></body></html>'
             )
 
         return HTMLResponse("Delete not supported", status_code=400)

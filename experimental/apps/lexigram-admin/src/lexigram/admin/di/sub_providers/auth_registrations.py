@@ -93,8 +93,8 @@ def register_core_services(
     container.singleton(SessionRepositoryProtocol, AdminSessionSqlRepository)
     container.singleton(AdminSessionManager, AdminSessionManager)
 
-    # Guard config — pre-constructed with defaults
-    container.singleton(GuardConfig, GuardConfig())
+    # Guard config — pre-constructed with the configured admin prefix
+    container.singleton(GuardConfig, GuardConfig(admin_prefix=config.prefix))
 
     container.singleton(AdminInputSanitizer, AdminInputSanitizer)
     container.singleton(AdminSecurityHeaders, AdminSecurityHeaders)

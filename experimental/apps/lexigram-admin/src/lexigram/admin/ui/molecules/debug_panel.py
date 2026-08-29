@@ -80,7 +80,7 @@ class DebugPanel(Component):
                 el(
                     "button",
                     "Clear Stats",
-                    hx_post="/admin//debug/clear",
+                    hx_post="/admin/debug/clear",
                     class_="mt-6 w-full py-2 bg-muted hover:bg-muted rounded text-sm transition-colors text-foreground",
                 ),
                 class_="p-6 h-full overflow-y-auto",

@@ -16,12 +16,24 @@ from typing import Any
 
 from lexigram.admin.clusters import ClusterRegistry
 from lexigram.admin.navigation.types import MenuItem
+from lexigram.admin.resources.urls import (
+    DEFAULT_ADMIN_PREFIX,
+    admin_prefix_from_request,
+)
 
 __all__ = ["NavigationManager"]
 
-_MENU_PROFILE = MenuItem(label="Profile", href="/admin/profile", icon="user-circle")
-_MENU_SETTINGS = MenuItem(label="Settings", href="/admin/settings", icon="settings")
-_MENU_PLUGINS = MenuItem(label="Plugins", href="/admin/plugins", icon="plugins")
+
+def _menu_entry(
+    label: str,
+    prefix: str,
+    suffix: str,
+    icon: str,
+) -> MenuItem:
+    """Build a user-menu entry under the configured admin prefix."""
+    base = (prefix or DEFAULT_ADMIN_PREFIX).rstrip("/")
+    href = f"{base}/{suffix.lstrip('/')}"
+    return MenuItem(label=label, href=href, icon=icon)
 
 
 class NavigationManager:
@@ -235,16 +247,20 @@ class NavigationManager:
         Returns:
             Shell-compatible menu entry dicts (label, href, icon).
         """
-        entries: list[MenuItem] = [_MENU_PROFILE]
+        prefix = admin_prefix_from_request(self._request)
+        entries: list[MenuItem] = [
+            _menu_entry("Profile", prefix, "profile", "user-circle")
+        ]
         entries.extend(
-            MenuItem(
-                label=cluster.label,
-                href=f"/admin/{cluster.slug}",
-                icon=cluster.icon or "box",
+            _menu_entry(
+                cluster.label,
+                prefix,
+                cluster.slug,
+                cluster.icon or "box",
             )
             for cluster in self._cluster_registry.all()
         )
         if include_plugins:
-            entries.append(_MENU_PLUGINS)
-        entries.append(_MENU_SETTINGS)
+            entries.append(_menu_entry("Plugins", prefix, "plugins", "plugins"))
+        entries.append(_menu_entry("Settings", prefix, "settings", "settings"))
         return [entry.to_dict() for entry in entries]

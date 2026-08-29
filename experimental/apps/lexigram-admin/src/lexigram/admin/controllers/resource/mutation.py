@@ -9,6 +9,7 @@ from starlette.requests import Request
 from starlette.responses import HTMLResponse, RedirectResponse, Response
 
 from lexigram.admin.exceptions import AdminValidationError, NotFoundError
+from lexigram.admin.resources.form_guard import PROTECTED_FORM_FIELDS
 from lexigram.admin.state.context import AdminContextManager
 
 if TYPE_CHECKING:
@@ -87,9 +88,7 @@ class ResourceMutationMixin:
                 status_code=302,
             )
 
-    _PROTECTED_FIELDS: ClassVar[frozenset[str]] = frozenset(
-        {"id", "tenant_id", "created_at", "updated_at"}
-    )
+    _PROTECTED_FIELDS: ClassVar[frozenset[str]] = PROTECTED_FORM_FIELDS
 
     @classmethod
     def _model_type(cls) -> type | None:
@@ -103,27 +102,19 @@ class ResourceMutationMixin:
 
     @classmethod
     def _validated_model_fields(cls, data: dict[str, Any]) -> dict[str, Any]:
-        """Coerce HTML form strings against the model and drop unknown keys.
+        """Coerce HTML form strings and guard against mass assignment.
 
-        Controllers without a bound model keep the historical raw
-        pass-through so untyped deployments are unaffected.
+        Delegates to the shared :func:`lexigram.admin.resources.form_guard
+        .sanitize_form_data` — the same protection the live handler
+        pipeline applies — so both paths cannot drift.
         """
-        from lexigram.admin.resources.form_coercion import _coerce_form_data
+        from lexigram.admin.resources.form_guard import sanitize_form_data
 
-        model = cls._model_type()
-        cleaned = dict(_coerce_form_data(data, model)) if model else dict(data)
-        if not model:
-            return cleaned
-        fields = getattr(model, "model_fields", None) or getattr(
-            model, "__annotations__", {}
+        return sanitize_form_data(
+            data,
+            model=cls._model_type(),
+            protected_fields=cls._PROTECTED_FIELDS,
         )
-        allowed = set()
-        for k, ann in fields.items():
-            if k.startswith("_") or str(ann).startswith("ClassVar"):
-                continue
-            allowed.add(k)
-        allowed -= cls._PROTECTED_FIELDS
-        return {k: v for k, v in cleaned.items() if k in allowed}
 
     def validate_create(self, data: dict[str, Any]) -> dict[str, Any]:
         """Coerce form values and keep only declared model fields.

@@ -113,6 +113,41 @@ async def test_public_path_skips_authorization() -> None:
 
 
 @pytest.mark.asyncio
+async def test_public_paths_follow_configured_prefix() -> None:
+    """Custom mount prefixes skip the same public paths."""
+    mw = AdminAuthorizationMiddleware(
+        app=None, authorizer=DenyAll(), admin_prefix="/console"
+    )
+
+    for path in (
+        "/console/login",
+        "/console/static/css/app.css",
+        "/console/health",
+        "/console/password-reset",
+    ):
+        request = _make_request(path=path)
+        resp = await mw.dispatch(request, _ok_call_next)
+        assert resp.status_code == 200
+
+    # The default-prefix public paths no longer bypass under /console.
+    request = _make_request(path="/admin/login")
+    resp = await mw.dispatch(request, _ok_call_next)
+    assert resp.status_code == 302
+
+
+@pytest.mark.asyncio
+async def test_login_redirect_uses_configured_prefix() -> None:
+    """Redirects point at the configured mount's login page."""
+    mw = AdminAuthorizationMiddleware(
+        app=None, authorizer=DenyAll(), admin_prefix="/console"
+    )
+    request = _make_request(path="/console/users")
+    resp = mw._unauthenticated(request)
+    assert resp.status_code == 302
+    assert resp.headers.get("location", "").startswith("/console/login?next=")
+
+
+@pytest.mark.asyncio
 async def test_anonymous_htmx_returns_hx_redirect() -> None:
     """HTMX requests get HX-Redirect so the login page replaces the page."""
     mw = AdminAuthorizationMiddleware(app=None, authorizer=DenyAll())

@@ -83,7 +83,7 @@ class NavItemBuilder:
         for resource_name, resource_instance in self._resolved_resources.items():
             if not getattr(resource_instance, "visible_in_sidebar", True):
                 continue
-            group_key = getattr(resource_instance, "group", None) or "default"
+            group_key = getattr(resource_instance, "cluster", None) or "default"
             label = (
                 getattr(resource_instance, "label", None)
                 or resource_name.replace("_", " ").title()

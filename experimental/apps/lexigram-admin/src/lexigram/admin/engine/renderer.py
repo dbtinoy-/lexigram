@@ -126,11 +126,13 @@ class AdminRenderer:
             HTMLResponse with rendered page
         """
         from lexigram.admin.navigation.manager import NavigationManager
+        from lexigram.admin.resources.urls import admin_prefix_from_request
         from lexigram.admin.state.context import AdminContextManager
         from lexigram.admin.ui.templates.shell import AdminShell
         from lexigram.ui.core.base import render_to_string
 
         user = getattr(request.state, "user", None) if request else None
+        admin_prefix = admin_prefix_from_request(request) if request else "/admin"
 
         nav_items, system_menu_items, _ = resolve_admin_nav(request)
 
@@ -194,6 +196,7 @@ class AdminRenderer:
             impersonation_active=impersonation_active,
             impersonation_target_id=impersonation_target_id,
             csrf_token=csrf_token or "",
+            admin_prefix=admin_prefix,
         )
 
         # Prepare templates

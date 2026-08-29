@@ -49,21 +49,30 @@ logger = get_logger(__name__)
 class GuardConfig:
     """Configuration for authentication guards."""
 
-    login_url: str = "/admin/login"
-    logout_url: str = "/admin/logout"
-    exempt_paths: tuple[str, ...] = (
-        "/admin/login",
-        "/admin/static",
-        "/admin/health",
-        # Standalone pre-session flows (own CSRF + guest handling):
-        "/admin/setup",
-        "/admin/verify-email",
-        "/admin/password-reset",
-    )
-    # Whether to accept Authorization: Bearer <token> for admin APIs.
-    # Default: False to enforce strict cookie-based admin sessions.
+    admin_prefix: str = "/admin"
     allow_bearer_tokens: bool = False
     htmx_redirect_header: str = "HX-Redirect"
+
+    @property
+    def login_url(self) -> str:
+        return f"{self.admin_prefix.rstrip('/')}/login"
+
+    @property
+    def logout_url(self) -> str:
+        return f"{self.admin_prefix.rstrip('/')}/logout"
+
+    @property
+    def exempt_paths(self) -> tuple[str, ...]:
+        prefix = self.admin_prefix.rstrip("/")
+        return (
+            f"{prefix}/login",
+            f"{prefix}/static",
+            f"{prefix}/health",
+            # Standalone pre-session flows (own CSRF + guest handling):
+            f"{prefix}/setup",
+            f"{prefix}/verify-email",
+            f"{prefix}/password-reset",
+        )
 
 
 @inject

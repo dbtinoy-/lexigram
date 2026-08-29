@@ -257,6 +257,14 @@ class AdminMountContributorsMixin:
         if admin_app is not None and hasattr(admin_app, "state"):
             admin_app.state.nav_builder = ctx.nav_builder
 
+        # Record the configured admin prefix on both apps so URL builders and
+        # shell components can resolve it without hard-coding "/admin".
+        admin_prefix = getattr(admin_app, "state", None) and getattr(
+            admin_app.state, "admin_prefix", None
+        )
+        if admin_prefix and hasattr(app, "state"):
+            app.state.admin_prefix = admin_prefix
+
         # Build NavigationAssembler contributions and expose on app state.
         assembler_nav_items: list[dict[str, object]] = []
         assembler_groups: dict[str, list[Any]] | None = None

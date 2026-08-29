@@ -27,7 +27,11 @@ class AdminErrorMiddleware(BaseHTTPMiddleware):
     """
 
     def __init__(
-        self, app, debug: bool = True, login_url: str = "/admin/login"
+        self,
+        app,
+        debug: bool = True,
+        login_url: str | None = None,
+        admin_prefix: str | None = None,
     ) -> None:
         """Initialize error middleware.
 
@@ -35,10 +39,15 @@ class AdminErrorMiddleware(BaseHTTPMiddleware):
             app: ASGI application
             debug: Whether to show detailed error pages
             login_url: URL to redirect to for 401 Unauthorized
+            admin_prefix: Configured admin mount prefix (default ``/admin``);
+                used for the dashboard link on error pages.
         """
         super().__init__(app)
         self.debug = debug
-        self.login_url = login_url
+        self._admin_prefix = (
+            admin_prefix or "/admin"
+        ).rstrip("/")
+        self.login_url = login_url or f"{self._admin_prefix}/login"
 
     async def dispatch(self, request: Request, call_next) -> Any:
         """Dispatch method that wraps request processing and catches exceptions."""
@@ -238,7 +247,7 @@ class AdminErrorMiddleware(BaseHTTPMiddleware):
             message=message,
             icon=icon,
             action_text="Go to Dashboard",
-            action_url="/admin/",
+            action_url=f"{self._admin_prefix}/",
         )
 
         return HTMLResponse(html, status_code=status_code)

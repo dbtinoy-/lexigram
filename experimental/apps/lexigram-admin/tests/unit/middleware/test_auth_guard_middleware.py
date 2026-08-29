@@ -17,21 +17,31 @@ from starlette.routing import Route
 from lexigram.admin.middleware.auth_guard import AdminAuthGuardMiddleware
 
 
-def _make_app() -> Starlette:
+def _make_app(admin_prefix: str | None = None) -> Starlette:
     """Build an app wrapped in the auth guard with a dummy protected route."""
 
     async def widgets(request) -> PlainTextResponse:
         return PlainTextResponse("ok")
 
-    app = Starlette(routes=[Route("/admin/widgets", widgets)])
+    prefix = (admin_prefix or "/admin").rstrip("/")
+    app = Starlette(routes=[Route(f"{prefix}/widgets", widgets)])
     app.add_middleware(SessionMiddleware, secret_key="test-secret")
-    return AdminAuthGuardMiddleware(app)
+    return AdminAuthGuardMiddleware(app, admin_prefix=admin_prefix)
 
 
 async def _request(path: str, *, htmx: bool) -> httpx.Response:
+    return await _request_with_app(_make_app(), path, htmx=htmx)
+
+
+async def _request_with_app(
+    app: Starlette,
+    path: str,
+    *,
+    htmx: bool = False,
+) -> httpx.Response:
     headers = {"HX-Request": "true"} if htmx else {}
     async with httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=_make_app()),
+        transport=httpx.ASGITransport(app=app),
         base_url="http://testserver",
     ) as client:
         return await client.get(path, headers=headers)
@@ -44,6 +54,39 @@ async def test_htmx_request_gets_hx_redirect_to_login() -> None:
 
     assert resp.status_code == 200
     assert resp.headers.get("HX-Redirect") == "/admin/login?next=/admin/widgets"
+
+
+@pytest.mark.asyncio
+async def test_custom_prefix_redirects_to_custom_login() -> None:
+    """A configured mount prefix drives the login redirect target."""
+    headers = {"HX-Request": "true"}
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=_make_app(admin_prefix="/console")),
+        base_url="http://testserver",
+    ) as client:
+        resp = await client.get("/console/widgets", headers=headers)
+
+    assert resp.status_code == 200
+    assert resp.headers.get("HX-Redirect") == "/console/login?next=/console/widgets"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/console/login",
+        "/console/login/2fa",
+        "/console/verify-email",
+        "/console/password-reset/tok",
+        "/console/register",
+        "/console/setup",
+    ],
+)
+async def test_custom_prefix_public_routes_bypass_guard(path: str) -> None:
+    """Public routes under the custom prefix stay accessible."""
+    resp = await _request_with_app(_make_app(admin_prefix="/console"), path)
+
+    assert resp.status_code == 404  # harness has no route → guard let it through
 
 
 @pytest.mark.asyncio

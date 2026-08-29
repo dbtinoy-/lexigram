@@ -9,6 +9,7 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 
 from lexigram.admin.auth.protocols import AdminCsrfServiceProtocol
 from lexigram.admin.auth.types import AdminSecurityEventType
+from lexigram.admin.resources.urls import DEFAULT_ADMIN_PREFIX
 from lexigram.logging import get_logger
 
 logger = get_logger(__name__)
@@ -44,6 +45,7 @@ class AdminCsrfMiddleware:
         app: ASGIApp,
         csrf_service: AdminCsrfServiceProtocol,
         audit_service: Any = None,
+        admin_prefix: str | None = None,
     ) -> None:
         """Initialize with ASGI app and CSRF service.
 
@@ -51,10 +53,12 @@ class AdminCsrfMiddleware:
             app: The next ASGI application.
             csrf_service: CSRF token validation service.
             audit_service: Optional audit service for CSRF violation events.
+            admin_prefix: Configured admin mount prefix (default ``/admin``).
         """
         self._app = app
         self._csrf_service = csrf_service
         self._audit_service = audit_service
+        self._admin_prefix = (admin_prefix or DEFAULT_ADMIN_PREFIX).rstrip("/")
 
     async def _audit_violation(self, scope: Scope, reason: str) -> None:
         """Record a CSRF violation, best-effort."""
@@ -116,8 +120,8 @@ class AdminCsrfMiddleware:
         """
         # Strip the admin prefix if present
         check_path = path
-        if check_path.startswith("/admin"):
-            check_path = check_path[len("/admin") :]
+        if check_path.startswith(self._admin_prefix):
+            check_path = check_path[len(self._admin_prefix) :]
 
         if check_path in _CSRF_BYPASS_PATHS:
             return True
@@ -207,8 +211,8 @@ class AdminCsrfMiddleware:
             b"<body><h1>403 Forbidden</h1>\n"
             b"<p>Invalid or missing CSRF token. "
             b"Please reload the page and try again.</p>\n"
-            b'<a href="/admin/">Return to Admin</a>\n'
-            b"</body></html>"
+            + f'<a href="{self._admin_prefix}/">Return to Admin</a>\n'.encode()
+            + b"</body></html>"
         )
         await send(
             {

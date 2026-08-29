@@ -51,9 +51,11 @@ class AdminShell(Component):
         impersonation_active: bool = False,
         impersonation_target_id: str = "",
         csrf_token: str = "",
+        admin_prefix: str = "/admin",
         **props: Any,
     ) -> None:
         super().__init__(**props)
+        self.admin_prefix = admin_prefix.rstrip("/") or "/admin"
         self.content = content
         self.title = title
         self.user = user or {}
@@ -91,14 +93,19 @@ class AdminShell(Component):
         self.flash_messages = flash_messages or []
         if breadcrumbs is None:
             breadcrumbs = [
-                {"label": "Home", "url": "/admin/"},
+                {"label": "Home", "url": f"{self.admin_prefix}/"},
                 {"label": title, "url": ""},
             ]
         self.breadcrumbs = breadcrumbs
 
     def _prepare_navigation(self) -> Any:
         """Transform raw nav_items into SidebarItem and SidebarSection instances."""
-        return prepare_navigation(self.nav_items, self.features, self.user)
+        return prepare_navigation(
+            self.nav_items,
+            self.features,
+            self.user,
+            admin_prefix=self.admin_prefix,
+        )
 
     def render(self) -> Any:
         # 1. Prepare Sidebar
@@ -165,6 +172,7 @@ class AdminShell(Component):
             self.impersonation_active,
             self.impersonation_target_id,
             self.csrf_token,
+            admin_prefix=self.admin_prefix,
         )
 
         main_area = build_main_area(
