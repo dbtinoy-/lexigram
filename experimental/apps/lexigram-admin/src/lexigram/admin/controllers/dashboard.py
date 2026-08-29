@@ -336,7 +336,9 @@ class DashboardController(AdminController):
         empty state when no resources are registered so the card body never
         renders a blank canvas.
         """
-        from lexigram.ui import BarChart, ChartDataPoint, EmptyState, render_to_string
+        from lexigram.admin.dashboard.content_renderer import render_chart_fragment
+        from lexigram.contracts.admin.widget_content import ChartPoint
+        from lexigram.ui import EmptyState, render_to_string
 
         resources = self._get_resource_list(request)
         if not resources:
@@ -349,8 +351,29 @@ class DashboardController(AdminController):
                 )
             )
 
-        points = [ChartDataPoint(label=name, value=1, color="blue") for name in resources]
-        return HTMLResponse(render_to_string(BarChart(points)))
+        points = [ChartPoint(label=name, value=1) for name in resources]
+        return HTMLResponse(render_chart_fragment("bar", points))
+
+    @get("/widgets/stats")
+    async def overview_stats(self, request: Request) -> HTMLResponse:
+        """Render the default dashboard stat-grid fragment.
+
+        HTMX target for ``StatsOverviewWidget(data_source=...)`` cards: the
+        default overview's four headline stats, served through the shared
+        content dispatcher so tone/delta rendering stays consistent with
+        contributor-supplied stats.
+        """
+        from lexigram.admin.dashboard.content_renderer import render_stat_fragment
+        from lexigram.contracts.admin.widget_content import Stat, Tone
+
+        resources = self._get_resource_list(request)
+        stats = [
+            Stat(label="Resources", value=str(len(resources)), tone=Tone.PRIMARY),
+            Stat(label="Active Now", value="—", tone=Tone.DEFAULT),
+            Stat(label="Actions Today", value="—", tone=Tone.DEFAULT),
+            Stat(label="Errors (24h)", value="—", tone=Tone.DEFAULT),
+        ]
+        return HTMLResponse(render_stat_fragment(stats))
 
     async def _render_with_flash(
         self,
