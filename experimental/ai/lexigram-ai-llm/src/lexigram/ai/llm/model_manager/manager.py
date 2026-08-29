@@ -20,22 +20,34 @@ logger = get_logger(__name__)
 
 
 class LLMModelManager:
-    """Unified model manager that routes to specific provider managers."""
+    """Unified model manager that routes to specific provider managers.
+
+    Instances are always empty — use :meth:`with_defaults` for the
+    in-package built-in managers or :meth:`register_provider` for custom
+    provider managers.
+    """
 
     def __init__(self, active_provider: str | None = None):
-        """Initialize unified model manager."""
-        if getattr(self, "_initialized", False):
-            return
-
+        """Initialize an empty model manager."""
         self.managers: dict[str, AbstractModelManager] = {}
         self.active_provider = active_provider
 
-        # Register default providers (using classes defined in this module)
-        self.register_provider("ollama", OllamaModelManager())
-        self.register_provider("lm-studio", LMStudioModelManager())
-        self.register_provider("vllm", VLLMModelManager())
+    @classmethod
+    def _default_entries(cls) -> tuple[tuple[str, AbstractModelManager], ...]:
+        """The complete in-package built-in set, declared exactly once."""
+        return (
+            ("ollama", OllamaModelManager()),
+            ("lm-studio", LMStudioModelManager()),
+            ("vllm", VLLMModelManager()),
+        )
 
-        self._initialized = True
+    @classmethod
+    def with_defaults(cls, active_provider: str | None = None) -> LLMModelManager:
+        """Return an instance populated with the built-in provider managers."""
+        manager = cls(active_provider=active_provider)
+        for provider, provider_manager in cls._default_entries():
+            manager.register_provider(provider, provider_manager)
+        return manager
 
     def register_provider(self, provider: str, manager: AbstractModelManager) -> None:
         """Register a model manager for a provider."""

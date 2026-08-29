@@ -145,7 +145,7 @@ class LLMProvider(Provider):
             model=self.config.model,
         )
 
-        registry = ProviderRegistry()
+        registry = ProviderRegistry.with_defaults()
         container.singleton(ProviderRegistry, registry)
         container.singleton(ProviderRegistryProtocol, registry)
 

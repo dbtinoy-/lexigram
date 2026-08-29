@@ -6,15 +6,15 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from lexigram.contracts.ai.models import ModelRequest
-from lexigram.contracts.ai.providers import ModelCapability
+from lexigram.ai.llm.registry.core import ProviderRegistry
 from lexigram.ai.llm.routing.orchestrator import (
     LLMOrchestrator,
     NoSuitableModelError,
     OrchestratorError,
 )
-from lexigram.ai.llm.registry.core import ProviderRegistry
 from lexigram.ai.llm.types import Completion, TokenUsage
+from lexigram.contracts.ai.models import ModelRequest
+from lexigram.contracts.ai.providers import ModelCapability
 from lexigram.result import Ok
 
 
@@ -24,7 +24,7 @@ class TestLLMOrchestrator:
     @pytest.fixture
     def registry(self) -> ProviderRegistry:
         """Create a fresh registry."""
-        return ProviderRegistry()
+        return ProviderRegistry.with_defaults()
 
     @pytest.fixture
     def orchestrator(self, registry: ProviderRegistry) -> LLMOrchestrator:

@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import os
-import sys
 from pathlib import Path
+import sys
 
 # Allow absolute imports like 'from support.mock_clients import ...'
 sys.path.insert(0, str(Path(__file__).parent))
@@ -41,4 +41,4 @@ def provider_registry() -> ProviderRegistry:
     Returns:
         A new ProviderRegistry with all built-in providers registered.
     """
-    return ProviderRegistry()
+    return ProviderRegistry.with_defaults()
