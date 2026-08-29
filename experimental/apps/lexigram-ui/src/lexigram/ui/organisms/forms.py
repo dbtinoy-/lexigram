@@ -21,6 +21,7 @@ class Form(Component):
         autosave: bool = False,
         form_id: str | None = None,
         suppress_submit: bool = False,
+        hx_indicator: str | None = None,
         **props: Any,
     ) -> None:
         super().__init__(
@@ -32,6 +33,7 @@ class Form(Component):
             autosave=autosave,
             form_id=form_id,
             suppress_submit=suppress_submit,
+            hx_indicator=hx_indicator,
             **props,
         )
         self.action_url = action_url
@@ -42,6 +44,7 @@ class Form(Component):
         self.autosave = autosave
         self.form_id = form_id
         self.suppress_submit = suppress_submit
+        self.hx_indicator = hx_indicator
 
     def render(self) -> Any:
         attrs = {
@@ -49,22 +52,29 @@ class Form(Component):
             "class": "space-y-6",
         }
 
-        submit_button_attrs = {}
+        submit_button_attrs: dict[str, str] = {}
         if self.action_url:
             if self.method.lower() == "get":
                 attrs["hx-get"] = self.action_url
+                attrs["hx-target"] = self.hx_target
+                attrs["hx-swap"] = self.hx_swap
             elif self.autosave and self.form_id:
+                # Autosave mode: the form posts to the draft endpoint on a
+                # debounced change trigger; the submit button stays native so
+                # the final save uses a standard POST.
                 attrs["action"] = self.action_url
                 attrs["method"] = "post"
-                submit_button_attrs["type"] = "button"
-                submit_button_attrs["onclick"] = (
-                    "var f=this.closest('form');f.submit();"
-                )
             else:
+                # HTMX-enhanced POST: the form is intercepted by htmx when
+                # available; without JavaScript the native POST still works
+                # (progressive enhancement). No onclick JS required.
                 attrs["action"] = self.action_url
                 attrs["method"] = "post"
-                submit_button_attrs["type"] = "button"
-                submit_button_attrs["onclick"] = "var f=this.closest('form');f.submit()"
+                attrs["hx-post"] = self.action_url
+                attrs["hx-target"] = self.hx_target
+                attrs["hx-swap"] = self.hx_swap
+                if self.hx_indicator:
+                    attrs["hx-indicator"] = self.hx_indicator
 
         # Handle Auto-save logic
         autosave_indicator = ""

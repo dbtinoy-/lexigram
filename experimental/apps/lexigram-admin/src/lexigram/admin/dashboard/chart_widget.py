@@ -172,6 +172,7 @@ class ChartWidget(Component):
                     "hx-trigger": "change",
                     "hx-target": f"#{self._body_id}",
                     "hx-swap": "innerHTML",
+                    "hx-indicator": f"#{self._body_id}-indicator",
                 }
             )
         return el(
@@ -209,6 +210,7 @@ class ChartWidget(Component):
             hx_attrs["hx-trigger"] = ", ".join(triggers)
             hx_attrs["hx-target"] = f"#{self._body_id}"
             hx_attrs["hx-swap"] = "innerHTML"
+            hx_attrs["hx-indicator"] = f"#{self._body_id}-indicator"
 
         body: Component
         if self.data:
@@ -256,11 +258,35 @@ class ChartWidget(Component):
             body = el("div", *empty_children, class_="py-8")
 
         filters = self._render_filters()
+
+        body_children: list[Any] = [body]
+        if self.data_source:
+            body_children.append(
+                el(
+                    "div",
+                    el("span", "Loading chart…", class_="sr-only"),
+                    class_=(
+                        "htmx-indicator absolute inset-0 z-10 flex items-center "
+                        "justify-center bg-card/80 rounded-lg"
+                    ),
+                    role="status",
+                    id=f"{self._body_id}-indicator",
+                )
+            )
+
         return el(
             "div",
             el("div", *header, class_="mb-4"),
             filters,
-            el("div", body, id=self._body_id),
+            el(
+                "div",
+                *body_children,
+                id=self._body_id,
+                class_="relative",
+                role="region",
+                aria_label=self.title,
+                aria_live="polite",
+            ),
             class_=f"bg-card rounded-xl shadow-sm border border-border p-5 {span}".strip(),
             **hx_attrs,
         )

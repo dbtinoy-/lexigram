@@ -142,10 +142,12 @@ class Action(ABC, Generic[R, Outcome]):
 
         Override in subclasses to customize HTMX behavior.
         """
+        from lexigram.ui import Zones
+
         return {
             "hx-get": url,
-            "hx-target": "#table-data",
-            "hx-swap": "innerHTML",
+            "hx-target": Zones.DATA.selector,
+            "hx-swap": Zones.DATA.swap_mode.value,
         }
 
     def render_button(self, record: R, ctx: ActionContext) -> str:

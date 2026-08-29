@@ -302,13 +302,15 @@ class FormRenderer(WizardRendererMixin):
             try:
                 from dataclasses import replace as dc_replace
 
+                from lexigram.admin.data.query import QuerySpec
                 from lexigram.admin.forms.components import FormSchemaGenerator
                 from lexigram.admin.schema import BelongsToField
 
                 generator = FormSchemaGenerator()
                 schema = generator.from_pydantic(resource.model)
 
-                # Populate relation field options from the related resource's data source
+                # Populate relation field options from the related resource's
+                # data source (IDataSource protocol: find_many, not list_all).
                 for idx, field_schema in enumerate(schema.fields):
                     if isinstance(field_schema, BelongsToField):
                         related_resource_name = field_schema.resource
@@ -326,8 +328,19 @@ class FormRenderer(WizardRendererMixin):
                                         and related_instance._data_source
                                     ):
                                         ds = related_instance._data_source
-                                        if hasattr(ds, "list_all"):
-                                            records = await ds.list_all()
+                                        if hasattr(ds, "find_many"):
+                                            result = await ds.find_many(
+                                                QuerySpec(
+                                                    per_page=200,
+                                                    sort_by="id",
+                                                )
+                                            )
+                                            if hasattr(result, "items"):
+                                                records = result.items
+                                            elif isinstance(result, list):
+                                                records = result
+                                            else:
+                                                records = []
                                             options = [
                                                 (
                                                     str(getattr(r, "id", r)),
@@ -383,17 +396,19 @@ class FormRenderer(WizardRendererMixin):
                     )
                     if field_component:
                         if errors and field_schema.name in errors:
-                            field_component.error = errors[field_schema.name][0]
+                            field_component.error = errors[field_schema.name]
                         field_components.append(field_component.render())
 
                 submit_label = "Update" if mode == "edit" else "Create"
 
-                # Create Form component with fields
+                # Create Form component with fields.  HTMX submits swap the
+                # validation-error response back into the slide-over zone so
+                # the drawer stays open; full-page renders ignore hx-* attrs.
                 form = Form(
                     action_url=action_url,
                     method="post",
                     submit_label=submit_label,
-                    hx_target="#main-content",
+                    hx_target="#slide-over-container",
                     hx_swap="innerHTML",
                 )
                 form.children = field_components

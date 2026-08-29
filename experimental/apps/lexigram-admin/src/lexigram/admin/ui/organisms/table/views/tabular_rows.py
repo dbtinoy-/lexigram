@@ -30,6 +30,13 @@ def _js_str(value: Any) -> str:
     )
 
 
+def get_attr(item: Any, key: str, default: Any = None) -> Any:
+    """Safely read an attribute from dict-like or attribute-like records."""
+    if isinstance(item, dict):
+        return item.get(key, default)
+    return getattr(item, key, default)
+
+
 def extract_row_id(item: Any) -> str:
     """Resolve a stable string id from a dict-like or attribute-like record."""
     if isinstance(item, dict):

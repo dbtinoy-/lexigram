@@ -86,12 +86,17 @@ class Button(Component):
         extra_attrs = {
             k: v
             for k, v in self.props.items()
-            if k not in ("class_", "class", "children")
+            if k not in ("class_", "class", "children", "type")
         }
         extra_attrs.pop("label", None)
-        extra_attrs.pop("type", None)
 
-        return el("button", self.label, class_=cls, type="button", **extra_attrs)
+        return el(
+            "button",
+            self.label,
+            class_=cls,
+            type=self.props.get("type", "button"),
+            **extra_attrs,
+        )
 
 
 class SubmitButton(Component):

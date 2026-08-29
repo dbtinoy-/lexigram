@@ -47,6 +47,7 @@ class ViewFactory:
         summary: dict[str, Any] | None = None,
         user: Any = None,
         resource_name: str | None = None,
+        next_cursor: str | None = None,
     ) -> ViewStrategy:
         """Create a view strategy instance."""
         total_count: int = total if total is not None else 0
@@ -54,18 +55,6 @@ class ViewFactory:
             from lexigram.admin.ui.organisms.table.views.tabular import TabularView
 
             return TabularView(
-                data, config, state, total_count, summary, user, resource_name
-            )  # type: ignore[return-value]
-        if view_type == "grid":
-            from lexigram.admin.ui.organisms.table.views.grid import GridView
-
-            return GridView(
-                data, config, state, total_count, summary, user, resource_name
-            )  # type: ignore[return-value]
-        if view_type == "calendar":
-            from lexigram.admin.ui.organisms.table.views.calendar import CalendarView
-
-            return CalendarView(  # type: ignore[return-value]
                 data,
                 config,
                 state,
@@ -73,16 +62,57 @@ class ViewFactory:
                 summary,
                 user,
                 resource_name,
-            )
+                next_cursor,
+            )  # type: ignore[return-value]
+        if view_type == "grid":
+            from lexigram.admin.ui.organisms.table.views.grid import GridView
+
+            return GridView(
+                data,
+                config,
+                state,
+                total_count,
+                summary,
+                user,
+                resource_name,
+                next_cursor,
+            )  # type: ignore[return-value]
+        if view_type == "calendar":
+            from lexigram.admin.ui.organisms.table.views.calendar import CalendarView
+
+            return CalendarView(
+                data,
+                config,
+                state,
+                total_count,
+                summary,
+                user,
+                resource_name,
+                next_cursor,
+            )  # type: ignore[return-value]
         if view_type == "stacked":
             from lexigram.admin.ui.organisms.table.views.stacked import StackedView
 
             return StackedView(
-                data, config, state, total_count, summary, user, resource_name
+                data,
+                config,
+                state,
+                total_count,
+                summary,
+                user,
+                resource_name,
+                next_cursor,
             )  # type: ignore[return-value]
         # Default to tabular
         from lexigram.admin.ui.organisms.table.views.tabular import TabularView
 
         return TabularView(
-            data, config, state, total_count, summary, user, resource_name
+            data,
+            config,
+            state,
+            total_count,
+            summary,
+            user,
+            resource_name,
+            next_cursor,
         )  # type: ignore[return-value]

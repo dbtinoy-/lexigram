@@ -350,10 +350,12 @@ class PurgeAction(RowAction):
     def _get_htmx_attrs(
         self, url: str, record: Any, ctx: ActionContext
     ) -> dict[str, str]:
+        from lexigram.ui import Zones
+
         attrs: dict[str, str] = {
             "hx-delete": url,
-            "hx-target": "#table-data",
-            "hx-swap": "innerHTML",
+            "hx-target": Zones.DATA.selector,
+            "hx-swap": Zones.DATA.swap_mode.value,
         }
         confirmation = self.confirm()
         if confirmation and confirmation.message:

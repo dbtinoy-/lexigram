@@ -40,7 +40,7 @@ def _atom_args(
         "required": common_args.get("required", False),
         "disabled": common_args.get("disabled", False),
     }
-    for key in ("placeholder", "error"):
+    for key in ("placeholder", "error", "help_text"):
         if common_args.get(key):
             args[key] = common_args[key]
     args.update({k: v for k, v in common_args.items() if k.startswith("hx_")})

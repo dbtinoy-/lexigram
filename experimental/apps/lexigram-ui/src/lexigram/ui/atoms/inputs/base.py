@@ -6,6 +6,7 @@ All input types should inherit from this class.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Sequence
 from typing import Any
 
 from lexigram.ui.core.base import Component, el
@@ -41,6 +42,7 @@ class AbstractInput(ABC, Component):
 
     LABEL_CLASSES = "block text-sm font-medium leading-6 text-foreground"
     ERROR_MSG_CLASSES = "mt-1 text-xs text-destructive min-h-[1.25rem]"
+    HELP_TEXT_CLASSES = "mt-1 text-xs text-muted-foreground"
     WRAPPER_CLASSES = "flex flex-col gap-1.5 w-full"
 
     def __init__(
@@ -48,7 +50,8 @@ class AbstractInput(ABC, Component):
         name: str,
         value: Any = None,
         label: str | None = None,
-        error: str | None = None,
+        error: str | Sequence[str] | None = None,
+        help_text: str | None = None,
         disabled: bool = False,
         required: bool = False,
         readonly: bool = False,
@@ -59,9 +62,19 @@ class AbstractInput(ABC, Component):
         self.value = value
         self.label = label
         self.error = error
+        self.help_text = help_text
         self.disabled = disabled
         self.required = required
         self.readonly = readonly
+
+    @property
+    def _error_messages(self) -> list[str]:
+        """Normalize ``error`` to a list of messages."""
+        if not self.error:
+            return []
+        if isinstance(self.error, str):
+            return [self.error]
+        return [str(m) for m in self.error if m]
 
     @property
     def input_id(self) -> str:
@@ -107,6 +120,7 @@ class AbstractInput(ABC, Component):
             "value",
             "label",
             "error",
+            "help_text",
             "disabled",
             "required",
             "readonly",
@@ -130,34 +144,66 @@ class AbstractInput(ABC, Component):
         )
 
     def _render_error(self) -> Any:
-        """Render error message if present."""
-        if not self.error:
-            return None
+        """Render the first validation message (legacy single-error callers)."""
+        errors = self._render_errors()
+        return errors[0] if errors else None
 
+    def _render_errors(self) -> list[Any]:
+        """Render one ``<p>`` per validation message (if any)."""
+        messages = self._error_messages
+        error_id = f"{self.input_id}-error"
+        if len(messages) == 1:
+            return [
+                el(
+                    "p",
+                    messages[0],
+                    id=error_id,
+                    role="alert",
+                    class_=self.ERROR_MSG_CLASSES,
+                )
+            ]
+        return [
+            el(
+                "p",
+                message,
+                id=error_id if index == 0 else f"{error_id}-{index + 1}",
+                role="alert",
+                class_=self.ERROR_MSG_CLASSES,
+            )
+            for index, message in enumerate(messages)
+        ]
+
+    def _render_help(self) -> Any:
+        """Render help text after the input (hidden when an error is shown)."""
+        if not self.help_text or self.error:
+            return None
         return el(
             "p",
-            self.error,
-            id=f"{self.input_id}-error",
-            role="alert",
-            class_=self.ERROR_MSG_CLASSES,
+            self.help_text,
+            id=f"{self.input_id}-help",
+            class_=self.HELP_TEXT_CLASSES,
         )
 
     def _render_with_wrapper(self, input_el: Any) -> Any:
         """
-        Wrap input with label and error message.
+        Wrap input with label, help text and error messages.
 
-        If no label is provided, returns just the input element.
+        If no decoration is needed, returns just the input element.
         """
-        if not self.label:
+        label = self._render_label()
+        help_text = self._render_help()
+        errors = self._render_errors()
+
+        if label is None and help_text is None and not errors:
             return input_el
 
-        return el(
-            "div",
-            self._render_label(),
-            input_el,
-            self._render_error(),
-            class_=self.WRAPPER_CLASSES,
-        )
+        children: list[Any] = [label] if label is not None else []
+        children.append(input_el)
+        if help_text is not None:
+            children.append(help_text)
+        children.extend(errors)
+
+        return el("div", *children, class_=self.WRAPPER_CLASSES)
 
     @abstractmethod
     def _render_input(self) -> Any:
