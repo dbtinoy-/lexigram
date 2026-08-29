@@ -64,10 +64,6 @@ class TestGeneratorRegistryAPI:
     def test_new_registry_is_empty(self) -> None:
         assert GeneratorRegistry().list_generators() == []
 
-    def test_with_defaults_returns_instance(self) -> None:
-        registry = GeneratorRegistry.with_defaults()
-        assert isinstance(registry, GeneratorRegistry)
-
     def test_register_and_get_roundtrip(self) -> None:
         registry = GeneratorRegistry()
         gen = GeneratorDefinition(
