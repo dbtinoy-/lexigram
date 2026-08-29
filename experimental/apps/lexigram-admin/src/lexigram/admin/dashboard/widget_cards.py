@@ -16,6 +16,7 @@ from lexigram.contracts.admin.types import (
     DashboardWidgetDefinition,
     WidgetSize,
 )
+from lexigram.primitives.registry import Registry
 from lexigram.ui import el, render_to_string
 
 
@@ -53,27 +54,24 @@ def _render_live_widget_script() -> str:
     )
 
 
-class WidgetRegistry:
-    """Registry for dashboard widget implementations."""
+class WidgetRegistry(Registry[str, type[IWidget]]):
+    """Registry for dashboard widget implementations.
+
+    Widget implementations are contributed by applications (no built-in
+    set), so instances start empty and are populated via ``register()`` —
+    the core registry's plugin pattern.
+    """
 
     def __init__(self) -> None:
-        """Initialize registry."""
-        self._widgets: dict[str, type[IWidget]] = {}
-
-    def register(self, widget_type: str, widget_class: type[IWidget]) -> None:
-        """Register widget type."""
-        self._widgets[widget_type] = widget_class
-
-    def get(self, widget_type: str) -> type[IWidget] | None:
-        """Get widget class by type."""
-        return self._widgets.get(widget_type)
+        """Initialize an empty widget registry."""
+        super().__init__(name="admin.dashboard.widgets", allow_overwrite=True)
 
     def list_types(self) -> list[str]:
         """List registered widget types."""
-        return list(self._widgets.keys())
+        return sorted(self.keys())
 
     def create_widget(self, widget_type: str) -> IWidget | None:
-        """Create widget instance."""
+        """Create widget instance for *widget_type*, or None when unknown."""
         widget_class = self.get(widget_type)
         if widget_class:
             return widget_class()

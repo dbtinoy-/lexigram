@@ -9,7 +9,7 @@ from lexigram.admin.config import TableConfiguration
 from lexigram.admin.ui.organisms.data_table.actions import ActionManager
 from lexigram.admin.ui.organisms.data_table.layout import LayoutComposer
 from lexigram.admin.ui.organisms.data_table.states import StateRenderer
-from lexigram.admin.ui.organisms.data_table.views import ViewFactory
+from lexigram.admin.ui.organisms.data_table.views import view_strategy_registry
 from lexigram.admin.ui.organisms.pagination import Pagination
 from lexigram.serialization import dumps_str
 from lexigram.ui import TableState, Zones, el, raw, render_to_string
@@ -266,7 +266,7 @@ class DataTableRenderer:
             return self.state_renderer.render_error(self.error)
         if not self.data:
             return self.state_renderer.render_empty()
-        view_strategy = ViewFactory.create_view(
+        view_strategy = view_strategy_registry.create_view(
             self.state.view or "tabular",
             self.data,
             self.config,

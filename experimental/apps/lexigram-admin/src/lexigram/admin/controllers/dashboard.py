@@ -122,7 +122,7 @@ class DashboardController(AdminController):
         if custom_order:
             contributor_widgets.sort(key=lambda w: custom_order.get(w.name, w.order))
 
-        if contributor_widgets and self.widget_registry:
+        if contributor_widgets and self.widget_registry is not None:
             # Render HTMX lazy-load widget cards via the registry, annotating
             # each fetch URL with the current page filter values
             rendered_html = self.widget_registry.render_contributor_widgets(
@@ -135,7 +135,7 @@ class DashboardController(AdminController):
                 id="dashboard-grid",
                 class_="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4",
             )
-        elif contributor_widgets and not self.widget_registry:
+        elif contributor_widgets and self.widget_registry is None:
             # Fallback: basic title rendering when no registry is available
             rendered_widgets: list[Any] = []
             for w in contributor_widgets:

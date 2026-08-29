@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Iterable, Iterator
 from threading import Lock
-from typing import Any, Generic, TypeVar, overload
+from typing import Any, Generic, Self, TypeVar, overload
 
 from lexigram.contracts.exceptions.infra import (
     RegistryAlreadyExistsError,
@@ -117,7 +117,7 @@ class Registry(Generic[K, V]):
                 self._on_unregister_hooks.append(method)
 
     @classmethod
-    def with_defaults(cls) -> Registry[K, V]:
+    def with_defaults(cls) -> Self:
         """Create a registry pre-populated with the class's built-in set.
 
         Returns exactly what :meth:`_default_entries` declares.  Registries
@@ -183,6 +183,24 @@ class Registry(Generic[K, V]):
         """Return whether this registry has been frozen."""
         with self._lock:
             return self._frozen
+
+    @overload
+    def register(
+        self,
+        key: K,
+        value: V,
+        *,
+        allow_overwrite: bool | None = None,
+    ) -> V: ...
+
+    @overload
+    def register(
+        self,
+        key: K,
+        value: None = None,
+        *,
+        allow_overwrite: bool | None = None,
+    ) -> Callable[[V], V]: ...
 
     def register(
         self,
