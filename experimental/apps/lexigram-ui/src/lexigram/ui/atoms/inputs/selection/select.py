@@ -70,8 +70,8 @@ class Select(AbstractInput):
             multiple=self.multiple,
             disabled=self.disabled,
             required=self.required,
-            aria_invalid="true" if self.error else None,
-            aria_describedby=f"{self.input_id}-error" if self.error else None,
+            # aria-invalid / aria-describedby are wired automatically by
+            # AbstractInput._get_extra_props (shared error/help semantics).
             aria_required="true" if self.required else None,
             aria_disabled="true" if self.disabled else None,
             class_=self._get_input_classes(

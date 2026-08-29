@@ -21,7 +21,7 @@ class TestInputDecorations:
         assert 'name="email"' in html
         assert "We only use this for login." in html
         assert 'id="email-help"' in html
-        assert "type=\"text\"" in html
+        assert 'type="text"' in html
 
     def test_help_text_hidden_when_error_present(self) -> None:
         field = TextInput(
@@ -45,7 +45,7 @@ class TestInputDecorations:
         assert 'id="email-error-2"' in html
         assert "Invalid email" in html
         assert "Already taken" in html
-        assert html.count("role=\"alert\"") == 2
+        assert html.count('role="alert"') == 2
         assert "border-destructive" in html
 
     def test_single_string_error_keeps_legacy_markup(self) -> None:
@@ -60,3 +60,30 @@ class TestInputDecorations:
         html = render_to_string(field)
         assert 'id="code-help"' in html
         assert "Format: ABC-123" in html
+
+    def test_error_invalid_and_describedby_wired_on_input(self) -> None:
+        field = TextInput(
+            name="email",
+            help_text="We only use this for login.",
+            error="Invalid email",
+        )
+        html = render_to_string(field)
+        assert 'aria-invalid="true"' in html
+        assert 'aria-describedby="email-error"' in html
+
+    def test_describedby_includes_help_text(self) -> None:
+        field = TextInput(
+            name="email",
+            help_text="We only use this for login.",
+        )
+        html = render_to_string(field)
+        assert 'aria-describedby="email-help"' in html
+        assert 'aria-invalid="true"' not in html
+
+    def test_multiple_errors_describedby_lists_each(self) -> None:
+        field = TextInput(
+            name="email",
+            error=["Invalid email", "Already taken"],
+        )
+        html = render_to_string(field)
+        assert 'aria-describedby="email-error email-error-2"' in html

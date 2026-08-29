@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 from lexigram.contracts.admin import BaseAdminContributor
 
@@ -97,14 +97,16 @@ class TestContributorResourceContribution:
                 )
                 bundle = AdminProvider(config=config)
                 container = Container()
-                from lexigram.contracts.data.sql.database import DatabaseProviderProtocol
+                from lexigram.contracts.data.sql.database import (
+                    DatabaseProviderProtocol,
+                )
                 container.singleton(DatabaseProviderProtocol, lambda: MagicMock())
                 await bundle.register(container)
 
                 registry = await container.resolve(
                     ContributorRegistry, bypass_visibility=True
                 )
-                registry.register(_ContributorWithResource())
+                registry.add(_ContributorWithResource())
                 await bundle.boot(container)
 
                 mock_app = MagicMock()
@@ -138,14 +140,16 @@ class TestContributorResourceContribution:
                 )
                 bundle = AdminProvider(config=config)
                 container = Container()
-                from lexigram.contracts.data.sql.database import DatabaseProviderProtocol
+                from lexigram.contracts.data.sql.database import (
+                    DatabaseProviderProtocol,
+                )
                 container.singleton(DatabaseProviderProtocol, lambda: MagicMock())
                 await bundle.register(container)
 
                 registry = await container.resolve(
                     ContributorRegistry, bypass_visibility=True
                 )
-                registry.register(_ContributorWithBadResource())
+                registry.add(_ContributorWithBadResource())
                 await bundle.boot(container)
 
                 mock_app = MagicMock()

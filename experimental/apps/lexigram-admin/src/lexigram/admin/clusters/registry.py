@@ -9,7 +9,10 @@ the active cluster from this registry.
 
 from __future__ import annotations
 
+from typing import Self
+
 from lexigram.admin.clusters.base import Cluster
+from lexigram.primitives.registry import Registry
 
 INFRASTRUCTURE_CLUSTER = Cluster(
     name="infrastructure",
@@ -26,37 +29,44 @@ INFRASTRUCTURE_CLUSTER = Cluster(
 __all__ = ["INFRASTRUCTURE_CLUSTER", "ClusterRegistry"]
 
 
-class ClusterRegistry:
+class ClusterRegistry(Registry[str, Cluster]):
     """Registry of named clusters, resolved by slug, group, or path.
 
     Example:
         ```python
-        registry = ClusterRegistry()
-        registry.register(cluster)
+        registry = ClusterRegistry.with_defaults()
+        registry.add(cluster)
         active = registry.for_path("/admin/content/posts")
         ```
     """
 
     def __init__(self) -> None:
-        """Create an empty registry — no self-registration."""
-        self._clusters: dict[str, Cluster] = {}
-        self._by_group: dict[str, Cluster] = {}
+        """Create an empty registry — defaults only via :meth:`with_defaults`."""
+        super().__init__(name="admin.clusters", allow_overwrite=True)
+        # Group lookup index; group keys are only unique by convention, so
+        # last-write-wins mirrors the previous hand-rolled behaviour.
+        self._by_group_index: dict[str, Cluster] = {}
 
     @classmethod
     def _default_entries(cls) -> dict[str, Cluster]:
-        """Declare the built-in clusters."""
+        """Declare the complete in-package built-in cluster set."""
         cluster = INFRASTRUCTURE_CLUSTER
         return {cluster.slug or cluster.name: cluster}
 
     @classmethod
-    def with_defaults(cls) -> ClusterRegistry:
-        """Create a registry pre-populated with the built-in clusters."""
+    def with_defaults(cls) -> Self:
+        """Create a registry pre-populated with the built-in clusters.
+
+        Overridden because :meth:`register` accepts a single ``Cluster``
+        (not the core ``(key, value)`` pair); the built-in set is still
+        declared by :meth:`_default_entries`.
+        """
         registry = cls()
         for cluster in cls._default_entries().values():
-            registry.register(cluster)
+            registry.add(cluster)
         return registry
 
-    def register(self, cluster: Cluster) -> None:
+    def add(self, cluster: Cluster) -> None:
         """Register a cluster, resolving empty slug/group to its name.
 
         Args:
@@ -77,15 +87,12 @@ class ClusterRegistry:
             resources=list(cluster.resources),
             pages=list(cluster.pages),
         )
-        self._clusters[slug] = resolved
-        self._by_group[group] = resolved
+        super().register(slug, resolved)
+        self._by_group_index[group] = resolved
 
     def all(self) -> list[Cluster]:
         """Return all registered clusters, ordered by ``order`` then name."""
-        return sorted(
-            self._clusters.values(),
-            key=lambda c: (c.order, c.name),
-        )
+        return sorted(self.values(), key=lambda c: (c.order, c.name))
 
     def by_slug(self, slug: str) -> Cluster | None:
         """Look up a cluster by its URL slug.
@@ -96,7 +103,7 @@ class ClusterRegistry:
         Returns:
             The cluster, or ``None`` when unknown.
         """
-        return self._clusters.get(slug)
+        return self.get(slug)
 
     def by_group(self, group: str) -> Cluster | None:
         """Look up a cluster by its navigation group name.
@@ -107,7 +114,7 @@ class ClusterRegistry:
         Returns:
             The cluster, or ``None`` when unknown.
         """
-        return self._by_group.get(group)
+        return self._by_group_index.get(group)
 
     def for_path(self, path: str | None) -> Cluster | None:
         """Return the cluster whose center namespace contains the path.

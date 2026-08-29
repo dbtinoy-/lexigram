@@ -74,7 +74,7 @@ class AdminContributorSubProvider:
         self._config = config
         self._registry = ContributorRegistry()
         if config is not None:
-            self._registry.register(CoreAdminContributor())
+            self._registry.add(CoreAdminContributor())
         self._direct_contributors: list[AdminContributorProtocol] = [
             c() if isinstance(c, type) else c for c in (contributors or [])
         ]
@@ -85,7 +85,7 @@ class AdminContributorSubProvider:
         # Register direct contributors in the registry before entry-point
         # discovery so that entry points with the same name are skipped.
         for dc in self._direct_contributors:
-            self._registry.register(dc)
+            self._registry.add(dc)
         # Discover entry-point contributors here so that sub-providers
         # consuming the registry (e.g. AdminDashboardSubProvider) see
         # the full set during their own register() phase.
@@ -259,7 +259,7 @@ class AdminContributorSubProvider:
                     )
                     continue
                 if self._is_enabled(contributor.name):
-                    self._registry.register(contributor)
+                    self._registry.add(contributor)
                     logger.info("contributor_discovered", name=contributor.name)
             except Exception as exc:  # noqa: BLE001 — skip bad entry points; continue discovery
                 logger.warning(

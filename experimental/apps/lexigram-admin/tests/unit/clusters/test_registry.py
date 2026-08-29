@@ -38,7 +38,7 @@ class TestWithDefaults:
 class TestRegister:
     def test_resolves_empty_slug_and_group_to_name(self) -> None:
         registry = ClusterRegistry()
-        registry.register(_custom_cluster())
+        registry.add(_custom_cluster())
         cluster = registry.by_slug("content")
         assert cluster is not None
         assert cluster.group == "content"
@@ -47,7 +47,7 @@ class TestRegister:
 
     def test_honours_explicit_slug_and_group(self) -> None:
         registry = ClusterRegistry()
-        registry.register(
+        registry.add(
             Cluster(
                 name="content",
                 slug="cms",
@@ -60,13 +60,13 @@ class TestRegister:
 
     def test_all_is_ordered_by_order_then_name(self) -> None:
         registry = ClusterRegistry()
-        registry.register(
+        registry.add(
             Cluster(name="zeta", label="Zeta", order=5, slug="z", group="z")
         )
-        registry.register(
+        registry.add(
             Cluster(name="alpha", label="Alpha", order=5, slug="a", group="a")
         )
-        registry.register(
+        registry.add(
             Cluster(name="beta", label="Beta", order=1, slug="b", group="b")
         )
         assert [c.name for c in registry.all()] == ["beta", "alpha", "zeta"]
@@ -81,7 +81,7 @@ class TestForPath:
 
     def test_matches_custom_cluster(self) -> None:
         registry = ClusterRegistry()
-        registry.register(_custom_cluster())
+        registry.add(_custom_cluster())
         assert registry.for_path("/admin/content/posts") is not None
         assert registry.for_path("/admin/content") is not None
 

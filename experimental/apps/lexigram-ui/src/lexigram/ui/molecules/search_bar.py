@@ -131,14 +131,11 @@ class SearchBar(Component):
                 aria_label="Clear search",
                 class_="absolute inset-y-0 right-0 pr-3 flex items-center text-muted-foreground hover:text-muted-foreground cursor-pointer",
                 x_show="query.length > 0",
-                # On click: clear query, and dispatch 'input' event on the INPUT element (sibling)
-                # We need to find the input. Since we are inside a relative wrapper,
-                # generic approach: $el.closest('div.relative').querySelector('input').dispatchEvent(...)
-                # Simpler: rely on x-model updating the value, then manually trigger the HTMX on the input.
-                # However, HTMX triggers on the input element.
-                # Use x_on:click
+                # On click: clear query, dispatch 'input'/'change' on the INPUT
+                # element (sibling), then return focus to the input so keyboard
+                # users can immediately type the next query.
                 **{
-                    "@click": "query = ''; $nextTick(() => { let input = $el.closest('.relative').querySelector('input'); input.dispatchEvent(new Event('input', {bubbles: true})); input.dispatchEvent(new Event('change', {bubbles: true})); })",
+                    "@click": "query = ''; $nextTick(() => { let input = $el.closest('.relative').querySelector('input'); input.dispatchEvent(new Event('input', {bubbles: true})); input.dispatchEvent(new Event('change', {bubbles: true})); input.focus(); })",
                 },
             )
             inner_content.append(clear_btn)
