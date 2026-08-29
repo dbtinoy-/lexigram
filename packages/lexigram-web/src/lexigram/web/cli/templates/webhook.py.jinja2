@@ -9,6 +9,7 @@ import hashlib
 import hmac
 import json
 import logging
+import os
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -85,9 +86,14 @@ class {{ webhook_name }}Webhook:
             Response dictionary.
         """
         try:
-            # Verify signature if enabled
-            if self.verify_signature and self.secret:
-                signature = headers.get("X-Webhook-Signature")
+            if self.verify_signature:
+                if not self.secret:
+                    return {
+                        "status": "error",
+                        "message": "Webhook secret is not configured",
+                    }
+
+                signature = headers.get("x-webhook-signature")
                 if not signature:
                     return {
                         "status": "error",
@@ -100,41 +106,33 @@ class {{ webhook_name }}Webhook:
                         "message": "Invalid signature",
                     }
 
-            # Parse payload
             data = json.loads(payload.decode("utf-8"))
-
-            # Validate payload
             webhook_payload = {{ webhook_name }}Payload(**data)
-
-            # Get event handler
             event_type = webhook_payload.event_type
             handler = self._handlers.get(event_type)
 
             if handler:
-                # Execute handler
                 result = await handler(webhook_payload)
                 return {
                     "status": "success",
                     "event_type": event_type,
                     "result": result,
                 }
-            # No handler found
+
             logger.warning("No handler for event type: %s", event_type)
             return {
                 "status": "ignored",
                 "event_type": event_type,
                 "message": "No handler registered",
             }
-
         except json.JSONDecodeError as exc:
             logger.error("Invalid JSON: %s", exc)
             return {
                 "status": "error",
                 "message": f"Invalid JSON: {exc}",
             }
-
-        except Exception as exc:  # noqa: BLE001
-            logger.exception("Error handling webhook: %s", exc)
+        except Exception as exc:
+            logger.exception("Error handling webhook")
             return {
                 "status": "error",
                 "message": str(exc),
@@ -161,18 +159,13 @@ class {{ webhook_name }}Webhook:
 
         return hmac.compare_digest(expected, signature)
 
-    # Add webhook handler methods here
+    # Add webhook handler methods here.
     # Example:
     # async def handle_payment_created(self, payload: {{ webhook_name }}Payload) -> dict:
     #     """Handle payment created events."""
     #     logger.info("Payment created: %s", payload.data)
-    #     # Add processing logic
     #     return {"processed": True}
 
-
-# =============================================================================
-# ASGI Route Handler
-# =============================================================================
 
 async def {{ webhook_name_snake }}_webhook_handler(request: Request) -> JSONResponse:
     """ASGI handler for {{ webhook_name }} webhooks.
@@ -185,22 +178,16 @@ async def {{ webhook_name_snake }}_webhook_handler(request: Request) -> JSONResp
     Returns:
         JSON response.
     """
-    # Get request body
     body = await request.body()
-
-    # Get headers
     headers = {key: value for key, value in request.headers.items()}
 
-    # Create webhook instance
     webhook = {{ webhook_name }}Webhook(
-        secret=request.headers.get("x-webhook-secret"),
+        secret=os.getenv("WEBHOOK_{{ webhook_name_snake | upper }}_SECRET"),
         verify_signature=True,
     )
 
-    # Register handlers
+    # Register handlers.
     # webhook.register_handler("payment.created", handle_payment)
 
-    # Handle the request
     result = await webhook.handle_request(body, headers)
-
     return JSONResponse(result)
