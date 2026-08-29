@@ -420,13 +420,12 @@ class GraphQLProvider(_GraphQLDiscoveryMixin, Provider):
         Returns:
             Health check results.
         """
+        federation = getattr(self.config, "federation", None) if self.config else None
         details = {
             "schema_loaded": self._schema_builder is not None,
             "executor_ready": self._executor is not None,
             "metrics_enabled": self._metrics_collector is not None,
-            "federation_enabled": self.config.federation.enabled
-            if self.config
-            else False,
+            "federation_enabled": bool(getattr(federation, "enabled", False)),
         }
 
         return HealthCheckResult(
