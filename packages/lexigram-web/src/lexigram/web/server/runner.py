@@ -156,13 +156,13 @@ def run_server(
     port: int | None = None,
     **kwargs: Any,
 ) -> None:
-    """Run the web application.
+    """Run the web application synchronously, blocking the caller.
 
-    Detects whether a running event loop exists and dispatches accordingly:
-
-    - **Async context** (loop running): uses ``await server.serve()`` for
-      Uvicorn; runs Granian/Gunicorn in an executor thread.
-    - **Sync context** (no loop): runs the server directly.
+    This is the sync entry point: it always runs the server directly in
+    the calling thread and never inspects the surrounding context. Call
+    :func:`run_server_async` from async code instead — calling this from a
+    running event loop raises :class:`RuntimeError` rather than silently
+    blocking the loop.
 
     The backend is resolved in this order:
 
@@ -179,37 +179,52 @@ def run_server(
             kwargs are forwarded; unknown keys are silently dropped.
 
     Raises:
+        RuntimeError: If called from an async context (use
+            :func:`run_server_async` instead).
         ImportError: If the resolved server backend is not installed.
     """
     try:
-        loop = asyncio.get_running_loop()
+        asyncio.get_running_loop()
     except RuntimeError:
-        loop = None
-
-    if loop is not None:
-        # Sync function called from async context.
-        # Granian needs the main thread for signal handling, so we spawn it
-        # as a subprocess (like gunicorn).  Uvicorn works fine in a thread.
-        backend = _resolve_backend(app)
-        host, port = _resolve_web_config(app, host, port)
-
-        if backend == "granian":
-            import_str = _to_import_string(app) if not isinstance(app, str) else app
-            if import_str is None:
-                logger.warning(
-                    "granian_fallback_uvicorn",
-                    reason="could not derive import string from app instance",
-                )
-                _run_uvicorn_via_thread(app, host, port, **kwargs)
-            else:
-                filtered = {k: v for k, v in kwargs.items() if k in _GRANIAN_ACCEPTED}
-                _run_granian(import_str, host, port, **filtered)
-        elif backend == "gunicorn":
-            _run_gunicorn(app, host, port, **kwargs)
-        else:
-            _run_uvicorn_via_thread(app, host, port, **kwargs)
+        pass
     else:
-        _run_sync(app, host, port, **kwargs)
+        raise RuntimeError(
+            "run_server() is a sync, blocking API and cannot be called from "
+            "a running event loop; use run_server_async() instead."
+        )
+
+    _run_sync(app, host, port, **kwargs)
+
+
+async def run_server_async(
+    app: Any,
+    host: str | None = None,
+    port: int | None = None,
+    **kwargs: Any,
+) -> None:
+    """Run the web application from a running event loop.
+
+    Async entry point: Uvicorn serves in the calling loop; Granian and
+    Gunicorn run in an executor thread (they manage their own processes /
+    loops). This must be called from a running event loop.
+
+    Args:
+        app: ASGI application instance or import string (``"module:attr"``).
+        host: Bind address.  Reads from ``app.config.web.server.host``
+            when not provided.
+        port: Bind port.  Reads from ``app.config.web.server.port``
+            when not provided.
+        **kwargs: Additional server arguments. For Granian, only accepted
+            kwargs are forwarded; unknown keys are silently dropped.
+
+    Raises:
+        RuntimeError: If no event loop is running.
+
+    Returns:
+        A coroutine that completes when the server stops.
+    """
+    loop = asyncio.get_running_loop()
+    await _run_in_loop(loop, app, host, port, **kwargs)
 
 
 async def _run_in_loop(
@@ -356,34 +371,6 @@ async def _run_uvicorn_async(
     await server.serve()
 
 
-def _run_uvicorn_via_thread(
-    app: Any,
-    host: str,
-    port: int,
-    **kwargs: Any,
-) -> None:
-    """Run Uvicorn in a background thread (for async-context callers)."""
-    import concurrent.futures
-
-    import uvicorn  # type: ignore[import-not-found]
-
-    logger.info("starting_uvicorn_server", host=host, port=port, kwargs=kwargs)
-
-    def _serve() -> None:
-        config = uvicorn.Config(app, host=host, port=port, **kwargs)
-        server = uvicorn.Server(config)
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        try:
-            loop.run_until_complete(server.serve())
-        finally:
-            loop.close()
-
-    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-        future = pool.submit(_serve)
-        future.result()
-
-
 def _run_gunicorn(
     app: Any,
     host: str,
@@ -422,4 +409,4 @@ def _run_gunicorn(
     subprocess.run(cmd, check=False)  # noqa: S603
 
 
-__all__ = ["run_server"]
+__all__ = ["run_server", "run_server_async"]
