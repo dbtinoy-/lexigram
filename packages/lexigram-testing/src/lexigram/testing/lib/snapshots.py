@@ -43,17 +43,12 @@ class SnapshotMismatchError(AssertionError):
         self.name = name
         self.expected = expected
         self.actual = actual
-        expected_str = json.dumps(expected, indent=2, default=str)
-        actual_str = json.dumps(actual, indent=2, default=str)
-        # Handle both bytes and string serialization
-        if isinstance(expected_str, bytes):
-            expected_str = expected_str.decode("utf-8")
-        if isinstance(actual_str, bytes):
-            actual_str = actual_str.decode("utf-8")
+        expected_str = json.dumps(expected, indent=2, default=str).decode("utf-8")
+        actual_str = json.dumps(actual, indent=2, default=str).decode("utf-8")
         super().__init__(
             f"Snapshot mismatch for '{name}'.\n"
-            f"Expected: {expected_str}\n"  # type: ignore[str-bytes-safe]
-            f"Actual:   {actual_str}\n"  # type: ignore[str-bytes-safe]
+            f"Expected: {expected_str}\n"
+            f"Actual:   {actual_str}\n"
             f"To update, delete the snapshot file or call snapshot.update('{name}', value)."
         )
 

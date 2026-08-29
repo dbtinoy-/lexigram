@@ -114,7 +114,9 @@ class LexigramConfig(BaseConfig):
         return self.debug
 
     @overload
-    def get_section(self, name: str, model_cls: None = None) -> dict[str, Any] | None: ...
+    def get_section(
+        self, name: str, model_cls: None = None
+    ) -> dict[str, Any] | None: ...
 
     @overload
     def get_section(self, name: str, model_cls: type[T]) -> T: ...
