@@ -397,9 +397,11 @@ class WebProvider(Provider):
         port: int = 8000,
         **kwargs: Any,
     ) -> None:
-        """Run the web application using Granian.
+        """Run the web application synchronously (blocking).
 
-        See :func:`lexigram.web.server.runner.run_server` for implementation.
+        Delegates to :func:`lexigram.web.server.runner.run_server`, which
+        is sync-only; call :func:`lexigram.web.server.runner.run_server_async`
+        from async code instead.
         """
         from lexigram.web.server.runner import run_server as _run_server
 
