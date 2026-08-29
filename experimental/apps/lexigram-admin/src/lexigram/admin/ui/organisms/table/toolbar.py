@@ -203,10 +203,29 @@ class TableToolbar(Component):
                 ),
             )
 
-        # 3. Clear Filters Button (shown when filters/search are available)
-        clear_buttons = []
+        # Structure: [Left: Switchers] [Right: Bulk Actions | Header Buttons]
+        # - Bulk actions hidden until selected (x-show/x-cloak)
+        # - Header buttons (Create) ALWAYS visible, ALWAYS on the right
+        return el(
+            "div",
+            self._render_switchers(),
+            # Right side: bulk actions (hidden) + header buttons (always visible)
+            el(
+                "div",
+                # Bulk actions - only these have x-cloak/x-show
+                *bulk_buttons,
+                # Header buttons (Create) - NO x-cloak, always visible
+                *header_buttons,
+                class_="flex items-center gap-2",
+            ),
+            class_="flex items-center justify-between mb-2 pb-2 border-b border-border",
+            id=Zones.TOOLBAR.id,
+        )
 
-        # Show clear button when search is enabled or filters are available
+    def _render_switchers(self) -> Any:
+        """Render the left-hand switcher cluster (view/layout/group-by + clear)."""
+        # Clear Filters Button (shown when filters/search are available)
+        clear_buttons = []
         has_search_enabled = self.config.enable_search
         has_filters_available = bool(self.config.filters)
 
@@ -256,32 +275,14 @@ class TableToolbar(Component):
             state=self.state,
         )
 
-        # Structure: [Left: Switchers] [Right: Bulk Actions | Header Buttons]
-        # - Bulk actions hidden until selected (x-show/x-cloak)
-        # - Header buttons (Create) ALWAYS visible, ALWAYS on the right
         return el(
             "div",
-            # Left side: switchers
-            el(
-                "div",
-                layout_switch.render(),
-                view_switch.render(),
-                group_by_switch.render(),
-                *clear_buttons,
-                class_="flex items-center gap-2",
-                id=Zones.TOOLBAR.id + "-switchers",
-            ),
-            # Right side: bulk actions (hidden) + header buttons (always visible)
-            el(
-                "div",
-                # Bulk actions - only these have x-cloak/x-show
-                *bulk_buttons,
-                # Header buttons (Create) - NO x-cloak, always visible
-                *header_buttons,
-                class_="flex items-center gap-2",
-            ),
-            class_="flex items-center justify-between mb-2 pb-2 border-b border-border",
-            id=Zones.TOOLBAR.id,
+            layout_switch.render(),
+            view_switch.render(),
+            group_by_switch.render(),
+            *clear_buttons,
+            class_="flex items-center gap-2",
+            id=Zones.TOOLBAR.id + "-switchers",
         )
 
     def render_search(self) -> Any:
@@ -345,65 +346,6 @@ class TableToolbar(Component):
         This allows updating the switcher links (state) without re-rendering
         the search bar (preserving focus).
         """
-        # Re-create global switchers logic (unfortunately duped, but cleaner than breaking render_header apart)
-
-        # Clear Filters Button
-        clear_buttons = []
-        has_search_enabled = self.config.enable_search
-        has_filters_available = bool(self.config.filters)
-
-        if self.config.resource_prefix and (
-            has_search_enabled or has_filters_available
-        ):
-            # Use new HTMX API for clear button
-            from lexigram.ui import HTMXAttrs
-
-            clear_state = self.state.clear_filters()
-            clear_attrs = HTMXAttrs.for_full_refresh(
-                state=clear_state,
-                resource_prefix=self.config.resource_prefix,
-                push_url=True,
-            )
-
-            clear_btn = ActionButton(
-                label="Clear",
-                variant="ghost",
-                icon="x",
-                size="sm",
-                **clear_attrs,  # type: ignore[arg-type]
-                **{  # type: ignore[arg-type]
-                    "x-bind:class": "{ 'opacity-50 cursor-not-allowed': !hasActiveFiltersState }",
-                    "x-bind:disabled": "!hasActiveFiltersState",
-                    "@click": "if (!hasActiveFiltersState) $event.preventDefault()",
-                    "x-ref": "clearFiltersButton",
-                },
-            )
-            clear_buttons.append(clear_btn.render())
-
-        layout_switch = LayoutSwitcher(
-            current=self.state.layout,
-            resource_prefix=self.config.resource_prefix,
-            state=self.state,
-        )
-        view_switch = ViewSwitcher(
-            current=self.state.view,
-            resource_prefix=self.config.resource_prefix,
-            state=self.state,
-        )
-        group_by_switch = GroupBySwitcher(
-            current=self.state.group_by or self.config.group_by,
-            resource_prefix=self.config.resource_prefix,
-            columns=self.config.columns,
-            state=self.state,
-        )
-
-        return el(
-            "div",
-            layout_switch.render(),
-            view_switch.render(),
-            group_by_switch.render(),
-            *clear_buttons,
-            class_="flex items-center gap-2",
-            id=Zones.TOOLBAR.id + "-switchers",
-            hx_swap_oob="outerHTML",
-        )
+        switchers = self._render_switchers()
+        switchers.attrs["hx_swap_oob"] = "outerHTML"
+        return switchers

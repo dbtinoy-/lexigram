@@ -217,8 +217,27 @@ def _render_health_content(payload: HealthCheckPayload) -> str:
 
 
 def _render_chart_content(content: ChartContent) -> str:
-    """Render chart points with the declared chart primitive and tone colors."""
-    chart_cls = _CHART_COMPONENT[content.chart_type]
+    """Render chart points with the declared chart primitive and tone colors.
+
+    Empty point sets render ``EmptyState`` instead of an empty canvas, and an
+    unknown chart primitive degrades to a message rather than raising.
+    """
+    chart_cls = _CHART_COMPONENT.get(content.chart_type)
+    if chart_cls is None:
+        return render_to_string(
+            el(
+                "p",
+                f"Unsupported chart type: {content.chart_type}",
+                class_="text-sm text-muted-foreground text-center py-8",
+            )
+        )
+    if not content.points:
+        return render_to_string(
+            EmptyState(
+                title="No chart data",
+                message="There is nothing to display for this widget yet.",
+            )
+        )
     points = [
         ChartDataPoint(
             label=point.label,

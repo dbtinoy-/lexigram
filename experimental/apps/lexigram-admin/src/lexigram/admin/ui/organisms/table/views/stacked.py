@@ -4,14 +4,11 @@ from typing import Any
 
 from lexigram.admin.ui.organisms.data_table.actions import render_action_button
 from lexigram.admin.ui.organisms.table.views.tabular import AbstractDataView
+from lexigram.admin.ui.organisms.table.views.tabular_rows import (
+    extract_row_id,
+    get_attr,
+)
 from lexigram.ui import Checkbox, el
-
-
-def _get_attr(item: Any, key: str, default: Any = None) -> Any:
-    """Safely get attribute from dict or Pydantic model."""
-    if isinstance(item, dict):
-        return item.get(key, default)
-    return getattr(item, key, default)
 
 
 class StackedView(AbstractDataView):
@@ -20,24 +17,7 @@ class StackedView(AbstractDataView):
     def render(self) -> Any:
         cards = []
         for _, item in enumerate(self.data):
-            rid = ""
-            if isinstance(item, dict):
-                rid = str(item.get("id", item.get("user_id", item.get("pk", ""))))
-            elif hasattr(item, "id"):
-                rid = str(item.id)
-            elif hasattr(item, "user_id"):
-                rid = str(item.user_id)
-            elif hasattr(item, "pk"):
-                rid = str(item.pk)
-            elif hasattr(item, "__getitem__"):
-                try:
-                    rid = str(item[0])
-                except (IndexError, TypeError):
-                    rid = ""
-
-            # If rid is still empty, fallback to a safe string
-            if not rid:
-                rid = f"row-{_}"
+            rid = extract_row_id(item) or f"row-{_}"
             # Row Header (Checkbox + Title + Actions)
             header_parts = []
 
@@ -57,9 +37,9 @@ class StackedView(AbstractDataView):
 
             # Detect Primary Field for the card header
             primary_val = (
-                _get_attr(item, "name")
-                or _get_attr(item, "title")
-                or _get_attr(item, "label")
+                get_attr(item, "name")
+                or get_attr(item, "title")
+                or get_attr(item, "label")
                 or f"Record {rid}"
             )
             header_parts.append(
@@ -156,13 +136,11 @@ class StackedView(AbstractDataView):
         stack = el("div", *cards, class_="block space-y-4")
 
         # Virtual Scroll Logic
-        next_cursor = getattr(self.state, "next_cursor", None) or getattr(
-            self.config,
-            "next_cursor",
-            None,
+        next_cursor = (
+            self.next_cursor
+            or getattr(self.state, "next_cursor", None)
+            or getattr(self.config, "next_cursor", None)
         )
-        if not next_cursor and hasattr(self, "next_cursor"):
-            next_cursor = self.next_cursor
 
         if next_cursor and self.config.resource_prefix:
             from urllib.parse import urlencode

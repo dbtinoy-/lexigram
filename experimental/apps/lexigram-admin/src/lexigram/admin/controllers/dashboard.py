@@ -187,6 +187,29 @@ class DashboardController(AdminController):
             default_health = [
                 HealthEntry(name="Admin API", status="ok"),
             ]
+
+            from lexigram.admin.dashboard.chart_widget import ChartWidget
+            from lexigram.admin.resources.urls import admin_prefix_from_request
+            from lexigram.ui import ChartType
+
+            resources_chart = ChartWidget(
+                title="Registered Resources",
+                chart_type=ChartType.BAR,
+                data_source=(
+                    f"{admin_prefix_from_request(request)}/widgets/resources"
+                ),
+                description=(
+                    "Every admin resource registered with this application."
+                ),
+                col_span=3,
+                refresh_interval=120,
+            )
+            chart_row = el(
+                "div",
+                resources_chart,
+                class_="grid grid-cols-1 lg:grid-cols-3 gap-4",
+            )
+
             bottom_row = el(
                 "div",
                 el(
@@ -200,6 +223,7 @@ class DashboardController(AdminController):
             widgets_section = el(
                 "div",
                 StatCardGrid(default_stats, cols=4),
+                chart_row,
                 bottom_row,
                 class_="space-y-6",
             )
@@ -303,6 +327,30 @@ class DashboardController(AdminController):
         return await self._render_with_flash(
             request, content, f"Dashboard: {dashboard_id}", breadcrumbs
         )
+
+    @get("/widgets/resources")
+    async def resources_chart(self, request: Request) -> HTMLResponse:
+        """Render the registered-resources bar chart fragment.
+
+        HTMX target for the default dashboard's ``ChartWidget``.  Returns an
+        empty state when no resources are registered so the card body never
+        renders a blank canvas.
+        """
+        from lexigram.ui import BarChart, ChartDataPoint, EmptyState, render_to_string
+
+        resources = self._get_resource_list(request)
+        if not resources:
+            return HTMLResponse(
+                render_to_string(
+                    EmptyState(
+                        title="No resources",
+                        message="No admin resources are registered yet.",
+                    )
+                )
+            )
+
+        points = [ChartDataPoint(label=name, value=1, color="blue") for name in resources]
+        return HTMLResponse(render_to_string(BarChart(points)))
 
     async def _render_with_flash(
         self,

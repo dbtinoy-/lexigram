@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 from typing import Any
+from uuid import uuid4
 
 from lexigram.ui import Component, el
 
@@ -95,6 +96,8 @@ class StatsOverviewWidget(Component):
         trend_value: float | None = None,
         sparkline_data: list[float] | None = None,
         col_span: int = 1,
+        data_source: str | None = None,
+        refresh_interval: int | None = None,
     ) -> None:
         super().__init__()
         self.title = title
@@ -105,10 +108,62 @@ class StatsOverviewWidget(Component):
         self.trend_value = trend_value
         self.sparkline_data = sparkline_data or []
         self.col_span = col_span
+        self.data_source = data_source
+        self.refresh_interval = refresh_interval
+        self._body_id = f"stat-body-{uuid4().hex[:8]}"
 
     def render(self) -> Any:
         """Render the stat card markup."""
         span = _COL_SPAN_MAP.get(self.col_span, "")
+
+        hx_attrs: dict[str, Any] = {}
+        if self.data_source:
+            triggers = ["load"]
+            if self.refresh_interval and self.refresh_interval > 0:
+                triggers.append(f"every {self.refresh_interval * 1000}ms")
+            hx_attrs["hx-get"] = self.data_source
+            hx_attrs["hx-trigger"] = ", ".join(triggers)
+            hx_attrs["hx-target"] = f"#{self._body_id}"
+            hx_attrs["hx-swap"] = "innerHTML"
+            hx_attrs["hx-indicator"] = f"#{self._body_id}-indicator"
+
+        # With a data source, the endpoint owns the value/trend markup; the
+        # card renders a loading skeleton until the first response arrives.
+        if self.data_source:
+            body = el(
+                "div",
+                el("div", class_="h-5 bg-muted rounded w-1/3 mb-2"),
+                el("div", class_="h-3 bg-muted rounded w-2/3"),
+                class_="animate-pulse",
+            )
+            indicator = el(
+                "div",
+                el("span", "Loading…", class_="sr-only"),
+                class_=(
+                    "htmx-indicator absolute inset-0 z-10 flex items-center "
+                    "justify-center bg-card/80 rounded-lg"
+                ),
+                role="status",
+                id=f"{self._body_id}-indicator",
+            )
+            return el(
+                "div",
+                el(
+                    "div",
+                    body,
+                    indicator,
+                    id=self._body_id,
+                    class_="relative",
+                    role="region",
+                    aria_label=self.title,
+                    aria_live="polite",
+                ),
+                class_=(
+                    f"bg-card rounded-xl shadow-sm border border-border p-5 "
+                    f"{span}"
+                ).strip(),
+                **hx_attrs,
+            )
 
         left: list[Any] = []
         if self.icon:

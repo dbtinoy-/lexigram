@@ -26,6 +26,7 @@ class AbstractDataView(ABC):
         summary: dict[str, Any] | None = None,
         user: Any = None,
         resource_name: str | None = None,
+        next_cursor: str | None = None,
     ):
         self.data = data
         self.config = config
@@ -34,6 +35,7 @@ class AbstractDataView(ABC):
         self.summary = summary
         self.user = user
         self.resource_name = resource_name
+        self.next_cursor = next_cursor
 
         # Apply column ordering if present in state
         if self.state.column_order:

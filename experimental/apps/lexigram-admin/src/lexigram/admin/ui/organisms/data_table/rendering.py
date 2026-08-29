@@ -62,30 +62,11 @@ class DataTableRenderer:
 
     def _extract_all_ids(self) -> list[str]:
         """Extract all record IDs from data."""
-        ids = []
-        for item in self.data:
-            if isinstance(item, dict):
-                item_id = item.get("id", item.get("user_id", item.get("pk")))
-            elif hasattr(item, "id"):
-                item_id = item.id
-            elif hasattr(item, "user_id"):
-                item_id = item.user_id
-            elif hasattr(item, "pk"):
-                item_id = item.pk
-            elif hasattr(item, "__getitem__"):
-                try:
-                    item_id = item[0]
-                except (IndexError, TypeError):
-                    item_id = None
-            else:
-                item_id = None
+        from lexigram.admin.ui.organisms.table.views.tabular_rows import (
+            extract_row_id,
+        )
 
-            if item_id is not None:
-                ids.append(str(item_id))
-            else:
-                ids.append("")
-
-        return ids
+        return [extract_row_id(item) for item in self.data]
 
     @property
     def all_ids_json(self) -> str:
@@ -294,6 +275,7 @@ class DataTableRenderer:
             self.summary,
             self.user,
             self.config.resource_name,
+            next_cursor=self.next_cursor,
         )
         return view_strategy.render()
 
