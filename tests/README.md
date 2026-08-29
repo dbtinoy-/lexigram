@@ -1,150 +1,106 @@
-# Integration Tests
+# Tests
 
-This directory contains Docker Compose configuration and documentation for running integration tests that require external services.
+This directory contains the test suite for the Lexigram framework.
+
+## Structure
+
+```text
+tests/
+├── dev/                    # Developer tooling tests (generators, audits, CLI checks)
+├── integration/
+│   ├── scenarios/          # Cross-package scenario apps (in-memory, no live services)
+│   │   ├── conftest.py     # Scenario fixtures and factory stubs
+│   │   ├── scenario_apps.py
+│   │   ├── relay_fakes/    # Stub implementations for relay system tests
+│   │   ├── test_audit_trail.py
+│   │   ├── test_events_sql.py
+│   │   ├── test_tasks_queue.py
+│   │   ├── test_tenancy_isolation.py
+│   │   ├── test_web_auth_session.py
+│   │   ├── test_web_cache_sql.py
+│   │   └── test_web_sql_crud.py
+│   └── extension_tests/    # Per-package integration tests
+├── test_env_audit_non_config_sources.py
+├── test_workspace_config.py
+├── docker-compose.yml      # PostgreSQL, Redis, Kafka, MinIO for integration
+└── wait-for-services.sh
+```
 
 ## Quick Start
 
 ```bash
-# Start all services
-docker compose up -d
+# Unit tests only (default — no external services needed)
+uv run pytest
 
-# Wait for services to be healthy
-docker compose ps
+# Explicit form (equivalent)
+uv run pytest -m "not integration"
 
-# Run all integration tests
+# Integration tests (requires docker compose up -d)
 uv run pytest -m integration
-
-# Stop all services
-docker compose down -v
 ```
 
-## Services
+## Running Specific Tests
+
+```bash
+# Scoped runs
+uv run pytest tests/dev/test_registry.py -v
+uv run pytest tests/integration/scenarios/ -v
+uv run pytest -k "test_user"
+
+# One package's tests
+uv run pytest packages/lexigram-web/tests/
+
+# One test
+uv run pytest tests/dev/test_registry.py::test_audit_registry_contains_expected_generators -v
+```
+
+## Scenario Suite
+
+The `tests/integration/scenarios/` directory contains cross-package integration tests
+that run **entirely in-memory** — no live Postgres, Redis, or Docker required. Each
+scenario boots a minimal Lexigram application configured for a specific package
+composition (CRUD, events, web auth, audit, cache, tasks, tenancy).
+
+These are integration-marked and run only with `-m integration` or explicitly
+navigated via path:
+
+```bash
+uv run pytest tests/integration/scenarios/ -v
+```
+
+## Docker Services
+
+For tests requiring external infrastructure:
 
 | Service | Port | Purpose |
 |---------|------|---------|
-| PostgreSQL | 15432 | Database tests for lexigram-sql |
-| Redis | 16379 | Cache tests for lexigram-cache |
-| Kafka | 19092 | Message queue tests for lexigram-queue |
-| MinIO | 19000 | Object storage tests for lexigram-storage |
-
-### Service Health Checks
-
-All services include health checks. Verify readiness with:
+| PostgreSQL | 15432 | Database tests (lexigram-sql) |
+| Redis | 16379 | Cache tests (lexigram-cache) |
+| Kafka | 19092 | Queue tests (lexigram-queue) |
+| MinIO | 19000 | Storage tests (lexigram-storage) |
 
 ```bash
-docker compose ps --format "table {{.Name}}\t{{.Status}}"
-```
-
-## Running Tests
-
-### All Integration Tests
-
-```bash
+docker compose up -d
 uv run pytest -m integration
+docker compose down -v
 ```
 
-### Specific Package Tests
-
-```bash
-# SQL tests
-uv run pytest packages/lexigram-sql/tests -m integration
-
-# Cache tests
-uv run pytest packages/lexigram-cache/tests -m integration
-
-# Queue tests
-uv run pytest packages/lexigram-queue/tests -m integration
-
-# Storage tests
-uv run pytest packages/lexigram-storage/tests -m integration
-```
-
-### With Coverage
-
-```bash
-uv run pytest -m integration --cov --cov-report=html --cov-fail-under=80
-```
-
-## Service Markers
-
-The lexigram-testing package provides pytest markers to selectively run tests based on required infrastructure:
+## Markers
 
 | Marker | Description |
 |--------|-------------|
-| `@pytest.mark.integration` | Marks tests requiring external services (deselect with `-m "not integration"`) |
+| `@pytest.mark.integration` | Requires external services |
 | `@pytest.mark.requires_postgres` | Skip unless PostgreSQL is available |
 | `@pytest.mark.requires_redis` | Skip unless Redis is available |
 
-### Usage Examples
-
 ```bash
-# Run only PostgreSQL tests
 uv run pytest -m requires_postgres
-
-# Run Redis and cache tests
-uv run pytest -m requires_redis
-
-# Run all tests requiring PostgreSQL or Redis
 uv run pytest -m "requires_postgres or requires_redis"
 ```
 
-## CI Integration
-
-Example GitHub Actions workflow for running integration tests on merge to main:
-
-```yaml
-name: Integration Tests
-
-on:
-  push:
-    branches: [main]
-
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Start services
-        run: docker compose up -d
-        
-      - name: Wait for services
-        run: sleep 15
-        
-      - name: Run integration tests
-        run: uv run pytest -m integration --tb=short
-        
-      - name: Upload coverage
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage
-          path: htmlcov/
-          
-      - name: Stop services
-        if: always()
-        run: docker compose down -v
-```
-
-## Troubleshooting
-
-### Services Not Starting
+## Coverage
 
 ```bash
-# Check service logs
-docker compose logs postgres
-docker compose logs redis
-docker compose logs kafka
-docker compose logs minio
-```
-
-### Port Conflicts
-
-If ports are already in use, stop conflicting services or modify `docker-compose.yml` to use different ports.
-
-### Database Connection Issues
-
-Ensure PostgreSQL is fully ready before running tests:
-```bash
-docker compose exec postgres pg_isready -U lexigram
+uv run pytest --cov --cov-report=html
+uv run pytest --cov-fail-under=80
 ```
