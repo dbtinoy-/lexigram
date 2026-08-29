@@ -112,32 +112,25 @@ class TestSQLMigrationBackend:
 
 class TestMigrationRegistry:
     def test_register_and_get(self) -> None:
-        MigrationRegistry._backends = {}
-        MigrationRegistry._initialized = False
-
+        registry = MigrationRegistry()
         backend = MagicMock(spec=SQLMigrationBackend)
-        MigrationRegistry.register("test", backend)
-        assert MigrationRegistry.get("test") is backend
+        registry.register("test", backend)
+        assert registry.get("test") is backend
 
     def test_get_nonexistent(self) -> None:
-        MigrationRegistry._backends = {}
-        MigrationRegistry._initialized = False
-        assert MigrationRegistry.get("nonexistent") is None
+        registry = MigrationRegistry()
+        assert registry.get("nonexistent") is None
 
     def test_get_all(self) -> None:
-        MigrationRegistry._backends = {}
-        MigrationRegistry._initialized = False
+        registry = MigrationRegistry()
         backend = MagicMock(spec=SQLMigrationBackend)
-        MigrationRegistry.register("a", backend)
-        all_backends = MigrationRegistry.get_all()
+        registry.register("a", backend)
+        all_backends = registry.get_all()
         assert "a" in all_backends
 
-    def test_register_defaults(self) -> None:
-        MigrationRegistry._backends = {}
-        MigrationRegistry._initialized = False
-        MigrationRegistry.register_defaults()
-        assert MigrationRegistry._initialized is True
-
+    def test_empty_registry_by_default(self) -> None:
+        registry = MigrationRegistry()
+        assert registry.get_all() == {}
 
 class TestMigrationManager:
     @pytest.mark.asyncio

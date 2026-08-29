@@ -122,53 +122,56 @@ class ValidationHook(Hook):
 class HookRegistry:
     """Registry for CLI hooks.
 
-    Provides a pluggable way to add new hooks.
+    Instances are always empty — use :meth:`with_defaults` for the
+    in-package built-ins or :meth:`register` for plugin hooks.
     """
 
-    _hooks: dict[HookPhase, list[Hook]] = {}
-    _initialized: bool = False
+    def __init__(self) -> None:
+        self._hooks: dict[HookPhase, list[Hook]] = {}
 
-    @classmethod
-    def register(cls, hook: Hook) -> None:
+    def register(self, hook: Hook) -> None:
         """Register a hook."""
-        if hook.phase not in cls._hooks:
-            cls._hooks[hook.phase] = []
-        cls._hooks[hook.phase].append(hook)
-        cls._hooks[hook.phase].sort(key=lambda h: h.priority)
+        if hook.phase not in self._hooks:
+            self._hooks[hook.phase] = []
+        self._hooks[hook.phase].append(hook)
+        self._hooks[hook.phase].sort(key=lambda h: h.priority)
 
-    @classmethod
-    def register_class(cls, hook_class: type[Hook]) -> None:
+    def register_class(self, hook_class: type[Hook]) -> None:
         """Register a hook class."""
         instance = hook_class()
-        cls.register(instance)
+        self.register(instance)
 
-    @classmethod
-    def get_hooks(cls, phase: HookPhase) -> list[Hook]:
+    def get_hooks(self, phase: HookPhase) -> list[Hook]:
         """Get hooks for a specific phase."""
-        cls.register_defaults()
-        return cls._hooks.get(phase, []).copy()
+        return self._hooks.get(phase, []).copy()
 
-    @classmethod
-    def get_all_hooks(cls) -> dict[HookPhase, list[Hook]]:
+    def get_all_hooks(self) -> dict[HookPhase, list[Hook]]:
         """Get all registered hooks."""
-        cls.register_defaults()
-        return cls._hooks.copy()
+        return self._hooks.copy()
 
     @classmethod
-    def register_defaults(cls) -> None:
-        """Initialize default hooks if not already done."""
-        if not cls._initialized:
-            cls.register(LoggingHook())
-            cls.register(TimingHook())
-            cls.register(ErrorHandlingHook())
-            cls._initialized = True
+    def _default_entries(cls) -> tuple[Hook, ...]:
+        """The complete in-package built-in set, declared exactly once."""
+        return (
+            LoggingHook(),
+            TimingHook(),
+            ErrorHandlingHook(),
+        )
+
+    @classmethod
+    def with_defaults(cls) -> HookRegistry:
+        """Return an instance populated with the built-in hooks."""
+        registry = cls()
+        for entry in cls._default_entries():
+            registry.register(entry)
+        return registry
 
 
 class HookExecutor:
     """Executes hooks for CLI lifecycle events."""
 
     def __init__(self) -> None:
-        self.registry = HookRegistry
+        self.registry = HookRegistry.with_defaults()
 
     async def execute_phase(
         self,

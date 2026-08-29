@@ -41,7 +41,6 @@ class ProviderRegistry:
 
     def __init__(self) -> None:
         self._providers: dict[str, Provider] = {}
-        self._initialized: bool = False
 
     def register(self, provider: type[Provider]) -> None:
         """Register a provider class."""
@@ -50,43 +49,49 @@ class ProviderRegistry:
 
     def get(self, name: str) -> Provider | None:
         """Get a provider by name."""
-        self.register_defaults()
         return self._providers.get(name)
 
     def get_all(self) -> dict[str, Provider]:
         """Get all registered providers."""
-        self.register_defaults()
         return self._providers.copy()
 
     def get_choices(self) -> list[str]:
         """Get list of available provider names."""
-        self.register_defaults()
         return list(self._providers.keys())
 
-    def register_defaults(self) -> None:
-        """Initialize default providers if not already done."""
-        if not self._initialized:
-            self.register(DatabaseService)
-            self.register(AuthProvider)
-            self.register(AIProvider)
-            self.register(CacheProvider)
-            self.register(QueueProvider)
-            self.register(MessagingProvider)
-            self.register(NotificationProvider)
-            self.register(EventsProvider)
-            self.register(SearchProvider)
-            self.register(StorageProvider)
-            self.register(MonitorProvider)
-            self.register(TasksProvider)
-            self.register(GraphQLProvider)
-            self.register(ResilienceProvider)
-            self.register(MonitoringProvider)
-            self.register(WebProvider)
-            self.register(AdminProvider)
-            self.register(ConnectProvider)
-            self.register(CommonProvider)
-            self.register(TestingProvider)
-            self._initialized = True
+    @classmethod
+    def _default_entries(cls) -> tuple[type[Provider], ...]:
+        """The complete in-package built-in set, declared exactly once."""
+        return (
+            DatabaseService,
+            AuthProvider,
+            AIProvider,
+            CacheProvider,
+            QueueProvider,
+            MessagingProvider,
+            NotificationProvider,
+            EventsProvider,
+            SearchProvider,
+            StorageProvider,
+            MonitorProvider,
+            TasksProvider,
+            GraphQLProvider,
+            ResilienceProvider,
+            MonitoringProvider,
+            WebProvider,
+            AdminProvider,
+            ConnectProvider,
+            CommonProvider,
+            TestingProvider,
+        )
+
+    @classmethod
+    def with_defaults(cls) -> ProviderRegistry:
+        """Return an instance populated with the built-in providers."""
+        registry = cls()
+        for entry in cls._default_entries():
+            registry.register(entry)
+        return registry
 
 
 class ProviderInstaller:

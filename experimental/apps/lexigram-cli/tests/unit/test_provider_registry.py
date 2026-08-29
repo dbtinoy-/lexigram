@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
 import yaml
 
 from lexigram.cli.registry.provider import ProviderInstaller, ProviderRegistry
@@ -22,7 +21,7 @@ class TestProviderInstallerConfigMerging:
         config_file = tmp_path / "application.yaml"
         config_file.write_text("app:\n  name: my-app\n")
 
-        registry = ProviderRegistry()
+        registry = ProviderRegistry.with_defaults()
         provider = registry.get("database")
         assert provider is not None
 
@@ -48,7 +47,7 @@ class TestProviderInstallerConfigMerging:
         }
         config_file.write_text(yaml.dump(existing_config))
 
-        registry = ProviderRegistry()
+        registry = ProviderRegistry.with_defaults()
         provider = registry.get("database")
         assert provider is not None
 
@@ -63,7 +62,7 @@ class TestProviderInstallerConfigMerging:
 
     def test_returns_false_when_config_file_missing(self, tmp_path: Path) -> None:
         """add_provider_config() returns False if config file doesn't exist."""
-        registry = ProviderRegistry()
+        registry = ProviderRegistry.with_defaults()
         provider = registry.get("cache")
         assert provider is not None
 
@@ -77,7 +76,7 @@ class TestProviderInstallerConfigMerging:
         config_file = tmp_path / "application.yaml"
         config_file.write_text("{}\n")
 
-        registry = ProviderRegistry()
+        registry = ProviderRegistry.with_defaults()
         provider = registry.get("cache")
         assert provider is not None
 
@@ -96,7 +95,7 @@ class TestProviderInstallerConfigMerging:
         config_file = tmp_path / "application.yaml"
         config_file.write_text("{}\n")
 
-        registry = ProviderRegistry()
+        registry = ProviderRegistry.with_defaults()
         db_provider = registry.get("database")
         cache_provider = registry.get("cache")
         assert db_provider is not None
@@ -124,20 +123,20 @@ class TestProviderRegistry:
 
     def test_get_known_provider(self) -> None:
         """get() returns the provider for a known name."""
-        reg = ProviderRegistry()
+        reg = ProviderRegistry.with_defaults()
         provider = reg.get("database")
         assert provider is not None
         assert provider.get_info().name == "database"
 
     def test_get_unknown_provider_returns_none(self) -> None:
         """get() returns None for an unregistered name."""
-        reg = ProviderRegistry()
+        reg = ProviderRegistry.with_defaults()
         result = reg.get("does-not-exist")
         assert result is None
 
     def test_get_choices_includes_all_defaults(self) -> None:
         """get_choices() includes all default provider names."""
-        reg = ProviderRegistry()
+        reg = ProviderRegistry.with_defaults()
         choices = reg.get_choices()
         expected = {"database", "auth", "ai", "cache", "messaging", "events"}
         for name in expected:
@@ -145,7 +144,7 @@ class TestProviderRegistry:
 
     def test_get_all_returns_copy(self) -> None:
         """get_all() returns a copy so mutation doesn't affect the registry."""
-        reg = ProviderRegistry()
+        reg = ProviderRegistry.with_defaults()
         all_providers = reg.get_all()
         count_before = len(all_providers)
         all_providers["fake"] = None  # type: ignore[assignment]
