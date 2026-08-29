@@ -173,6 +173,13 @@ sequenceDiagram
    generator's `.generate()` method, which renders Jinja2 templates
    and writes files.
 
+`GeneratorRegistry` is plugin-driven, so there is no class-level default
+set: instances start empty and are populated exclusively through
+`populate_cli_registries()` (entry-point discovery), both in the DI path
+and in `commands/gen.py`. This keeps one canonical population path and
+avoids a `with_defaults()` factory that only knows the core contributor's
+subset.
+
 ### Generator class hierarchy
 
 ```
