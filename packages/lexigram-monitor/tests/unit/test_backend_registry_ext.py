@@ -1,6 +1,8 @@
 """Tests for MonitorBackendRegistryManager."""
 
 import pytest
+
+pytest.importorskip("opentelemetry", reason="Requires opentelemetry")
 from unittest.mock import MagicMock
 from lexigram.monitor.backends.registry import (
     MonitorBackendRegistryManager,

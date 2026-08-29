@@ -1,4 +1,6 @@
 import pytest
+
+pytest.importorskip("opentelemetry", reason="Requires opentelemetry")
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor, SpanExportResult
 

@@ -1,6 +1,8 @@
 """Tests for OpenTelemetry backend."""
 
 import pytest
+
+pytest.importorskip("opentelemetry", reason="Requires opentelemetry")
 from unittest.mock import MagicMock, patch, AsyncMock
 from lexigram.monitor.backends.opentelemetry import OpenTelemetryBackend
 

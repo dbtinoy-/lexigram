@@ -1,6 +1,8 @@
 """Tests for database instrumentation."""
 
 import pytest
+
+pytest.importorskip("opentelemetry", reason="Requires opentelemetry")
 from unittest.mock import AsyncMock, MagicMock
 from opentelemetry import metrics, trace
 
