@@ -39,7 +39,7 @@ class TestGenerator(GeneratorBase):
         *,
         test_type: str = "model",
         fields_str: str | None = None,
-        package_name: str | None = "app",
+        package_name: str | None = None,
         doc: str | None = None,
         dry_run: bool = False,
         force: bool = False,
@@ -102,7 +102,7 @@ class TestGenerator(GeneratorBase):
             "class_name": class_name,
             "model_name": model_name,
             "test_type": test_type,
-            "package_name": package_name or "app",
+            "package_name": package_name,
             "doc": doc,
             "fields": prepared_fields,
         }

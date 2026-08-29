@@ -14,11 +14,11 @@ import pytest
 from starlette.requests import Request
 
 {% if test_type == 'model' %}
-from {{ package_name }}.models.{{ model_name }} import {{ class_name }}
+from models.{{ model_name }} import {{ class_name }}
 {% elif test_type == 'service' %}
-from {{ package_name }}.services.{{ model_name }}_service import {{ class_name }}Service
+from services.{{ model_name }}_service import {{ class_name }}Service
 {% elif test_type == 'controller' %}
-from {{ package_name }}.controllers.{{ model_name }}_controller import {{ class_name }}Controller
+from controllers.{{ model_name }}_controller import {{ class_name }}Controller
 from lexigram.web.exceptions import NotFoundError
 {% else %}
 # Import your modules here
@@ -111,7 +111,7 @@ class Test{{ class_name }}Service:
             {% endfor %}
         }
         with patch(
-            "{{ package_name }}.services.{{ model_name }}_service.SimpleUnitOfWork"
+            "services.{{ model_name }}_service.SimpleUnitOfWork"
         ) as uow_cls:
             uow = uow_cls.return_value
             uow.__aenter__ = AsyncMock(return_value=uow)
@@ -129,7 +129,7 @@ class Test{{ class_name }}Service:
     ):
         """Test deleting a row."""
         with patch(
-            "{{ package_name }}.services.{{ model_name }}_service.SimpleUnitOfWork"
+            "services.{{ model_name }}_service.SimpleUnitOfWork"
         ) as uow_cls:
             uow = uow_cls.return_value
             uow.__aenter__ = AsyncMock(return_value=uow)
