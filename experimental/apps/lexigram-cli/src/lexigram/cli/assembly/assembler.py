@@ -14,6 +14,29 @@ from lexigram.cli.runtime import handle_errors
 from lexigram.contracts.cli.types import GeneratorDefinition
 
 
+def _resolve_default_output(
+    default: str,
+    generator: str,
+    module: str | None,
+) -> str:
+    """Resolve a generator default against the project's declared structure."""
+    from lexigram.cli.layout import read_project_layout, resolve_output_dir
+
+    layout = read_project_layout()
+    if not layout.structure_declared:
+        return _detect_src_dir(default)
+    try:
+        return resolve_output_dir(
+            default,
+            structure=layout.structure,
+            app_package=layout.app_package,
+            module=module,
+            generator=generator,
+        )
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+
+
 def _detect_src_dir(default: str) -> str:
     """Rewrite package-local ``src`` defaults for single-package layouts."""
     default_path = Path(default)
@@ -73,6 +96,14 @@ class CommandAssembler:
                 str,
                 typer.Option("--output-dir", "-o", help="Output directory"),
             ] = gen_def.default_output_dir,
+            module: Annotated[
+                str | None,
+                typer.Option(
+                    "--module",
+                    "-m",
+                    help="Feature module (modular structure only)",
+                ),
+            ] = None,
             dry_run: Annotated[
                 bool,
                 typer.Option(
@@ -88,7 +119,8 @@ class CommandAssembler:
             definition = registry.get(generator_name)
             if definition is None:
                 typer.echo(
-                    f"Generator {generator_name} is not registered in the generator registry.",
+                    f"Generator {generator_name} is not registered "
+                    "in the generator registry.",
                     err=True,
                 )
                 raise typer.Exit(1)
@@ -96,7 +128,8 @@ class CommandAssembler:
             adapter = registry.get_adapter(generator_name)
             if adapter is None:
                 typer.echo(
-                    f"Generator {generator_name} is not registered in the generator registry.",
+                    f"Generator {generator_name} is not registered "
+                    "in the generator registry.",
                     err=True,
                 )
                 raise typer.Exit(1)
@@ -107,7 +140,9 @@ class CommandAssembler:
 
             resolved_output = output_dir
             if output_dir == definition.default_output_dir:
-                resolved_output = _detect_src_dir(output_dir)
+                resolved_output = _resolve_default_output(
+                    output_dir, generator_name, module
+                )
 
             result = adapter.generate(name, output_dir=resolved_output, **kwargs)
             output = OutputManager()
@@ -136,9 +171,11 @@ def _build_help_text(gen_def: GeneratorDefinition) -> str:
     lines = [f"{gen_def.description}", "", "Options:"]
     for option in gen_def.options:
         default_note = f" [default: {option.default}]" if option.default else ""
-        lines.append(
-            f"  --{option.name} ({option.type_hint}){default_note} {option.description}".rstrip()
+        option_line = (
+            f"  --{option.name} ({option.type_hint}){default_note} "
+            f"{option.description}"
         )
+        lines.append(option_line.rstrip())
     return "\n".join(lines)
 
 

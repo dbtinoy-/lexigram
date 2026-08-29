@@ -7,8 +7,15 @@ import re
 
 import typer
 
+from lexigram.cli.layout import STRUCTURES
 from lexigram.cli.output import OutputManager
-from lexigram.cli.scaffold import render_project, resolve_template, template_names
+from lexigram.cli.scaffold import (
+    render_module,
+    render_project,
+    resolve_template,
+    structure_names,
+    template_names,
+)
 
 app = typer.Typer(name="new")
 
@@ -32,6 +39,12 @@ def main(
         "-t",
         help="Project template",
     ),
+    structure: str = typer.Option(
+        "structured",
+        "--structure",
+        "-s",
+        help="Project structure (minimal, structured, modular)",
+    ),
     directory: str = typer.Option(".", "--directory", "-d", help="Target directory"),
     interactive: bool = typer.Option(
         False,
@@ -51,6 +64,13 @@ def main(
             default="web-api",
             type=typer.Choice(template_names()),
         )
+
+    if structure not in STRUCTURES:
+        out.error(
+            f"Structure {structure} not found. "
+            f"Available: {', '.join(structure_names())}."
+        )
+        raise typer.Exit(1)
 
     try:
         resolve_template(selected_template)
@@ -72,12 +92,14 @@ def main(
         selected_template,
         project_name,
         target_dir,
+        structure=structure,
     )
 
     out.success(f"Project {project_name} created successfully!")
     out.print(
         f"[info]Scaffolded[/info] {len(created)} files "
-        f"([bold]{selected_template}[/bold] template).",
+        f"([bold]{selected_template}[/bold] template, "
+        f"[bold]{structure}[/bold] structure).",
     )
     out.print(
         f"\n[bold]Next steps:[/bold]\n"
@@ -92,6 +114,40 @@ def main(
 def _to_class_name(slug: str) -> str:
     """Convert a package slug like 'my-feature' to a PascalCase class name."""
     return "".join(part.capitalize() for part in re.split(r"[-_]", slug))
+
+
+@app.command("module")
+def module(
+    name: str = typer.Argument(
+        ..., help="Feature name (e.g. 'auth' -> modules/auth/AuthModule)"
+    ),
+    directory: str = typer.Option(
+        ".",
+        "--directory",
+        "-d",
+        help="Project root directory",
+    ),
+) -> None:
+    """Create a bounded context inside a modular project."""
+    out = OutputManager()
+    module_name = _valid_name(name, "Module")
+    try:
+        created = render_module(module_name, Path(directory))
+    except ValueError as exc:
+        out.error(str(exc))
+        raise typer.Exit(1)
+
+    class_name = _to_class_name(module_name) + "Module"
+    out.success(
+        f"Module {class_name} created successfully! "
+        f"({len(created)} files)"
+    )
+    out.print(
+        f"\n[bold]Next steps:[/bold]\n"
+        f"  lexigram gen controller users --module {module_name}\n"
+        f"  lexigram gen service billing --module {module_name}\n"
+        f"  lexigram dev",
+    )
 
 
 @app.command("package")
