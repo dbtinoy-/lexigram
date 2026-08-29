@@ -32,6 +32,8 @@ class _TaskAttrsMixin:
     _middleware_pipeline: TaskMiddlewarePipeline | None
     _queue_services: list[tuple[str, Any]]
     _result_store: ResultStore
+    _task_modules: tuple[str, ...]
+    _task_packages: tuple[str, ...]
     enable_scheduler: bool
     logger: LoggerProtocol
     name: str

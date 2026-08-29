@@ -11,6 +11,7 @@ from lexigram.contracts.infra.tasks import (
     TaskQueueProtocol,
 )
 from lexigram.logging import get_logger
+from lexigram.tasks.decorators import unwrap_task_handler
 from lexigram.tasks.di._attrs import _TaskAttrsMixin
 from lexigram.tasks.exceptions import TaskRegistrationError
 from lexigram.tasks.execution.manager import (
@@ -35,13 +36,15 @@ class _TaskOperationsMixin(_TaskAttrsMixin):
     """See TaskProvider."""
 
     def register_handler(self, task_name: str, handler: Callable[..., Any]) -> None:
-        """Register a task handler
+        """Register a task handler.
 
         Args:
-            task_name: Name of the task type
-            handler: Async handler function
+            task_name: Name of the task type.
+            handler: Task handler function or decorated task wrapper.
         """
-        self.registry.register(task_name, handler)
+        normalized_handler = unwrap_task_handler(handler)
+        self.registry.register(task_name, normalized_handler)
+        self.refresh_worker_handlers()
         logger.info("Registered handler for task: %s", task_name)
 
     def build_idempotency_manager(
@@ -96,6 +99,7 @@ class _TaskOperationsMixin(_TaskAttrsMixin):
                 )
         except Exception:
             self.registry.unregister(task_name)
+            self.refresh_worker_handlers()
             raise
 
     async def enqueue_job(self, job: JobProtocol) -> str:

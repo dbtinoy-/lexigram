@@ -1,9 +1,7 @@
 """{{ class_name }} task module.
 
-{% if doc %}
-{{ doc }}
-{% endif %}
-"""
+{% if doc %}{{ doc }}
+{% endif %}"""
 
 from __future__ import annotations
 
@@ -12,26 +10,18 @@ from typing import Any
 
 from lexigram.di import injectable
 from lexigram.logging import get_logger
-from lexigram.tasks import JobProtocol, TaskProvider
-{% if schedule %}
-from lexigram.tasks import scheduled
-{% else %}
-from lexigram.tasks import task
-{% endif %}
+from lexigram.tasks import JobProtocol, TaskProvider{% if schedule %}, scheduled{% else %}, task{% endif %}
 
 logger = get_logger(__name__)
 
-{% if schedule %}
-@scheduled(
+{% if schedule %}@scheduled(
     cron="{{ schedule }}",
     name="{{ resource_name }}",
 )
-{% else %}
-@task(
+{% else %}@task(
     name="{{ resource_name }}",
 )
-{% endif %}
-async def {{ name }}(
+{% endif %}async def {{ task_name }}(
     *args: Any,
     **kwargs: Any,
 ) -> dict[str, Any]:
@@ -47,20 +37,14 @@ async def {{ name }}(
     Returns:
         Result data produced by the task.
     """
-    logger.info("{{ name }}_started", args=args, kwargs=kwargs)
+    logger.info("{{ resource_name }}_started", args=args, kwargs=kwargs)
 
     try:
-        # Extract parameters from kwargs
-        {% for param in params %}
-        {{ param.name }} = kwargs.get("{{ param.name }}", {{ param.default }})
-        {% endfor %}
-
         result_data = await _process_{{ resource_name }}(*args, **kwargs)
-
-        logger.info("{{ name }}_completed", result=result_data)
+        logger.info("{{ resource_name }}_completed", result=result_data)
         return result_data
     except Exception as exc:  # noqa: BLE001
-        logger.exception("{{ name }}_failed", error=str(exc))
+        logger.exception("{{ resource_name }}_failed", error=str(exc))
         raise
 
 
@@ -68,7 +52,7 @@ async def _process_{{ resource_name }}(
     *args: Any,
     **kwargs: Any,
 ) -> dict[str, Any]:
-    """Internal processing logic for the {{ name }} task.
+    """Internal processing logic for the {{ task_name }} task.
 
     Args:
         *args: Positional arguments.
@@ -77,7 +61,7 @@ async def _process_{{ resource_name }}(
     Returns:
         Processing result data.
     """
-    # TODO: Implement your task logic here
+    # TODO: Implement your task logic here.
     #
     # Example:
     # from {{ package_name }}.services import {{ class_name }}Service
@@ -94,7 +78,7 @@ async def _process_{{ resource_name }}(
 class {{ class_name }}TaskRunner:
     """Task runner for {{ class_name }} operations.
 
-    Provides a convenient way to enqueue {{ name }} tasks through the
+    Provides a convenient way to enqueue {{ task_name }} tasks through the
     injected :class:`~lexigram.tasks.TaskProvider`.
     """
 
@@ -112,28 +96,21 @@ class {{ class_name }}TaskRunner:
         return logger
 
     async def run(
-        self,
-        {% for param in params %}
-        {{ param.name }}: Any = {{ param.default }},
-        {% endfor %}
-    ) -> str:
-        """Run the {{ name }} task.
+{% for param in params %}        {{ param.name }}: Any = {{ param.default }},
+{% endfor %}    ) -> str:
+        """Run the {{ task_name }} task.
 
         Args:
-            {% for param in params %}
-            {{ param.name }}: {{ param.description or 'The ' + param.name }}
-            {% endfor %}
-
+{% for param in params %}            {{ param.name }}: {{ param.description or 'The ' + param.name }}
+{% endfor %}
         Returns:
             Job ID for tracking.
         """
         task_kwargs: dict[str, Any] = {
-            {% for param in params %}
-            "{{ param.name }}": {{ param.name }},
-            {% endfor %}
-        }
+{% for param in params %}            "{{ param.name }}": {{ param.name }},
+{% endfor %}        }
 
-        logger.info("{{ name }}_dispatch", task_kwargs=task_kwargs)
+        logger.info("{{ resource_name }}_dispatch", task_kwargs=task_kwargs)
 
         job = JobProtocol(
             id=_uuid.uuid4().hex,
@@ -143,5 +120,5 @@ class {{ class_name }}TaskRunner:
         )
         job_id = await self._provider.enqueue_job(job)
 
-        logger.info("{{ name }}_dispatched", job_id=job_id)
+        logger.info("{{ resource_name }}_dispatched", job_id=job_id)
         return job_id

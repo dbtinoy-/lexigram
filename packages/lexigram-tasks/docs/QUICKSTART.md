@@ -47,7 +47,7 @@ async def greet(name: str) -> str:
 async def main():
     async with Application.boot(
         name="my-app",
-        modules=[TasksModule.configure()],
+        modules=[TasksModule.configure(task_modules=[__name__])],
     ) as app:
         queue = await app.container.resolve(TaskQueueProtocol)
         job = await greet.apply_async(queue, "World")
@@ -59,13 +59,16 @@ async def main():
 asyncio.run(main())
 ```
 
+> Use `task_modules=[...]` for exact modules or `task_packages=["app.tasks"]`
+> to recursively import a package of task modules during provider boot.
+
 ---
 
 ## What Just Happened
 
 | Step | What |
 |------|------|
-| `TasksModule.configure()` | Created a `DynamicModule` with a `MemoryTaskQueue` and one worker |
+| `TasksModule.configure(task_modules=[__name__])` | Created a `DynamicModule`, imported the current module for task discovery, and started the worker pool |
 | `Application.boot()` | Registered `TaskQueueProtocol` + `TaskExecutorProtocol` in the container, started the worker pool |
 | `@task(name="greet")` | Wrapped `greet` with `.signature()`, `.s()`, `.apply_async()` methods |
 | `greet.apply_async(queue, ...)` | Built a `JobProtocol` and enqueued it via `TaskQueueProtocol.enqueue()` |

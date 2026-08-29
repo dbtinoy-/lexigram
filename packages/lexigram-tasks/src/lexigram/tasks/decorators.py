@@ -1,14 +1,15 @@
 """Task decorator for simplified task definition.
 
-Provides a convenient decorator for defining tasks with automatic registration.
+Provides convenient decorators for defining tasks and scheduled tasks with
+queue metadata plus a lightweight discovery registry.
 """
 
 from __future__ import annotations
 
 from collections.abc import Callable
+from functools import update_wrapper
 from typing import TYPE_CHECKING, Any, Protocol, cast
 
-from lexigram.tasks.models import JobProtocol
 from lexigram.tasks.models.job import JobProtocol
 from lexigram.tasks.types import Priority
 
@@ -28,6 +29,68 @@ if TYPE_CHECKING:
             *args: Any,
             **kwargs: Any,
         ) -> Any: ...
+
+
+_REGISTERED_TASKS: dict[str, dict[str, Any]] = {}
+
+
+def _store_registered_task(
+    task_wrapper: Any,
+    *,
+    module_name: str,
+    task_name: str,
+) -> None:
+    """Store a decorated task wrapper in the module-level registry."""
+    _REGISTERED_TASKS.setdefault(module_name, {})[task_name] = task_wrapper
+
+
+def iter_registered_tasks(module_filters: tuple[str, ...] | None = None) -> list[Any]:
+    """Return registered task wrappers, optionally filtered by module roots."""
+    if not module_filters:
+        return [
+            task_wrapper
+            for tasks_by_name in _REGISTERED_TASKS.values()
+            for task_wrapper in tasks_by_name.values()
+        ]
+
+    def _matches(module_name: str) -> bool:
+        return any(
+            module_name == module_filter
+            or module_name.startswith(f"{module_filter}.")
+            for module_filter in module_filters
+        )
+
+    matches: list[Any] = []
+    for module_name, tasks_by_name in _REGISTERED_TASKS.items():
+        if _matches(module_name):
+            matches.extend(tasks_by_name.values())
+    return matches
+
+
+def unwrap_task_handler(handler: Callable[..., Any] | Any) -> Callable[..., Any]:
+    """Unwrap a decorated task wrapper to its original callable."""
+    unwrapped = getattr(handler, "_func", handler)
+    if hasattr(unwrapped, "__func__"):
+        return cast("Callable[..., Any]", unwrapped.__func__)
+    return cast("Callable[..., Any]", unwrapped)
+
+
+def _clear_registered_tasks(module_filters: tuple[str, ...] | None = None) -> None:
+    """Clear the module-level task registry.
+
+    This helper exists for tests that create ephemeral import roots.
+    """
+    if not module_filters:
+        _REGISTERED_TASKS.clear()
+        return
+
+    for module_name in list(_REGISTERED_TASKS):
+        if any(
+            module_name == module_filter
+            or module_name.startswith(f"{module_filter}.")
+            for module_filter in module_filters
+        ):
+            del _REGISTERED_TASKS[module_name]
 
 
 def task(
@@ -57,14 +120,15 @@ def task(
 
     def decorator(func: Callable[..., Any]) -> TaskFunction:
         task_name = name or func.__name__
+        module_name = func.__module__
 
         class TaskFunction:
             """Wrapped task function with queue methods."""
 
-            # Store task metadata
+            __module__ = module_name
             _func = staticmethod(func)
             _task_name = task_name
-            # Normalize priority to integer at decoration time to avoid union-attr mypy errors
+            _task_module = module_name
             _priority = (
                 priority
                 if isinstance(priority, int)
@@ -74,11 +138,6 @@ def task(
             _timeout = timeout
             _queue = queue
             _idempotency_key = idempotency_key
-
-            @property
-            def __name__(self) -> str:
-                """Return task name."""
-                return self._task_name
 
             def __call__(self, *args: Any, **kwargs: Any) -> Any:
                 """Direct function call."""
@@ -114,11 +173,6 @@ def task(
             @classmethod
             async def delay(cls, *args: Any, **kwargs: Any) -> Any:
                 """Enqueue task for execution (simplified interface)."""
-                # This requires a global queue or manager to be set
-                # For now, we raise to encourage explicit apply_async or provider usage
-
-                # Try to get provider from context or global if implemented,
-                # but for now we follow the existing pattern
                 raise NotImplementedError(
                     "Use TaskProvider.enqueue_job() or apply_async(queue, ...)",
                 )
@@ -156,7 +210,14 @@ def task(
 
                 return job
 
-        return TaskFunction()
+        task_wrapper = TaskFunction()
+        update_wrapper(task_wrapper, func)
+        _store_registered_task(
+            task_wrapper,
+            module_name=module_name,
+            task_name=task_name,
+        )
+        return task_wrapper
 
     return decorator
 
@@ -182,15 +243,12 @@ def scheduled(
     """
 
     def decorator(func: Callable[..., Any]) -> Any:
-        # First wrap it as a task
         task_wrapper = task(
             name=name,
             priority=priority,
             max_retries=max_retries,
             timeout=timeout,
         )(func)
-
-        # Add scheduling metadata
         task_wrapper._cron = cron
         return task_wrapper
 

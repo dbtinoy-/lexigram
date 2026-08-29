@@ -1,8 +1,9 @@
 """Tests for tasks module."""
 
-import pytest
-from lexigram.tasks import TasksModule
+from __future__ import annotations
+
 from lexigram.di.module import DynamicModule
+from lexigram.tasks import TasksModule
 
 
 class TestTasksModule:
@@ -33,3 +34,13 @@ class TestTasksModule:
     def test_configure_with_scheduler_disabled(self) -> None:
         result = TasksModule.configure(enable_scheduler=False)
         assert isinstance(result, DynamicModule)
+
+    def test_configure_passes_task_discovery_roots(self) -> None:
+        result = TasksModule.configure(
+            task_modules=["app.tasks.cleanup_task"],
+            task_packages=["app.tasks"],
+        )
+
+        provider = result.providers[0]
+        assert provider._task_modules == ("app.tasks.cleanup_task",)  # noqa: SLF001
+        assert provider._task_packages == ("app.tasks",)  # noqa: SLF001

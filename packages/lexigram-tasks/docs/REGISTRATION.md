@@ -11,7 +11,9 @@ This document describes the atomic registration contract for scheduled tasks in 
 
 ### `@task(name)`
 
-Registers a handler for on-demand task execution. Does not schedule the task.
+Registers a handler for on-demand task execution. The decorated callable is
+boot-discovered when its module is imported through
+`TasksModule.configure(task_modules=[...])` or `task_packages=[...]`.
 
 ```python
 from lexigram.tasks.decorators import task
@@ -23,7 +25,10 @@ async def send_email(to: str, subject: str, body: str) -> None:
 
 ### `@scheduled(cron, name)`
 
-Registers a handler for both on-demand execution AND scheduled execution. Requires both `_task_name` and `_cron` attributes.
+Registers a handler for both on-demand execution and scheduled execution.
+Requires both `_task_name` and `_cron` attributes. During provider boot the
+framework imports the configured task module/package roots, auto-registers the
+handler, and adds its cron job to the scheduler.
 
 ```python
 from lexigram.tasks.decorators import scheduled
@@ -65,4 +70,5 @@ If a scheduled task fails to register, the application refuses to boot. This is 
 To fix:
 1. Verify the `@scheduled` decorator is applied correctly
 2. Ensure the task function has both `name` and `cron` parameters
-3. Check that the module containing the task is imported before boot
+3. Ensure the module is included in `TasksModule.configure(task_modules=[...])`
+   or lives under a configured `task_packages=[...]` root
