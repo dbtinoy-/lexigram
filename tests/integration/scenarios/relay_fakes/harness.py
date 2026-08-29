@@ -10,6 +10,7 @@ from tests.integration.scenarios.relay_fakes.admin import (
     FakeBilling,
     FakeEventBus,
     FakeHTTPClient,
+    FakeMediaResolver,
     FakeUsageStore,
 )
 from tests.integration.scenarios.relay_fakes.channels import (
@@ -37,6 +38,7 @@ class RelayFakes:
         self.usage_store = FakeUsageStore()
         self.event_bus = FakeEventBus()
         self.audit_store = FakeAuditStore()
+        self.media_resolver = FakeMediaResolver()
 
 
 class RelayAppHarness:

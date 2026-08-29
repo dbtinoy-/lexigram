@@ -150,13 +150,20 @@ class MonitorProvider(
         self.trace_provider: Any = None
         self.tracer: Any = None
         self.metrics_exporter = exporter
+        # Explicit config passed at construction; the orchestrator may inject
+        # the yaml section later via ``config_key``/``config_model``, but an
+        # explicit config always wins (same convention as queue/graphql/
+        # secrets providers).
+        self._requested_config = config
         # Exporter registries — owned by this provider, registered via DI
         self._tracing_exporter_registry = TracingExporterRegistry.with_defaults()
         self._metrics_exporter_registry = MetricsExporterRegistry.with_defaults()
         # Store config for runtime registration decisions
         self._config = config
-        if config is not None:
-            self._compose_tracing()
+        # Always expose a usable tracer: from explicit config when supplied,
+        # otherwise from in-memory defaults. register() re-composes when the
+        # orchestrator injects a yaml section so real values win.
+        self._compose_tracing()
         self._health_checker_registry: HealthCheckerRegistry | None = None
         self._hook_registry: HookRegistryProtocol | None = None
         self._hook_handlers: list[tuple[str, Any]] = []

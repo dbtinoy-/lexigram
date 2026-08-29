@@ -135,9 +135,9 @@ class LexigramConfig(BaseConfig):
             model_cls = self._config_registry.get(name)
 
         if model_cls is None:
-            # Return dict or attribute value; empty dict for missing sections
+            # Return the raw dict/attribute value, or None when absent.
             if data is None:
-                return {}
+                return None
             return cast("T | dict[str, Any]", data)
 
         if isinstance(data, model_cls):

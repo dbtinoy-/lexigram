@@ -3,6 +3,7 @@
 from unittest.mock import Mock
 
 import pytest
+from starlette.requests import Request
 
 from lexigram.web import JSONResponse, get
 from lexigram.web.middleware.cors import CORSMiddleware
@@ -61,8 +62,12 @@ class TestWebIntegration:
         # Create auth guard
         auth_guard = AuthGuard()
 
-        # Mock authenticated request
-        request = Mock()
+        # Mock authenticated request.  ``Mock(spec=Request)`` is required:
+        # an unspecced Mock satisfies the runtime-checkable
+        # ``ExecutionContextProtocol`` via attribute auto-creation, which
+        # diverts the guard down the ``context.request`` branch and makes
+        # the unauthenticated assertion fail.
+        request = Mock(spec=Request)
         request.state.user = Mock()
         request.state.user.is_authenticated = True
 

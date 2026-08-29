@@ -102,7 +102,6 @@ class TestObservabilityProvider:
                 singleton_results[protocol] = factory()
             else:
                 singleton_results[protocol] = factory
-            return None
 
         container.singleton = capture_singleton
 
@@ -172,8 +171,9 @@ class TestMonitorProvider:
         provider = MonitorProvider(backend=mock_backend, config=MonitorConfig())
         assert provider.tracer is not None
 
-    def test_tracer_deferred_until_register(self, provider: MonitorProvider) -> None:
-        assert provider.tracer is None
+    def test_tracer_available_without_config(self, provider: MonitorProvider) -> None:
+        """A provider always exposes a usable tracer (in-memory default)."""
+        assert provider.tracer is not None
 
     def test_metrics_collector_initialized(
         self, provider: MonitorProvider
@@ -188,10 +188,10 @@ class TestMonitorProvider:
         provider = MonitorProvider(backend=mock_backend, config=MonitorConfig())
         assert provider.trace_provider is not None
 
-    def test_trace_provider_deferred_until_register(
+    def test_trace_provider_available_without_config(
         self, provider: MonitorProvider
     ) -> None:
-        assert provider.trace_provider is None
+        assert provider.trace_provider is not None
 
     @pytest.mark.asyncio
     async def test_register_binds_provider_singleton(
@@ -210,7 +210,9 @@ class TestMonitorProvider:
     async def test_register_binds_metrics_collector(
         self, provider: MonitorProvider
     ) -> None:
-        from lexigram.monitor.metrics.collector import MetricsCollectorProtocol as MonitorMetricsCollectorProtocol
+        from lexigram.monitor.metrics.collector import (
+            MetricsCollectorProtocol as MonitorMetricsCollectorProtocol,
+        )
 
         container = MagicMock()
         singleton_results = {}
@@ -220,7 +222,6 @@ class TestMonitorProvider:
                 singleton_results[protocol] = factory
             else:
                 singleton_results[protocol] = factory
-            return None
 
         container.singleton = capture_singleton
 
@@ -325,7 +326,7 @@ class TestMonitorProvider:
             async def health_check(self):
                 raise OSError("Connection failed")
 
-        from lexigram.monitor.di import _lifecycle, provider as provider_module
+        from lexigram.monitor.di import provider as provider_module
 
         mocker.patch.object(provider_module, "logger")
         import lexigram.monitor.di._metrics as _metrics_mod
@@ -432,6 +433,7 @@ class TestHookEventHelperFunctions:
 
     def test_extract_payload_attributes_with_dataclass(self) -> None:
         from dataclasses import dataclass
+
         from lexigram.monitor.di.provider import _extract_payload_attributes
 
         @dataclass
