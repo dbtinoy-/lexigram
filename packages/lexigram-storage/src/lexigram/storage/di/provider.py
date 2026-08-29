@@ -176,6 +176,7 @@ class StorageProvider(Provider):
     def __init__(self, config: StorageConfig | None = None) -> None:
         super().__init__()
         self._config = config
+        self._config_from_factory = config is not None
         self._driver_registry: DriverRegistry = DriverRegistry()
         self._drivers: list[tuple[str, BlobStoreProtocol]] = []
 
