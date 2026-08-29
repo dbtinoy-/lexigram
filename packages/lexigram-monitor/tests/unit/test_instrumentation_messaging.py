@@ -1,6 +1,8 @@
 """Tests for messaging instrumentation."""
 
 import pytest
+
+pytest.importorskip("opentelemetry", reason="Requires opentelemetry")
 from unittest.mock import MagicMock
 from opentelemetry import metrics, trace
 
