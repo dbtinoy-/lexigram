@@ -32,8 +32,8 @@ class DateInput(AbstractInput):
             "required": self.required,
             "readonly": self.readonly,
             "class_": self._get_input_classes("pl-3 pr-3"),
-            "aria-invalid": "true" if self.error else None,
-            "aria-describedby": f"{self.name}-error" if self.error else None,
+            # aria-invalid / aria-describedby are wired automatically by
+            # AbstractInput._get_extra_props (shared error/help semantics).
             "aria-required": "true" if self.required else None,
         }
 

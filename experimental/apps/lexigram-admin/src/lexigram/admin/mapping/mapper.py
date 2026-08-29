@@ -6,9 +6,11 @@ can be resolved by any consumer that depends on the contract.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
 from lexigram.logging import get_logger
+from lexigram.primitives.registry import Registry
 
 if TYPE_CHECKING:
     from lexigram.contracts.mapping import ObjectMapperProtocol
@@ -19,23 +21,52 @@ logger = get_logger(__name__)
 class AdminObjectMapper:
     """Registry-based mapper for admin domain objects.
 
+    Mapping functions are keyed by ``(source_type, dest_type)`` pair on a
+    lexigram core :class:`Registry`, so registrations are thread-safe and
+    support factories, decorators, and overwrite control.
+
     Satisfies :class:`~lexigram.contracts.mapping.ObjectMapperProtocol`.
 
     Example::
 
         mapper = AdminObjectMapper()
-        mapper.register(AdminUserEntity, AdminUserRecord, lambda e: e.to_user())
+        mapper.add(AdminUserEntity, AdminUserRecord, lambda e: e.to_user())
         record = mapper.map(entity, AdminUserRecord)
     """
 
     def __init__(self) -> None:
-        self._registry: dict[tuple[type, type], Any] = {}
+        """Create an empty mapping registry."""
+        self._registry: Registry[
+            tuple[type[Any], type[Any]], Callable[[Any], Any]
+        ] = Registry(
+            name="admin.mapping",
+            allow_overwrite=True,
+        )
 
     def register(
         self,
         source_type: type[Any],
         dest_type: type[Any],
-        mapper_func: Any,
+        mapper_func: Callable[[Any], Any],
+    ) -> None:
+        """Register a mapping function from *source_type* to *dest_type*.
+
+        Contract requirement (``ObjectMapperProtocol``); equivalent to
+        :meth:`add`.
+
+        Args:
+            source_type: The type to map from.
+            dest_type: The target type to produce.
+            mapper_func: Callable that accepts a source instance and returns a dest
+                instance.
+        """
+        self.add(source_type, dest_type, mapper_func)
+
+    def add(
+        self,
+        source_type: type[Any],
+        dest_type: type[Any],
+        mapper_func: Callable[[Any], Any],
     ) -> None:
         """Register a mapping function from *source_type* to *dest_type*.
 
@@ -45,7 +76,7 @@ class AdminObjectMapper:
             mapper_func: Callable that accepts a source instance and returns a dest
                 instance.
         """
-        self._registry[(source_type, dest_type)] = mapper_func
+        self._registry.register((source_type, dest_type), mapper_func)
         logger.debug(
             "admin_mapper_registered",
             source=source_type.__name__,
@@ -58,7 +89,7 @@ class AdminObjectMapper:
         dest_type: type[Any],
         *,
         validate: bool = False,
-        validator: Any | None = None,
+        validator: Callable[[Any], None] | None = None,
     ) -> Any:
         """Map *source* to an instance of *dest_type*.
 

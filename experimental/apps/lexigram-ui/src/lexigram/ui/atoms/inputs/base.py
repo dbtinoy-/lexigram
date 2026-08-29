@@ -129,7 +129,31 @@ class AbstractInput(ABC, Component):
             "id",
             *(exclude or []),
         }
-        return {k: v for k, v in self.props.items() if k not in standard_props}
+        extra = {k: v for k, v in self.props.items() if k not in standard_props}
+        # Wire accessibility attributes automatically so every input shares
+        # the same error/help semantics: aria-invalid on validation failure
+        # and aria-describedby pointing at the help/error messages.
+        if self._error_messages:
+            extra["aria-invalid"] = "true"
+        described_by = self._described_by
+        if described_by:
+            extra["aria-describedby"] = " ".join(described_by)
+        return extra
+
+    @property
+    def _described_by(self) -> list[str]:
+        """IDs referenced by ``aria-describedby`` (help + validation messages)."""
+        ids: list[str] = []
+        if self.help_text and not self.error:
+            ids.append(f"{self.input_id}-help")
+        if self._error_messages:
+            for index, _message in enumerate(self._error_messages):
+                ids.append(
+                    f"{self.input_id}-error"
+                    if index == 0
+                    else f"{self.input_id}-error-{index + 1}"
+                )
+        return ids
 
     def _render_label(self) -> Any:
         """Render label element if label text is provided."""

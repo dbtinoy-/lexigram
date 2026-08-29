@@ -35,7 +35,7 @@ def _request(groups: dict | None = None, path: str = "/admin/") -> MagicMock:
 
 def _request_with_content(path: str = "/admin/") -> MagicMock:
     request = _request(path=path)
-    request.app.state.cluster_registry.register(
+    request.app.state.cluster_registry.add(
         Cluster(
             name="content",
             slug="content",
@@ -85,7 +85,7 @@ class TestUserMenuItems:
         base = request.app.state.cluster_registry
         default = ClusterRegistry.with_defaults()
         for cluster in default.all():
-            base.register(cluster)
+            base.add(cluster)
         return request
 
     def test_includes_profile_cluster_plugins_and_settings(self) -> None:
@@ -97,7 +97,7 @@ class TestUserMenuItems:
 
     def test_includes_extra_clusters_in_order(self) -> None:
         request = self._request_with_defaults()
-        request.app.state.cluster_registry.register(
+        request.app.state.cluster_registry.add(
             Cluster(
                 name="content",
                 slug="content",
@@ -107,7 +107,7 @@ class TestUserMenuItems:
                 order=10,
             )
         )
-        request.app.state.cluster_registry.register(
+        request.app.state.cluster_registry.add(
             Cluster(
                 name="other",
                 slug="other",

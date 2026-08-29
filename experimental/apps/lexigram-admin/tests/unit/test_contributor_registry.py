@@ -44,7 +44,7 @@ class TestContributorRegistry:
     def test_register_and_get(self) -> None:
         registry = ContributorRegistry()
         contributor = StubContributor(name="cache")
-        registry.register(contributor)
+        registry.add(contributor)
         assert registry.get("cache") is contributor
 
     def test_get_nonexistent_returns_none(self) -> None:
@@ -53,9 +53,9 @@ class TestContributorRegistry:
 
     def test_get_all_sorted_by_priority(self) -> None:
         registry = ContributorRegistry()
-        registry.register(StubContributor(name="low", priority=100))
-        registry.register(StubContributor(name="high", priority=10))
-        registry.register(StubContributor(name="mid", priority=50))
+        registry.add(StubContributor(name="low", priority=100))
+        registry.add(StubContributor(name="high", priority=10))
+        registry.add(StubContributor(name="mid", priority=50))
 
         all_contribs = registry.get_all()
         names = [c.name for c in all_contribs]
@@ -63,9 +63,9 @@ class TestContributorRegistry:
 
     def test_get_by_group(self) -> None:
         registry = ContributorRegistry()
-        registry.register(StubContributor(name="a", group="infra"))
-        registry.register(StubContributor(name="b", group="security"))
-        registry.register(StubContributor(name="c", group="infra"))
+        registry.add(StubContributor(name="a", group="infra"))
+        registry.add(StubContributor(name="b", group="security"))
+        registry.add(StubContributor(name="c", group="infra"))
 
         infra = registry.get_by_group("infra")
         names = [c.name for c in infra]
@@ -83,7 +83,7 @@ class TestContributorRegistry:
         registry = ContributorRegistry()
         c1 = StubContributor(name="cache", priority=10)
         c2 = StubContributor(name="cache", priority=20)
-        registry.register(c1)
-        registry.register(c2)
+        registry.add(c1)
+        registry.add(c2)
         assert registry.get("cache") is c2
         assert len(registry.get_all()) == 1

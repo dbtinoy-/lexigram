@@ -362,8 +362,9 @@ class TestSearchServiceIndexedPath:
             results=[{"id": "p1", "title": "Indexed Widget", "description": "Great"}]
         )
         from lexigram.admin import integrations as _integrations
-
-        monkeypatch.setitem(_integrations._registry, "SearchIntegration", integration)
+        from lexigram.admin.integrations import IntegrationRegistry
+        monkeypatch.setattr(_integrations, "_registry", IntegrationRegistry())
+        _integrations.register("SearchIntegration", integration)
 
         service = SearchService(resource_manager=manager)
         result = await service.search("widget")
@@ -384,8 +385,9 @@ class TestSearchServiceIndexedPath:
 
         integration = _FakeIntegration(results=[ObjDoc()])
         from lexigram.admin import integrations as _integrations
-
-        monkeypatch.setitem(_integrations._registry, "SearchIntegration", integration)
+        from lexigram.admin.integrations import IntegrationRegistry
+        monkeypatch.setattr(_integrations, "_registry", IntegrationRegistry())
+        _integrations.register("SearchIntegration", integration)
 
         service = SearchService(resource_manager=manager)
         result = await service.search("obj")
@@ -399,8 +401,9 @@ class TestSearchServiceIndexedPath:
     ) -> None:
         integration = _FakeIntegration(available=False)
         from lexigram.admin import integrations as _integrations
-
-        monkeypatch.setitem(_integrations._registry, "SearchIntegration", integration)
+        from lexigram.admin.integrations import IntegrationRegistry
+        monkeypatch.setattr(_integrations, "_registry", IntegrationRegistry())
+        _integrations.register("SearchIntegration", integration)
 
         service = SearchService(resource_manager=manager)
         result = await service.search("fallback")
@@ -417,8 +420,9 @@ class TestSearchServiceIndexedPath:
             results=[{"id": "p1", "title": "Indexed Widget", "description": "Great"}]
         )
         from lexigram.admin import integrations as _integrations
-
-        monkeypatch.setitem(_integrations._registry, "SearchIntegration", integration)
+        from lexigram.admin.integrations import IntegrationRegistry
+        monkeypatch.setattr(_integrations, "_registry", IntegrationRegistry())
+        _integrations.register("SearchIntegration", integration)
 
         service = SearchService(resource_manager=manager)
         result = await service.search("widget", allowed_resources={"products"})
@@ -431,8 +435,9 @@ class TestSearchServiceIndexedPath:
         self, manager: MagicMock, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         from lexigram.admin import integrations as _integrations
+        from lexigram.admin.integrations import IntegrationRegistry
 
-        monkeypatch.setitem(_integrations._registry, "SearchIntegration", None)
+        monkeypatch.setattr(_integrations, "_registry", IntegrationRegistry())
 
         service = SearchService(resource_manager=manager)
         result = await service.search("fallback")
@@ -445,8 +450,9 @@ class TestSearchServiceIndexedPath:
         only.get_all_resources = MagicMock(return_value=[_IndexOnlyResource])
         integration = _FakeIntegration(results=[{"title": "No Id"}])
         from lexigram.admin import integrations as _integrations
-
-        monkeypatch.setitem(_integrations._registry, "SearchIntegration", integration)
+        from lexigram.admin.integrations import IntegrationRegistry
+        monkeypatch.setattr(_integrations, "_registry", IntegrationRegistry())
+        _integrations.register("SearchIntegration", integration)
 
         service = SearchService(resource_manager=only)
         result = await service.search("x")

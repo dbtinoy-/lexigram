@@ -10,9 +10,9 @@ from __future__ import annotations
 
 import pytest
 
-from lexigram.admin.mapping import AdminObjectMapper, register_admin_mappings
 from lexigram.admin.auth.entity import AdminUserEntity
 from lexigram.admin.auth.user import AdminUserRecord
+from lexigram.admin.mapping import AdminObjectMapper, register_admin_mappings
 
 
 class TestAdminObjectMapper:
@@ -20,7 +20,7 @@ class TestAdminObjectMapper:
 
     def test_register_and_map(self) -> None:
         mapper = AdminObjectMapper()
-        mapper.register(str, int, int)
+        mapper.add(str, int, int)
         result = mapper.map("42", int)
         assert result == 42
 
@@ -31,13 +31,13 @@ class TestAdminObjectMapper:
 
     def test_register_with_lambda(self) -> None:
         mapper = AdminObjectMapper()
-        mapper.register(str, list, lambda s: list(s))
+        mapper.add(str, list, lambda s: list(s))
         result = mapper.map("abc", list)
         assert result == ["a", "b", "c"]
 
     def test_map_with_validate_false(self) -> None:
         mapper = AdminObjectMapper()
-        mapper.register(str, int, int)
+        mapper.add(str, int, int)
         result = mapper.map("10", int, validate=False)
         assert result == 10
 
@@ -48,29 +48,29 @@ class TestAdminObjectMapper:
             called.append(r)
 
         mapper = AdminObjectMapper()
-        mapper.register(str, int, int)
+        mapper.add(str, int, int)
         result = mapper.map("5", int, validate=True, validator=validator)
         assert result == 5
         assert called == [5]
 
     def test_map_with_validate_true_no_validator(self) -> None:
         mapper = AdminObjectMapper()
-        mapper.register(str, int, int)
+        mapper.add(str, int, int)
         # validate=True but no validator → just maps normally
         result = mapper.map("7", int, validate=True)
         assert result == 7
 
     def test_overwrite_registration(self) -> None:
         mapper = AdminObjectMapper()
-        mapper.register(str, int, lambda s: 0)
-        mapper.register(str, int, lambda s: 99)
+        mapper.add(str, int, lambda s: 0)
+        mapper.add(str, int, lambda s: 99)
         result = mapper.map("x", int)
         assert result == 99
 
     def test_multiple_registrations(self) -> None:
         mapper = AdminObjectMapper()
-        mapper.register(str, int, int)
-        mapper.register(str, list, list)
+        mapper.add(str, int, int)
+        mapper.add(str, list, list)
         assert mapper.map("5", int) == 5
         assert mapper.map("abc", list) == ["a", "b", "c"]
 

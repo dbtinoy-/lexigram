@@ -47,8 +47,8 @@ class SecurityContributor(BaseAdminContributor):
 class TestNavigationAssembler:
     def _make_assembler(self) -> NavigationAssembler:
         registry = ContributorRegistry()
-        registry.register(InfraContributor())
-        registry.register(SecurityContributor())
+        registry.add(InfraContributor())
+        registry.add(SecurityContributor())
         return NavigationAssembler(
             contributor_registry=registry,
             resource_items=[],
@@ -104,7 +104,7 @@ class TestNavigationAssembler:
                     NavigationContribution(label="B", url="/b", group="test", order=20),
                 ]
 
-        registry.register(MultiNav())
+        registry.add(MultiNav())
         assembler = NavigationAssembler(contributor_registry=registry, resource_items=[])
         groups = await assembler.build()
         labels = [n.label for n in groups["test"]]

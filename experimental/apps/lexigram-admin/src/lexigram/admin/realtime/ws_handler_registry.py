@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any, Protocol
 
+from lexigram.primitives.registry import Registry
+
 
 class WSMessageHandler(Protocol):
     """Protocol for WebSocket message handlers."""
@@ -101,11 +103,12 @@ class ActionHandler:
         await handler._handle_action(websocket, msg)  # type: ignore[attr-defined]
 
 
-class WSMessageTypeRegistry:
+class WSMessageTypeRegistry(Registry[Any, WSMessageHandler]):
     """Central registry for WebSocket message type handlers."""
 
     def __init__(self) -> None:
-        self._handlers: dict[Any, WSMessageHandler] = {}
+        """Create an empty registry — use :meth:`with_defaults` for built-ins."""
+        super().__init__(name="admin.realtime.ws_message_types", allow_overwrite=True)
 
     @classmethod
     def _default_entries(cls) -> dict[Any, WSMessageHandler]:
@@ -119,18 +122,6 @@ class WSMessageTypeRegistry:
             WSMessageType.ACTION: ActionHandler(),
         }
 
-    @classmethod
-    def with_defaults(cls) -> WSMessageTypeRegistry:
-        """Return a new instance with default message handlers registered."""
-        registry = cls()
-        for key, handler in cls._default_entries().items():
-            registry.register(key, handler)
-        return registry
-
-    def register(self, msg_type: Any, handler: WSMessageHandler) -> None:
-        """Register a new message handler."""
-        self._handlers[msg_type] = handler
-
     async def handle_message(
         self,
         msg_type: Any,
@@ -140,14 +131,25 @@ class WSMessageTypeRegistry:
         manager: Any,
     ) -> None:
         """Handle a message using the appropriate handler."""
-        handler = self._handlers.get(msg_type)
+        handler = self.get(msg_type)
         if handler:
             await handler.handle(websocket, msg, connection_id, manager)
 
 
-_ws_message_type_registry = WSMessageTypeRegistry.with_defaults()
+_ws_message_type_registry: WSMessageTypeRegistry = WSMessageTypeRegistry.with_defaults()
 
 
 def get_ws_message_type_registry() -> WSMessageTypeRegistry:
     """Get the global WebSocket message type registry."""
     return _ws_message_type_registry
+
+
+__all__ = [
+    "ActionHandler",
+    "PingHandler",
+    "SubscribeHandler",
+    "UnsubscribeHandler",
+    "WSMessageHandler",
+    "WSMessageTypeRegistry",
+    "get_ws_message_type_registry",
+]

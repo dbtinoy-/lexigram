@@ -48,9 +48,9 @@ def register_admin_mappings(mapper: AdminObjectMapper) -> None:
         mapper: The :class:`~lexigram.admin.mapping.mapper.AdminObjectMapper`
             instance to register mappings on.
     """
-    mapper.register(AdminUserEntity, AdminUserRecord, _entity_to_record)
-    mapper.register(AdminUserEntity, dict, _entity_to_dict)
-    mapper.register(AdminUserRecord, AdminUserEntity, _record_to_entity)
+    mapper.add(AdminUserEntity, AdminUserRecord, _entity_to_record)
+    mapper.add(AdminUserEntity, dict, _entity_to_dict)
+    mapper.add(AdminUserRecord, AdminUserEntity, _record_to_entity)
 
 
 __all__ = ["register_admin_mappings"]

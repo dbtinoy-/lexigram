@@ -3,18 +3,31 @@
 from __future__ import annotations
 
 from lexigram.admin.rbac.types import Policy, PolicyContext
-
-_registry: dict[str, Policy] = {}
-
-
-def register_policy(name: str, policy: Policy) -> None:
-    """Register a policy by name."""
-    _registry[name] = policy
+from lexigram.primitives.registry import Registry
 
 
-def get_policy(name: str) -> Policy | None:
-    """Get a policy by name."""
-    return _registry.get(name)
+class PolicyRegistry(Registry[str, Policy]):
+    """Registry of named policy functions.
+
+    The in-package built-ins (``owner_only``, ``team_scoped``) are declared
+    in :meth:`_default_entries`; applications can register additional
+    policies or override a built-in at boot time.
+    """
+
+    def __init__(self) -> None:
+        """Create an empty registry — use :meth:`with_defaults` for built-ins."""
+        super().__init__(
+            name="admin.rbac.policies",
+            allow_overwrite=True,
+        )
+
+    @classmethod
+    def _default_entries(cls) -> dict[str, Policy]:
+        """Declare the complete in-package built-in policy set."""
+        return {
+            "owner_only": owner_only,
+            "team_scoped": team_scoped,
+        }
 
 
 # --- Standard Implementation Helpers ---
@@ -46,6 +59,22 @@ def team_scoped(context: PolicyContext) -> bool:
     return user_team is not None and user_team == record_team
 
 
-# Register standard policies
-register_policy("owner_only", owner_only)
-register_policy("team_scoped", team_scoped)
+#: Module-level registry instance with the standard policies loaded.
+_registry: PolicyRegistry = PolicyRegistry.with_defaults()
+
+
+def register_policy(name: str, policy: Policy) -> None:
+    """Register a policy by name."""
+    _registry.register(name, policy)
+
+
+def get_policy(name: str) -> Policy | None:
+    """Get a policy by name."""
+    return _registry.get(name)
+
+
+__all__ = [
+    "PolicyRegistry",
+    "get_policy",
+    "register_policy",
+]

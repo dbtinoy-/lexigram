@@ -430,7 +430,7 @@ class AdminMountControllersMixin:
                     group=spec.group,
                     description=spec.description,
                 )
-                cluster_registry.register(cluster)
+                cluster_registry.add(cluster)
                 ctx.controllers.append(
                     ClusterCenterController(
                         renderer=infra_renderer,
