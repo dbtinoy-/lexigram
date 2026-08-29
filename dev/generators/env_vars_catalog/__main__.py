@@ -1,3 +1,3 @@
-from dev.catalogs.env_vars_catalog.main import main
+from dev.generators.env_vars_catalog.main import main
 
 main()

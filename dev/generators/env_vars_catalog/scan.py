@@ -6,14 +6,14 @@ import ast
 from pathlib import Path
 import re
 
-from dev.catalogs.env_vars_catalog._model import (
+from dev._lib.package_inventory import discover_package_paths
+from dev.generators.env_vars_catalog._model import (
     CONFIG_BASE_CLASSES,
     EXCLUDED_DIRS,
+    REPO_ROOT,
     ConfigClass,
     ConfigField,
-    REPO_ROOT,
 )
-from dev._lib.package_inventory import discover_package_paths
 
 
 def discover_packages(include_all: bool = False) -> list[Path]:
@@ -65,7 +65,7 @@ def extract_field_comments_from_source(
 
 def extract_default(item: ast.AnnAssign | ast.Assign) -> str:
     """Extract default value from an AST node."""
-    value = item.value if isinstance(item, ast.AnnAssign) else item.value
+    value = item.value
     if value is None:
         return "—"
     if isinstance(value, ast.Constant):
@@ -138,7 +138,7 @@ def get_base_names(bases: list[ast.expr]) -> list[str]:
     for base in bases:
         if isinstance(base, ast.Name):
             result.append(base.id)
-        elif isinstance(base, ast.Attribute) or isinstance(base, ast.Subscript):
+        elif isinstance(base, (ast.Attribute, ast.Subscript)):
             result.append(ast.unparse(base))
     return result
 
@@ -193,7 +193,7 @@ def scan_config_classes_in_package(pkg_src: Path) -> dict[str, ConfigClass]:
                     continue
                 if isinstance(item, ast.AnnAssign) and isinstance(item.target, ast.Name):
                     fname = item.target.id
-                    if fname.startswith("_") or fname.startswith("model_"):
+                    if fname.startswith(("_", "model_")):
                         continue
                     if item.annotation:
                         ann_str = ast.dump(item.annotation)
@@ -215,7 +215,7 @@ def scan_config_classes_in_package(pkg_src: Path) -> dict[str, ConfigClass]:
                     for target in item.targets:
                         if isinstance(target, ast.Name):
                             fname = target.id
-                            if fname.startswith("_") or fname.startswith("model_"):
+                            if fname.startswith(("_", "model_")):
                                 continue
                             type_str = ast.unparse(item.value)[:40] if item.value else "?"
                             if type_str == "?" and fname == "model_config":

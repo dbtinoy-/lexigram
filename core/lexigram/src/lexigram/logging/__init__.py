@@ -9,6 +9,7 @@ Exports:
     apply_config: Low-level configuration application.
     LoggerFactoryProtocol, LoggerFactoryImpl: Factory classes for logger creation.
     LoggerProtocol: Protocol for structured loggers.
+    RedactorProtocol: Protocol for sensitive-data redaction.
     Logger: Alias for ``LoggerProtocol``.
     QueryLogEntry, QueryLoggerProtocol: Database query log contracts.
     CRITICAL, DEBUG, ERROR, INFO, WARNING: Log-level name constants.
@@ -21,7 +22,11 @@ __path__ = __import__("pkgutil").extend_path(__path__, __name__)
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from lexigram.contracts.core.logging import LoggerFactoryProtocol, LoggerProtocol
+    from lexigram.contracts.core.logging import (
+        LoggerFactoryProtocol,
+        LoggerProtocol,
+        RedactorProtocol,
+    )
     from lexigram.contracts.data.sql.query_log import QueryLogEntry, QueryLoggerProtocol
     from lexigram.logging.config.models import LoggingConfig as LoggingConfig
     from lexigram.logging.configurator import (
@@ -39,6 +44,7 @@ if TYPE_CHECKING:
 _LAZY_IMPORTS: dict[str, str] = {
     # contracts
     "LoggerProtocol": "lexigram.contracts.core.logging",
+    "RedactorProtocol": "lexigram.contracts.core.logging",
     "QueryLogEntry": "lexigram.contracts.data.sql.query_log",
     "QueryLoggerProtocol": "lexigram.contracts.data.sql.query_log",
     # config
@@ -107,6 +113,7 @@ __all__ = (
     "LoggingProvider",
     "QueryLogEntry",
     "QueryLoggerProtocol",
+    "RedactorProtocol",
     "apply_config",
     "configure_logging",
     "get_logger",

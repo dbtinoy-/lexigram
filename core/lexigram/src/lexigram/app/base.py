@@ -81,7 +81,7 @@ class Application(SecretsMixin, HealthProbeMixin):
 
         # Configure logging immediately so all module-level get_logger()
         # calls during subsequent imports use the correct filtering wrapper.
-        _apply_logging_config(self._config.logging)
+        _apply_logging_config(self._config.logging, service_name=self.name)
         self._logger: LoggerProtocol = get_logger(name)
 
         self._middleware: MiddlewarePipeline = MiddlewarePipeline()

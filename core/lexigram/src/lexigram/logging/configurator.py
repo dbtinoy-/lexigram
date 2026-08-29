@@ -24,6 +24,7 @@ from lexigram.logging.processors import (
     _otel_processor,
     _redact_processor,
     _sampling_processor,
+    _service_processor,
 )
 from lexigram.logging.redaction import (
     _DEFAULT_FIELD_DENYLIST,
@@ -75,6 +76,7 @@ def configure_logging(
                 if numeric is not None:
                     _proc._state.logger_levels[name] = numeric
 
+        _proc._state.service_name = service_name
         _proc._state.sampling_enabled = sampling_enabled
         _proc._state.sampling_default_rate = sampling_default_rate
         _proc._state.sampling_rules.clear()
@@ -96,6 +98,7 @@ def configure_logging(
         _add_logger_name,
         timestamper,
         _context_processor,
+        _service_processor,
         _otel_processor,
         _redact_processor,
         structlog.processors.CallsiteParameterAdder(
@@ -185,13 +188,15 @@ def configure_logging(
     )
 
 
-def apply_config(logging_config: Any) -> None:
+def apply_config(logging_config: Any, *, service_name: str | None = None) -> None:
     """Apply a LoggingConfig object to configure the logging system.
 
     Args:
         logging_config: A ``LoggingConfig`` (or compatible) instance
             providing ``level``, ``json_format``, ``levels``, and
             ``sampling`` attributes.
+        service_name: Service name injected into log events as ``service``.
+            When omitted, ``configure_logging``'s default is used.
     """
     level = getattr(logging_config, "level", "INFO")
     json_format = getattr(logging_config, "json_format", False)
@@ -218,6 +223,7 @@ def apply_config(logging_config: Any) -> None:
     configure_logging(
         level=level,
         json_format=json_format,
+        service_name=service_name or "lexigram-app",
         levels=levels,
         sampling_enabled=sampling_enabled,
         sampling_default_rate=sampling_default_rate,

@@ -188,6 +188,6 @@ slo_monitor.record_observation(0.125)  # 125ms
 - Use `NoOpMetricsBackend` in tests to avoid side effects from metric recording
 - Prefer `@traced` and `@metered` decorators over manual span/metric calls
 - Register health checks for every external dependency (database, cache, search, etc.)
-- Configure `LoggingConfig.redact_fields` to prevent secrets from appearing in logs
+- Configure core logging redaction via `LEX_LEXIGRAM__LOGGING__REDACTION__*` (not `MonitorConfig`) to prevent secrets from appearing in logs
 - Use `PrometheusMiddleware` for pull-based metrics; use `Pushgateway` for batch jobs
 - Set `tracing.sampler_type` to `probability` with `sample_rate: 0.1` in high-traffic production

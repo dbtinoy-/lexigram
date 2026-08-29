@@ -62,7 +62,10 @@ class TestLoggingProviderBoot:
         with patch("lexigram.logging.configurator.apply_config") as mock_apply:
             await provider.boot(mock_container)
             
-            mock_apply.assert_called_once_with(mock_config.logging)
+            mock_apply.assert_called_once()
+            args, kwargs = mock_apply.call_args
+            assert args[0] is mock_config.logging
+            assert kwargs.get("service_name") is mock_config.app_name
 
 
 class TestLoggingProviderShutdown:

@@ -83,6 +83,9 @@ class CacheProvider(
 
     def configure(self, config: dict[str, Any] | CacheConfig) -> None:
         """Configure the provider with cache settings."""
+        # Explicitly-provided config wins over the orchestrator's ``cache``
+        # yaml section injection, mirroring the other infrastructure modules.
+        self._config_from_factory = True
         if isinstance(config, CacheConfig):
             self.config = config
         else:

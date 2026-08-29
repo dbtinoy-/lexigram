@@ -29,16 +29,15 @@ maintainers = [{ name = "Lexigram Framework Team", email = "team@lexigram.dev" }
 dependencies = [
     "lexigram-contracts>=0.1.4",
     "lexigram>=0.1.4",
-    "starlette>=0.28.0",
     "jinja2>=3.1.0",
 ]
 
 [project.urls]
 Homepage = "https://lexigram.dev"
-Repository = "https://github.com/dbtinoy-/lexigram-dev"
+Repository = "https://github.com/dbtinoy-/lexigram"
 Documentation = "https://docs.lexigram.dev"
-Issues = "https://github.com/dbtinoy-/lexigram-dev/issues"
-Changelog = "https://github.com/dbtinoy-/lexigram-dev/blob/main/CHANGELOG.md"
+Issues = "https://github.com/dbtinoy-/lexigram/issues"
+Changelog = "https://github.com/dbtinoy-/lexigram/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 dev = ["ruff>=0.8.0", "mypy>=1.0.0"]

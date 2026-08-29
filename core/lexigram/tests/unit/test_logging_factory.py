@@ -2,6 +2,8 @@
 
 from unittest.mock import Mock
 
+import pytest
+
 from lexigram.logging.factory import (
     LoggerFactoryImpl,
     _NamedLogger,
@@ -57,7 +59,10 @@ class TestNamedLogger:
         """Test exception method delegation."""
         mock_inner = Mock()
         logger = _NamedLogger(mock_inner, "test")
-        logger.exception("test message")
+        try:
+            raise ValueError("test")
+        except ValueError:
+            logger.exception("test message")
         mock_inner.exception.assert_called_once_with("test message")
 
     def test_bind_returns_named_logger(self) -> None:
@@ -221,11 +226,32 @@ class TestLoggerFactoryImplEdgeCases:
         logger = factory.get_logger(None)
         assert logger.name == "lexigram"
 
-    def test_get_logger_exception_handling(self) -> None:
-        """Test get_logger handles bind exceptions gracefully."""
+    def test_get_logger_bind_type_error_returns_unchanged_logger(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test get_logger returns the raw logger when bind raises TypeError."""
         factory = LoggerFactoryImpl()
         mock_logger = Mock()
         mock_logger.bind.side_effect = TypeError("Cannot bind")
-        factory._get_logger = Mock(return_value=mock_logger)
+        monkeypatch.setattr(
+            "lexigram.logging.factory.get_logger",
+            Mock(return_value=mock_logger),
+        )
         logger = factory.get_logger("test")
-        assert logger is not None
+        assert logger is mock_logger
+
+    def test_get_logger_bind_attribute_error_returns_unchanged_logger(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test get_logger returns the raw logger when bind raises AttributeError."""
+        factory = LoggerFactoryImpl()
+        mock_logger = Mock()
+        mock_logger.bind.side_effect = AttributeError("No bind")
+        monkeypatch.setattr(
+            "lexigram.logging.factory.get_logger",
+            Mock(return_value=mock_logger),
+        )
+        logger = factory.get_logger("test")
+        assert logger is mock_logger

@@ -4,10 +4,10 @@
 # metadata that lived here (see git history for the project.urls table) is kept as a
 # comment to avoid forcing a dependency on the root project.
 #   Homepage:       https://lexigram.dev
-#   Repository:     https://github.com/dbtinoy-/lexigram-dev
+#   Repository:     https://github.com/dbtinoy-/lexigram
 #   Documentation:  https://docs.lexigram.dev
-#   Issues:         https://github.com/dbtinoy-/lexigram-dev/issues
-#   Changelog:      https://github.com/dbtinoy-/lexigram-dev/blob/main/CHANGELOG.md
+#   Issues:         https://github.com/dbtinoy-/lexigram/issues
+#   Changelog:      https://github.com/dbtinoy-/lexigram/blob/main/CHANGELOG.md
 
 
 
@@ -261,7 +261,7 @@ pythonpath = [
     "packages/lexigram-webhook/src",
 ]
 markers = [
-    "integration: marks tests as integration tests",
+    "integration: marks tests as integration tests (excluded by default; opt in with '-m integration' or an integration path)",
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "unit: marks tests as unit tests",
     "e2e: marks tests as end-to-end tests",

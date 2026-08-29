@@ -14,7 +14,7 @@ from lexigram.monitor.config.exporters import (
     PrometheusConfig,
     SLOConfig,
 )
-from lexigram.monitor.config.health import HealthCheckConfig, LoggingConfig
+from lexigram.monitor.config.health import HealthCheckConfig
 from lexigram.monitor.config.metrics import MetricsConfig
 from lexigram.monitor.config.tracing import TracingConfig
 from lexigram.validation import ConfigDict, Field, SecretStr, field_validator
@@ -77,7 +77,6 @@ class MonitorConfig(BaseConfig):
         metrics: Metrics configuration
         tracing: Tracing configuration
         health: Health check configuration
-        logging: Logging configuration
         slo: SLO evaluation configuration
         error_tracking: External error tracking configuration
         opentelemetry: OpenTelemetry configuration
@@ -111,10 +110,6 @@ class MonitorConfig(BaseConfig):
     health: HealthCheckConfig = Field(
         default_factory=HealthCheckConfig,
         description="Health check configuration",
-    )
-    logging: LoggingConfig = Field(
-        default_factory=LoggingConfig,
-        description="Logging configuration",
     )
     slo: SLOConfig = Field(
         default_factory=SLOConfig,

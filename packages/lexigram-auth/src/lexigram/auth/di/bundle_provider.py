@@ -75,6 +75,11 @@ class AuthBundleProvider(Provider):
     ) -> None:
         super().__init__(name="auth_bundle", priority=ProviderPriority.SECURITY)
         self._config = config
+        # Explicit config must win over the orchestrator's ``auth`` yaml
+        # section injection (e.g. ``AuthModule.stub()`` / ``configure()``).
+        # When no config was supplied the yaml section is still injected at
+        # register() time by ``_inject_provider_config``.
+        self._config_from_factory = config is not None
         self._initial_roles: dict[str, Any] = initial_roles or {}
         self._enable_passkeys = enable_passkeys
         self._sub_providers: list[Provider] = []

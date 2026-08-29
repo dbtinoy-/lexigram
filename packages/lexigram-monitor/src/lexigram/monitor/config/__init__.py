@@ -25,9 +25,6 @@ from lexigram.monitor.config.exporters import (
 from lexigram.monitor.config.health import (
     HealthCheckConfig as HealthCheckConfig,
 )
-from lexigram.monitor.config.health import (
-    LoggingConfig as LoggingConfig,
-)
 from lexigram.monitor.config.metrics import MetricsConfig as MetricsConfig
 from lexigram.monitor.config.top_level import (
     ErrorTrackingConfig as ErrorTrackingConfig,
@@ -41,7 +38,6 @@ __all__ = [
     "BackendType",
     "ErrorTrackingConfig",
     "HealthCheckConfig",
-    "LoggingConfig",
     "MetricsConfig",
     "MonitorConfig",
     "OTelExporterConfig",

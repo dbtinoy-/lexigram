@@ -101,6 +101,42 @@ class TestLexigramLoggingJsonFormat:
         assert record["key"] == "value"
 
 
+class TestLexigramLoggingLevel:
+    """End-to-end: LEX_LEXIGRAM__LOGGING__LEVEL controls the global level."""
+
+    def test_level_env_var_drops_events_below_threshold(
+        self, tmp_path, monkeypatch, capsys
+    ) -> None:
+        """Setting LEVEL=ERROR flows through config and drops INFO events."""
+        from lexigram.logging import get_logger
+        from lexigram.logging.configurator import apply_config, reset_logging
+        from lexigram.serialization import loads
+
+        monkeypatch.setenv("LEX_LEXIGRAM__LOGGING__LEVEL", "ERROR")
+        monkeypatch.setenv("LEX_LEXIGRAM__LOGGING__JSON_FORMAT", "true")
+
+        config = LexigramConfig.from_yaml(
+            tmp_path / "application.yaml", env_override=True
+        )
+        assert config.logging.level == "ERROR"
+
+        try:
+            apply_config(config.logging)
+            get_logger("lexigram.config_level_test").info("should_be_dropped")
+            get_logger("lexigram.config_level_test").error("should_be_kept")
+        finally:
+            reset_logging()
+
+        merged = capsys.readouterr()
+        out = (merged.out + merged.err).strip()
+        json_lines = [ln for ln in out.splitlines() if ln.startswith("{")]
+        assert json_lines, f"no JSON log line in: {out!r}"
+        records = [loads(ln) for ln in json_lines]
+        events = [record["event"] for record in records]
+        assert "should_be_dropped" not in events
+        assert "should_be_kept" in events
+
+
 @dataclass(init=False)
 class ConfigModel(BaseConfig):
     """Test configuration class"""

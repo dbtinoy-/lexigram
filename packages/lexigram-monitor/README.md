@@ -51,11 +51,11 @@ if __name__ == "__main__":
 | `health.path` | `/health` | `LEX_MONITOR__HEALTH__PATH` | Base path for health check endpoints |
 | `health.interval` | `30` | `LEX_MONITOR__HEALTH__INTERVAL` | Seconds between background health polls |
 | `health.timeout` | `5` | `LEX_MONITOR__HEALTH__TIMEOUT` | Per-check timeout in seconds |
-| `logging.level` | `INFO` | `LEX_MONITOR__LOGGING__LEVEL` | Minimum log level (`DEBUG`, `INFO`, `WARNING`, `ERROR`) |
-| `logging.format` | `json` | `LEX_MONITOR__LOGGING__FORMAT` | Log output format (`json` or `text`) |
 | `slo.enabled` | `true` | `LEX_MONITOR__SLO__ENABLED` | Enable periodic SLO evaluation worker |
 | `slo.evaluation_interval` | `60` | `LEX_MONITOR__SLO__EVALUATION_INTERVAL` | Seconds between SLO evaluation cycles |
 | `slo.suppression_window_seconds` | `300` | `LEX_MONITOR__SLO__SUPPRESSION_WINDOW_SECONDS` | Min seconds between duplicate alerts |
+
+Structured logging is not configured here. Use the core `LEX_LEXIGRAM__LOGGING__*` variables (via `lexigram.config.LoggingConfig`) to set log level, JSON format, per-logger levels, redaction, and sampling.
 
 ## Endpoint protection
 

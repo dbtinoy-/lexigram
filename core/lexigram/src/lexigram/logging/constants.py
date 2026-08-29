@@ -2,14 +2,7 @@
 
 from __future__ import annotations
 
-import importlib.metadata
-
-__version__: str
-try:
-    __version__ = importlib.metadata.version("lexigram")
-except ImportError:
-    __version__ = "0.0.0"
-
+from lexigram.constants import __version__
 
 # -- Log Level Names ---------------------------------------------------------
 
