@@ -1,8 +1,8 @@
 # REF_ERROR_CODES.md — Lexigram Framework Error Code Registry
 
-**Date:** 2026-08-20
-**Total registered codes:** 611
-**Total domains:** 75
+**Date:** 2026-08-29
+**Total registered codes:** 613
+**Total domains:** 76
 **Total packages contributing codes:** 47
 
 > This is the **authoritative registry** of all `LEX_ERR_*` error codes in the
@@ -25,8 +25,9 @@
 | `AUDIT` | 4 | — | lexigram-audit |
 | `AUTH` | 28 | — | lexigram-auth, lexigram-contracts |
 | `CACHE` | 15 | — | lexigram-cache, lexigram-contracts |
-| `CFG` | 5 | — | lexigram, lexigram-contracts |
+| `CFG` | 6 | — | lexigram, lexigram-contracts |
 | `CLI` | 3 | — | lexigram-cli |
+| `CODEGEN` | 1 | — | lexigram-contracts |
 | `CONC` | 8 | — | lexigram |
 | `CORE` | 3 | 003, 004 | lexigram, lexigram-contracts |
 | `DB` | 11 | — | lexigram-contracts |
@@ -96,14 +97,14 @@
 
 ## 2. Full Registry (by Package)
 
-### `lexigram-contracts` (162 codes)
+### `lexigram-contracts` (163 codes)
 
 | Code | Class | Description | File | Inherits From |
 |:-----|:------|:------------|:-----|:--------------|
 | `LEX_ERR_ADMIN_001` | `AdminError` | Base exception for all admin-domain errors. Extended by leaf exceptions in lexigram-admin. | `core/lexigram-contracts/src/lexigram/contracts/admin/errors.py` | LexigramError |
-| `LEX_ERR_AGT_001` | `AgentError` | Base exception for all agent errors. | `core/lexigram-contracts/src/lexigram/contracts/ai/agents.py` | LexigramError |
-| `LEX_ERR_AGT_002` | `ToolError` | Base exception for tool errors. | `core/lexigram-contracts/src/lexigram/contracts/ai/agents.py` | AgentError |
-| `LEX_ERR_AGT_003` | `StrategyError` | Reasoning strategy failed. Raised when the agent's strategy encounters an error during reasoning ... | `core/lexigram-contracts/src/lexigram/contracts/ai/agents.py` | AgentError |
+| `LEX_ERR_AGT_001` | `AgentError` | Base exception for all agent errors. | `core/lexigram-contracts/src/lexigram/contracts/ai/agents/exceptions.py` | LexigramError |
+| `LEX_ERR_AGT_002` | `ToolError` | Base exception for tool errors. | `core/lexigram-contracts/src/lexigram/contracts/ai/agents/exceptions.py` | AgentError |
+| `LEX_ERR_AGT_003` | `StrategyError` | Reasoning strategy failed. Raised when the agent's strategy encounters an error during reasoning ... | `core/lexigram-contracts/src/lexigram/contracts/ai/agents/exceptions.py` | AgentError |
 | `LEX_ERR_AI_001` | `AIError` | Base exception for all AI-domain errors. This is the catch-all for AI operations that fail in exp... | `core/lexigram-contracts/src/lexigram/contracts/ai/exceptions.py` | DomainError |
 | `LEX_ERR_AI_002` | `ExtractionError` | Base for structured extraction errors. Used in ``StructuredExtractorProtocol.extract()`` return t... | `core/lexigram-contracts/src/lexigram/contracts/ai/exceptions.py` | AIError |
 | `LEX_ERR_AI_003` | `MetricsCollectionError` | Error raised during metrics collection. | `core/lexigram-contracts/src/lexigram/contracts/observability/ai.py` | MonitoringError |
@@ -115,6 +116,7 @@
 | `LEX_ERR_CACHE_002` | `CacheKeyNotFoundError` | Raised when cache key is not found. | `core/lexigram-contracts/src/lexigram/contracts/infra/cache/exceptions.py` | CacheError |
 | `LEX_ERR_CACHE_003` | `CacheWriteError` | Raised when cache write fails. | `core/lexigram-contracts/src/lexigram/contracts/infra/cache/exceptions.py` | CacheError |
 | `LEX_ERR_CFG_001` | `ConfigurationError` | Developer configuration or runtime misconfiguration errors. Supports optional structured validati... | `core/lexigram-contracts/src/lexigram/contracts/exceptions/config.py` | LexigramError |
+| `LEX_ERR_CODEGEN_001` | `CollidingFileError` | A generated file collides with an existing file under a FAIL policy. | `core/lexigram-contracts/src/lexigram/contracts/exceptions/infra.py` | InfrastructureError |
 | `LEX_ERR_CORE_001` | `LexigramError` | Root exception for the entire Lexigram ecosystem. All Lexigram exceptions inherit from this class... | `core/lexigram-contracts/src/lexigram/contracts/exceptions/base.py` | Exception |
 | `LEX_ERR_DB_001` | `DatabaseError` | Database-related error (infrastructure-level). | `core/lexigram-contracts/src/lexigram/contracts/exceptions/infra.py` | InfrastructureError |
 | `LEX_ERR_DB_002` | `MigrationError` | Database migration error. | `core/lexigram-contracts/src/lexigram/contracts/exceptions/infra.py` | InfrastructureError |
@@ -263,7 +265,7 @@
 | `LEX_ERR_WF_002` | `SagaStepError` | Represents a recoverable failure from a single saga step action. SagaProtocol step actions must r... | `core/lexigram-contracts/src/lexigram/contracts/workflow/steps.py` | Exception |
 | `LEX_ERR_WF_009` | `SagaVersionMismatchError` | Raised when a persisted saga state version is incompatible with the current code. Attributes: sag... | `core/lexigram-contracts/src/lexigram/contracts/workflow/errors.py` | LexigramError |
 
-### `lexigram` (44 codes)
+### `lexigram` (45 codes)
 
 | Code | Class | Description | File | Inherits From |
 |:-----|:------|:------------|:-----|:--------------|
@@ -274,6 +276,7 @@
 | `LEX_ERR_CFG_003` | `ConfigSourceError` | Raised when a configuration source fails to load its values. | `core/lexigram/src/lexigram/config/exceptions.py` | ConfigurationError |
 | `LEX_ERR_CFG_004` | `ConfigReloadError` | Raised when a live-reload attempt fails. | `core/lexigram/src/lexigram/config/exceptions.py` | ConfigurationError |
 | `LEX_ERR_CFG_005` | `ConfigSectionNotFoundError` | Raised when a required config section is absent from the loaded config. | `core/lexigram/src/lexigram/config/exceptions.py` | ConfigurationError |
+| `LEX_ERR_CFG_006` | `UnknownConfigKeysError` | Raised when a typed config section contains keys its model does not define. Almost always a typo ... | `core/lexigram/src/lexigram/config/exceptions.py` | ConfigurationError |
 | `LEX_ERR_CONC_001` | `ConcurrencyError` | Base exception for all concurrency errors. | `core/lexigram/src/lexigram/concurrency/exceptions.py` | LexigramError |
 | `LEX_ERR_CONC_002` | `AsyncError` | Exception raised for errors in asynchronous operations or concurrency control. | `core/lexigram/src/lexigram/concurrency/exceptions.py` | ConcurrencyError |
 | `LEX_ERR_CONC_003` | `ChannelClosedError` | Raised when an operation is attempted on a closed channel. | `core/lexigram/src/lexigram/concurrency/exceptions.py` | ConcurrencyError |
@@ -1016,7 +1019,7 @@ file has **no `_code` assignment**. They are candidates for registration.
 
 | Class | Inherits From | File |
 |:------|:--------------|:-----|
-| `_ExpressionError` | Exception | `experimental/ai/lexigram-ai-governance/src/lexigram/ai/governance/relay_billing/pricing.py` |
+| `_ExpressionError` | Exception | `experimental/ai/lexigram-ai-governance/src/lexigram/ai/governance/relay_billing/pricing/parser.py` |
 
 ### `lexigram-ai-llm` (1 classes)
 
@@ -1046,7 +1049,7 @@ file has **no `_code` assignment**. They are candidates for registration.
 
 | Class | Inherits From | File |
 |:------|:--------------|:-----|
-| `FilterRenderError` | ValueError | `packages/lexigram-search/src/lexigram/search/backends/filters.py` |
+| `FilterRenderError` | ValueError | `packages/lexigram-search/src/lexigram/search/backends/filters/_validation.py` |
 | `UnsupportedOperatorError` | ValueError | `packages/lexigram-search/src/lexigram/search/filterset/block_translator.py` |
 
 ### `lexigram-sql` (1 classes)
@@ -1292,7 +1295,7 @@ Complete alphabetical listing of all codes grouped by domain tag.
 | `LEX_ERR_CACHE_014` | `CacheCapacityError` | Raised when the cache is at capacity. | `lexigram-cache` |
 | `LEX_ERR_CACHE_015` | `CacheSerializationError` | Raised when cache serialization or deserialization fails. This is a cache-spe... | `lexigram-cache` |
 
-### `CFG` (5 codes)
+### `CFG` (6 codes)
 
 | Code | Class | Description | Package |
 |:-----|:------|:------------|:--------|
@@ -1301,6 +1304,7 @@ Complete alphabetical listing of all codes grouped by domain tag.
 | `LEX_ERR_CFG_003` | `ConfigSourceError` | Raised when a configuration source fails to load its values. | `lexigram` |
 | `LEX_ERR_CFG_004` | `ConfigReloadError` | Raised when a live-reload attempt fails. | `lexigram` |
 | `LEX_ERR_CFG_005` | `ConfigSectionNotFoundError` | Raised when a required config section is absent from the loaded config. | `lexigram` |
+| `LEX_ERR_CFG_006` | `UnknownConfigKeysError` | Raised when a typed config section contains keys its model does not define. A... | `lexigram` |
 
 ### `CLI` (3 codes)
 
@@ -1309,6 +1313,12 @@ Complete alphabetical listing of all codes grouped by domain tag.
 | `LEX_ERR_CLI_001` | `CliError` | Base exception for lexigram-cli operations. | `lexigram-cli` |
 | `LEX_ERR_CLI_002` | `ConfigNotFoundError` | Raised when application.yaml configuration file is not found. | `lexigram-cli` |
 | `LEX_ERR_CLI_003` | `ProviderNotInstalledError` | Raised when a required provider package is not installed. | `lexigram-cli` |
+
+### `CODEGEN` (1 codes)
+
+| Code | Class | Description | Package |
+|:-----|:------|:------------|:--------|
+| `LEX_ERR_CODEGEN_001` | `CollidingFileError` | A generated file collides with an existing file under a FAIL policy. | `lexigram-contracts` |
 
 ### `CONC` (8 codes)
 
