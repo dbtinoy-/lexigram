@@ -29,7 +29,7 @@ Example:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Any, cast
 
 if TYPE_CHECKING:
     from lexigram.contracts.ai import LLMClientProtocol
@@ -85,19 +85,15 @@ class ProviderInfo:
 class ProviderRegistry(Registry[str, ProviderInfo]):
     """Registry for LLM providers.
 
-    Singleton registry that maintains information about all available
-    LLM providers, both built-in and custom.
+    Instances are always empty — use :meth:`with_defaults` for the
+    in-package built-in catalogue or :meth:`register` for custom providers.
     """
 
     def __init__(self) -> None:
-        """Initialize provider registry."""
-        if getattr(self, "_initialized", False):
-            return
+        """Initialize an empty provider registry."""
         super().__init__(name="providers")
         self._provider_clients: dict[str, LLMClientProtocol] = {}
         self._provider_models: dict[str, list[ModelInfo]] = {}
-        self._initialize_builtin_providers()
-        self._initialized = True
 
     @staticmethod
     def _validate_provider_name(name: str) -> None:
@@ -106,20 +102,27 @@ class ProviderRegistry(Registry[str, ProviderInfo]):
             msg = "Provider name must be lowercase with no spaces (e.g., 'my-provider')"
             raise ValueError(msg)
 
-    def _initialize_builtin_providers(self) -> None:
-        """Register built-in providers from the shared provider catalogue.
+    @classmethod
+    def _default_entries(cls) -> tuple[dict[str, Any], ...]:
+        """The complete in-package built-in set, declared exactly once.
 
-        The registration *data* lives in
-        :mod:`lexigram.ai.llm.registry.builtins`; each client module is
-        imported lazily inside that function so SDK imports stay deferred
-        away from module top-levels while still populating the registry
-        catalogue eagerly enough at construction time (the registry is a
-        singleton only constructed when first requested).
+        The catalogue lives in :mod:`lexigram.ai.llm.registry.builtins`;
+        each client module is imported lazily inside
+        :func:`~lexigram.ai.llm.registry.builtins.builtin_provider_entries`
+        so SDK imports stay deferred until a registry is populated.
         """
-        from lexigram.ai.llm.registry.builtins import register_builtin_providers
+        from lexigram.ai.llm.registry.builtins import builtin_provider_entries
 
-        register_builtin_providers(self)
-        logger.info("Initialized %d built-in providers", len(self))
+        return builtin_provider_entries()
+
+    @classmethod
+    def with_defaults(cls) -> ProviderRegistry:
+        """Return an instance populated with the built-in providers."""
+        registry = cls()
+        for entry in cls._default_entries():
+            registry.register(**entry)
+        logger.info("Initialized %d built-in providers", len(registry))
+        return registry
 
     def register(  # type: ignore[override]
         self,
