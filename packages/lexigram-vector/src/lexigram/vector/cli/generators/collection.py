@@ -14,9 +14,9 @@ class VectorCollectionGenerator(GeneratorBase):
 
     name = "vector_collection"
     description = "Generate a vector collection definition with backend registration"
-    default_output_dir = "src/collections"
+    default_output_dir = "src/vector/collections"
 
-    def __init__(self, output_dir: str | Path = "src/collections") -> None:
+    def __init__(self, output_dir: str | Path = "src/vector/collections") -> None:
         super().__init__(output_dir=output_dir)
 
     def generate(

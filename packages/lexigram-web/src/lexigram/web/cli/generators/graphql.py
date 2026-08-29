@@ -37,7 +37,7 @@ class GraphQLGenerator(GeneratorBase):
 
     template_name = "graphql.py.jinja2"
 
-    def __init__(self, output_dir: str = "src/graphql") -> None:
+    def __init__(self, output_dir: str = "src/schema") -> None:
         super().__init__(output_dir=output_dir)
 
     def generate(

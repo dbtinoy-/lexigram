@@ -17,7 +17,7 @@ _SPECS: tuple[tuple[str, str, str, str], ...] = (
         "vector_collection",
         "Generate a vector collection definition with backend registration",
         "lexigram.vector.cli.generators.collection:VectorCollectionGenerator",
-        "src/collections",
+        "src/vector/collections",
     ),
 )
 
