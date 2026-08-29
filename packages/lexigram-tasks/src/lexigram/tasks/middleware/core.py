@@ -15,12 +15,12 @@ Example:
 from __future__ import annotations
 
 from abc import ABC
-import asyncio
 from dataclasses import dataclass, field
 import time
 from typing import Any
 
 from lexigram.logging import get_logger
+from lexigram.tasks.execution._invoke import invoke_handler
 from lexigram.tasks.models.job import JobProtocol, JobResult
 
 logger = get_logger(__name__)
@@ -88,10 +88,7 @@ class TaskMiddlewarePipeline:
         # Execute
         ctx.start_time = time.monotonic()
         try:
-            if asyncio.iscoroutinefunction(handler):
-                result_data = await handler(*job.args, **job.kwargs)
-            else:
-                result_data = handler(*job.args, **job.kwargs)
+            result_data = await invoke_handler(handler, *job.args, **job.kwargs)
 
             duration = (time.monotonic() - ctx.start_time) * 1000
             ctx.duration_ms = duration
@@ -270,9 +267,7 @@ class TimeoutMiddleware(TaskMiddleware):
         )
 
         async def run_handler() -> Any:
-            if asyncio.iscoroutinefunction(handler):
-                return await handler(*args_to_use, **kwargs_to_use)
-            return handler(*args_to_use, **kwargs_to_use)
+            return await invoke_handler(handler, *args_to_use, **kwargs_to_use)
 
         start_time = time.monotonic()
         try:

@@ -27,7 +27,13 @@ from lexigram.tasks import TasksModule
 
 async def main() -> None:
     async with Application.boot(
-        modules=[TasksModule.configure(worker_count=2, enable_scheduler=True)]
+        modules=[
+            TasksModule.configure(
+                worker_count=2,
+                enable_scheduler=True,
+                task_packages=["app.tasks"],
+            )
+        ]
     ) as app:
         # ... schedule and enqueue background tasks ...
         ...
@@ -67,8 +73,8 @@ export LEX_TASKS__BACKEND__TYPE=memory
 ```
 
 > `LEX_TASKS__*` variables feed `TaskConfig` via the container's `LexigramConfig`;
-> the `configure()` arguments (`queue`, `worker_count`, `enable_scheduler`) take
-> precedence for runtime wiring.
+> the `configure()` arguments (`queue`, `worker_count`, `enable_scheduler`,
+> `task_modules`, `task_packages`) take precedence for runtime wiring.
 
 ### Option 3 — Python
 
@@ -78,7 +84,12 @@ from lexigram.tasks.backends.memory import MemoryTaskQueue
 
 # Defaults: in-memory queue, 1 worker, scheduler enabled
 TasksModule.configure()
-TasksModule.configure(queue=MemoryTaskQueue(), worker_count=4, enable_scheduler=True)
+TasksModule.configure(
+    queue=MemoryTaskQueue(),
+    worker_count=4,
+    enable_scheduler=True,
+    task_modules=["app.tasks.cleanup_task"],
+)
 ```
 
 ### Config reference
@@ -98,7 +109,7 @@ TasksModule.configure(queue=MemoryTaskQueue(), worker_count=4, enable_scheduler=
 
 | Method | Description |
 |--------|-------------|
-| `TasksModule.configure(queue=None, worker_count=1, enable_scheduler=True)` | Configure with explicit queue and worker settings |
+| `TasksModule.configure(queue=None, worker_count=1, enable_scheduler=True, task_modules=None, task_packages=None)` | Configure queue settings and task autodiscovery roots |
 | `TasksModule.stub()` | Minimal config for testing |
 
 ## Key Features

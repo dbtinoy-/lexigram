@@ -75,7 +75,7 @@ class WorkerPool:
         Args:
             queue: TaskQueueProtocol for workers to pull from
             handler_registry: Dict mapping job names to handlers, or HandlerRegistry
-                for dynamic lookups (allows handlers registered after pool creation).
+                for refreshable lookups after late registrations.
             size: Number of workers to create
             task_manager: Optional kernel task manager for critical task
                 registration during worker lifecycle.

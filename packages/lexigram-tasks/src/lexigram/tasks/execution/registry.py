@@ -5,12 +5,12 @@ This module provides a registry for mapping task names to handler functions.
 
 from __future__ import annotations
 
-import asyncio
 from collections.abc import Awaitable, Callable
 from typing import Any
 
 from lexigram.primitives.registry import Registry
 from lexigram.tasks.exceptions import TaskNotFoundError
+from lexigram.tasks.execution._invoke import invoke_handler
 
 
 class HandlerRegistry(Registry[str, Callable[..., Awaitable[Any]]]):
@@ -139,9 +139,7 @@ class HandlerRegistry(Registry[str, Callable[..., Awaitable[Any]]]):
                 },
                 hint=f"Register a handler with @task(name={task.name!r}) or task_registry.register({task.name!r}, handler).",
             )
-        if asyncio.iscoroutinefunction(handler):
-            return await handler(*task.args, **task.kwargs)
-        return handler(*task.args, **task.kwargs)
+        return await invoke_handler(handler, *task.args, **task.kwargs)
 
     def remove(self, name: str) -> bool:
         """Remove handler from registry.

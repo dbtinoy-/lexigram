@@ -23,6 +23,7 @@ from lexigram.tasks.exceptions import (
 from lexigram.tasks.execution._concurrency import WorkerConcurrencyMixin
 from lexigram.tasks.execution._di_resolver import resolve_handler_dependencies
 from lexigram.tasks.execution._failure_handling import send_to_dlq
+from lexigram.tasks.execution._invoke import invoke_handler
 from lexigram.tasks.execution._lifecycle import TaskWorkerServices, WorkerJobStats
 from lexigram.tasks.execution._middleware_chain import (
     create_default_pipeline,
@@ -402,9 +403,7 @@ class TaskWorker(WorkerConcurrencyMixin):
         Returns:
             Handler return value
         """
-        if asyncio.iscoroutinefunction(handler):
-            return await handler(*job.args, **job.kwargs)
-        return handler(*job.args, **job.kwargs)
+        return await invoke_handler(handler, *job.args, **job.kwargs)
 
     async def _execute_with_middleware(
         self,

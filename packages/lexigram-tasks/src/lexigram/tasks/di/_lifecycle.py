@@ -9,7 +9,6 @@ from typing import TYPE_CHECKING, Any
 
 from lexigram.concurrency.task_utils import create_tracked_task
 from lexigram.contracts.core import (
-    HealthCheckCategory,
     HealthCheckResult,
     HealthStatus,
     HookRegistryProtocol,
@@ -21,6 +20,7 @@ from lexigram.contracts.observability.metrics import (
 from lexigram.logging import get_logger
 from lexigram.tasks.admin.contributor import TasksAdminContributor
 from lexigram.tasks.di._attrs import _TaskAttrsMixin
+from lexigram.tasks.di._discovery import discover_registered_tasks
 from lexigram.tasks.execution.health import TaskHealth
 from lexigram.tasks.execution.pool import WorkerPool
 from lexigram.tasks.results.cache_backend import CacheBackendResultStore
@@ -103,8 +103,28 @@ class _TaskLifecycleMixin(_TaskAttrsMixin):
                     "TaskProvider: using CacheBackendResultStore for distributed result persistence"
                 )
 
-        # Initialize worker pool - pass registry reference, not snapshot
-        # This allows workers to pick up handlers registered after pool creation
+        # Create the scheduler before task autodiscovery so scheduled handlers
+        # can register their cron expressions during boot.
+        if self.enable_scheduler:
+            self.scheduler = TaskScheduler()
+
+        discovered_tasks = discover_registered_tasks(
+            task_modules=self._task_modules,
+            task_packages=self._task_packages,
+        )
+        for task_func in discovered_tasks:
+            cron = getattr(task_func, "_cron", None)
+            if cron is not None:
+                self.register_scheduled_task(task_func)
+                continue
+
+            task_name = getattr(task_func, "_task_name", None)
+            if task_name is None:
+                continue
+            self.register_handler(task_name, task_func)
+
+        # Initialize worker pool with the shared registry so later refreshes
+        # can propagate runtime registrations into existing workers.
         self.worker_pool = WorkerPool(
             self.queue,
             self.registry,
@@ -139,16 +159,18 @@ class _TaskLifecycleMixin(_TaskAttrsMixin):
                     env=env,
                 )
 
-        # Initialize scheduler if enabled
-        if self.enable_scheduler:
-            self.scheduler = TaskScheduler()
+        if self.enable_scheduler and self.scheduler is not None:
             self.scheduler_task = create_tracked_task(
                 self.scheduler.start_scheduler(self._enqueue_job),
                 self._background_tasks,
                 name="task_provider_scheduler",
             )
 
-        self.logger.info("TaskProvider started with %d workers", self.worker_count)
+        self.logger.info(
+            "TaskProvider started with %d workers (%d autodiscovered tasks)",
+            self.worker_count,
+            len(discovered_tasks),
+        )
 
         # Register task health check with the kernel's HealthChecker if available.
         # This is a best-effort registration; a missing HealthChecker just means

@@ -50,6 +50,8 @@ class TasksModule(Module):
         worker_count: int = 1,
         enable_scheduler: bool = True,
         config: TaskConfig | Any | None = None,
+        task_modules: list[str] | tuple[str, ...] | None = None,
+        task_packages: list[str] | tuple[str, ...] | None = None,
     ) -> DynamicModule:
         """Create a TasksModule with explicit configuration.
 
@@ -60,6 +62,10 @@ class TasksModule(Module):
             enable_scheduler: Whether to enable the job scheduler.
             config: :class:`~lexigram.tasks.config.TaskConfig` or ``None`` to
                 resolve the typed ``tasks`` yaml section at boot time.
+            task_modules: Exact Python module paths to import during boot and
+                scan for decorated ``@task`` / ``@scheduled`` callables.
+            task_packages: Package roots to import recursively during boot and
+                scan for decorated task callables.
 
         Returns:
             A :class:`~lexigram.di.module.DynamicModule` descriptor.
@@ -91,6 +97,8 @@ class TasksModule(Module):
                     worker_count=worker_count,
                     enable_scheduler=enable_scheduler,
                     config=config,
+                    task_modules=task_modules,
+                    task_packages=task_packages,
                 )
             ],
             is_global=True,

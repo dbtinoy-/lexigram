@@ -7,11 +7,11 @@ worker loop free of middleware plumbing.
 
 from __future__ import annotations
 
-import asyncio
 from collections.abc import Awaitable, Callable
 import time
 from typing import TYPE_CHECKING, Any
 
+from lexigram.tasks.execution._invoke import invoke_handler
 from lexigram.tasks.middleware.core import (
     TaskExecutionContext,
     TaskMiddlewarePipeline,
@@ -111,12 +111,12 @@ async def execute_handler_through_middleware(
                 resolved_args,
                 final_kwargs,
             )
-        elif asyncio.iscoroutinefunction(handler):
-            result_data = await handler(*resolved_args, **final_kwargs)
-            duration = time.monotonic() - ctx.start_time
-            ctx.result = JobResult.ok(result_data, duration)
         else:
-            result_data = handler(*resolved_args, **final_kwargs)
+            result_data = await invoke_handler(
+                handler,
+                *resolved_args,
+                **final_kwargs,
+            )
             duration = time.monotonic() - ctx.start_time
             ctx.result = JobResult.ok(result_data, duration)
     except (RuntimeError, TypeError, ValueError, OSError, LookupError) as exc:
