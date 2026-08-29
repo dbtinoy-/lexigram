@@ -130,16 +130,21 @@ class CompressionStrategyRegistry:
         self._handlers: list[CompressionStrategyHandler] = []
 
     @classmethod
+    def _default_entries(cls) -> dict[str, object]:
+        """Declare the built-in strategy handlers."""
+        return {
+            "ExtractiveStrategyHandler": ExtractiveStrategyHandler(),
+            "AbstractiveStrategyHandler": AbstractiveStrategyHandler(),
+            "TokenLimitStrategyHandler": TokenLimitStrategyHandler(),
+            "SemanticDedupStrategyHandler": SemanticDedupStrategyHandler(),
+            "HybridStrategyHandler": HybridStrategyHandler(),
+        }
+
+    @classmethod
     def with_defaults(cls) -> CompressionStrategyRegistry:
         """Create a registry pre-populated with all built-in strategy handlers."""
         registry = cls()
-        registry._handlers = [
-            ExtractiveStrategyHandler(),
-            AbstractiveStrategyHandler(),
-            TokenLimitStrategyHandler(),
-            SemanticDedupStrategyHandler(),
-            HybridStrategyHandler(),
-        ]
+        registry._handlers = list(cls._default_entries().values())
         return registry
 
     def register(self, handler: CompressionStrategyHandler) -> None:

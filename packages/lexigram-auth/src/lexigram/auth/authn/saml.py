@@ -137,21 +137,22 @@ class SAMLAttributeMapperRegistry:
         self._mappers: list[SAMLAttributeMapper] = []
 
     @classmethod
+    def _default_entries(cls) -> dict[str, SAMLAttributeMapper]:
+        """Declare the standard attribute mappers."""
+        return {
+            "email": EmailAttributeMapper(),
+            "name": NameAttributeMapper(),
+            "first_name": FirstNameAttributeMapper(),
+            "last_name": LastNameAttributeMapper(),
+            "groups": GroupsAttributeMapper(),
+        }
+
+    @classmethod
     def with_defaults(cls) -> SAMLAttributeMapperRegistry:
         """Create a registry pre-loaded with the standard attribute mappers."""
         instance = cls()
-        instance._register_default_mappers()
+        instance._mappers = list(cls._default_entries().values())
         return instance
-
-    def _register_default_mappers(self) -> None:
-        """Register the default attribute mappers."""
-        self._mappers = [
-            EmailAttributeMapper(),
-            NameAttributeMapper(),
-            FirstNameAttributeMapper(),
-            LastNameAttributeMapper(),
-            GroupsAttributeMapper(),
-        ]
 
     def register_mapper(self, mapper: SAMLAttributeMapper) -> None:
         """Register a custom attribute mapper."""

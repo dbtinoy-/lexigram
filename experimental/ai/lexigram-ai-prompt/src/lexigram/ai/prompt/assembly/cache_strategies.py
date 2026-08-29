@@ -260,16 +260,24 @@ class ProviderCacheStrategyRegistry:
         self._default: CacheStrategy = PassthroughCacheStrategy()
 
     @classmethod
+    def _default_entries(cls) -> dict[str, CacheStrategy]:
+        """Declare the built-in provider cache strategies."""
+        return {
+            "anthropic": AnthropicCacheStrategy(),
+            "openai": OpenAICacheStrategy(),
+            "azure": OpenAICacheStrategy(),
+            "deepseek": DeepSeekCacheStrategy(),
+            "gemini": GeminiCacheStrategy(),
+            "mistral": MistralCacheStrategy(),
+            "*": PassthroughCacheStrategy(),
+        }
+
+    @classmethod
     def with_defaults(cls) -> ProviderCacheStrategyRegistry:
         """Create a registry pre-populated with all provider strategies."""
         registry = cls()
-        registry.register("anthropic", AnthropicCacheStrategy())
-        registry.register("openai", OpenAICacheStrategy())
-        registry.register("azure", OpenAICacheStrategy())
-        registry.register("deepseek", DeepSeekCacheStrategy())
-        registry.register("gemini", GeminiCacheStrategy())
-        registry.register("mistral", MistralCacheStrategy())
-        registry.register("*", PassthroughCacheStrategy())
+        for provider, strategy in cls._default_entries().items():
+            registry.register(provider, strategy)
         return registry
 
     def register(self, provider: str, strategy: CacheStrategy) -> None:

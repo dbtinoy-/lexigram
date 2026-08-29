@@ -88,23 +88,27 @@ class MonitorBackendRegistryManager(_CoreBackendRegistry):
         super().__init__(name="monitor.backends")
 
     @classmethod
+    def _default_entries(cls) -> dict[str, MonitorBackendRegistry]:
+        """Declare the built-in backend factories under backend-type keys."""
+        from lexigram.monitor.config import BackendType
+
+        return {
+            str(BackendType.PROMETHEUS): PrometheusBackendRegistry(),
+            str(BackendType.OPENTELEMETRY): OpenTelemetryBackendRegistry(),
+            str(BackendType.MEMORY): MemoryBackendRegistry(),
+        }
+
+    @classmethod
     def with_defaults(cls) -> MonitorBackendRegistryManager:
         """Create a manager pre-populated with all built-in backends.
 
         Returns:
             A new registry instance with all default backend factories registered.
         """
-        instance = cls()
-        instance._register_defaults()
-        return instance
-
-    def _register_defaults(self) -> None:
-        """Populate built-in factories under their backend-type string keys."""
-        from lexigram.monitor.config import BackendType
-
-        super().register(str(BackendType.PROMETHEUS), PrometheusBackendRegistry())
-        super().register(str(BackendType.OPENTELEMETRY), OpenTelemetryBackendRegistry())
-        super().register(str(BackendType.MEMORY), MemoryBackendRegistry())
+        registry = cls()
+        for key, value in cls._default_entries().items():
+            registry.register(key=key, value=value)
+        return registry
 
     def register(  # type: ignore[override]
         self,

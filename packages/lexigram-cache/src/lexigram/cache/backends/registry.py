@@ -70,21 +70,23 @@ class BackendRegistry(_CoreBackendRegistry):
 
     Example::
 
-        registry = BackendRegistry()
+        registry = BackendRegistry.with_defaults()
         # Third-party extension:
         registry.register("elasticache", MyElastiCacheFactory())
     """
 
     def __init__(self) -> None:
-        """Initialise with all built-in backend factories."""
+        """Initialise an empty registry (populate via ``with_defaults()``)."""
         super().__init__(name="cache.backends")
-        self._register_defaults()
 
-    def _register_defaults(self) -> None:
-        """Populate built-in factories under their type-string keys."""
-        super().register(const.BACKEND_TYPE_MEMORY, MemoryBackendRegistry())
-        super().register(const.BACKEND_TYPE_REDIS, RedisBackendRegistry())
-        super().register(const.BACKEND_TYPE_MEMCACHED, MemcachedBackendRegistry())
+    @classmethod
+    def _default_entries(cls) -> dict[str, CacheBackendRegistry]:
+        """Declare the built-in backend factories under type-string keys."""
+        return {
+            const.BACKEND_TYPE_MEMORY: MemoryBackendRegistry(),
+            const.BACKEND_TYPE_REDIS: RedisBackendRegistry(),
+            const.BACKEND_TYPE_MEMCACHED: MemcachedBackendRegistry(),
+        }
 
     def register(  # type: ignore[override]
         self,

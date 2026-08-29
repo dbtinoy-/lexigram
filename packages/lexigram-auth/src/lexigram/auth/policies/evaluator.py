@@ -95,14 +95,9 @@ class OperatorRegistry:
         self._handlers: dict[str, OperatorHandlerProtocol] = {}
 
     @classmethod
-    def with_defaults(cls) -> OperatorRegistry:
-        """Create a registry pre-loaded with the standard operator handlers."""
-        instance = cls()
-        instance._register_default_handlers()
-        return instance
-
-    def _register_default_handlers(self) -> None:
-        self._handlers = {
+    def _default_entries(cls) -> dict[str, OperatorHandlerProtocol]:
+        """Declare the standard operator handlers."""
+        return {
             "equals": EqualsOperator(),
             "not_equals": NotEqualsOperator(),
             "contains": ContainsOperator(),
@@ -115,6 +110,13 @@ class OperatorRegistry:
             "greater_than_or_equals": GreaterThanOrEqualsOperator(),
             "less_than_or_equals": LessThanOrEqualsOperator(),
         }
+
+    @classmethod
+    def with_defaults(cls) -> OperatorRegistry:
+        """Create a registry pre-loaded with the standard operator handlers."""
+        instance = cls()
+        instance._handlers = dict(cls._default_entries())
+        return instance
 
     def register_handler(self, operator: str, handler: OperatorHandlerProtocol) -> None:
         """Register a custom operator handler."""

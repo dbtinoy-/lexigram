@@ -35,8 +35,8 @@ class EventStoreRegistry:
         self._factories: dict[str, _StoreFactoryCallable] = {}
 
     @classmethod
-    def with_defaults(cls) -> EventStoreRegistry:
-        """Create a registry pre-populated with all built-in store factories."""
+    def _default_entries(cls) -> dict[str, _StoreFactoryCallable]:
+        """Declare the built-in store factories (memory, postgres, mongodb, sqlite)."""
         from lexigram.events.stores.registry_factories import (
             create_inmemory_store,
             create_mongodb_store,
@@ -44,11 +44,19 @@ class EventStoreRegistry:
             create_sqlite_store,
         )
 
+        return {
+            "memory": create_inmemory_store,
+            "postgres": create_postgres_store,
+            "mongodb": create_mongodb_store,
+            "sqlite": create_sqlite_store,
+        }
+
+    @classmethod
+    def with_defaults(cls) -> EventStoreRegistry:
+        """Create a registry pre-populated with all built-in store factories."""
         registry = cls()
-        registry.register("memory", create_inmemory_store)
-        registry.register("postgres", create_postgres_store)
-        registry.register("mongodb", create_mongodb_store)
-        registry.register("sqlite", create_sqlite_store)
+        for key, value in cls._default_entries().items():
+            registry.register(key, value)
         return registry
 
     def register(self, key: str, factory: _StoreFactoryCallable) -> None:

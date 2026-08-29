@@ -60,15 +60,24 @@ class SQLDialectRegistry:
 
     def __init__(self) -> None:
         self._handlers: dict[str, DialectHandler] = {}
-        self._register_default_handlers()
 
-    def _register_default_handlers(self) -> None:
-        """Register default dialect handlers."""
-        # Register by exact database type names
-        self.register_handler("postgresql", PostgresDialectHandler())
-        self.register_handler("postgres", PostgresDialectHandler())
-        self.register_handler("sqlite", SQLiteDialectHandler())
-        self.register_handler("mysql", MySQLDialectHandler())
+    @classmethod
+    def _default_entries(cls) -> dict[str, DialectHandler]:
+        """Declare the built-in dialect handlers, by exact DB type name."""
+        return {
+            "postgresql": PostgresDialectHandler(),
+            "postgres": PostgresDialectHandler(),
+            "sqlite": SQLiteDialectHandler(),
+            "mysql": MySQLDialectHandler(),
+        }
+
+    @classmethod
+    def with_defaults(cls) -> SQLDialectRegistry:
+        """Create a registry pre-populated with the built-in handlers."""
+        registry = cls()
+        for key, handler in cls._default_entries().items():
+            registry.register_handler(key, handler)
+        return registry
 
     def register_handler(self, database_type: str, handler: DialectHandler) -> None:
         """Register a dialect handler."""
@@ -88,7 +97,7 @@ class SQLDialectRegistry:
 
 
 # Global dialect registry
-_dialect_registry = SQLDialectRegistry()
+_dialect_registry = SQLDialectRegistry.with_defaults()
 
 
 class QueryBuilderManager:
