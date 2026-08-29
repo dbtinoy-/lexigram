@@ -64,6 +64,7 @@ from lexigram.admin.resources.field_renderers_text import (
 from lexigram.admin.schema import SchemaField
 from lexigram.di.decorators import inject
 from lexigram.logging import get_logger
+from lexigram.primitives.registry import Registry
 from lexigram.ui import el, render_to_string
 
 logger = get_logger(__name__)
@@ -91,39 +92,71 @@ __all__ = [
 ]
 
 
-class FieldRendererRegistry:
-    """Registry for field renderers."""
+#: Registered renderer values are either instances (``register("key", obj)``)
+#: or renderer classes (the decorator form ``@register("key")``).
+FieldRendererValue = FieldRendererProtocol | type[FieldRendererProtocol]
+
+
+class FieldRendererRegistry(Registry[str, FieldRendererValue]):
+    """Registry of field renderers, resolved by ``can_render`` predicate.
+
+    Built-in renderers are declared in :meth:`_default_entries` (first match
+    wins, so specialized renderers must be registered before their general
+    fallbacks); applications can register additional renderers with
+    ``register()``, ``register_factory()``, or the decorator form.
+    """
 
     def __init__(self) -> None:
-        self._renderers: list[FieldRendererProtocol] = [
-            TextAreaFieldRenderer(),
-            ListFieldRenderer(),
-            JsonFieldRenderer(),
-            MultiSelectFieldRenderer(),
-            HasManyFieldRenderer(),
-            BelongsToFieldRenderer(),
-            MorphFieldRenderer(),
-            SelectFieldRenderer(),
-            DateFieldRenderer(),
-            DateTimeFieldRenderer(),
-            EmailFieldRenderer(),
-            PasswordFieldRenderer(),
-            ColorFieldRenderer(),
-            NumberFieldRenderer(),
-            BooleanFieldRenderer(),
-            TextFieldRenderer(),
-            DefaultFieldRenderer(),
-        ]
+        """Create an empty registry — use :meth:`with_defaults` for built-ins.
+
+        ``allow_overwrite`` is enabled because field renderers are an
+        application extension point: registering a custom renderer under a
+        built-in key (e.g. ``"text"``) intentionally replaces the default.
+        """
+        super().__init__(name="admin.field_renderers", allow_overwrite=True)
+
+    @classmethod
+    def _default_entries(cls) -> dict[str, FieldRendererValue]:
+        """Declare the complete in-package built-in renderer set."""
+        return {
+            "text_area": TextAreaFieldRenderer(),
+            "list": ListFieldRenderer(),
+            "json": JsonFieldRenderer(),
+            "multi_select": MultiSelectFieldRenderer(),
+            "has_many": HasManyFieldRenderer(),
+            "belongs_to": BelongsToFieldRenderer(),
+            "morph": MorphFieldRenderer(),
+            "select": SelectFieldRenderer(),
+            "date": DateFieldRenderer(),
+            "datetime": DateTimeFieldRenderer(),
+            "email": EmailFieldRenderer(),
+            "password": PasswordFieldRenderer(),
+            "color": ColorFieldRenderer(),
+            "number": NumberFieldRenderer(),
+            "boolean": BooleanFieldRenderer(),
+            "text": TextFieldRenderer(),
+            "default": DefaultFieldRenderer(),
+        }
 
     def get_renderer(self, field_schema: SchemaField) -> FieldRendererProtocol:
-        for renderer in self._renderers:
+        """Return the first registered renderer that can render *field_schema*.
+
+        Both instance registrations (``register("key", MyRenderer())``) and
+        class registrations (the decorator form ``@register("key")`` on a
+        class) are accepted; classes are instantiated on first resolution.
+        Falls back to :class:`DefaultFieldRenderer` when no registered
+        renderer matches (or the registry is empty).
+        """
+        for renderer in self.values():
+            if isinstance(renderer, type):
+                renderer = renderer()
             if renderer.can_render(field_schema):
                 return renderer
         return DefaultFieldRenderer()
 
 
-# Global registry instance
-_field_renderer_registry = FieldRendererRegistry()
+# Global registry instance with all built-in renderers.
+_field_renderer_registry: FieldRendererRegistry = FieldRendererRegistry.with_defaults()
 
 
 @inject

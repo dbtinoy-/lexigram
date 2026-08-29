@@ -67,7 +67,7 @@ COMMON_ARGS = {
 def _render(
     field: SchemaField, value: Any = None, common_args: dict[str, Any] | None = None
 ) -> str:
-    renderer = FieldRendererRegistry().get_renderer(field)
+    renderer = FieldRendererRegistry.with_defaults().get_renderer(field)
     args = dict(common_args or COMMON_ARGS)
     args["name"] = field.name
     return str(renderer.render_field(field, value, args).render())
@@ -86,19 +86,19 @@ class TestRegistryDispatch:
             (TagsField(name="tags"), ListFieldRenderer),
             (JsonField(name="meta"), JsonFieldRenderer),
         ]
-        registry = FieldRendererRegistry()
+        registry = FieldRendererRegistry.with_defaults()
         for field, expected in cases:
             assert isinstance(registry.get_renderer(field), expected)
 
     def test_temporal_fields_dispatch_by_class(self) -> None:
-        registry = FieldRendererRegistry()
+        registry = FieldRendererRegistry.with_defaults()
         assert isinstance(registry.get_renderer(DateField(name="d")), DateFieldRenderer)
         assert isinstance(
             registry.get_renderer(DateTimeField(name="dt")), DateTimeFieldRenderer
         )
 
     def test_selection_fields_dispatch_by_class(self) -> None:
-        registry = FieldRendererRegistry()
+        registry = FieldRendererRegistry.with_defaults()
         assert isinstance(
             registry.get_renderer(SelectField(name="s", options=[("a", "A")])),
             SelectFieldRenderer,
@@ -111,7 +111,7 @@ class TestRegistryDispatch:
         )
 
     def test_relation_fields_dispatch_by_class(self) -> None:
-        registry = FieldRendererRegistry()
+        registry = FieldRendererRegistry.with_defaults()
         assert isinstance(
             registry.get_renderer(
                 BelongsToField(name="owner", resource="owners")
@@ -128,8 +128,37 @@ class TestRegistryDispatch:
         )
 
     def test_unknown_fields_use_default_renderer(self) -> None:
-        registry = FieldRendererRegistry()
+        registry = FieldRendererRegistry.with_defaults()
         assert isinstance(registry.get_renderer(RatingField(name="rating")), DefaultFieldRenderer)
+
+    def test_registry_starts_empty(self) -> None:
+        assert len(list(FieldRendererRegistry().items())) == 0
+
+    def test_register_custom_renderer_wins_over_default(self) -> None:
+        class CustomTextFieldRenderer(TextFieldRenderer):
+            def can_render(self, field_schema: SchemaField) -> bool:
+                return isinstance(field_schema, TextField)
+
+        registry = FieldRendererRegistry.with_defaults()
+        registry.register("text", CustomTextFieldRenderer())
+        assert isinstance(
+            registry.get_renderer(TextField(name="name")), CustomTextFieldRenderer
+        )
+
+    def test_register_decorator_form(self) -> None:
+        registry = FieldRendererRegistry()
+
+        @registry.register("custom")
+        class CustomRenderer:
+            def can_render(self, field_schema: SchemaField) -> bool:
+                return isinstance(field_schema, RatingField)
+
+            def render_field(self, field_schema, value, common_args):
+                return SimpleNamespace()
+
+        assert registry.has("custom")
+        renderer = registry.get_renderer(RatingField(name="rating"))
+        assert isinstance(renderer, CustomRenderer)
 
 
 class TestRendererOutput:

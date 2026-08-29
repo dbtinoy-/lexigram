@@ -245,6 +245,26 @@ class TestWidgetRegistry:
         assert widget is not None
         assert widget.created is True
 
+    def test_decorator_and_overwrite(self) -> None:
+        """Test decorator registration and intentional override."""
+        registry = WidgetRegistry()
+
+        class First:
+            pass
+
+        class Second:
+            pass
+
+        @registry.register("decorated")
+        class Decorated:
+            pass
+
+        assert registry.get("decorated") is Decorated
+        registry.register("decorated", Second)
+        assert registry.get("decorated") is Second
+        registry.register("decorated", First)
+        assert registry.get("decorated") is First
+
     def test_render_contributor_widgets_has_data_widget_name(self) -> None:
         """Test each widget card includes a data-widget-name attribute."""
         registry = WidgetRegistry()

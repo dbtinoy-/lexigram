@@ -9,7 +9,11 @@ from lexigram.admin.ui.organisms.data_table.layout import LayoutComposer
 from lexigram.admin.ui.organisms.data_table.permissions import PermissionManager
 from lexigram.admin.ui.organisms.data_table.rendering import DataTableRenderer
 from lexigram.admin.ui.organisms.data_table.states import StateRenderer
-from lexigram.admin.ui.organisms.data_table.views import ViewFactory, ViewStrategy
+from lexigram.admin.ui.organisms.data_table.views import (
+    ViewStrategy,
+    ViewStrategyRegistry,
+    view_strategy_registry,
+)
 from lexigram.ui import TableState
 
 __all__ = [
@@ -21,6 +25,7 @@ __all__ = [
     "StateRenderer",
     "TableConfiguration",
     "TableState",
-    "ViewFactory",
     "ViewStrategy",
+    "ViewStrategyRegistry",
+    "view_strategy_registry",
 ]
