@@ -267,48 +267,50 @@ class DependenciesInspector(Inspector):
 class InspectorRegistry:
     """Registry for inspectors.
 
-    Provides a pluggable way to add new inspectors.
+    Instances are always empty — use :meth:`with_defaults` for the
+    in-package built-ins or :meth:`register` for plugin inspectors.
     """
 
-    _inspectors: dict[str, Inspector] = {}
-    _initialized: bool = False
+    def __init__(self) -> None:
+        self._inspectors: dict[str, Inspector] = {}
 
-    @classmethod
-    def register(cls, inspector: type[Inspector]) -> None:
+    def register(self, inspector: type[Inspector]) -> None:
         """Register an inspector class."""
         instance = inspector()
-        cls._inspectors[inspector.name] = instance
+        self._inspectors[inspector.name] = instance
 
-    @classmethod
-    def get(cls, name: str) -> Inspector | None:
+    def get(self, name: str) -> Inspector | None:
         """Get an inspector by name."""
-        cls.register_defaults()
-        return cls._inspectors.get(name)
+        return self._inspectors.get(name)
 
-    @classmethod
-    def get_all(cls) -> dict[str, Inspector]:
+    def get_all(self) -> dict[str, Inspector]:
         """Get all registered inspectors."""
-        cls.register_defaults()
-        return cls._inspectors.copy()
+        return self._inspectors.copy()
 
-    @classmethod
-    def get_choices(cls) -> list[str]:
+    def get_choices(self) -> list[str]:
         """Get list of available inspector names."""
-        cls.register_defaults()
-        return list(cls._inspectors.keys())
+        return list(self._inspectors.keys())
 
     @classmethod
-    def register_defaults(cls) -> None:
-        """Initialize default inspectors if not already done."""
-        if not cls._initialized:
-            cls.register(ProvidersInspector)
-            cls.register(RoutesInspector)
-            cls.register(MiddlewareInspector)
-            cls.register(ContainerInspector)
-            cls.register(EventsInspector)
-            cls.register(TasksInspector)
-            cls.register(DependenciesInspector)
-            cls._initialized = True
+    def _default_entries(cls) -> tuple[type[Inspector], ...]:
+        """The complete in-package built-in set, declared exactly once."""
+        return (
+            ProvidersInspector,
+            RoutesInspector,
+            MiddlewareInspector,
+            ContainerInspector,
+            EventsInspector,
+            TasksInspector,
+            DependenciesInspector,
+        )
+
+    @classmethod
+    def with_defaults(cls) -> InspectorRegistry:
+        """Return an instance populated with the built-in inspectors."""
+        registry = cls()
+        for entry in cls._default_entries():
+            registry.register(entry)
+        return registry
 
 
 __all__ = [

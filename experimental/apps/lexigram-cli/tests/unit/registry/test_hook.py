@@ -120,45 +120,37 @@ class TestValidationHook:
 
 class TestHookRegistry:
     def test_register_and_get(self) -> None:
-        HookRegistry._hooks = {}
-        HookRegistry._initialized = False
+        registry = HookRegistry()
         hook = LoggingHook()
-        HookRegistry.register(hook)
-        hooks = HookRegistry.get_hooks(HookPhase.PRE_COMMAND)
+        registry.register(hook)
+        hooks = registry.get_hooks(HookPhase.PRE_COMMAND)
         assert len(hooks) >= 1
 
     def test_register_class(self) -> None:
-        HookRegistry._hooks = {}
-        HookRegistry._initialized = False
-        HookRegistry.register_class(LoggingHook)
-        hooks = HookRegistry.get_hooks(HookPhase.PRE_COMMAND)
+        registry = HookRegistry()
+        registry.register_class(LoggingHook)
+        hooks = registry.get_hooks(HookPhase.PRE_COMMAND)
         assert len(hooks) >= 1
 
     def test_get_all_hooks(self) -> None:
-        HookRegistry._hooks = {}
-        HookRegistry._initialized = False
-        all_hooks = HookRegistry.get_all_hooks()
+        registry = HookRegistry.with_defaults()
+        all_hooks = registry.get_all_hooks()
         assert HookPhase.PRE_COMMAND in all_hooks
 
-    def test_register_defaults(self) -> None:
-        HookRegistry._hooks = {}
-        HookRegistry._initialized = False
-        HookRegistry.register_defaults()
-        assert HookRegistry._initialized is True
-        hooks = HookRegistry.get_hooks(HookPhase.PRE_COMMAND)
+    def test_with_defaults_populates_builtins(self) -> None:
+        registry = HookRegistry.with_defaults()
+        hooks = registry.get_hooks(HookPhase.PRE_COMMAND)
         assert any(isinstance(h, LoggingHook) for h in hooks)
         assert any(isinstance(h, TimingHook) for h in hooks)
 
     def test_sort_by_priority(self) -> None:
-        HookRegistry._hooks = {}
-        HookRegistry._initialized = False
+        registry = HookRegistry()
         h1 = LoggingHook()  # priority 50
         h2 = TimingHook()   # priority 10
-        HookRegistry.register(h1)
-        HookRegistry.register(h2)
-        hooks = HookRegistry.get_hooks(HookPhase.PRE_COMMAND)
+        registry.register(h1)
+        registry.register(h2)
+        hooks = registry.get_hooks(HookPhase.PRE_COMMAND)
         assert hooks[0].priority <= hooks[1].priority
-
 
 class TestHookExecutor:
     @pytest.mark.asyncio

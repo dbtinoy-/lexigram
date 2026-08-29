@@ -136,71 +136,70 @@ class TestEnvironment(Environment):
 class EnvironmentRegistry:
     """Registry for environments.
 
-    Provides a pluggable way to add new environments.
+    Instances are always empty — use :meth:`with_defaults` for the
+    in-package built-ins or :meth:`register` for plugin environments.
     """
 
-    _environments: dict[str, Environment] = {}
-    _initialized: bool = False
-    _current: str = "development"
+    def __init__(self) -> None:
+        self._environments: dict[str, Environment] = {}
+        self._current: str = "development"
 
-    @classmethod
-    def register(cls, env: type[Environment]) -> None:
+    def register(self, env: type[Environment]) -> None:
         """Register an environment class."""
         instance = env()
-        cls._environments[env.name] = instance
+        self._environments[env.name] = instance
 
-    @classmethod
-    def get(cls, name: str) -> Environment | None:
+    def get(self, name: str) -> Environment | None:
         """Get an environment by name."""
-        cls.register_defaults()
-        return cls._environments.get(name)
+        return self._environments.get(name)
 
-    @classmethod
-    def get_all(cls) -> dict[str, Environment]:
+    def get_all(self) -> dict[str, Environment]:
         """Get all registered environments."""
-        cls.register_defaults()
-        return cls._environments.copy()
+        return self._environments.copy()
 
-    @classmethod
-    def get_choices(cls) -> list[str]:
+    def get_choices(self) -> list[str]:
         """Get list of available environment names."""
-        cls.register_defaults()
-        return list(cls._environments.keys())
+        return list(self._environments.keys())
 
-    @classmethod
-    def set_current(cls, name: str) -> None:
+    def set_current(self, name: str) -> None:
         """Set the current environment."""
-        if name not in cls._environments:
+        if name not in self._environments:
             raise ValueError(f"Unknown environment: {name}")
-        cls._current = name
+        self._current = name
         os.environ["LEX_ENV"] = name
 
-    @classmethod
-    def get_current(cls) -> str:
+    def get_current(self) -> str:
         """Get the current environment name."""
-        return os.environ.get("LEX_ENV", cls._current)
+        return os.environ.get("LEX_ENV", self._current)
 
-    @classmethod
-    def get_current_env(cls) -> Environment | None:
+    def get_current_env(self) -> Environment | None:
         """Get the current environment object."""
-        return cls._environments.get(cls.get_current())
+        return self._environments.get(self.get_current())
 
     @classmethod
-    def register_defaults(cls) -> None:
-        """Initialize default environments if not already done."""
-        if not cls._initialized:
-            cls.register(DevelopmentEnvironment)
-            cls.register(StagingEnvironment)
-            cls.register(ProductionEnvironment)
-            cls.register(TestEnvironment)
-            cls._initialized = True
+    def _default_entries(cls) -> tuple[type[Environment], ...]:
+        """The complete in-package built-in set, declared exactly once."""
+        return (
+            DevelopmentEnvironment,
+            StagingEnvironment,
+            ProductionEnvironment,
+            TestEnvironment,
+        )
+
+    @classmethod
+    def with_defaults(cls) -> EnvironmentRegistry:
+        """Return an instance populated with the built-in environments."""
+        registry = cls()
+        for entry in cls._default_entries():
+            registry.register(entry)
+        return registry
 
 
 class EnvironmentManager:
     """Manages environment switching and validation."""
 
     def __init__(self) -> None:
-        self.registry = EnvironmentRegistry
+        self.registry = EnvironmentRegistry.with_defaults()
 
     def switch(self, name: str) -> bool:
         """Switch to a different environment."""

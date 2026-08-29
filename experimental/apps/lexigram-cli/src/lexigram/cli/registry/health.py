@@ -55,30 +55,26 @@ from lexigram.cli.registry.health_checks.vcs_docker import (
 class HealthCheckRegistry:
     """Registry for health checks.
 
-    Provides a pluggable way to add new health checks.
+    Instances are always empty — use :meth:`with_defaults` for the
+    in-package built-ins or :meth:`register` for plugin checks.
     """
 
-    _checks: list[type[HealthCheck]] = []
-    _initialized: bool = False
+    def __init__(self) -> None:
+        self._checks: list[type[HealthCheck]] = []
 
-    @classmethod
-    def register(cls, check: type[HealthCheck]) -> None:
+    def register(self, check: type[HealthCheck]) -> None:
         """Register a health check class."""
-        cls._checks.append(check)
+        self._checks.append(check)
 
-    @classmethod
-    def get_all_checks(cls) -> list[type[HealthCheck]]:
+    def get_all_checks(self) -> list[type[HealthCheck]]:
         """Get all registered health check classes."""
-        cls.register_defaults()
-        return cls._checks.copy()
+        return self._checks.copy()
 
-    @classmethod
-    def get_checks_by_category(cls) -> dict[str, list[HealthCheck]]:
+    def get_checks_by_category(self) -> dict[str, list[HealthCheck]]:
         """Get all checks organized by category."""
-        checks = cls.get_all_checks()
         by_category: dict[str, list[HealthCheck]] = {}
 
-        for check_class in checks:
+        for check_class in self.get_all_checks():
             instance = check_class()
             category = instance.get_category()
             if category not in by_category:
@@ -88,27 +84,34 @@ class HealthCheckRegistry:
         return by_category
 
     @classmethod
-    def register_defaults(cls) -> None:
-        """Initialize default checks if not already done."""
-        if not cls._initialized:
-            cls.register(PythonVersionCheck)
-            cls.register(PackageManagerCheck)
-            cls.register(RequiredToolsCheck)
-            cls.register(ConfigFileCheck)
-            cls.register(ProjectStructureCheck)
-            cls.register(DependenciesCheck)
-            cls.register(GitCheck)
-            cls.register(DockerCheck)
-            # Framework-specific checks (Dim 9.4)
-            cls.register(InstalledLexigramPackagesCheck)
-            cls.register(ProviderPackagesCheck)
-            cls.register(CrossExtensionImportCheck)
-            cls._initialized = True
+    def _default_entries(cls) -> tuple[type[HealthCheck], ...]:
+        """The complete in-package built-in set, declared exactly once."""
+        return (
+            PythonVersionCheck,
+            PackageManagerCheck,
+            RequiredToolsCheck,
+            ConfigFileCheck,
+            ProjectStructureCheck,
+            DependenciesCheck,
+            GitCheck,
+            DockerCheck,
+            InstalledLexigramPackagesCheck,
+            ProviderPackagesCheck,
+            CrossExtensionImportCheck,
+        )
+
+    @classmethod
+    def with_defaults(cls) -> HealthCheckRegistry:
+        """Return an instance populated with the built-in checks."""
+        registry = cls()
+        for entry in cls._default_entries():
+            registry.register(entry)
+        return registry
 
 
 def run_health_checks() -> dict[str, list[CheckResult]]:
     """Run all health checks and return results organized by category."""
-    by_category = HealthCheckRegistry.get_checks_by_category()
+    by_category = HealthCheckRegistry.with_defaults().get_checks_by_category()
     results: dict[str, list[CheckResult]] = {}
 
     for category, checks in by_category.items():

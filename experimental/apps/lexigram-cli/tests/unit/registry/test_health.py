@@ -280,28 +280,21 @@ class TestDockerCheck:
 
 
 class TestHealthCheckRegistry:
-    def test_register_and_get_all(self) -> None:
-        HealthCheckRegistry._checks = []
-        HealthCheckRegistry._initialized = False
-        checks = HealthCheckRegistry.get_all_checks()
+    def test_with_defaults_populates_all_checks(self) -> None:
+        registry = HealthCheckRegistry.with_defaults()
+        checks = registry.get_all_checks()
         assert len(checks) >= 11
 
     def test_get_checks_by_category(self) -> None:
-        HealthCheckRegistry._checks = []
-        HealthCheckRegistry._initialized = False
-        by_cat = HealthCheckRegistry.get_checks_by_category()
+        registry = HealthCheckRegistry.with_defaults()
+        by_cat = registry.get_checks_by_category()
         assert "Runtime" in by_cat
         assert "Tools" in by_cat
         assert "Project" in by_cat
 
-    def test_register_defaults_once(self) -> None:
-        HealthCheckRegistry._checks = []
-        HealthCheckRegistry._initialized = False
-        HealthCheckRegistry.register_defaults()
-        count = len(HealthCheckRegistry._checks)
-        HealthCheckRegistry.register_defaults()
-        assert len(HealthCheckRegistry._checks) == count
-
+    def test_empty_registry_by_default(self) -> None:
+        registry = HealthCheckRegistry()
+        assert registry.get_all_checks() == []
 
 class TestRunHealthChecks:
     def test_returns_dict(self) -> None:

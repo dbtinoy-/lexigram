@@ -146,46 +146,48 @@ class FullStackTemplate(ProjectTemplate):
 class TemplateRegistry:
     """Registry for project templates.
 
-    Provides a pluggable way to add new project templates.
+    Instances are always empty — use :meth:`with_defaults` for the
+    in-package built-ins or :meth:`register` for plugin templates.
     """
 
-    _templates: dict[str, ProjectTemplate] = {}
-    _initialized: bool = False
+    def __init__(self) -> None:
+        self._templates: dict[str, ProjectTemplate] = {}
 
-    @classmethod
-    def register(cls, template: type[ProjectTemplate]) -> None:
+    def register(self, template: type[ProjectTemplate]) -> None:
         """Register a project template class."""
         instance = template()
-        cls._templates[template.name] = instance
+        self._templates[template.name] = instance
 
-    @classmethod
-    def get(cls, name: str) -> ProjectTemplate | None:
+    def get(self, name: str) -> ProjectTemplate | None:
         """Get a template by name."""
-        cls.register_defaults()
-        return cls._templates.get(name)
+        return self._templates.get(name)
 
-    @classmethod
-    def get_all(cls) -> dict[str, ProjectTemplate]:
+    def get_all(self) -> dict[str, ProjectTemplate]:
         """Get all registered templates."""
-        cls.register_defaults()
-        return cls._templates.copy()
+        return self._templates.copy()
 
-    @classmethod
-    def get_choices(cls) -> list[str]:
+    def get_choices(self) -> list[str]:
         """Get list of available template names."""
-        cls.register_defaults()
-        return list(cls._templates.keys())
+        return list(self._templates.keys())
 
     @classmethod
-    def register_defaults(cls) -> None:
-        """Initialize default templates if not already done."""
-        if not cls._initialized:
-            cls.register(MinimalTemplate)
-            cls.register(WebAPITemplate)
-            cls.register(GraphQLTemplate)
-            cls.register(WorkerTemplate)
-            cls.register(FullStackTemplate)
-            cls._initialized = True
+    def _default_entries(cls) -> tuple[type[ProjectTemplate], ...]:
+        """The complete in-package built-in set, declared exactly once."""
+        return (
+            MinimalTemplate,
+            WebAPITemplate,
+            GraphQLTemplate,
+            WorkerTemplate,
+            FullStackTemplate,
+        )
+
+    @classmethod
+    def with_defaults(cls) -> TemplateRegistry:
+        """Return an instance populated with the built-in templates."""
+        registry = cls()
+        for entry in cls._default_entries():
+            registry.register(entry)
+        return registry
 
 
 class ProjectBuilder:
@@ -198,7 +200,7 @@ class ProjectBuilder:
 
     def __init__(self, template: ProjectTemplate | str):
         if isinstance(template, str):
-            resolved = TemplateRegistry.get(template)
+            resolved = TemplateRegistry.with_defaults().get(template)
             if resolved is None:
                 raise ValueError(f"Unknown template: {template}")
             self.template = resolved

@@ -1,13 +1,10 @@
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Any
 from unittest.mock import MagicMock, patch
 
-import pytest
 from typer.testing import CliRunner
 
-from lexigram.cli.commands.run import app, _is_factory
+from lexigram.cli.commands.run import _is_factory, app
 
 
 class TestIsFactory:
@@ -28,7 +25,7 @@ class TestRunCommand:
     @patch("lexigram.cli.commands.run.discover_entry_point", return_value="/tmp/fake_app.py")
     @patch("lexigram.cli.commands.run.detect_factory_attr", return_value="create_app")
     @patch("lexigram.cli.commands.run.path_to_module", return_value="fake_app")
-    @patch("lexigram.cli.commands.run.ServerRegistry")
+    @patch("lexigram.cli.commands.run._server_registry")
     @patch("lexigram.cli.commands.run.ServerManager")
     def test_run_with_auto_detect(
         self,
@@ -42,8 +39,8 @@ class TestRunCommand:
         mock_backend = MagicMock()
         mock_backend.name = "uvicorn"
         mock_backend.is_available.return_value = True
-        mock_registry.get.return_value = mock_backend
-        mock_registry.get_default.return_value = mock_backend
+        mock_registry.return_value.get.return_value = mock_backend
+        mock_registry.return_value.get_default.return_value = mock_backend
 
         result = self.runner.invoke(app, [])
         assert result.exit_code == 0
@@ -56,22 +53,21 @@ class TestRunCommand:
 
     def test_run_invalid_server(self) -> None:
         with (
-            patch("lexigram.cli.commands.run.ServerRegistry") as mock_registry,
+            patch("lexigram.cli.commands.run._server_registry") as mock_registry,
             patch("pathlib.Path.exists", return_value=True),
         ):
-            mock_registry.get.return_value = None
-            mock_registry.get_available.return_value = []
+            mock_registry.return_value.get.return_value = None
+            mock_registry.return_value.get_available.return_value = []
 
             result = self.runner.invoke(app, ["my_app", "--server", "invalid"])
             assert result.exit_code != 0
 
     def test_run_with_target_and_profile(self) -> None:
-        from lexigram.cli.commands.run import ServerRegistry
-
-        with (
-            patch.object(ServerRegistry, "get") as mock_get,
-            patch.object(ServerRegistry, "get_default") as mock_get_default,
-        ):
+        with patch("lexigram.cli.commands.run._server_registry") as mock_factory:
+            mock_registry = MagicMock()
+            mock_factory.return_value = mock_registry
+            mock_get = mock_registry.get
+            mock_get_default = mock_registry.get_default
             mock_backend = MagicMock()
             mock_backend.name = "uvicorn"
             mock_backend.is_available.return_value = True
@@ -86,9 +82,10 @@ class TestRunCommand:
             assert result.exit_code != 0
 
     def test_run_explicit_target(self) -> None:
-        from lexigram.cli.commands.run import ServerRegistry
-
-        with patch.object(ServerRegistry, "get") as mock_get:
+        with patch("lexigram.cli.commands.run._server_registry") as mock_factory:
+            mock_registry = MagicMock()
+            mock_factory.return_value = mock_registry
+            mock_get = mock_registry.get
             mock_backend = MagicMock()
             mock_backend.name = "uvicorn"
             mock_backend.is_available.return_value = True

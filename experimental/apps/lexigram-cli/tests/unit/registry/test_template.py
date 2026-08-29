@@ -113,46 +113,35 @@ class TestFullStackTemplate:
 
 class TestTemplateRegistry:
     def test_register_and_get(self) -> None:
-        TemplateRegistry._templates = {}
-        TemplateRegistry._initialized = False
-        TemplateRegistry.register(MinimalTemplate)
-        template = TemplateRegistry.get("minimal")
+        registry = TemplateRegistry()
+        registry.register(MinimalTemplate)
+        template = registry.get("minimal")
         assert template is not None
         assert template.name == "minimal"
 
     def test_get_nonexistent(self) -> None:
-        TemplateRegistry._templates = {}
-        TemplateRegistry._initialized = False
-        assert TemplateRegistry.get("nonexistent") is None
+        registry = TemplateRegistry()
+        assert registry.get("nonexistent") is None
 
     def test_get_all(self) -> None:
-        TemplateRegistry._templates = {}
-        TemplateRegistry._initialized = False
-        TemplateRegistry.register(MinimalTemplate)
-        all_t = TemplateRegistry.get_all()
+        registry = TemplateRegistry()
+        registry.register(MinimalTemplate)
+        all_t = registry.get_all()
         assert "minimal" in all_t
 
     def test_get_choices(self) -> None:
-        TemplateRegistry._templates = {}
-        TemplateRegistry._initialized = False
-        choices = TemplateRegistry.get_choices()
+        registry = TemplateRegistry.with_defaults()
+        choices = registry.get_choices()
         assert "minimal" in choices
         assert "web-api" in choices
 
-    def test_register_defaults(self) -> None:
-        TemplateRegistry._templates = {}
-        TemplateRegistry._initialized = False
-        TemplateRegistry.register_defaults()
-        assert TemplateRegistry._initialized is True
-        assert TemplateRegistry.get("minimal") is not None
-        assert TemplateRegistry.get("fullstack") is not None
-
+    def test_with_defaults_populates_all_templates(self) -> None:
+        registry = TemplateRegistry.with_defaults()
+        assert registry.get("minimal") is not None
+        assert registry.get("fullstack") is not None
 
 class TestProjectBuilder:
     def test_init_with_string(self) -> None:
-        TemplateRegistry._templates = {}
-        TemplateRegistry._initialized = False
-        TemplateRegistry.register(MinimalTemplate)
         builder = ProjectBuilder("minimal")
         assert builder.template.name == "minimal"
 
@@ -176,9 +165,6 @@ class TestProjectBuilder:
             builder.create_project("test", tmp_dir)
 
     def test_create_project_success(self, tmp_path: Path) -> None:
-        TemplateRegistry._templates = {}
-        TemplateRegistry._initialized = False
-        TemplateRegistry.register(MinimalTemplate)
         builder = ProjectBuilder("minimal")
 
         project_dir = tmp_path / "myapp"
