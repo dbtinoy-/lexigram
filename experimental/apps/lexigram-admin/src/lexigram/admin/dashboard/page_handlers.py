@@ -283,6 +283,8 @@ class AdminPageHandler:
         except Exception:  # noqa: BLE001, S110 — non-fatal
             pass
 
+        from lexigram.admin.resources.urls import admin_prefix_from_request
+
         shell = AdminShell(
             content=content,
             title=title,
@@ -292,6 +294,9 @@ class AdminPageHandler:
             user_menu_items=user_menu_items,
             breadcrumbs=breadcrumbs,
             theme_css=theme_css,
+            admin_prefix=(
+                admin_prefix_from_request(request) if request is not None else "/admin"
+            ),
             **cast(
                 "Any",
                 {

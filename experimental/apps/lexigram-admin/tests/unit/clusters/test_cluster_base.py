@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 import pytest
 
 from lexigram.admin.clusters import Cluster
@@ -150,41 +148,18 @@ class TestResourceCluster:
     def test_cluster_defaults_to_none(self) -> None:
         assert Resource.cluster is None
 
-    def test_resource_has_group_attribute(self) -> None:
-        assert hasattr(Resource, "group")
-
-    def test_group_defaults_to_none(self) -> None:
-        assert Resource.group is None
-
     def test_cluster_can_be_set_at_definition_time(self) -> None:
         class ClusteredResource(Resource):
             cluster = "content"
 
         assert ClusteredResource.cluster == "content"
 
-    def test_group_is_synced_from_cluster(self) -> None:
-        class ClusteredResource(Resource):
-            cluster = "content"
-
-        assert ClusteredResource.group == "content"
-
-    def test_cluster_is_synced_from_group(self) -> None:
-        class GroupedResource(Resource):
-            group = "users"
-
-        assert GroupedResource.cluster == "users"
-
-    def test_group_sync_respects_explicit_cluster(self) -> None:
-        class BothSetResource(Resource):
-            cluster = "content"
-            group = "users"
-
-        assert BothSetResource.cluster == "content"
-        assert BothSetResource.group == "users"
+    def test_cluster_has_no_group_alias(self) -> None:
+        """The deprecated ``group`` alias is retired; use ``cluster``."""
+        assert not hasattr(Resource, "group")
 
     def test_cluster_is_none_on_default_resource(self) -> None:
         class PlainResource(Resource):
             pass
 
         assert PlainResource.cluster is None
-        assert PlainResource.group is None

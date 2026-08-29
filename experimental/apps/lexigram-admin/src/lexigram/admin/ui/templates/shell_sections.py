@@ -8,10 +8,41 @@ from lexigram.admin.ui.organisms.sidebar import SidebarItem
 from lexigram.ui import el
 
 
+def _user_has_permission(user: Any, permission: str) -> bool:
+    """Check a permission against the shell ``user`` (dict or record).
+
+    Supports the ``has_permission`` protocol (e.g.
+    :class:`~lexigram.admin.auth.user.AdminUserRecord`) and plain
+    dicts with a ``permissions`` list (or a list passed as ``user``).
+    """
+    if not user:
+        return False
+
+    if isinstance(user, dict):
+        perms = user.get("permissions") or []
+        return permission in perms or ("*" in perms if isinstance(perms, list) else False)
+
+    has_perm = getattr(user, "has_permission", None)
+    if callable(has_perm):
+        try:
+            return bool(has_perm(permission))
+        except TypeError:
+            return False
+
+    if isinstance(user, (list, tuple, set, frozenset)):
+        return permission in user or "*" in user
+
+    perms = getattr(user, "permissions", None)
+    if isinstance(perms, (list, tuple, set, frozenset)):
+        return permission in perms or "*" in perms
+    return False
+
+
 def prepare_navigation(
     nav_items: list[Any],
     features: dict[str, bool],
     user: Any,
+    admin_prefix: str = "/admin",
 ) -> list[Any]:
     """Transform raw nav_items into SidebarItem and SidebarSection instances.
 
@@ -19,6 +50,8 @@ def prepare_navigation(
         nav_items: Raw navigation entries (dicts, tuples or SidebarNavItem).
         features: Feature-flag map used to hide gated entries.
         user: Authenticated user used for permission filtering.
+        admin_prefix: Configured admin mount prefix used to infer resource
+            permissions from item hrefs.
 
     Returns:
         Flat list of SidebarItem/SidebarSection ready for the Sidebar.
@@ -55,31 +88,25 @@ def prepare_navigation(
             if not features.get(feature_key, True):
                 continue
 
-        # If no explicit permission, try to infer from resource URL
-        if not required_permission and href and "/admin//" in href:
-            parts = href.split("/")
-            try:
-                idx = parts.index("api")
-                if len(parts) > idx + 1:
-                    resource = parts[idx + 1]
-                    required_permission = f"{resource}.read"
-            except (ValueError, IndexError):
-                pass
+        # If no explicit permission, try to infer from resource URL.
+        # Resource nav links are ``{admin_prefix}/{resource}`` — derive the
+        # ``{resource}.read`` permission from the first path segment after
+        # the configured admin prefix (works for any mount prefix).
+        if not required_permission and href and href.startswith(
+            admin_prefix.rstrip("/") + "/"
+        ):
+            remainder = href[len(admin_prefix.rstrip("/")) + 1 :]
+            resource = remainder.split("/", 1)[0].split("?")[0]
+            if resource:
+                required_permission = f"{resource}.read"
 
-        # Check permission if required
-        if required_permission and user:
-            try:
-                from lexigram.admin.auth.rbac import (  # type: ignore[import-untyped]
-                    RBACChecker,  # noqa: F401  # imported for optional runtime check only
-                )
-            except ImportError:
-                rbac_checker = None
-
-            if rbac_checker and not rbac_checker.has_permission(
-                user,
-                required_permission,
-            ):
-                continue
+        # Check permission if required. The user record (or dict) carries its
+        # own permission list; legacy RBACChecker was removed — authorization
+        # is provided by the request/session user object.
+        if required_permission and user and not _user_has_permission(
+            user, required_permission
+        ):
+            continue
 
         # Build SidebarItem
         sidebar_item = SidebarItem(
@@ -136,7 +163,12 @@ def build_sidebar_container(sidebar_html: Any) -> Any:
     )
 
 
-def build_impersonation_banner(active: bool, target_id: str, csrf_token: str) -> Any:
+def build_impersonation_banner(
+    active: bool,
+    target_id: str,
+    csrf_token: str,
+    admin_prefix: str = "/admin",
+) -> Any:
     """Build the impersonation notice banner, or an empty string when inactive."""
     return (
         el(
@@ -164,7 +196,7 @@ def build_impersonation_banner(active: bool, target_id: str, csrf_token: str) ->
                     ),
                 ),
                 method="post",
-                action="/admin/impersonate/stop",
+                action=f"{admin_prefix.rstrip('/') or '/admin'}/impersonate/stop",
                 class_="inline-flex items-center",
             ),
             class_=(

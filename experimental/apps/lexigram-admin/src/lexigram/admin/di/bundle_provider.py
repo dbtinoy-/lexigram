@@ -283,6 +283,7 @@ class AdminProvider(
                 {
                     "csrf_service": csrf_service,
                     "audit_service": csrf_audit_service,
+                    "admin_prefix": self._config.prefix,
                 },
             )
         )
@@ -295,7 +296,12 @@ class AdminProvider(
                     AdminAuthGuardMiddleware,
                 )
 
-                middleware_stack.append((AdminAuthGuardMiddleware, {}))
+                middleware_stack.append(
+                    (
+                        AdminAuthGuardMiddleware,
+                        {"admin_prefix": self._config.prefix},
+                    )
+                )
                 _log.debug("admin.auth_guard_middleware_wired")
             except Exception as exc:  # noqa: BLE001 — guard middleware is optional
                 # Degrade (non-fatal), but log at error: the operator
@@ -333,7 +339,13 @@ class AdminProvider(
         )
 
         middleware_stack.append(
-            (AdminAuthorizationMiddleware, {"authorizer": self._authorizer})
+            (
+                AdminAuthorizationMiddleware,
+                {
+                    "authorizer": self._authorizer,
+                    "admin_prefix": self._config.prefix,
+                },
+            )
         )
         _log.debug("admin.authorization_middleware_wired")
 
@@ -359,6 +371,7 @@ class AdminProvider(
                     {
                         "debug": self._config.debug,
                         "login_url": f"{self._config.prefix}/login",
+                        "admin_prefix": self._config.prefix,
                     },
                 )
             )

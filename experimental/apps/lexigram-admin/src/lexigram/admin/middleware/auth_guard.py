@@ -12,6 +12,7 @@ from urllib.parse import quote
 from starlette.responses import RedirectResponse, Response
 from starlette.types import ASGIApp, Receive, Scope, Send
 
+from lexigram.admin.resources.urls import DEFAULT_ADMIN_PREFIX
 from lexigram.logging import get_logger
 
 logger = get_logger(__name__)
@@ -38,24 +39,29 @@ _BYPASS_SUFFIXES: frozenset[str] = frozenset(
     }
 )
 
-_BYPASS_PREFIXES: tuple[str, ...] = (
-    "/static/",
-    "/admin/static/",
-)
-
 # Token-bearing sub-paths that must remain reachable without a session
 # (e.g. the email verification and password-reset links emailed to admins).
-_BYPASS_TOKEN_PREFIXES: tuple[str, ...] = (
-    "/admin/verify-email/",
-    "/admin/password-reset/",
+_BYPASS_TOKEN_SUFFIXES: tuple[str, ...] = (
+    "/verify-email/",
+    "/password-reset/",
 )
 
-# Exact public routes derived from _BYPASS_SUFFIXES — full-path membership
-# only, never suffix matching, so resource names like "login", "register",
-# "health", or "setup" cannot shadow protected admin routes.
-_BYPASS_ROUTES: frozenset[str] = frozenset(
-    f"/admin{s.rstrip('/')}" for s in _BYPASS_SUFFIXES
-)
+
+def _bypass_routes(admin_prefix: str) -> frozenset[str]:
+    """Exact public routes for the configured mount prefix.
+
+    Full-path membership only, never suffix matching, so resource names
+    like "login", "register", "health", or "setup" cannot shadow protected
+    admin routes.
+    """
+    prefix = (admin_prefix or DEFAULT_ADMIN_PREFIX).rstrip("/")
+    return frozenset(f"{prefix}{s.rstrip('/')}" for s in _BYPASS_SUFFIXES)
+
+
+def _bypass_token_prefixes(admin_prefix: str) -> tuple[str, ...]:
+    """Token-bearing sub-paths (email links) for the configured prefix."""
+    prefix = (admin_prefix or DEFAULT_ADMIN_PREFIX).rstrip("/")
+    return tuple(f"{prefix}{s}" for s in _BYPASS_TOKEN_SUFFIXES)
 
 
 class AdminAuthGuardMiddleware:
@@ -70,13 +76,17 @@ class AdminAuthGuardMiddleware:
     ``AuthController`` writes on successful login.
     """
 
-    def __init__(self, app: ASGIApp) -> None:
+    def __init__(self, app: ASGIApp, admin_prefix: str | None = None) -> None:
         """Initialise the middleware.
 
         Args:
             app: The next ASGI application in the stack.
+            admin_prefix: Configured admin mount prefix (default ``/admin``).
         """
         self._app = app
+        self._admin_prefix = (admin_prefix or DEFAULT_ADMIN_PREFIX).rstrip("/")
+        self._bypass_routes = _bypass_routes(self._admin_prefix)
+        self._bypass_token_prefixes = _bypass_token_prefixes(self._admin_prefix)
 
     # ------------------------------------------------------------------
     # ASGI callable
@@ -113,7 +123,7 @@ class AdminAuthGuardMiddleware:
         # the current component (e.g. a widget container).
         logger.debug("auth_guard.unauthenticated path=%s", path)
         next_url = quote(path, safe="/")
-        login_url = f"/admin/login?next={next_url}"
+        login_url = f"{self._admin_prefix}/login?next={next_url}"
         if self._is_htmx(scope):
             response = Response(status_code=200)
             response.headers["HX-Redirect"] = login_url
@@ -148,10 +158,13 @@ class AdminAuthGuardMiddleware:
             True when the path maps to a public endpoint or static asset.
         """
         stripped = path.rstrip("/") or path
-        if stripped in _BYPASS_ROUTES:
+        if stripped in self._bypass_routes:
             return True
 
-        if any(path.startswith(prefix) for prefix in _BYPASS_TOKEN_PREFIXES):
+        if any(path.startswith(prefix) for prefix in self._bypass_token_prefixes):
             return True
 
-        return any(path.startswith(prefix) for prefix in _BYPASS_PREFIXES)
+        # Static assets are always public (also served as /static/ on the
+        # mounted sub-app and as {prefix}/static/ on the outer path).
+        static_prefixes = ("/static/", f"{self._admin_prefix}/static/")
+        return path.startswith(static_prefixes)

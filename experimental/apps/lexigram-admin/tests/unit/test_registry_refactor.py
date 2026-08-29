@@ -1,6 +1,5 @@
 """Tests for refactored standalone AdminRegistry."""
 from __future__ import annotations
-import pytest
 
 
 class TestAdminRegistryRefactored:
@@ -15,7 +14,7 @@ class TestAdminRegistryRefactored:
         registry = AdminRegistry()
         class FakeResource:
             name = "test"
-            group = None
+            cluster = None
         registry.register_resource(FakeResource)
         # Class registration is deferred — check _deferred_resources
         assert "test" in registry._deferred_resources
@@ -33,6 +32,6 @@ class TestAdminRegistryRefactored:
         registry = AdminRegistry()
         class FakeResource:
             name = "items"
-            group = None
+            cluster = None
         result = registry.register_resource(FakeResource)
         assert result is registry

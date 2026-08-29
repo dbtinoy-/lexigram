@@ -20,11 +20,12 @@ Cohesive concerns are composed via sibling mixins:
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar
 import warnings
 
 from lexigram.admin.data.data_source import IDataSource
 from lexigram.admin.resources.archive_ops import ArchiveOperationsMixin
+from lexigram.admin.resources.form_guard import PROTECTED_FORM_FIELDS
 from lexigram.admin.resources.hooks import ResourceHooksMixin
 from lexigram.admin.resources.specs import IntegrationSpecsMixin
 from lexigram.admin.resources.table_config import TableConfigMixin
@@ -86,11 +87,7 @@ class Resource(
     # Registration metadata
     name: str | None = None
     cluster: str | None = None
-    """Cluster name for navigation grouping. Replaces ``group``."""
-
-    # Backward-compat alias for cluster
-    group: str | None = None
-    """Deprecated: use ``cluster`` instead. Kept in sync via __init_subclass__."""
+    """Cluster name for navigation grouping."""
 
     # Permissions
     permissions: ResourcePermissions | None = None
@@ -134,26 +131,52 @@ class Resource(
     # Resource Config (Optional fluent config)
     config: Any = None
 
+    # Form security — see lexigram.admin.resources.form_guard
+    protected_form_fields: ClassVar[frozenset[str]] = PROTECTED_FORM_FIELDS
+    """Framework-managed columns never settable from form data."""
+    form_allow_extra_fields: bool = False
+    """When True, form keys outside the model are kept (protected fields still stripped)."""
+
+    # Class attributes holding mutable collections. Each subclass gets its
+    # own copy so appending at class level never leaks into sibling
+    # resources that did not override the attribute.
+    _COLLECTION_ATTRS: ClassVar[tuple[str, ...]] = (
+        "columns",
+        "actions",
+        "header_actions",
+        "bulk_actions",
+        "filters",
+        "fields",
+        "relations",
+        "search_fields",
+        "form_exclude_fields",
+    )
+
     def __init_subclass__(cls, **kwargs: Any) -> None:
         """Validate and auto-derive backward-compat attributes when using ``fields``."""
         super().__init_subclass__(**kwargs)
 
         own = cls.__dict__
+        declared = set(own)
 
-        # Sync group <-> cluster for backward compatibility
-        if "group" in own and "cluster" not in own:
-            cls.cluster = own["group"]
-        if "cluster" in own and "group" not in own:
-            cls.group = own["cluster"]
+        # Copy inherited mutable collection defaults per subclass so class-level
+        # appends are isolated (no shared mutable class state). Subclasses that
+        # define their own list keep its identity.
+        for attr in cls._COLLECTION_ATTRS:
+            if attr in declared:
+                continue
+            value = getattr(cls, attr, None)
+            if isinstance(value, list):
+                setattr(cls, attr, list(value))
 
         # Validate name if explicitly set — must be a dotted slug
         if "name" in own and own["name"] is not None:
             _validate_resource_name(own["name"])
 
-        has_fields = "fields" in own
-        has_columns = "columns" in own
-        has_filters = "filters" in own
-        has_form_class = "form_class" in own
+        has_fields = "fields" in declared
+        has_columns = "columns" in declared
+        has_filters = "filters" in declared
+        has_form_class = "form_class" in declared
 
         if has_fields:
             if has_columns or has_filters or has_form_class:

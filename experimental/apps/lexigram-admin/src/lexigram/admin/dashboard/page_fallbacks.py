@@ -117,6 +117,8 @@ async def _placeholder_page(
         except Exception:  # noqa: BLE001, S110 — non-fatal
             pass
 
+        from lexigram.admin.resources.urls import admin_prefix_from_request
+
         shell = AdminShell(
             content=content,
             title="Under Construction",
@@ -125,6 +127,9 @@ async def _placeholder_page(
             system_menu_items=system_menu_items,
             user_menu_items=user_menu_items,
             theme_css=theme_css,
+            admin_prefix=(
+                admin_prefix_from_request(request) if request is not None else "/admin"
+            ),
         )
         shell_html = render_to_string(shell)
 

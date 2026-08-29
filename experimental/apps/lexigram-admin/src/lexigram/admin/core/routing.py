@@ -124,6 +124,10 @@ class AdminRouter:
 
         routes = self._build_routes()
         admin_app = Starlette(routes=routes)
+        # Expose the configured mount prefix so URL builders (resource
+        # handlers, renderers, shell) can resolve it per request without
+        # hard-coding "/admin".
+        admin_app.state.admin_prefix = self._config.prefix.rstrip("/")
 
         # Sign the admin session cookie from the validated auth config. The
         # helper also derives https_only / same_site / max_age from env.

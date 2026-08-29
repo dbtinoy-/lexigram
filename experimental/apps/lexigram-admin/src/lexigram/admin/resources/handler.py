@@ -23,6 +23,10 @@ from lexigram.admin.resources.action_handlers import (
     ResourceActionHandler,
     RestoreActionHandler,
 )
+from lexigram.admin.resources.urls import (
+    admin_prefix_from_request,
+    admin_url,
+)
 
 
 class UserPermissionsActionHandler:
@@ -77,7 +81,6 @@ class UserPermissionsActionHandler:
             return HTMLResponse("<h1>User not found</h1>", status_code=404)
 
         self._ensure_csrf_token(request)
-        prefix = request.scope.get("admin_resource_prefix", resource.name or "")
 
         from lexigram.admin.resources.permissions_renderer import (
             UserPermissionsRenderer,
@@ -89,7 +92,6 @@ class UserPermissionsActionHandler:
             user=user,
             inventory=self._permission_inventory(resource),
             item_id=item_id,
-            prefix=prefix,
         )
 
     async def _handle_submit(
@@ -106,14 +108,23 @@ class UserPermissionsActionHandler:
         )
 
         user = await data_source.find_one(item_id)
-        prefix = request.scope.get("admin_resource_prefix", resource.name or "")
         if user is None:
             return RedirectResponse(
-                url=f"/admin/{prefix}?error=User not found.", status_code=302
+                url=admin_url(
+                    admin_prefix_from_request(request),
+                    resource.name or "",
+                    suffix="",
+                    query="error=User not found.",
+                ),
+                status_code=302,
             )
         await data_source.update(item_id, {"permissions": permissions})
         return RedirectResponse(
-            url=f"/admin/{prefix}?notice=User permissions updated.",
+            url=admin_url(
+                admin_prefix_from_request(request),
+                resource.name or "",
+                query="notice=User permissions updated.",
+            ),
             status_code=302,
         )
 
@@ -186,10 +197,11 @@ class BulkActionHandler:
         if request.method == "GET":
             ids = request.query_params.getlist("ids")
             record_count = len(ids)
-            resource_prefix = request.scope.get(
-                "admin_resource_prefix", resource.name or ""
+            bulk_url = admin_url(
+                admin_prefix_from_request(request),
+                resource.name or "",
+                "bulk",
             )
-            bulk_url = f"/admin/{resource_prefix}/bulk"
             confirm_action = request.scope.get("admin_action", "bulk-delete-confirm")
             action, confirm_label, confirm_phrase = self._CONFIRM_LABELS.get(
                 confirm_action, ("delete", "Delete", "DELETE")
@@ -241,10 +253,13 @@ class BulkActionHandler:
                 + '","type":"success"}}'
             )
             return response
-        resource_prefix = request.scope.get(
-            "admin_resource_prefix", resource.name or ""
+        return RedirectResponse(
+            url=admin_url(
+                admin_prefix_from_request(request),
+                resource.name or "",
+            ),
+            status_code=302,
         )
-        return RedirectResponse(url=f"/admin/{resource_prefix}", status_code=302)
 
 
 class DefaultActionHandler:
@@ -326,6 +341,7 @@ class ResourceHandler:
         request = StarletteRequest(scope, receive, send)
         scope["admin_resource_prefix"] = self.name
         scope["admin_action"] = self.action
+        scope["admin_prefix"] = self._config.prefix.rstrip("/")
         resource = self._resources.get(self.name) if self._resources else None
         response = await self._registry.handle(request, resource, self.action)
         await response(scope, receive, send)

@@ -82,7 +82,7 @@ class AdminRegistry:
 
     @staticmethod
     def _extract_resource_group(resource: type | Any, _is_class: bool) -> str | None:
-        group = getattr(resource, "group", None)
+        group = getattr(resource, "cluster", None)
         if not group:
             cfg = getattr(resource, "config", None)
             if cfg is not None:

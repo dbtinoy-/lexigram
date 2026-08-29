@@ -21,17 +21,20 @@ if TYPE_CHECKING:
 
 logger = get_logger(__name__)
 
-_PUBLIC_PATHS: tuple[str, ...] = (
-    "/admin/login",
-    "/admin/setup",
-    "/admin/static",
-    "/admin/health",
-    # Standalone pre-session flows (own CSRF + guest handling):
-    "/admin/login/2fa",
-    "/admin/verify-email",
-    "/admin/password-reset",
-    "/admin/register",
-)
+def _public_paths(admin_prefix: str) -> tuple[str, ...]:
+    """Public paths relative to the configured admin mount prefix."""
+    prefix = admin_prefix.rstrip("/")
+    return (
+        f"{prefix}/login",
+        f"{prefix}/setup",
+        f"{prefix}/static",
+        f"{prefix}/health",
+        # Standalone pre-session flows (own CSRF + guest handling):
+        f"{prefix}/login/2fa",
+        f"{prefix}/verify-email",
+        f"{prefix}/password-reset",
+        f"{prefix}/register",
+    )
 
 
 class DefaultRequestAuthorizer:
@@ -63,15 +66,17 @@ class AdminAuthorizationMiddleware(BaseHTTPMiddleware):
         app: ASGIApp,
         authorizer: RequestAuthorizerProtocol,
         metrics: AdminMetrics | None = None,
+        admin_prefix: str | None = None,
     ) -> None:
         super().__init__(app)
         self._authorizer = authorizer
         self._metrics = metrics or AdminMetrics(None)
+        self._public_paths = _public_paths(admin_prefix or "/admin")
 
     async def dispatch(self, request: Request, call_next: Any) -> Any:
         """Check authorization before dispatching to the next handler."""
         path = request.url.path
-        if any(path.startswith(p) for p in _PUBLIC_PATHS):
+        if any(path.startswith(p) for p in self._public_paths):
             return await call_next(request)
 
         user = getattr(request.state, "user", None)
@@ -94,8 +99,8 @@ class AdminAuthorizationMiddleware(BaseHTTPMiddleware):
 
         return await call_next(request)
 
-    @staticmethod
     def _unauthenticated(
+        self,
         request: Request,
     ) -> JSONResponse | RedirectResponse | Response:
         """Redirect to login, with HX-Redirect for HTMX requests.
@@ -104,7 +109,7 @@ class AdminAuthorizationMiddleware(BaseHTTPMiddleware):
         would render the login page inside the target component. The
         HX-Redirect header forces a full browser navigation instead.
         """
-        login_url = f"/admin/login?next={request.url.path}"
+        login_url = f"{self._public_paths[0]}?next={request.url.path}"
         if request.headers.get("HX-Request") == "true":
             response = Response(status_code=200)
             response.headers["HX-Redirect"] = login_url

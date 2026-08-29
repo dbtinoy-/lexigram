@@ -62,21 +62,41 @@ class UserPermissionsRenderer:
         user: Any,
         inventory: PermissionInventoryService,
         item_id: str,
-        prefix: str,
+        prefix: str | None = None,
     ) -> HTMLResponse:
         """Render the permissions form as a full admin page.
 
         Args:
             request: The current request (carries the CSRF token in
-                ``request.state``).
+                ``request.state`` and resolves the admin prefix).
             user: The admin user being edited (must not be ``None``).
             inventory: Grouped permission inventory ``{resource: [perm]}``.
             item_id: The user id from the URL path.
-            prefix: Admin resource prefix (``admin/users``).
+            prefix: Optional resource-specific URL prefix override. When
+                omitted, URLs are built from the request's configured
+                admin prefix.
 
         Returns:
             A full-page HTMLResponse wrapped in the admin shell.
         """
+        from lexigram.admin.resources.urls import (
+            admin_prefix_from_request,
+            admin_url,
+        )
+
+        if prefix is None:
+            admin = admin_prefix_from_request(request)
+            resource_base = admin_url(admin, self.resource_name)
+        elif prefix.startswith("/"):
+            # Absolute override (full resource base path).
+            resource_base = prefix.rstrip("/")
+        else:
+            # Back-compat: a bare resource name (e.g. ``users``) is resolved
+            # under the request's configured admin prefix.
+            resource_base = admin_url(
+                admin_prefix_from_request(request),
+                prefix,
+            )
         options = inventory.options() or {}
         selected = set(getattr(user, "permissions", None) or [])
         all_options = {p for perms in options.values() for p in perms}
@@ -119,7 +139,7 @@ class UserPermissionsRenderer:
                 class_="mt-4 inline-flex items-center rounded bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90",
             ),
             method="post",
-            action=f"/admin/{prefix}/{item_id}/permissions",
+            action=f"{resource_base}/{item_id}/permissions",
         )
 
         content = el(
@@ -138,11 +158,11 @@ class UserPermissionsRenderer:
             request=request,
             title="User Permissions",
             breadcrumbs=[
-                {"label": "Dashboard", "url": f"/admin/{prefix}"},
-                {"label": "Users", "url": f"/admin/{prefix}"},
+                {"label": "Dashboard", "url": resource_base},
+                {"label": "Users", "url": resource_base},
                 {
                     "label": user_label,
-                    "url": f"/admin/{prefix}/{item_id}/permissions",
+                    "url": f"{resource_base}/{item_id}/permissions",
                 },
             ],
         )

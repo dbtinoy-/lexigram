@@ -22,7 +22,6 @@ class MyResource(Resource):
 | `model` | `type[DomainModel] \| None` | `None` | Domain model class |
 | `name` | `str \| None` | `None` | URL-friendly resource identifier |
 | `cluster` | `str \| None` | `None` | Navigation group key |
-| `group` | `str \| None` | `None` | Deprecated alias for `cluster` |
 | `icon` | `str` | `"box"` | Lucide icon name |
 | `label` | `str \| None` | `None` | Human-readable display name |
 | `visible_in_sidebar` | `bool` | `True` | Show in navigation sidebar |
