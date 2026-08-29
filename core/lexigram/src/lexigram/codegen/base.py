@@ -317,9 +317,79 @@ class GeneratorBase:
         return validate_component_name(name)
 
     @staticmethod
+    def _import_parts(output_dir: str | Path) -> tuple[str, ...] | None:
+        """Split an output directory into dotted parts below the import root.
+
+        Generated projects are src-layout: ``src`` is the import root, so a
+        directory ``<project>/src/app/controllers`` imports as
+        ``app.controllers`` and ``<project>/src/controllers`` as
+        ``controllers``.
+
+        Args:
+            output_dir: Absolute or relative directory receiving the
+                generated file.
+
+        Returns:
+            The dotted path parts below the import root, or ``None`` when the
+            directory cannot be anchored to a project (tests, scratch dirs),
+            leaving callers to fall back to a bare package name.
+        """
+        path = Path(output_dir).resolve()
+        anchor = find_project_anchor(path)
+        if anchor is None:
+            return None
+        try:
+            relative = path.relative_to(anchor.resolve())
+        except ValueError:
+            return None
+        parts = [part for part in relative.parts if part not in {"", "."}]
+        if "src" in parts:
+            parts = parts[parts.index("src") + 1 :]
+        return tuple(part for part in parts if part.isidentifier())
+
+    @staticmethod
     def _get_package_name(output_dir: str | Path) -> str:
-        """Convert an output directory path to a dotted Python package name."""
-        return Path(output_dir).as_posix().replace("/", ".")
+        """Convert an output directory path to a dotted Python package name.
+
+        The result is relative to the project's import root so generated
+        cross-package imports resolve in src-layout projects. When the
+        directory cannot be anchored to a project the raw path is returned as
+        a dotted string (the historical behaviour).
+
+        Args:
+            output_dir: Absolute or relative directory receiving the
+                generated file.
+
+        Returns:
+            The dotted package name for the directory.
+        """
+        parts = GeneratorBase._import_parts(output_dir)
+        if parts is None:
+            return Path(output_dir).as_posix().replace("/", ".")
+        return ".".join(parts)
+
+    @staticmethod
+    def _sibling_package(output_dir: str | Path, sibling: str) -> str:
+        """Return the dotted import path for a sibling component package.
+
+        Component generators write into sibling directories under the same
+        root (``src/controllers``, ``src/repositories``, ``src/models``), so a
+        controller needs the *repository* sibling's import path — which
+        differs by project structure. For example, in the ``structured``
+        layout the repository package is ``repositories``, while in the
+        ``minimal`` layout it is ``app.repositories``.
+
+        Args:
+            output_dir: The directory this generator writes into.
+            sibling: Name of the sibling package directory.
+
+        Returns:
+            The dotted import path of the sibling package.
+        """
+        parts = GeneratorBase._import_parts(output_dir)
+        if parts is None:
+            return sibling
+        return ".".join((*parts[:-1], sibling))
 
 
 class TemplateGeneratorBase:

@@ -33,6 +33,23 @@ class _LexigramMiddlewareAdapter:
         # 1. Expose the Starlette request to Lexigram middleware
         request = StarletteRequest(scope, receive)
 
+        # A bare ASGI middleware *class* is instantiated with the downstream
+        # app and delegated to. Only non-class callables are functional
+        # middleware (``async def mw(request, call_next)``); treating a class
+        # as functional calls ``Cls(request, call_next)`` and fails with a
+        # confusing ``__init__`` arity error.
+        if isinstance(self.lexigram_mw, type):
+            instance = self.lexigram_mw(self.app)
+            if not callable(instance):
+                raise TypeError(
+                    f"{self.lexigram_mw.__name__} is not a usable ASGI "
+                    "middleware: instances must be callable. Pass a "
+                    "functional middleware instead, or implement "
+                    "__call__(self, scope, receive, send)."
+                )
+            await cast("Any", instance)(scope, receive, send)
+            return
+
         if callable(self.lexigram_mw):
             # Support for functional middleware: async def mw(request, call_next)
             response_started = [False]

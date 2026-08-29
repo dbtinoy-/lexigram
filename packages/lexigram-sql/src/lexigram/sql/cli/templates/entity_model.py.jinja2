@@ -1,12 +1,15 @@
-"""{{ entity_name }} entity model."""
+"""{{ entity_name }} entity model.
+{% if extra_dependencies %}
 
+Requires: {{ extra_dependencies | join(', ') }} — install it alongside pydantic
+(``uv add {{ extra_dependencies | join(' ') }}``) or the constrained types
+below fail to validate at import time.
+{% endif %}"""
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
-
-from pydantic import BaseModel, ConfigDict, Field
-
+{% for line in import_lines %}{{ line }}
+{% endfor %}
 
 class {{ entity_name }}(BaseModel):
     """{{ entity_name }} entity."""

@@ -22,8 +22,13 @@ class {{ class_name }}:
 
     This is the canonical Lexigram middleware shape: a plain ASGI class that
     wraps ``app`` and intercepts ``scope``/``receive``/``send``.  Register it
-    with the web provider, e.g. ``WebProvider(middleware=[{{ class_name }}])``,
-    so it composes into the middleware stack.
+    with the web provider so it composes into the middleware stack::
+
+        WebProvider(middleware=[({{ class_name }},)])          # no options
+        WebProvider(middleware=[({{ class_name }}, {{ '{"key": "value"}' }})])
+
+    A bare class (``middleware=[{{ class_name }}]``) also works — the
+    middleware adapter instantiates it with the downstream app.
     """
 
     def __init__(
