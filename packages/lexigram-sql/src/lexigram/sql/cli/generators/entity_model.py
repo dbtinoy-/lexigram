@@ -8,26 +8,28 @@ from typing import Any
 from lexigram.contracts.cli.generators import GenerationResult, resolve_options
 from lexigram.contracts.cli.parsers import parse_fields
 from lexigram.sql.cli.generators.base import GeneratorBase
+from lexigram.sql.cli.generators.type_map import (
+    extra_dependencies,
+    python_type,
+    render_imports,
+)
 
 
 class EntityModelGenerator(GeneratorBase):
-    """Generate a Pydantic entity model with Create/Update DTOs."""
+    """Generate a Pydantic entity model with Create/Update DTOs.
+
+    Three classes are emitted for each entity:
+
+    - ``<Name>`` — the full entity, carrying ``id`` and audit timestamps.
+    - ``<Name>Create`` — the write payload; required fields stay required.
+    - ``<Name>Update`` — a partial patch payload; every field is optional.
+    """
 
     name = "model"
     description = "Generate a Pydantic entity model with DTOs"
 
-    _PY_TYPES = {
-        "str": "str",
-        "string": "str",
-        "text": "str",
-        "int": "int",
-        "integer": "int",
-        "float": "float",
-        "bool": "bool",
-        "boolean": "bool",
-        "datetime": "datetime",
-        "uuid": "str",
-    }
+    #: Fields always generated on the entity and never taken from ``--fields``.
+    RESERVED_FIELDS: frozenset[str] = frozenset({"id", "created_at", "updated_at"})
 
     def generate(
         self,
@@ -39,11 +41,10 @@ class EntityModelGenerator(GeneratorBase):
         if output_dir is not None:
             self.output_dir = Path(str(output_dir)).resolve()
         parsed = parse_fields(fields_str) if fields_str else []
-        py_types = self._PY_TYPES
 
-        # Filter out reserved fields that are always generated
-        _RESERVED = {"id", "created_at", "updated_at"}
-        parsed = [f for f in parsed if f.name not in _RESERVED]
+        parsed = [f for f in parsed if f.name not in self.RESERVED_FIELDS]
+
+        annotations = [python_type(f.type) for f in parsed]
 
         model_lines: list[str] = [
             "    id: str = Field(default_factory=lambda: uuid.uuid4().hex)",
@@ -61,16 +62,13 @@ class EntityModelGenerator(GeneratorBase):
         create_lines: list[str] = []
         update_lines: list[str] = []
 
-        for f in parsed:
-            py = py_types.get(f.type, "str")
+        for f, py in zip(parsed, annotations, strict=True):
+            # The entity keeps the field's natural optionality; Create mirrors
+            # it for required-ness; Update is always a partial patch, so every
+            # field is optional with a ``None`` default.
             opt = "" if f.required else " | None = None"
-            if py == "datetime":
-                model_lines.append(f"    {f.name}: datetime{opt}")
-                create_lines.append(f"    {f.name}: str" + opt)
-                update_lines.append(f"    {f.name}: str | None = None")
-                continue
             model_lines.append(f"    {f.name}: {py}{opt}")
-            create_lines.append(f"    {f.name}: {py}" + opt)
+            create_lines.append(f"    {f.name}: {py}{opt}")
             update_lines.append(f"    {f.name}: {py} | None = None")
 
         content = self.render_template(
@@ -78,13 +76,15 @@ class EntityModelGenerator(GeneratorBase):
             {
                 "entity_name": self._to_pascal_case(name),
                 "model_name": self._to_snake_case(name),
+                "import_lines": render_imports(annotations),
+                "extra_dependencies": extra_dependencies(annotations),
                 "fields": [
                     {
                         "name": f.name,
-                        "py_type": py_types.get(f.type, "str"),
+                        "py_type": py,
                         "required": f.required,
                     }
-                    for f in parsed
+                    for f, py in zip(parsed, annotations, strict=True)
                 ],
                 "create_fields": create_lines or ["    pass"],
                 "update_fields": update_lines or ["    pass"],
@@ -94,3 +94,6 @@ class EntityModelGenerator(GeneratorBase):
         file_path = self.output_dir / f"{self._to_snake_case(name)}.py"
         self.stage(file_path, content)
         return self.finalize(self.commit(resolve_options(**options)))
+
+
+__all__ = ["EntityModelGenerator"]

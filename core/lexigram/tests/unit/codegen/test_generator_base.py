@@ -150,3 +150,65 @@ class TestNameContainment:
         gen = _StubGenerator(output_dir=str(out))
         result = gen.write_file(out / "ok.py", "x = 1\n")
         assert result.files_created == [out / "ok.py"]
+
+
+class TestPackageNameResolution:
+    """Generated cross-package imports must follow the project layout."""
+
+    @staticmethod
+    def _anchored(tmp_path: Path, *parts: str) -> Path:
+        """Create an anchored project and return one of its directories."""
+        (tmp_path / "pyproject.toml").write_text(
+            "[project]\nname = 'my-app'\nversion = '0.1.0'\n", encoding="utf-8"
+        )
+        target = tmp_path.joinpath(*parts)
+        target.mkdir(parents=True, exist_ok=True)
+        return target
+
+    def test_structured_layout_has_no_prefix(self, tmp_path: Path) -> None:
+        """Component packages sit directly under ``src`` in structured layouts."""
+        out = self._anchored(tmp_path, "src", "controllers")
+        assert GeneratorBase._get_package_name(out) == "controllers"
+        assert GeneratorBase._sibling_package(out, "repositories") == "repositories"
+
+    def test_minimal_layout_is_prefixed_with_the_app_package(
+        self, tmp_path: Path
+    ) -> None:
+        """Minimal layouts nest component packages under the app package."""
+        out = self._anchored(tmp_path, "src", "app", "controllers")
+        assert GeneratorBase._get_package_name(out) == "app.controllers"
+        assert GeneratorBase._sibling_package(out, "repositories") == "app.repositories"
+
+    def test_modular_layout_includes_the_feature_module(self, tmp_path: Path) -> None:
+        """Modular layouts nest component packages under the feature module."""
+        out = self._anchored(tmp_path, "src", "app", "modules", "billing", "controllers")
+        assert GeneratorBase._get_package_name(out) == "app.modules.billing.controllers"
+        assert (
+            GeneratorBase._sibling_package(out, "repositories")
+            == "app.modules.billing.repositories"
+        )
+
+    def test_unanchored_directory_falls_back_to_the_bare_name(
+        self, tmp_path: Path
+    ) -> None:
+        """Outside a project the sibling package name is used as-is."""
+        out = tmp_path / "controllers"
+        out.mkdir()
+        assert GeneratorBase._import_parts(out) is None
+        assert GeneratorBase._sibling_package(out, "repositories") == "repositories"
+
+    def test_directory_outside_the_anchor_falls_back(self, tmp_path: Path) -> None:
+        """A directory that is not inside the anchor cannot be named."""
+        project = tmp_path / "my-app"
+        project.mkdir()
+        (project / "pyproject.toml").write_text(
+            "[project]\nname = 'my-app'\nversion = '0.1.0'\n", encoding="utf-8"
+        )
+        elsewhere = tmp_path / "elsewhere" / "controllers"
+        elsewhere.mkdir(parents=True)
+        assert GeneratorBase._import_parts(elsewhere) is None
+
+    def test_root_directory_is_not_a_package(self, tmp_path: Path) -> None:
+        """The anchor itself contributes no package parts."""
+        self._anchored(tmp_path)
+        assert GeneratorBase._import_parts(tmp_path) == ()

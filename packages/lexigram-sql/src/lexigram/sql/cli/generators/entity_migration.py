@@ -8,6 +8,7 @@ from typing import Any
 from lexigram.contracts.cli.generators import GenerationResult, resolve_options
 from lexigram.contracts.cli.parsers import parse_fields
 from lexigram.sql.cli.generators.base import GeneratorBase
+from lexigram.sql.cli.generators.type_map import sa_type
 
 
 class EntityMigrationGenerator(GeneratorBase):
@@ -15,19 +16,6 @@ class EntityMigrationGenerator(GeneratorBase):
 
     name = "migration"
     description = "Generate a chained alembic migration for an entity"
-
-    _SA_TYPES = {
-        "str": "String(length=255)",
-        "string": "String(length=255)",
-        "text": "Text",
-        "int": "Integer",
-        "integer": "Integer",
-        "float": "Float",
-        "bool": "Boolean",
-        "boolean": "Boolean",
-        "datetime": "DateTime(timezone=True)",
-        "uuid": "String(length=32)",
-    }
 
     def generate(
         self,
@@ -47,7 +35,7 @@ class EntityMigrationGenerator(GeneratorBase):
 
         column_lines = [
             f'sa.Column("{f.name}",'
-            f" sa.{self._SA_TYPES.get(f.type, 'String(length=255)')},"
+            f" sa.{sa_type(f.type)},"
             f" nullable={'False' if f.required else 'True'}),"
             for f in parsed
         ]

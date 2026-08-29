@@ -7,6 +7,7 @@ from typing import Any
 from lexigram.contracts.cli.generators import resolve_options
 from lexigram.contracts.cli.parsers import parse_fields
 from lexigram.sql.cli.generators.base import GenerationResult, GeneratorBase
+from lexigram.sql.cli.generators.type_map import python_type
 
 
 class DatabaseRepositoryGenerator(GeneratorBase):
@@ -37,24 +38,12 @@ class DatabaseRepositoryGenerator(GeneratorBase):
         **options: Any,
     ) -> GenerationResult:
         parsed_fields = parse_fields(fields_str) if fields_str else []
-        py_types = {
-            "str": "str",
-            "string": "str",
-            "text": "str",
-            "int": "int",
-            "integer": "int",
-            "float": "float",
-            "bool": "bool",
-            "boolean": "bool",
-            "datetime": "datetime",
-            "uuid": "str",
-        }
         fields = [
             {
                 "name": f.name,
-                "py_type": py_types.get(f.type, "str"),
+                "py_type": python_type(f.type),
                 "required": f.required,
-                "import_datetime": f.type == "datetime",
+                "import_datetime": python_type(f.type) == "datetime",
             }
             for f in parsed_fields
         ]

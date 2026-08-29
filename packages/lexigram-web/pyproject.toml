@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "lexigram-web"
-version = "0.1.5013"
+version = "0.1.5014"
 description = "Web layer for Lexigram Framework - ASGI, routing, middleware, and API tooling"
 readme = "README.md"
 requires-python = ">=3.11"
