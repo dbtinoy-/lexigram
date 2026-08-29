@@ -85,7 +85,10 @@ def _otel_processor(
 ) -> dict[str, Any]:
     """Inject OpenTelemetry trace and span IDs into the event dict."""
     try:
-        from opentelemetry import trace  # type: ignore[import-not-found]
+        # Dotted import: opentelemetry is a PEP-420 namespace package, so
+        # ``from opentelemetry import trace`` does not type-check against its
+        # stubs; PLR0402 prefers the from-form.
+        import opentelemetry.trace as trace  # noqa: PLR0402
 
         span = trace.get_current_span()
         if span and span.get_span_context().is_valid:
