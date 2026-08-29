@@ -21,6 +21,7 @@ class EventGenerator(GeneratorBase):
     name = "event"
     description = "Generate a domain event class"
     default_output_dir = "src/events"
+    template_name = "event.py.jinja2"
 
     def __init__(self, output_dir: str | Path = "src/events") -> None:
         super().__init__(output_dir=output_dir)
@@ -61,7 +62,7 @@ class EventGenerator(GeneratorBase):
                 for field in parse_fields(fields_str or "")
             ],
         }
-        content = self.render_template("event.py.jinja2", context)
+        content = self.render_template(self.template_name, context)
         file_path = self.output_dir / f"{event_name}_event.py"
         self.stage(file_path, content)
         return self.finalize(self.commit(resolve_options(dry_run=dry_run, force=force)))
