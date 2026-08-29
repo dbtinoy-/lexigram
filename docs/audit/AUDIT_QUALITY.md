@@ -7,24 +7,24 @@
 ## Summary
 
 - Tool checks run: 2
-- Passing tools: 2
-- Failing tools: 0
+- Passing tools: 1
+- Failing tools: 1
 - Packages counted: 54
-- Total mypy errors: 0
-- Packages with errors: 0
+- Total mypy errors: 11
+- Packages with errors: 4
 
 ## Tool Results
 
 | Tool | Status | Exit Code | Duration | Command |
 |------|--------|-----------|----------|---------|
-| `Ruff` | **PASS** | 0 | 236 ms | `uv run ruff check .` |
-| `Mypy` | **PASS** | 0 | 56033 ms | `uv run mypy src/ (per-package across 54 packages)` |
+| `Ruff` | **PASS** | 0 | 232 ms | `uv run ruff check .` |
+| `Mypy` | **FAIL** | 1 | 78689 ms | `uv run mypy src/ (per-package across 54 packages)` |
 
 ### Ruff
 
 - Status: **PASS**
 - Exit code: `0`
-- Duration: `236 ms`
+- Duration: `232 ms`
 - Command: `uv run ruff check .`
 - Output snippet:
 
@@ -34,15 +34,40 @@ All checks passed!
 
 ### Mypy
 
-- Status: **PASS**
-- Exit code: `0`
-- Duration: `56033 ms`
+- Status: **FAIL**
+- Exit code: `1`
+- Duration: `78689 ms`
 - Command: `uv run mypy src/ (per-package across 54 packages)`
 - Output snippet:
 
 ```text
-All per-package mypy checks passed.
+[lexigram] 1 errors
+[lexigram-admin] 2 errors
+[lexigram-cli] 6 errors
+[lexigram-tasks] 2 errors
 ```
+
+### Mypy Error Breakdown
+
+#### By Error Code
+
+| Code | Count | Description |
+|------|-------|-------------|
+| `unused-ignore` | 2 | Unused type: ignore comment |
+| `assignment` | 2 | Type checking error |
+| `str-unpack` | 2 | Type checking error |
+| `arg-type` | 2 | Argument type mismatch |
+| `attr-defined` | 2 | Attribute not defined on type |
+| `truthy-function` | 1 | Type checking error |
+
+#### By Package (Top 10)
+
+| Package | Errors |
+|---------|--------|
+| `lexigram-cli` | 6 |
+| `lexigram-admin` | 2 |
+| `lexigram-tasks` | 2 |
+| `lexigram` | 1 |
 
 ## Package Metrics
 
@@ -67,39 +92,39 @@ All per-package mypy checks passed.
 | `lexigram-ai-session` | 46 | 37 |
 | `lexigram-ai-skills` | 52 | 40 |
 | `lexigram-ai-workers` | 34 | 34 |
-| `lexigram-audit` | 45 | 37 |
+| `lexigram-audit` | 46 | 38 |
 | `lexigram-auth` | 136 | 91 |
 | `lexigram-cache` | 93 | 73 |
-| `lexigram-cli` | 111 | 78 |
+| `lexigram-cli` | 97 | 80 |
 | `lexigram-contracts` | 346 | 168 |
-| `lexigram-events` | 157 | 111 |
+| `lexigram-events` | 158 | 114 |
 | `lexigram-features` | 34 | 26 |
-| `lexigram-graph` | 24 | 32 |
+| `lexigram-graph` | 25 | 33 |
 | `lexigram-graphql` | 82 | 63 |
 | `lexigram-http` | 32 | 32 |
 | `lexigram-monitor` | 93 | 59 |
 | `lexigram-multimedia` | 20 | 23 |
-| `lexigram-multimedia-beat` | 11 | 7 |
-| `lexigram-multimedia-image` | 13 | 9 |
+| `lexigram-multimedia-beat` | 12 | 7 |
+| `lexigram-multimedia-image` | 14 | 9 |
 | `lexigram-multimedia-interpolate` | 12 | 7 |
-| `lexigram-multimedia-music` | 15 | 9 |
-| `lexigram-multimedia-tts` | 20 | 13 |
-| `lexigram-multimedia-upscale` | 15 | 9 |
-| `lexigram-multimedia-video` | 28 | 20 |
+| `lexigram-multimedia-music` | 16 | 9 |
+| `lexigram-multimedia-tts` | 21 | 13 |
+| `lexigram-multimedia-upscale` | 16 | 9 |
+| `lexigram-multimedia-video` | 29 | 20 |
 | `lexigram-nosql` | 42 | 47 |
-| `lexigram-notification` | 59 | 38 |
+| `lexigram-notification` | 61 | 38 |
 | `lexigram-queue` | 45 | 43 |
 | `lexigram-resilience` | 55 | 38 |
 | `lexigram-search` | 97 | 62 |
 | `lexigram-secrets` | 25 | 15 |
-| `lexigram-sql` | 195 | 153 |
-| `lexigram-storage` | 38 | 37 |
+| `lexigram-sql` | 196 | 154 |
+| `lexigram-storage` | 38 | 38 |
 | `lexigram-tasks` | 90 | 62 |
 | `lexigram-tenancy` | 63 | 44 |
 | `lexigram-testing` | 170 | 41 |
 | `lexigram-ui` | 164 | 79 |
-| `lexigram-vector` | 64 | 42 |
-| `lexigram-web` | 199 | 170 |
+| `lexigram-vector` | 65 | 43 |
+| `lexigram-web` | 202 | 170 |
 | `lexigram-webhook` | 41 | 36 |
 | `lexigram-workflow` | 68 | 54 |
 
