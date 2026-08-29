@@ -10,12 +10,9 @@ top-levels while still populating the registry catalogue.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
-if TYPE_CHECKING:
-    from lexigram.ai.llm.registry.core import ProviderRegistry
-
-__all__ = ["builtin_provider_entries", "register_builtin_providers"]
+__all__ = ["builtin_provider_entries"]
 
 
 def builtin_provider_entries() -> tuple[dict[str, Any], ...]:
@@ -315,9 +312,3 @@ def builtin_provider_entries() -> tuple[dict[str, Any], ...]:
     })
 
     return tuple(entries)
-
-
-def register_builtin_providers(registry: ProviderRegistry) -> None:
-    """Backward-compatible helper: register every built-in on *registry*."""
-    for entry in builtin_provider_entries():
-        registry.register(**entry)
