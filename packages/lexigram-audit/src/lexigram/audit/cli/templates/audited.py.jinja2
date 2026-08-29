@@ -1,0 +1,46 @@
+"""{{ class_name }} audited handler.
+
+{% if doc %}
+{{ doc }}
+{% endif %}
+Async handler whose execution is recorded in the audit trail.
+"""
+from __future__ import annotations
+
+from typing import Any
+
+from lexigram.audit import audited
+
+
+class {{ class_name }}AuditedHandler:
+    """Handler for {{ class_name }} with automatic audit logging."""
+
+    @audited(
+        "{{ action }}",
+        resource_type="{{ resource_type }}",
+        severity="{{ severity }}",
+    )
+    async def execute(self, **payload: Any) -> dict[str, Any]:
+        """Execute the handler.
+
+        Args:
+            payload: Handler input values.
+
+        Returns:
+            A JSON-serializable result.
+        """
+        # Put your business logic here.
+        return {"status": "ok", **payload}
+
+
+# =============================================================================
+# Usage
+# =============================================================================
+#
+# handler = {{ class_name }}AuditedHandler()
+# result = await handler.execute(user_id="1")
+#
+# The audit middleware/interceptor reads the metadata attached by the
+# ``@audited`` decorator (``__audited__``, ``__audit_action__``,
+# ``__audit_resource_type__``, ``__audit_severity__``) and writes an
+# ``AuditEntry`` on successful execution.

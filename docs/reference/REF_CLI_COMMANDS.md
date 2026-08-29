@@ -79,6 +79,7 @@ lexigram
 │   └── command        Generate a CQRS command handler
 │   └── query          Generate a CQRS query handler
 │   └── projection       Generate an event projection for read models
+│   └── audited         Generate an audited async handler
 │   └── provider       Generate provider
 │   └── test           Generate test
 │   └── admin_action   Generate a custom admin action
@@ -160,7 +161,7 @@ lexigram
 
 ## Generator Inventory
 
-**Total: 47 generators**
+**Total: 48 generators**
 
 | Generator | Description |
 |-----------|-------------|
@@ -200,6 +201,7 @@ lexigram
 | `lexigram gen command` | Generate a CQRS command handler |
 | `lexigram gen query` | Generate a CQRS query handler |
 | `lexigram gen projection` | Generate an event projection for read models |
+| `lexigram gen audited` | Generate an audited async handler |
 | `lexigram gen provider` | Generate provider |
 | `lexigram gen test` | Generate test |
 | `lexigram gen admin_action` | Generate a custom admin action |

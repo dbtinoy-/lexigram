@@ -31,6 +31,7 @@ _LAZY_IMPORTS: dict[str, str] = {
     "compute_audit_checksum": "lexigram.audit.verification.checksum",
     "verify_audit_checksum": "lexigram.audit.verification.checksum",
     "AuditVerifier": "lexigram.audit.verification.verifier",
+    "audited": "lexigram.audit.decorators",
 }
 
 
