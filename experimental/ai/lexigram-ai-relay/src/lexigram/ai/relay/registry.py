@@ -149,13 +149,22 @@ class RelayConverterRegistry(RelayRegistryProtocol):
         self._routes: dict[tuple[RelayFormat, RelayFormat], Route] = {}
 
     @classmethod
+    def _default_entries(cls) -> dict[RelayFormat, FormatMapper]:
+        """Declare the four built-in mappers keyed by wire format."""
+        mappers = (
+            OpenAIChatMapper(),
+            OpenAIResponsesMapper(),
+            ClaudeMapper(),
+            GeminiMapper(),
+        )
+        return {mapper.format: mapper for mapper in mappers}
+
+    @classmethod
     def with_defaults(cls) -> RelayConverterRegistry:
         """Return a registry prepopulated with the four built-in mappers."""
         registry = cls()
-        registry.register(OpenAIChatMapper())
-        registry.register(OpenAIResponsesMapper())
-        registry.register(ClaudeMapper())
-        registry.register(GeminiMapper())
+        for mapper in cls._default_entries().values():
+            registry.register(mapper)
         return registry
 
     def register(self, mapper: FormatMapper) -> None:
@@ -174,7 +183,8 @@ class RelayConverterRegistry(RelayRegistryProtocol):
         fmt = getattr(mapper, "format", None)
         if not isinstance(fmt, RelayFormat):
             raise unsupported_format(
-                f"mapper {type(mapper).__name__} must declare a RelayFormat 'format' attribute"
+                f"mapper {type(mapper).__name__} must declare a "
+                "RelayFormat 'format' attribute"
             )
         if fmt in self._mappers:
             raise duplicate_registration(

@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from lexigram.codegen import GenerationResult, GeneratorBase
+from lexigram.contracts.cli.generators import resolve_options
 
 
 class WebSocketHandlerGenerator(GeneratorBase):
@@ -12,7 +15,7 @@ class WebSocketHandlerGenerator(GeneratorBase):
     description = "Generate a WebSocket handler for real-time communication"
     default_output_dir = "src/websocket"
 
-    def __init__(self, output_dir: str = "src/websocket") -> None:
+    def __init__(self, output_dir: str | Path = "src/websocket") -> None:
         super().__init__(output_dir=output_dir)
 
     def generate(
@@ -23,6 +26,16 @@ class WebSocketHandlerGenerator(GeneratorBase):
         force: bool = False,
         **options: object,
     ) -> GenerationResult:
+        """Generate a WebSocket handler module.
+
+        Args:
+            name: Handler name (e.g. ``"ChatSocket"`` or ``"chat_socket"``).
+            dry_run: Compute output paths without writing.
+            force: Overwrite an existing file.
+
+        Returns:
+            ``GenerationResult`` with created/skipped/overwritten paths.
+        """
         snake_name = self._to_snake_case(name)
         file_path = self.output_dir / f"{snake_name}.py"
         content = self.render_template(
@@ -33,7 +46,8 @@ class WebSocketHandlerGenerator(GeneratorBase):
                 "snake_name_plural": f"{snake_name}s",
             },
         )
-        return self.write_file(file_path, content, dry_run=dry_run, force=force)
+        self.stage(file_path, content)
+        return self.finalize(self.commit(resolve_options(dry_run=dry_run, force=force)))
 
 
 __all__ = ["WebSocketHandlerGenerator"]

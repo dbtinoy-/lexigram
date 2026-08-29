@@ -35,26 +35,22 @@ class TaskBackendRegistry(_CoreBackendRegistry):
     """
 
     def __init__(self) -> None:
-        """Initialise with an empty registry (use ``with_defaults()`` for production)."""
+        """Initialise with an empty registry (populate via with_defaults())."""
         super().__init__(name="tasks.backends", allow_overwrite=True)
 
     @classmethod
-    def with_defaults(cls) -> TaskBackendRegistry:
-        """Create a registry pre-populated with the built-in default backend factories.
+    def _default_entries(cls) -> dict[str, BackendFactory]:
+        """Declare the built-in backend factories.
 
         Returns:
-            A new registry instance with all default backend factories registered.
+            Mapping of backend type string → factory callable.
         """
-        instance = cls()
-        instance._register_defaults()
-        return instance
-
-    def _register_defaults(self) -> None:
-        """Populate the registry with the built-in backend factories."""
-        self.register(tasks_const.BACKEND_MEMORY, _create_memory)
-        self.register(tasks_const.BACKEND_REDIS, _create_redis)
-        self.register(tasks_const.BACKEND_RABBITMQ, _create_rabbitmq)
-        self.register(tasks_const.BACKEND_POSTGRES, _create_postgres)
+        return {
+            tasks_const.BACKEND_MEMORY: _create_memory,
+            tasks_const.BACKEND_REDIS: _create_redis,
+            tasks_const.BACKEND_RABBITMQ: _create_rabbitmq,
+            tasks_const.BACKEND_POSTGRES: _create_postgres,
+        }
 
     def register(self, backend_type: str, factory: BackendFactory) -> None:  # type: ignore[override]
         """Register a new backend factory under *backend_type*.

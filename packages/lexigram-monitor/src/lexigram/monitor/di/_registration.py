@@ -22,6 +22,7 @@ from lexigram.monitor.backends.exporters.otel_registry import (
     MetricsExporterRegistry,
     TracingExporterRegistry,
 )
+from lexigram.monitor.config import MonitorConfig
 from lexigram.monitor.di._attrs import _MonitorAttrsMixin
 from lexigram.monitor.health import HealthCheckerRegistry, HealthCheckRegistry
 from lexigram.monitor.metrics.collector import (
@@ -79,8 +80,12 @@ class _MonitorRegistrationMixin(_MonitorAttrsMixin):
             MonitorProvider,  # noqa: PLC0415 — breaks provider<->mixin cycle
         )
 
-        if self.tracer is None:
-            self._compose_tracing()
+        # Resolve config: an explicit config (configure(config=...)) always
+        # wins; otherwise use the orchestrator-injected yaml section, then
+        # defaults. Re-compose tracing so the injected values are honored.
+        injected = self._config if isinstance(self._config, MonitorConfig) else None
+        self._config = self._requested_config or injected or MonitorConfig()
+        self._compose_tracing()
 
         container.singleton(MonitorProvider, lambda: self)
         container.singleton(MetricsCollectorProtocol, lambda: self.metrics_collector)

@@ -154,44 +154,35 @@ class TestMypyRunner:
 
 class TestTaskRunnerRegistry:
     def test_register_and_get(self) -> None:
-        TaskRunnerRegistry._runners = {}
-        TaskRunnerRegistry._initialized = False
-        TaskRunnerRegistry.register(PytestRunner)
-        runner = TaskRunnerRegistry.get("pytest")
+        registry = TaskRunnerRegistry()
+        registry.register(PytestRunner)
+        runner = registry.get("pytest")
         assert runner is not None
         assert runner.name == "pytest"
 
     def test_get_nonexistent(self) -> None:
-        TaskRunnerRegistry._runners = {}
-        TaskRunnerRegistry._initialized = False
-        assert TaskRunnerRegistry.get("nonexistent") is None
+        registry = TaskRunnerRegistry()
+        assert registry.get("nonexistent") is None
 
     def test_get_all(self) -> None:
-        TaskRunnerRegistry._runners = {}
-        TaskRunnerRegistry._initialized = False
-        TaskRunnerRegistry.register(PytestRunner)
-        all_runners = TaskRunnerRegistry.get_all()
+        registry = TaskRunnerRegistry()
+        registry.register(PytestRunner)
+        all_runners = registry.get_all()
         assert "pytest" in all_runners
 
     def test_get_available(self) -> None:
-        TaskRunnerRegistry._runners = {}
-        TaskRunnerRegistry._initialized = False
+        registry = TaskRunnerRegistry.with_defaults()
         def which_side_effect(cmd: str) -> str | None:
             mapping = {"pytest": "/usr/bin/pytest", "ruff": None, "mypy": "/usr/bin/mypy"}
             return mapping.get(cmd)
         with patch("lexigram.cli.registry.task.shutil.which", side_effect=which_side_effect):
-            TaskRunnerRegistry.register_defaults()
-            available = TaskRunnerRegistry.get_available()
+            available = registry.get_available()
             assert len(available) == 2
             names = [r.name for r in available]
             assert "pytest" in names
             assert "mypy" in names
             assert "ruff" not in names
 
-    def test_register_defaults(self) -> None:
-        TaskRunnerRegistry._runners = {}
-        TaskRunnerRegistry._initialized = False
-        TaskRunnerRegistry.register_defaults()
-        assert TaskRunnerRegistry._initialized is True
-        assert TaskRunnerRegistry.get("pytest") is not None
-        assert TaskRunnerRegistry.get("ruff") is not None
+    def test_with_defaults_populates_all_runners(self) -> None:
+        registry = TaskRunnerRegistry.with_defaults()
+        assert registry.get("pytest") is not None

@@ -11,11 +11,14 @@ Example:
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 
-from lexigram.ai.llm.types import ChatMessage
+from lexigram.contracts.ai.llm import (
+    ChatMessageProtocol,
+)
 from lexigram.domain import DomainModel
 from lexigram.logging import (
     get_logger,
@@ -129,7 +132,7 @@ class TiktokenCounter:
         encoder = self._get_encoder()
         return len(encoder.encode(text))
 
-    def count_messages(self, messages: list[ChatMessage]) -> int:
+    def count_messages(self, messages: Sequence[ChatMessageProtocol]) -> int:
         """Count tokens in a list of chat messages, including overhead."""
         encoder = self._get_encoder()
         tokens_per_message = 3
@@ -201,7 +204,7 @@ class HuggingFaceCounter:
             return max(1, len(text) // 4)
         return len(tok.encode(text))
 
-    def count_messages(self, messages: list[ChatMessage]) -> int:
+    def count_messages(self, messages: Sequence[ChatMessageProtocol]) -> int:
         """Count tokens in a list of chat messages."""
         return (
             sum(self.count(str(m.content or "")) for m in messages) + len(messages) * 4
@@ -258,7 +261,7 @@ class MistralCounter:
             except AttributeError:
                 return max(1, len(text) // 4)
 
-    def count_messages(self, messages: list[ChatMessage]) -> int:
+    def count_messages(self, messages: Sequence[ChatMessageProtocol]) -> int:
         """Count tokens in a list of chat messages."""
         return (
             sum(self.count(str(m.content or "")) for m in messages) + len(messages) * 4
@@ -292,7 +295,7 @@ class CharEstimateCounter:
         """Count tokens using character estimation."""
         return max(1, len(text) // 4)
 
-    def count_messages(self, messages: list[ChatMessage]) -> int:
+    def count_messages(self, messages: Sequence[ChatMessageProtocol]) -> int:
         """Count tokens in a list of chat messages."""
         return (
             sum(self.count(str(m.content or "")) for m in messages) + len(messages) * 4

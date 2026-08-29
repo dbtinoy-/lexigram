@@ -130,35 +130,28 @@ class TestDependenciesInspector:
 
 class TestInspectorRegistry:
     def test_register_and_get(self) -> None:
-        InspectorRegistry._inspectors = {}
-        InspectorRegistry._initialized = False
-        InspectorRegistry.register(ProvidersInspector)
-        inspector = InspectorRegistry.get("providers")
+        registry = InspectorRegistry()
+        registry.register(ProvidersInspector)
+        inspector = registry.get("providers")
         assert inspector is not None
 
     def test_get_nonexistent(self) -> None:
-        InspectorRegistry._inspectors = {}
-        InspectorRegistry._initialized = False
-        assert InspectorRegistry.get("nonexistent") is None
+        registry = InspectorRegistry()
+        assert registry.get("nonexistent") is None
 
     def test_get_all(self) -> None:
-        InspectorRegistry._inspectors = {}
-        InspectorRegistry._initialized = False
-        InspectorRegistry.register(ProvidersInspector)
-        all_ins = InspectorRegistry.get_all()
+        registry = InspectorRegistry()
+        registry.register(ProvidersInspector)
+        all_ins = registry.get_all()
         assert "providers" in all_ins
 
     def test_get_choices(self) -> None:
-        InspectorRegistry._inspectors = {}
-        InspectorRegistry._initialized = False
-        choices = InspectorRegistry.get_choices()
+        registry = InspectorRegistry.with_defaults()
+        choices = registry.get_choices()
         assert "providers" in choices
         assert "routes" in choices
 
-    def test_register_defaults(self) -> None:
-        InspectorRegistry._inspectors = {}
-        InspectorRegistry._initialized = False
-        InspectorRegistry.register_defaults()
-        assert InspectorRegistry._initialized is True
-        assert InspectorRegistry.get("providers") is not None
-        assert InspectorRegistry.get("routes") is not None
+    def test_with_defaults_populates_all_inspectors(self) -> None:
+        registry = InspectorRegistry.with_defaults()
+        assert registry.get("providers") is not None
+        assert registry.get("routes") is not None

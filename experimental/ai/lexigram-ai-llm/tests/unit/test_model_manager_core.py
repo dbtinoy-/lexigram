@@ -3,10 +3,10 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from lexigram.ai.llm.model_manager import (
+    AbstractModelManager,
     LLMModelManager,
     LMStudioModelManager,
     ModelLoadResult,
-    AbstractModelManager,
 )
 
 
@@ -38,7 +38,7 @@ class FakeManager(AbstractModelManager):
 
 @pytest.mark.asyncio
 async def test_register_and_switch_provider():
-    mgr = LLMModelManager()
+    mgr = LLMModelManager.with_defaults()
     mgr.managers.clear()
     a = FakeManager()
     b = FakeManager()
@@ -54,7 +54,7 @@ async def test_register_and_switch_provider():
 
 @pytest.mark.asyncio
 async def test_load_model_unloads_others_then_loads():
-    mgr = LLMModelManager()
+    mgr = LLMModelManager.with_defaults()
     mgr.managers.clear()
     a = FakeManager()
     b = FakeManager()
@@ -79,7 +79,7 @@ async def test_load_model_unloads_others_then_loads():
 
 @pytest.mark.asyncio
 async def test_load_model_no_provider():
-    mgr = LLMModelManager()
+    mgr = LLMModelManager.with_defaults()
     res = await mgr.load_model("m1")
     assert not res.success
     assert "No provider available" in (res.error or "")
@@ -87,7 +87,7 @@ async def test_load_model_no_provider():
 
 @pytest.mark.asyncio
 async def test_unload_model_delegates():
-    mgr = LLMModelManager()
+    mgr = LLMModelManager.with_defaults()
     mgr.managers.clear()
     a = FakeManager()
     a.unload_model = AsyncMock(return_value=True)

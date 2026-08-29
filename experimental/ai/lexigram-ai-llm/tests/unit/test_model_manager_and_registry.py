@@ -120,7 +120,7 @@ async def test_llm_model_manager_unloads_other_providers_on_switch():
         async def close(self):
             return None
 
-    mm = LLMModelManager()
+    mm = LLMModelManager.with_defaults()
     mm.managers.clear()  # Clear default managers (ollama, lm-studio, etc.)
     m1 = FakeManager(["a", "b"])
     m2 = FakeManager(["x"])
@@ -142,7 +142,7 @@ async def test_llm_model_manager_unloads_other_providers_on_switch():
 async def test_load_model_no_provider_returns_error():
     from lexigram.ai.llm.model_manager import LLMModelManager
 
-    mm = LLMModelManager()
+    mm = LLMModelManager.with_defaults()
 
     result = await mm.load_model("nope")
     assert result.success is False
@@ -153,6 +153,6 @@ async def test_load_model_no_provider_returns_error():
 async def test_switch_provider_unknown_returns_false():
     from lexigram.ai.llm.model_manager import LLMModelManager
 
-    mm = LLMModelManager()
+    mm = LLMModelManager.with_defaults()
     res = await mm.switch_provider("does-not-exist")
     assert res is False

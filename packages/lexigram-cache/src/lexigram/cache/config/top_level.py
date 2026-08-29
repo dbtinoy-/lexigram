@@ -6,8 +6,9 @@ from dataclasses import dataclass
 from typing import Any, ClassVar, cast
 
 from lexigram.cache import constants as const
-from lexigram.cache.config.backends import CacheBackendConfig, RedisBackendConfig
+from lexigram.cache.config.backends import CacheBackendConfig
 from lexigram.cache.config.service import CacheServiceConfig
+from lexigram.cache.types import BackendType
 from lexigram.config import BaseConfig
 from lexigram.contracts.core.config import Environment
 from lexigram.validation import (
@@ -64,29 +65,30 @@ class CacheConfig(BaseConfig):
         """Block insecure cache configurations in production."""
         if self.environment == Environment.PRODUCTION:
             for backend in self.backends:
-                if isinstance(backend, RedisBackendConfig):  # type: ignore[unreachable]
-                    if (
-                        backend.password
-                        and backend.password.lower() in const.INSECURE_PASSWORDS
-                    ):
-                        raise ValueError(
-                            const.ERROR_MSG_INSECURE_PASSWORD.format(
-                                backend="Redis",
-                                name=backend.name,
-                                env_var=f"{const.ENV_PREFIX}BACKENDS__<idx>__REDIS_PASSWORD",
-                            ),
-                        )
-                    if backend.url and any(
-                        f":{d}@" in backend.url.lower()
-                        for d in const.INSECURE_PASSWORDS
-                    ):
-                        raise ValueError(
-                            const.ERROR_MSG_INSECURE_URL.format(
-                                backend="Redis",
-                                name=backend.name,
-                                env_var=f"{const.ENV_PREFIX}BACKENDS__<idx>__REDIS_URL",
-                            ),
-                        )
+                if backend.type != BackendType.REDIS:
+                    continue
+                if (
+                    backend.redis_password
+                    and backend.redis_password.lower() in const.INSECURE_PASSWORDS
+                ):
+                    raise ValueError(
+                        const.ERROR_MSG_INSECURE_PASSWORD.format(
+                            backend="Redis",
+                            name=backend.name,
+                            env_var=f"{const.ENV_PREFIX}BACKENDS__<idx>__REDIS_PASSWORD",
+                        ),
+                    )
+                if backend.redis_url and any(
+                    f":{d}@" in backend.redis_url.lower()
+                    for d in const.INSECURE_PASSWORDS
+                ):
+                    raise ValueError(
+                        const.ERROR_MSG_INSECURE_URL.format(
+                            backend="Redis",
+                            name=backend.name,
+                            env_var=f"{const.ENV_PREFIX}BACKENDS__<idx>__REDIS_URL",
+                        ),
+                    )
         return self
 
     @field_validator("backends")

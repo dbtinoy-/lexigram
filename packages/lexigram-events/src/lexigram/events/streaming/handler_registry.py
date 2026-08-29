@@ -79,22 +79,20 @@ class WSMessageHandlerRegistry:
         self._handlers: list[WSMessageHandler] = []
 
     @classmethod
+    def _default_entries(cls) -> dict[str, WSMessageHandler]:
+        """Declare the built-in default handlers (subscribe, unsubscribe, ping)."""
+        return {
+            "subscribe": SubscribeMessageHandler(),
+            "unsubscribe": UnsubscribeMessageHandler(),
+            "ping": PingMessageHandler(),
+        }
+
+    @classmethod
     def with_defaults(cls) -> WSMessageHandlerRegistry:
-        """Create a registry pre-populated with the built-in default handlers.
-
-        Returns:
-            A new registry instance with all default handlers registered.
-        """
-        instance = cls()
-        instance._register_defaults()
-        return instance
-
-    def _register_defaults(self) -> None:
-        self._handlers = [
-            SubscribeMessageHandler(),
-            UnsubscribeMessageHandler(),
-            PingMessageHandler(),
-        ]
+        """Create a registry pre-populated with the built-in default handlers."""
+        registry = cls()
+        registry._handlers = list(cls._default_entries().values())
+        return registry
 
     def register(self, handler: WSMessageHandler) -> None:
         """Register a new message handler."""

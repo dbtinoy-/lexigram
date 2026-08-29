@@ -124,53 +124,56 @@ Register-ArgumentCompleter -CommandName {cli_app_name} -ScriptBlock $scriptblock
 class CompletionRegistry:
     """Registry for completion generators.
 
-    Provides a pluggable way to add new completion scripts.
+    Instances are always empty — use :meth:`with_defaults` for the
+    in-package built-ins or :meth:`register` for plugin generators.
     """
 
-    _generators: dict[str, CompletionGenerator] = {}
-    _initialized: bool = False
+    def __init__(self) -> None:
+        self._generators: dict[str, CompletionGenerator] = {}
 
-    @classmethod
-    def register(cls, generator: type[CompletionGenerator]) -> None:
+    def register(self, generator: type[CompletionGenerator]) -> None:
         """Register a completion generator class."""
         instance = generator()
-        cls._generators[generator.name] = instance
+        self._generators[generator.name] = instance
 
-    @classmethod
-    def get(cls, name: str) -> CompletionGenerator | None:
+    def get(self, name: str) -> CompletionGenerator | None:
         """Get a generator by name."""
-        cls.register_defaults()
-        return cls._generators.get(name)
+        return self._generators.get(name)
 
-    @classmethod
-    def get_all(cls) -> dict[str, CompletionGenerator]:
+    def get_all(self) -> dict[str, CompletionGenerator]:
         """Get all registered generators."""
-        cls.register_defaults()
-        return cls._generators.copy()
+        return self._generators.copy()
 
-    @classmethod
-    def get_choices(cls) -> list[str]:
+    def get_choices(self) -> list[str]:
         """Get list of available generator names."""
-        cls.register_defaults()
-        return list(cls._generators.keys())
+        return list(self._generators.keys())
 
     @classmethod
-    def register_defaults(cls) -> None:
-        """Initialize default generators if not already done."""
-        if not cls._initialized:
-            cls.register(BashCompletionGenerator)
-            cls.register(ZshCompletionGenerator)
-            cls.register(FishCompletionGenerator)
-            cls.register(PowerShellCompletionGenerator)
-            cls._initialized = True
+    def _default_entries(cls) -> tuple[type[CompletionGenerator], ...]:
+        """The complete in-package built-in set, declared exactly once."""
+        return (
+            BashCompletionGenerator,
+            ZshCompletionGenerator,
+            FishCompletionGenerator,
+            PowerShellCompletionGenerator,
+        )
+
+    @classmethod
+    def with_defaults(cls) -> CompletionRegistry:
+        """Return an instance populated with the built-in generators."""
+        registry = cls()
+        for entry in cls._default_entries():
+            registry.register(entry)
+        return registry
 
 
 def generate_completion(shell: str, cli_app_name: str = "lexigram") -> str:
     """Generate completion script for the specified shell."""
-    generator = CompletionRegistry.get(shell)
+    registry = CompletionRegistry.with_defaults()
+    generator = registry.get(shell)
     if not generator:
         raise ValueError(
-            f"Unknown shell: {shell}. Available: {', '.join(CompletionRegistry.get_choices())}",
+            f"Unknown shell: {shell}. Available: {', '.join(registry.get_choices())}",
         )
     return generator.generate(cli_app_name)
 

@@ -5,58 +5,59 @@ This module provides search indexing for {{ index_name }} entities.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from lexigram.search.engine import SearchableModel, SearchEngine
+from lexigram.search.types import SearchResponse
 
 if TYPE_CHECKING:
-    from lexigram.search.core.engine import SearchQuery
+    from lexigram.search.types import SearchQuery
 
 
 class {{ index_name }}Document(BaseModel):
     """Search document model for {{ index_name }}.
-    
+
     This represents a document that can be indexed and searched.
     """
-{% for field in fields %}
-    {{ field.name }}: {{ field.type }}{% if not field.required %} = None{% endif %} = Field(
-        description="{{ field.description | default(field.name) }}"
-    )
-{% endfor %}
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
 
-    class Config:
-        """Pydantic config."""
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
+{% for field in fields %}
+{% if field.name not in ("created_at", "updated_at") %}
+    {{ field.name }}: {{ field.type }}{% if not field.required %} | None{% endif %} = Field(
+        {% if field.required %}description{% else %}default=None, description{% endif %}="{{ field.description | default(field.name) }}"
+    )
+{% endif %}
+{% endfor %}
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class {{ index_name }}Searchable(SearchableModel):
     """Searchable model mixin for {{ index_name }}.
-    
+
     Use this mixin to make your model searchable.
     """
-    
+
     # Map model fields to search document fields
     search_document: type[BaseModel] = {{ index_name }}Document
-    
+
     # Fields to index for full-text search
     searchable_fields: list[str] = [
 {% for field in fields %}
         "{{ field.name }}"{% if not loop.last %},{% endif %}
 {% endfor %}
     ]
-    
+
     # Fields to filter on
     filterable_fields: list[str] = [
         "id",
         "created_at",
         "updated_at",
     ]
-    
+
     # Fields to sort by
     sortable_fields: list[str] = [
         "created_at",
@@ -66,109 +67,128 @@ class {{ index_name }}Searchable(SearchableModel):
 
 class {{ index_name }}SearchService:
     """Search service for {{ index_name }}.
-    
+
     Provides methods for indexing, searching, and managing {{ index_name }} documents.
     """
-    
+
     def __init__(self, search_engine: SearchEngine):
         """Initialize the search service.
-        
+
         Args:
             search_engine: The search engine to use.
         """
         self.search_engine = search_engine
         self.index_name = "{{ index_name_snake }}"
-    
+
+    async def ensure_index(self) -> None:
+        """Create the index if it does not exist yet."""
+        result = await self.search_engine.index_exists(self.index_name)
+        if result.is_err():
+            raise result.unwrap_err()
+        if result.unwrap():
+            return
+        created = await self.search_engine.create_index(self.index_name)
+        if created.is_err():
+            raise created.unwrap_err()
+
     async def index_document(self, document: {{ index_name }}Document) -> None:
         """Index a single document.
-        
+
         Args:
             document: The document to index.
         """
-        await self.search_engine.index(
-            index=self.index_name,
-            document=document.model_dump(),
-        )
-    
+        await self.index_documents([document])
+
     async def index_documents(self, documents: list[{{ index_name }}Document]) -> None:
         """Index multiple documents in batch.
-        
+
         Args:
             documents: The documents to index.
         """
-        await self.search_engine.index_many(
-            index=self.index_name,
-            documents=[doc.model_dump() for doc in documents],
+        result = await self.search_engine.index(
+            self.index_name,
+            [document.model_dump() for document in documents],
         )
-    
+        if result.is_err():
+            raise result.unwrap_err()
+
     async def search(
         self,
         query: str | SearchQuery,
         filters: dict[str, Any] | None = None,
         limit: int = 20,
         offset: int = 0,
-    ) -> list[{{ index_name }}Document]:
+    ) -> SearchResponse:
         """Search for documents matching the query.
-        
+
         Args:
             query: Search query string or SearchQuery object.
             filters: Optional filters to apply.
             limit: Maximum number of results.
             offset: Offset for pagination.
-            
+
         Returns:
-            List of matching documents.
+            The search response with matching documents.
         """
-        results = await self.search_engine.search(
-            index=self.index_name,
-            query=query,
+        result = await self.search_engine.search(
+            self.index_name,
+            query if isinstance(query, str) else query.query,
             filters=filters,
             limit=limit,
             offset=offset,
         )
-        
-        return [
-            {{ index_name }}Document(**hit)
-            for hit in results.get("hits", [])
-        ]
-    
-    async def delete_document(self, document_id: str) -> None:
-        """Delete a document from the index.
-        
-        Args:
-            document_id: The document ID to delete.
-        """
-        await self.search_engine.delete(
-            index=self.index_name,
-            document_id=document_id,
-        )
-    
-    async def delete_all(self) -> None:
-        """Delete all documents from the index."""
-        await self.search_engine.delete_all(index=self.index_name)
-    
+        if result.is_err():
+            raise result.unwrap_err()
+        return result.unwrap()
+
     async def get_document(self, document_id: str) -> {{ index_name }}Document | None:
         """Get a document by ID.
-        
+
         Args:
             document_id: The document ID.
-            
+
         Returns:
             The document if found, None otherwise.
         """
-        result = await self.search_engine.get(
-            index=self.index_name,
-            document_id=document_id,
+        result = await self.search_engine.search(
+            self.index_name,
+            "",
+            filters={"id": document_id},
+            limit=1,
+            offset=0,
         )
-        
-        if result:
-            return {{ index_name }}Document(**result)
-        return None
-    
+        if result.is_err():
+            raise result.unwrap_err()
+        response = result.unwrap()
+        if not response.results:
+            return None
+        return {{ index_name }}Document(**response.results[0].data)
+
     async def count(self) -> int:
         """Get the total number of documents in the index.
-        
+
         Returns:
             Document count.
         """
-        return await self.search_engine.count(index=self.index_name)
+        result = await self.search_engine.search(
+            self.index_name,
+            "*",
+            limit=0,
+            offset=0,
+        )
+        if result.is_err():
+            raise result.unwrap_err()
+        return result.unwrap().total
+
+    async def delete_document(self, document_id: str) -> None:
+        """Delete a document from the index.
+
+        Args:
+            document_id: The document ID to delete.
+        """
+        result = await self.search_engine.delete(
+            self.index_name,
+            document_id,
+        )
+        if result.is_err():
+            raise result.unwrap_err()

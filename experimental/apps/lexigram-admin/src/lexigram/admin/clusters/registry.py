@@ -43,10 +43,17 @@ class ClusterRegistry:
         self._by_group: dict[str, Cluster] = {}
 
     @classmethod
+    def _default_entries(cls) -> dict[str, Cluster]:
+        """Declare the built-in clusters."""
+        cluster = INFRASTRUCTURE_CLUSTER
+        return {cluster.slug or cluster.name: cluster}
+
+    @classmethod
     def with_defaults(cls) -> ClusterRegistry:
         """Create a registry pre-populated with the built-in clusters."""
         registry = cls()
-        registry.register(INFRASTRUCTURE_CLUSTER)
+        for cluster in cls._default_entries().values():
+            registry.register(cluster)
         return registry
 
     def register(self, cluster: Cluster) -> None:

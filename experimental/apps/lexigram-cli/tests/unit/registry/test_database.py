@@ -251,49 +251,40 @@ class TestMySQLBackend:
 
 class TestDatabaseRegistry:
     def test_register_and_get(self) -> None:
-        DatabaseRegistry._backends = {}
-        DatabaseRegistry._initialized = False
-        DatabaseRegistry.register(SQLiteBackend)
-        backend = DatabaseRegistry.get("sqlite")
+        registry = DatabaseRegistry()
+        registry.register(SQLiteBackend)
+        backend = registry.get("sqlite")
         assert backend is not None
 
     def test_get_by_alias(self) -> None:
-        DatabaseRegistry._backends = {}
-        DatabaseRegistry._initialized = False
-        DatabaseRegistry.register(PostgreSQLBackend)
-        backend = DatabaseRegistry.get("postgres")
+        registry = DatabaseRegistry()
+        registry.register(PostgreSQLBackend)
+        backend = registry.get("postgres")
         assert backend is not None
 
     def test_detect_from_url_sqlite(self) -> None:
-        DatabaseRegistry._backends = {}
-        DatabaseRegistry._initialized = False
-        DatabaseRegistry.register(SQLiteBackend)
-        backend = DatabaseRegistry.detect_from_url("sqlite:///./dev.db")
+        registry = DatabaseRegistry()
+        registry.register(SQLiteBackend)
+        backend = registry.detect_from_url("sqlite:///./dev.db")
         assert backend.name == "sqlite"
 
     def test_detect_from_url_unknown_fallback(self) -> None:
-        DatabaseRegistry._backends = {}
-        DatabaseRegistry._initialized = False
-        DatabaseRegistry.register(SQLiteBackend)
-        backend = DatabaseRegistry.detect_from_url("unknown://localhost/db")
+        registry = DatabaseRegistry()
+        registry.register(SQLiteBackend)
+        backend = registry.detect_from_url("unknown://localhost/db")
         assert backend.name == "sqlite"
 
-    def test_register_defaults(self) -> None:
-        DatabaseRegistry._backends = {}
-        DatabaseRegistry._initialized = False
-        DatabaseRegistry.register_defaults()
-        assert DatabaseRegistry._initialized is True
-        assert DatabaseRegistry.get("sqlite") is not None
-        assert DatabaseRegistry.get("postgresql") is not None
-        assert DatabaseRegistry.get("mysql") is not None
+    def test_with_defaults_populates_all_backends(self) -> None:
+        registry = DatabaseRegistry.with_defaults()
+        assert registry.get("sqlite") is not None
+        assert registry.get("postgresql") is not None
+        assert registry.get("mysql") is not None
 
     def test_get_all(self) -> None:
-        DatabaseRegistry._backends = {}
-        DatabaseRegistry._initialized = False
-        DatabaseRegistry.register(SQLiteBackend)
-        all_backends = DatabaseRegistry.get_all()
+        registry = DatabaseRegistry()
+        registry.register(SQLiteBackend)
+        all_backends = registry.get_all()
         assert "sqlite" in all_backends
-
 
 class TestDatabaseConnection:
     def test_get_url_from_env(self) -> None:

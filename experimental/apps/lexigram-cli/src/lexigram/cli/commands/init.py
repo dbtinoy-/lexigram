@@ -13,42 +13,48 @@ from lexigram.cli.runtime import handle_errors
 app = typer.Typer()
 
 _MINIMAL_CONFIG = """\
-project:
-  name: {project_name}
-  version: "0.1.0"
+# Lexigram configuration (validated by LexigramConfig).
+app_name: {project_name}
+debug: false
+env: development
 
 logging:
   level: INFO
 """
 
 _FULL_CONFIG = """\
-project:
-  name: {project_name}
-  version: "0.1.0"
+# Lexigram configuration (validated by LexigramConfig plus the
+# `lexigram.config` entry-point models).
+app_name: {project_name}
+debug: false
+env: development
 
 logging:
   level: INFO
-  format: json
+  json_format: false
+
+modules: []
+discovery:
+  auto_discover: false
+  entry_point_group: lexigram.modules
 
 web:
-  host: "${{WEB_HOST:0.0.0.0}}"
-  port: "${{WEB_PORT:8000}}"
-  debug: false
+  server:
+    host: "${{WEB_HOST:127.0.0.1}}"
+    port: "${{WEB_PORT:8000}}"
+  api_docs:
+    enabled: true
 
-database:
-  url: "${{DATABASE_URL:sqlite:///./dev.db}}"
-  echo: false
+sql:
+  enabled: true
+  backend:
+    url: "${{DATABASE_URL:sqlite:///./dev.db}}"
+  pool:
+    min_size: 1
+    max_size: 5
 
 auth:
-  enabled: false
-  secret_key: "${{AUTH_SECRET_KEY}}"
-
-cache:
-  backend: memory
-
-monitor:
-  enabled: true
-  health_path: /health
+  secret_key: "${{AUTH_SECRET_KEY:change-me-in-production}}"
 """
 
 

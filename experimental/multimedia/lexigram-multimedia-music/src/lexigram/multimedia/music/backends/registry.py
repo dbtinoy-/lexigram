@@ -29,7 +29,11 @@ class MusicBackendRegistry:
         registry = cls()
 
         async def _local_http(
-            config: Any, secret_store: Any, retry: Any, circuit_breaker: Any, **_kw: Any,
+            config: Any,
+            secret_store: Any,
+            retry: Any,
+            circuit_breaker: Any,
+            **_kw: Any,
         ) -> Any:
             from lexigram.multimedia.music.providers.local_http import (
                 LocalHttpMusicProvider,
@@ -43,14 +47,20 @@ class MusicBackendRegistry:
             )
 
         async def _stability_audio(
-            config: Any, secret_store: Any, retry: Any, circuit_breaker: Any, **_kw: Any,
+            config: Any,
+            secret_store: Any,
+            retry: Any,
+            circuit_breaker: Any,
+            **_kw: Any,
         ) -> Any:
             from lexigram.di.provider_utils import resolve_credential
             from lexigram.multimedia.music.providers.stability_audio import (
                 StabilityAudioMusicProvider,
             )
 
-            api_key = await resolve_credential(secret_store, config.stability_api_key_secret_name)
+            api_key = await resolve_credential(
+                secret_store, config.stability_api_key_secret_name
+            )
             return StabilityAudioMusicProvider(
                 api_key=api_key or "",
                 timeout=config.timeout,
@@ -59,7 +69,11 @@ class MusicBackendRegistry:
             )
 
         async def _ace_step(
-            config: Any, secret_store: Any, retry: Any, circuit_breaker: Any, **_kw: Any,
+            config: Any,
+            secret_store: Any,
+            retry: Any,
+            circuit_breaker: Any,
+            **_kw: Any,
         ) -> Any:
             from lexigram.multimedia.music.providers.ace_step import (
                 AceStepMusicProvider,
@@ -73,7 +87,11 @@ class MusicBackendRegistry:
             )
 
         async def _stable_audio_open(
-            config: Any, secret_store: Any, retry: Any, circuit_breaker: Any, **_kw: Any,
+            config: Any,
+            secret_store: Any,
+            retry: Any,
+            circuit_breaker: Any,
+            **_kw: Any,
         ) -> Any:
             from lexigram.multimedia.music.providers.stable_audio_open import (
                 StableAudioOpenMusicProvider,
@@ -97,7 +115,12 @@ class MusicBackendRegistry:
         self._builders[backend] = builder
 
     async def create_backend(
-        self, backend: str, config: Any, secret_store: Any, retry: Any, circuit_breaker: Any,
+        self,
+        backend: str,
+        config: Any,
+        secret_store: Any,
+        retry: Any,
+        circuit_breaker: Any,
     ) -> Any:
         """Build a music provider for a backend name."""
         builder = self._builders.get(backend)

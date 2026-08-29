@@ -54,6 +54,12 @@ _SPECS: tuple[tuple[str, str, str, str], ...] = (
         "lexigram.sql.cli.generators.entity_migration:EntityMigrationGenerator",
         "migrations/versions",
     ),
+    (
+        "service",
+        "Generate a service with unit of work",
+        "lexigram.sql.cli.generators.service:ServiceGenerator",
+        "src/services",
+    ),
 )
 
 _OPTIONS: dict[str, tuple[GeneratorOption, ...]] = {
@@ -67,6 +73,7 @@ _OPTIONS: dict[str, tuple[GeneratorOption, ...]] = {
         ),
     ),
     "seeder": (_FIELDS_OPTION,),
+    "service": (_FIELDS_OPTION,),
     "model": (_FIELDS_OPTION,),
     "migration": (),
     "health": (

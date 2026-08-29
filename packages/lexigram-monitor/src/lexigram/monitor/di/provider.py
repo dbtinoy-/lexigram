@@ -144,12 +144,18 @@ class MonitorProvider(
         super().__init__()
         self.backend = backend
         self.metrics_collector = _ConcreteMetricsCollector()
-        # Tracing sub-objects are composed from config — eagerly when explicit
-        # config is supplied, otherwise deferred to register() so the
-        # orchestrator can inject the yaml section (via ``config_key``) first.
+        # Tracing sub-objects are always composed eagerly: from the explicit
+        # config when supplied, otherwise from in-memory defaults. ``register()``
+        # re-composes when the orchestrator injects the yaml section (via
+        # ``config_key``) so the real values win.
         self.trace_provider: Any = None
         self.tracer: Any = None
         self.metrics_exporter = exporter
+        # Explicit config passed at construction; the orchestrator may inject
+        # the yaml section later via ``config_key``/``config_model``, but an
+        # explicit config always wins (same convention as queue/graphql/
+        # secrets providers).
+        self._requested_config = config
         # Exporter registries — owned by this provider, registered via DI
         self._tracing_exporter_registry = TracingExporterRegistry.with_defaults()
         self._metrics_exporter_registry = MetricsExporterRegistry.with_defaults()
@@ -160,8 +166,7 @@ class MonitorProvider(
         # values are not overwritten by the default ``monitor`` section.
         self._config = config
         self._config_from_factory = config is not None
-        if config is not None:
-            self._compose_tracing()
+        self._compose_tracing()
         self._health_checker_registry: HealthCheckerRegistry | None = None
         self._hook_registry: HookRegistryProtocol | None = None
         self._hook_handlers: list[tuple[str, Any]] = []

@@ -2,42 +2,51 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
-from lexigram.codegen.base import GenerationResult, GeneratorBase
+from lexigram.codegen import GenerationResult, GeneratorBase
+from lexigram.contracts.cli.generators import resolve_options
 
 
 class WorkflowDefinitionGenerator(GeneratorBase):
-    """Generator for workflow definitions."""
+    """Generate a workflow definition."""
 
     name = "workflow_def"
     description = "Generate a workflow definition with steps and transitions"
     default_output_dir = "src/workflows"
 
-    def generate(self, name: str, **options: Any) -> GenerationResult:
+    def __init__(self, output_dir: str | Path = "src/workflows") -> None:
+        super().__init__(output_dir=output_dir)
+
+    def generate(
+        self,
+        name: str,
+        *,
+        dry_run: bool = False,
+        force: bool = False,
+        **options: Any,
+    ) -> GenerationResult:
         """Generate a workflow definition module.
 
         Args:
-            name: Workflow name (e.g. ``"OrderProcessing"``).
-            **options: ``dry_run`` previews without writing; ``force``
-                overwrites an existing file.
+            name: Workflow name (e.g. ``"OrderProcessing"`` or ``"order_processing"``).
+            dry_run: Compute output paths without writing.
+            force: Overwrite an existing file.
 
         Returns:
-            A :class:`GenerationResult` describing the written file.
+            ``GenerationResult`` with created/skipped/overwritten paths.
         """
         workflow_name = self._to_pascal_case(name)
         workflow_snake = self._to_snake_case(name)
-        context = {
+        context: dict[str, Any] = {
             "workflow_name": workflow_name,
             "workflow_name_snake": workflow_snake,
-            "package_name": self._get_package_name(self.output_dir),
         }
         content = self.render_template("workflow_def.py.jinja2", context)
         file_path = self.output_dir / f"{workflow_snake}_workflow.py"
-        if file_path.exists() and not options.get("force", False):
-            return GenerationResult()
-        if options.get("dry_run", False):
-            return GenerationResult()
-        self.output_dir.mkdir(parents=True, exist_ok=True)
-        file_path.write_text(content, encoding="utf-8")
-        return GenerationResult(files_created=[file_path])
+        self.stage(file_path, content)
+        return self.finalize(self.commit(resolve_options(dry_run=dry_run, force=force)))
+
+
+__all__ = ["WorkflowDefinitionGenerator"]

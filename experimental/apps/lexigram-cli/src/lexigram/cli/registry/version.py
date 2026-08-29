@@ -44,7 +44,15 @@ class PyPackageVersionSource(VersionSource):
             import importlib.metadata
 
             return importlib.metadata.version(self.package_name)
-        except (RuntimeError, OSError, AttributeError, LookupError):
+        except (
+            ModuleNotFoundError,
+            RuntimeError,
+            OSError,
+            AttributeError,
+            LookupError,
+        ):
+            # importlib.metadata.PackageNotFoundError subclasses ModuleNotFoundError,
+            # so a missing distribution is treated as "no version available".
             return None
 
 
@@ -73,44 +81,50 @@ class GitVersionSource(VersionSource):
 class VersionRegistry:
     """Registry for version information.
 
-    Provides a pluggable way to get versions of packages.
+    Instances are always empty — use :meth:`with_defaults` for the
+    in-package built-ins or :meth:`register` for plugin sources.
     """
 
-    _sources: dict[str, VersionSource] = {}
-    _initialized: bool = False
+    def __init__(self) -> None:
+        self._sources: dict[str, VersionSource] = {}
 
-    @classmethod
-    def register(cls, name: str, source: VersionSource) -> None:
+    def register(self, name: str, source: VersionSource) -> None:
         """Register a version source."""
-        cls._sources[name] = source
+        self._sources[name] = source
 
-    @classmethod
-    def get(cls, name: str) -> VersionSource | None:
+    def get(self, name: str) -> VersionSource | None:
         """Get a version source by name."""
-        return cls._sources.get(name)
+        return self._sources.get(name)
 
-    @classmethod
-    def get_all(cls) -> dict[str, VersionSource]:
+    def get_all(self) -> dict[str, VersionSource]:
         """Get all registered sources."""
-        return cls._sources.copy()
+        return self._sources.copy()
 
     @classmethod
-    def register_defaults(cls) -> None:
-        """Initialize default sources if not already done."""
-        if not cls._initialized:
-            cls.register("lexigram", PyPackageVersionSource("lexigram"))
-            cls.register("python", PyPackageVersionSource("python"))
-            cls.register("uv", PyPackageVersionSource("uv"))
-            cls.register("pytest", PyPackageVersionSource("pytest"))
-            cls.register("ruff", PyPackageVersionSource("ruff"))
-            cls.register("mypy", PyPackageVersionSource("mypy"))
-            cls._initialized = True
+    def _default_entries(cls) -> tuple[tuple[str, VersionSource], ...]:
+        """The complete in-package built-in set, declared exactly once."""
+        return (
+            ("lexigram", PyPackageVersionSource("lexigram")),
+            ("python", PyPackageVersionSource("python")),
+            ("uv", PyPackageVersionSource("uv")),
+            ("pytest", PyPackageVersionSource("pytest")),
+            ("ruff", PyPackageVersionSource("ruff")),
+            ("mypy", PyPackageVersionSource("mypy")),
+        )
+
+    @classmethod
+    def with_defaults(cls) -> VersionRegistry:
+        """Return an instance populated with the built-in sources."""
+        registry = cls()
+        for name, source in cls._default_entries():
+            registry.register(name, source)
+        return registry
 
 
 def get_version(package: str) -> str | None:
     """Get version of a package."""
-    VersionRegistry.register_defaults()
-    source = VersionRegistry.get(package.lower())
+    registry = VersionRegistry.with_defaults()
+    source = registry.get(package.lower())
     if source:
         return source.get_version()
     return PyPackageVersionSource(package).get_version()
@@ -118,9 +132,9 @@ def get_version(package: str) -> str | None:
 
 def get_all_versions() -> dict[str, str]:
     """Get versions of all registered packages."""
-    VersionRegistry.register_defaults()
+    registry = VersionRegistry.with_defaults()
     versions = {}
-    for name, source in VersionRegistry.get_all().items():
+    for name, source in registry.get_all().items():
         version = source.get_version()
         if version:
             versions[name] = version

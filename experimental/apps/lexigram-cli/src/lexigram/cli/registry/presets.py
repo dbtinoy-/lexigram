@@ -162,48 +162,50 @@ class MicroservicePreset(PresetDefinition):
 class PresetRegistry:
     """Registry for application presets.
 
-    Provides a pluggable way to add new presets.
+    Instances are always empty — use :meth:`with_defaults` for the
+    in-package built-ins or :meth:`register` for plugin presets.
     """
 
-    _presets: dict[str, Preset] = {}
-    _initialized: bool = False
+    def __init__(self) -> None:
+        self._presets: dict[str, Preset] = {}
 
-    @classmethod
-    def register(cls, preset_class: type[PresetDefinition]) -> None:
+    def register(self, preset_class: type[PresetDefinition]) -> None:
         """Register a preset class."""
         instance = preset_class()
         preset = instance.get_preset()
-        cls._presets[preset.name] = preset
+        self._presets[preset.name] = preset
 
-    @classmethod
-    def get(cls, name: str) -> Preset | None:
+    def get(self, name: str) -> Preset | None:
         """Get a preset by name."""
-        cls.register_defaults()
-        return cls._presets.get(name)
+        return self._presets.get(name)
 
-    @classmethod
-    def get_all(cls) -> dict[str, Preset]:
+    def get_all(self) -> dict[str, Preset]:
         """Get all registered presets."""
-        cls.register_defaults()
-        return cls._presets.copy()
+        return self._presets.copy()
 
-    @classmethod
-    def get_choices(cls) -> list[str]:
+    def get_choices(self) -> list[str]:
         """Get list of available preset names."""
-        cls.register_defaults()
-        return list(cls._presets.keys())
+        return list(self._presets.keys())
 
     @classmethod
-    def register_defaults(cls) -> None:
-        """Initialize default presets if not already done."""
-        if not cls._initialized:
-            cls.register(WebAPIPreset)
-            cls.register(GraphQLPreset)
-            cls.register(WorkerPreset)
-            cls.register(FullStackPreset)
-            cls.register(MinimalPreset)
-            cls.register(MicroservicePreset)
-            cls._initialized = True
+    def _default_entries(cls) -> tuple[type[PresetDefinition], ...]:
+        """The complete in-package built-in set, declared exactly once."""
+        return (
+            WebAPIPreset,
+            GraphQLPreset,
+            WorkerPreset,
+            FullStackPreset,
+            MinimalPreset,
+            MicroservicePreset,
+        )
+
+    @classmethod
+    def with_defaults(cls) -> PresetRegistry:
+        """Return an instance populated with the built-in presets."""
+        registry = cls()
+        for entry in cls._default_entries():
+            registry.register(entry)
+        return registry
 
 
 __all__ = [

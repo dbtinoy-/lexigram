@@ -41,7 +41,7 @@ class _CacheServicesMixin:
             Domain-model reconstruction for ``@cacheable`` envelopes is
             gated by ``DEFAULT_REGISTRY``
             (``lexigram.cache.serialization.type_registry``): the
-            ``TypeRegistry.with_defaults()`` instance is the single
+            ``TypeRegistry()`` instance is the single
             registration surface — deny-by-default. The cache package
             defines no model types itself, so nothing is registered here;
             consumers register their domain models at boot via

@@ -20,10 +20,12 @@ def main(
     """Add a provider to the project."""
     out = OutputManager()
 
-    provider_obj = ProviderRegistry().get(provider)
+    provider_obj = ProviderRegistry.with_defaults().get(provider)
     if not provider_obj:
         out.error(f"Unknown provider: {provider}")
-        out.info(f"Available providers: {', '.join(ProviderRegistry().get_choices())}")
+        out.info(
+            f"Available providers: {', '.join(ProviderRegistry.with_defaults().get_choices())}"
+        )
         raise typer.Exit(1)
 
     info = provider_obj.get_info()

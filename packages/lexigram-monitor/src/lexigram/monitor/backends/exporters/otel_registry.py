@@ -184,28 +184,25 @@ class TracingExporterRegistry:
         self._handlers: list[TracingExporterHandler] = []
 
     @classmethod
+    def _default_entries(cls) -> dict[str, TracingExporterHandler]:
+        """Declare the built-in tracing exporter handlers (console, OTLP)."""
+        return {
+            "console": ConsoleTracingExporterHandler(),
+            "otlp": OTLPTracingExporterHandler(),
+        }
+
+    @classmethod
     def with_defaults(cls) -> TracingExporterRegistry:
-        """Create a registry pre-populated with the built-in default handlers.
-
-        Returns:
-            A new registry instance with all default tracing exporter handlers registered.
-        """
-        instance = cls()
-        instance._register_defaults()
-        return instance
-
-    def _register_defaults(self) -> None:
-        """Register the default tracing exporters (console, OTLP)."""
-        self._handlers = [
-            ConsoleTracingExporterHandler(),
-            OTLPTracingExporterHandler(),
-        ]
+        """Create a registry pre-populated with the built-in default handlers."""
+        registry = cls()
+        registry._handlers = list(cls._default_entries().values())
+        return registry
 
     def register(self, handler: TracingExporterHandler) -> None:
         """Register a new tracing exporter handler.
 
         Args:
-            handler: The handler to register. Added at the beginning of the handler list.
+            handler: The handler to register; inserted at the head of the list.
         """
         self._handlers.insert(0, handler)
 
@@ -241,28 +238,25 @@ class MetricsExporterRegistry:
         self._handlers: list[MetricsExporterHandler] = []
 
     @classmethod
+    def _default_entries(cls) -> dict[str, MetricsExporterHandler]:
+        """Declare the built-in metrics exporter handlers (console, OTLP)."""
+        return {
+            "console": ConsoleMetricsExporterHandler(),
+            "otlp": OTLPMetricsExporterHandler(),
+        }
+
+    @classmethod
     def with_defaults(cls) -> MetricsExporterRegistry:
-        """Create a registry pre-populated with the built-in default handlers.
-
-        Returns:
-            A new registry instance with all default metrics exporter handlers registered.
-        """
-        instance = cls()
-        instance._register_defaults()
-        return instance
-
-    def _register_defaults(self) -> None:
-        """Register the default metrics exporters (console, OTLP)."""
-        self._handlers = [
-            ConsoleMetricsExporterHandler(),
-            OTLPMetricsExporterHandler(),
-        ]
+        """Create a registry pre-populated with the built-in default handlers."""
+        registry = cls()
+        registry._handlers = list(cls._default_entries().values())
+        return registry
 
     def register(self, handler: MetricsExporterHandler) -> None:
         """Register a new metrics exporter handler.
 
         Args:
-            handler: The handler to register. Added at the beginning of the handler list.
+            handler: The handler to register; inserted at the head of the list.
         """
         self._handlers.insert(0, handler)
 

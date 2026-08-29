@@ -34,33 +34,6 @@ class ChunkingStrategyRegistry(StrategyRegistry):
     def __init__(self) -> None:
         super().__init__(name="chunking.strategies", allow_overwrite=True)
 
-    @classmethod
-    def with_defaults(cls) -> ChunkingStrategyRegistry:
-        """Create a registry pre-populated with the built-in chunking strategies.
-
-        Returns:
-            A new registry with all built-in chunking strategies registered.
-        """
-        instance = cls()
-        instance._register_defaults()
-        return instance
-
-    def _register_defaults(self) -> None:
-        """Populate with built-in chunker classes."""
-        from lexigram.ai.rag.chunking.strategies.fixed_size import FixedSizeChunker
-        from lexigram.ai.rag.chunking.strategies.recursive import RecursiveChunker
-        from lexigram.ai.rag.chunking.strategies.semantic import SemanticChunker
-        from lexigram.ai.rag.chunking.strategies.sliding_window import (
-            SlidingWindowChunker,
-        )
-        from lexigram.ai.rag.chunking.strategies.token import TokenChunker
-
-        self.register(ChunkingStrategy.FIXED_SIZE, FixedSizeChunker)
-        self.register(ChunkingStrategy.RECURSIVE, RecursiveChunker)
-        self.register(ChunkingStrategy.SEMANTIC, SemanticChunker)
-        self.register(ChunkingStrategy.SLIDING_WINDOW, SlidingWindowChunker)
-        self.register(ChunkingStrategy.TOKEN, TokenChunker)
-
     def create_chunker(
         self,
         strategy: ChunkingStrategy = ChunkingStrategy.FIXED_SIZE,
@@ -127,7 +100,8 @@ class ChunkingStrategyRegistry(StrategyRegistry):
             }
         return base
 
-    def default_strategies(self) -> dict[str, type]:
+    @classmethod
+    def default_strategies(cls) -> dict[str, type]:
         """Return built-in strategy key → class mapping."""
         from lexigram.ai.rag.chunking.strategies.fixed_size import FixedSizeChunker
         from lexigram.ai.rag.chunking.strategies.recursive import RecursiveChunker

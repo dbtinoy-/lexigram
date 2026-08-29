@@ -155,32 +155,24 @@ class SQLMigrationBackend(MigrationBackend):
 class MigrationRegistry:
     """Registry for migration backends.
 
-    Provides a pluggable way to add new migration backends.
+    This registry ships no built-in backends — populate it explicitly with
+    :meth:`register` (e.g. from ``create_migration_manager``).
     """
 
-    _backends: dict[str, MigrationBackend] = {}
-    _initialized: bool = False
+    def __init__(self) -> None:
+        self._backends: dict[str, MigrationBackend] = {}
 
-    @classmethod
-    def register(cls, name: str, backend: MigrationBackend) -> None:
+    def register(self, name: str, backend: MigrationBackend) -> None:
         """Register a migration backend."""
-        cls._backends[name] = backend
+        self._backends[name] = backend
 
-    @classmethod
-    def get(cls, name: str) -> MigrationBackend | None:
+    def get(self, name: str) -> MigrationBackend | None:
         """Get a backend by name."""
-        return cls._backends.get(name)
+        return self._backends.get(name)
 
-    @classmethod
-    def get_all(cls) -> dict[str, MigrationBackend]:
+    def get_all(self) -> dict[str, MigrationBackend]:
         """Get all registered backends."""
-        return cls._backends.copy()
-
-    @classmethod
-    def register_defaults(cls) -> None:
-        """Initialize default backends if not already done."""
-        if not cls._initialized:
-            cls._initialized = True
+        return self._backends.copy()
 
 
 class MigrationManager:
@@ -284,7 +276,7 @@ def create_migration_manager(
     else:
         raise ValueError(f"Unknown migration backend: {backend_name}. Available: sql")
 
-    MigrationRegistry.register(backend_name, backend)
+    MigrationRegistry().register(backend_name, backend)
     return MigrationManager(backend)
 
 
