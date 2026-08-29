@@ -11,9 +11,8 @@ from lexigram.logging import get_logger
 from lexigram.notification.config import (
     MailerConfig,
     NamedMailerConfig,
-    SendGridDriverConfig,
-    SMTPDriverConfig,
 )
+from lexigram.notification.mailer.backends.registry import MailerBackendRegistry
 
 if TYPE_CHECKING:
     from lexigram.contracts.core.di import (
@@ -46,12 +45,18 @@ class MailerProvider(Provider):
     config_key: str | None = "mailer"
     config_model: type | None = MailerConfig
 
-    def __init__(self, config: MailerConfig | None = None) -> None:
+    def __init__(
+        self,
+        config: MailerConfig | None = None,
+        *,
+        backend_registry: MailerBackendRegistry | None = None,
+    ) -> None:
         super().__init__()
         self._requested_config = config
-        # Kept ``None`` for zero-config construction so the orchestrator can
-        # inject the yaml section before register() resolves it.
         self._config: MailerConfig | None = config
+        self._backend_registry = (
+            backend_registry or MailerBackendRegistry.with_defaults()
+        )
         self._mailers: list[tuple[str, Any]] = []
 
     @classmethod
@@ -75,55 +80,8 @@ class MailerProvider(Provider):
 
         Returns:
             A mailer instance conforming to :class:`MailerProtocol`.
-
-        Raises:
-            ValueError: When the driver name is not recognised.
         """
-        from lexigram.notification.mailer.smtp_mailer import SMTPMailer
-
-        if entry.driver == "smtp":
-            cfg = entry.smtp or SMTPDriverConfig()
-            password: Any | None = None
-            if cfg.password:
-                password = getattr(
-                    cfg.password, "get_secret_value", lambda: cfg.password or ""
-                )()
-            return SMTPMailer(
-                host=cfg.host,
-                port=cfg.port,
-                username=cfg.username,
-                password=password,
-                use_tls=cfg.use_tls,
-                use_ssl=cfg.use_ssl,
-                timeout=cfg.timeout,
-                from_email=entry.from_email,
-            )
-
-        if entry.driver == "sendgrid":
-            from lexigram.notification.mailer.sendgrid_mailer import SendGridMailer
-
-            cfg_sg = entry.sendgrid or SendGridDriverConfig()
-            api_key: Any = ""
-            if cfg_sg.api_key:
-                api_key = (
-                    getattr(
-                        cfg_sg.api_key, "get_secret_value", lambda: cfg_sg.api_key or ""
-                    )()
-                    or ""
-                )
-            return SendGridMailer(
-                api_key=api_key,
-                timeout=cfg_sg.timeout,
-                sandbox_mode=cfg_sg.sandbox_mode,
-                from_email=entry.from_email,
-            )
-
-        if entry.driver == "console":
-            from lexigram.notification.mailer.console_mailer import ConsoleMailer
-
-            return ConsoleMailer()
-
-        raise ValueError(f"Unsupported mailer driver: {entry.driver!r}")
+        return self._backend_registry.create_backend(entry.driver, entry)
 
     async def register(self, container: ContainerRegistrarProtocol) -> None:
         """Bind all mailer backends into the container.

@@ -111,14 +111,14 @@ async def test_register_binds_stability_audio_backend(monkeypatch) -> None:
 
 
 @pytest.mark.asyncio
-async def test_stability_audio_health_degraded_without_credential() -> None:
+async def test_stability_audio_health_healthy_when_backend_present() -> None:
     provider = AudioMusicProvider(config=MusicConfig(backend="stability-audio"))
     container = _FakeContainer()
     await provider.register(container)
 
     result = await provider.health_check()
 
-    assert result.status == HealthStatus.DEGRADED
+    assert result.status == HealthStatus.HEALTHY
 
 
 @pytest.mark.asyncio

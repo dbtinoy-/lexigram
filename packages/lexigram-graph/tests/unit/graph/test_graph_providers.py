@@ -266,18 +266,22 @@ class TestGraphProviderFactoryMethods:
     @pytest.mark.asyncio
     async def test_create_neo4j_store(self) -> None:
         from lexigram.graph.backends.neo4j import Neo4jGraphStore
+        from lexigram.graph.backends.registry import GraphStoreRegistry
         from lexigram.graph.config import Neo4jConfig
 
         config = GraphConfig(backend="neo4j", neo4j=Neo4jConfig(uri="bolt://test:7687"))
+        registry = GraphStoreRegistry.with_defaults()
 
-        store = GraphProvider._create_neo4j_store(config)
+        store = registry.create_store("neo4j", config)
 
         assert isinstance(store, Neo4jGraphStore)
 
     @pytest.mark.asyncio
     async def test_create_memory_store(self) -> None:
         from lexigram.graph.backends.memory import InMemoryGraphStore
+        from lexigram.graph.backends.registry import GraphStoreRegistry
 
-        store = GraphProvider._create_memory_store()
+        registry = GraphStoreRegistry.with_defaults()
+        store = registry.create_store("memory", GraphConfig())
 
         assert isinstance(store, InMemoryGraphStore)

@@ -5,11 +5,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, cast
 
 from lexigram.contracts.core.health import HealthCheckResult, HealthStatus
-from lexigram.contracts.multimedia.exceptions import ProviderNotInstalledError
 from lexigram.contracts.multimedia.protocols import UpscaleProvider
 from lexigram.di.provider import Provider
 from lexigram.di.provider_utils import resolve_optional
 from lexigram.logging import get_logger
+from lexigram.multimedia.upscale.backends.registry import UpscaleBackendRegistry
 from lexigram.multimedia.upscale.config import UpscaleConfig
 from lexigram.multimedia.upscale.tasks import UpscaleTask
 
@@ -36,12 +36,16 @@ class UpscaleGenerationProvider(Provider):
     config_key: str | None = "multimedia_upscale"
     config_model: type | None = UpscaleConfig
 
-    def __init__(self, config: UpscaleConfig | None = None) -> None:
+    def __init__(
+        self,
+        config: UpscaleConfig | None = None,
+        *,
+        backend_registry: UpscaleBackendRegistry | None = None,
+    ) -> None:
         super().__init__(name="upscale")
         self._requested_config = config
-        # No default baking: the orchestrator injects the yaml section into
-        # ``provider.config`` after construction, before ``register()``.
         self._config = config
+        self._backend_registry = backend_registry or UpscaleBackendRegistry.with_defaults()
         self._backend: UpscaleProvider | None = None
         self._task_handler: UpscaleTask | None = None
         self._retry: RetryPolicyProtocol | None = None
@@ -58,42 +62,19 @@ class UpscaleGenerationProvider(Provider):
         container.singleton(UpscaleConfig, self._config)
 
         self._retry = await resolve_optional(container, RetryPolicyProtocol)
-        self._circuit_breaker = await resolve_optional(
-            container, CircuitBreakerProtocol
+        self._circuit_breaker = await resolve_optional(container, CircuitBreakerProtocol)
+
+        self._backend = cast(
+            "UpscaleProvider",
+            await self._backend_registry.create_backend(
+                self._config.backend,
+                self._config,
+                self._retry,
+                self._circuit_breaker,
+            ),
         )
 
-        if self._config.backend == "real-esrgan":
-            from lexigram.multimedia.upscale.providers.real_esrgan import (
-                RealEsrganUpscaleProvider,
-            )
-
-            self._backend = cast(
-                "UpscaleProvider",
-                RealEsrganUpscaleProvider(
-                    base_url=self._config.real_esrgan_base_url,
-                    timeout=self._config.timeout,
-                    retry=self._retry,
-                    circuit_breaker=self._circuit_breaker,
-                ),
-            )
-        elif self._config.backend == "hat":
-            from lexigram.multimedia.upscale.providers.hat import HatUpscaleProvider
-
-            self._backend = cast(
-                "UpscaleProvider",
-                HatUpscaleProvider(
-                    base_url=self._config.hat_base_url,
-                    timeout=self._config.timeout,
-                    retry=self._retry,
-                    circuit_breaker=self._circuit_breaker,
-                ),
-            )
-        else:
-            raise ProviderNotInstalledError(
-                f"Unknown or unimplemented upscale backend: {self._config.backend!r}"
-            )
-
-        assert self._backend is not None  # noqa: S101  # raised via ProviderNotInstalledError above
+        assert self._backend is not None  # noqa: S101
         container.singleton(UpscaleProvider, self._backend)
 
         self._task_handler = UpscaleTask(backend=self._backend)
@@ -122,25 +103,22 @@ class UpscaleGenerationProvider(Provider):
         if self._backend is None:
             return HealthCheckResult(component=self.name, status=HealthStatus.UNHEALTHY)
 
-        if self._config.backend == "real-esrgan":
-            base_url = self._config.real_esrgan_base_url
-        elif self._config.backend == "hat":
-            base_url = self._config.hat_base_url
+        base_url_map = {
+            "real-esrgan": self._config.real_esrgan_base_url,
+            "hat": self._config.hat_base_url,
+        }
+        base_url = base_url_map.get(self._config.backend)
+        if base_url is None:
+            return HealthCheckResult(component=self.name, status=HealthStatus.HEALTHY)
 
         import aiohttp
 
         try:
             async with (
-                aiohttp.ClientSession(
-                    timeout=aiohttp.ClientTimeout(total=timeout)
-                ) as session,
+                aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=timeout)) as session,
                 session.get(f"{base_url}/health") as resp,
             ):
-                status = (
-                    HealthStatus.HEALTHY
-                    if resp.status == 200
-                    else HealthStatus.DEGRADED
-                )
+                status = HealthStatus.HEALTHY if resp.status == 200 else HealthStatus.DEGRADED
         except (TimeoutError, OSError, aiohttp.ClientError):
             status = HealthStatus.DEGRADED
         return HealthCheckResult(component=self.name, status=status)

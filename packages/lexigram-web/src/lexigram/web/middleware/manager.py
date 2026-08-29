@@ -17,7 +17,7 @@ class WebMiddlewareManager:
         self.provider = provider
         from lexigram.web.middleware.registry import MiddlewareAdapterRegistry
 
-        self.registry = MiddlewareAdapterRegistry()
+        self.registry = MiddlewareAdapterRegistry.with_defaults()
 
     def build_native_stack(self, container: Any) -> list[StarletteMiddleware]:
         """Convert Lexigram middlewares to a native Starlette middleware stack.

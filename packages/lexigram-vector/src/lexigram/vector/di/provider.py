@@ -10,12 +10,10 @@ from lexigram.contracts.core import HealthCheckResult, HealthStatus, ProviderPri
 from lexigram.contracts.data.vector.protocols import VectorStoreProtocol
 from lexigram.di.provider import Provider
 from lexigram.logging import get_logger
+from lexigram.vector.backends.registry import VectorStoreRegistry
 from lexigram.vector.config import VectorConfig
 from lexigram.vector.constants import (
-    BACKEND_MEMORY,
     BACKEND_PGVECTOR,
-    BACKEND_PINECONE,
-    BACKEND_QDRANT,
 )
 
 if TYPE_CHECKING:
@@ -87,24 +85,8 @@ class VectorProvider(Provider):
         container during :meth:`boot`.  All other backends are created eagerly
         at registration time.
         """
-        backend = config.backend
-        if backend == BACKEND_MEMORY:
-            from lexigram.vector.backends.memory import MemoryVectorStore
-
-            return MemoryVectorStore(config=config.memory)
-        if backend == BACKEND_PINECONE:
-            from lexigram.vector.backends.pinecone import PineconeStore
-
-            return PineconeStore(config=config.pinecone)
-        if backend == BACKEND_QDRANT:
-            from lexigram.vector.backends.qdrant import QdrantStore
-
-            return QdrantStore(config=config.qdrant)
-        if backend == BACKEND_PGVECTOR:
-            # Cannot instantiate without a DB provider — sentinel, resolved in boot().
-            return None
-        msg = f"Unknown vector backend: {backend}"
-        raise ValueError(msg)
+        registry = VectorStoreRegistry.with_defaults()
+        return registry.create_store(config.backend, config)
 
     async def _maybe_wrap_with_tenancy(
         self,

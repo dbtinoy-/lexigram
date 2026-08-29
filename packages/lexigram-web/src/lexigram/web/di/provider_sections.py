@@ -229,7 +229,7 @@ def register_middleware_registries(
     container.singleton(MiddlewareRegistry, middleware_registry)
     container.singleton(
         MiddlewareAdapterRegistry,
-        MiddlewareAdapterRegistry(),
+        MiddlewareAdapterRegistry.with_defaults(),
     )
 
 
