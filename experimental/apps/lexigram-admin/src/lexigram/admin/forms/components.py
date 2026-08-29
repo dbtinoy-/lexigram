@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from lexigram.admin.forms.builder import Form
 
 from lexigram.admin.exceptions import AdminValidationError
+from lexigram.admin.forms.layout import FormLayout
 from lexigram.admin.forms.schema_generator import (
     FormSchema as FormSchema,
 )
@@ -65,8 +66,12 @@ class FormBase(Component, metaclass=FormMeta):
         self.hx_post = hx_post
         self.hx_target = hx_target
         # Class-level layout (list of AbstractLayoutNode) can be overridden
-        # per instance via the constructor.
-        self.layout = layout if layout is not None else getattr(type(self), "layout", None)
+        # per instance via the constructor. A FormLayout schema is normalized
+        # into renderable nodes here so render() always sees nodes.
+        layout = layout if layout is not None else getattr(type(self), "layout", None)
+        if isinstance(layout, FormLayout):
+            layout = layout.build()
+        self.layout = layout
         self.fields: dict[str, SchemaField] = dict(self._declared_fields)
         self.values: dict[str, Any] = {}
         self.errors: dict[str, list[str]] = {}

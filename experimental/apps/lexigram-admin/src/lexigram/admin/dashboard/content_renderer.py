@@ -183,8 +183,14 @@ def _render_stat_content(content: StatContent) -> str:
         if stat.delta:
             children.append(el("p", stat.delta, class_=_STAT_DELTA_CLASS))
         cards.append(el("div", *children, class_=_STAT_CLASS))
+    count = len(content.stats)
+    col_class = (
+        "lg:grid-cols-4"
+        if count >= 4
+        else "lg:grid-cols-3" if count == 3 else "sm:grid-cols-2"
+    )
     return render_to_string(
-        el("div", *cards, class_="grid grid-cols-1 sm:grid-cols-2 gap-4")
+        el("div", *cards, class_=f"grid grid-cols-1 {col_class} gap-4")
     )
 
 

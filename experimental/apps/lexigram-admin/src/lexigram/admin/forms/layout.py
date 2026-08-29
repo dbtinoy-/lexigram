@@ -39,6 +39,10 @@ class FieldNode(AbstractLayoutNode):
     def render(self, form: FormBase) -> Any:
         try:
             field = form.fields[self.field_name]
+            # Fields hidden via `visible_in_form=False` stay hidden even when
+            # referenced by a declared layout; matching the flat render path.
+            if not getattr(field, "visible_in_form", True):
+                return ""
             value = self.props.get("value")
             if value is None and hasattr(form, "values"):
                 value = form.values.get(self.field_name)
@@ -224,6 +228,39 @@ class FormLayoutBuilder:
 
 @dataclass
 class FormLayout:
-    """Schema definition for form layout."""
+    """Declarative form-layout schema.
+
+    Sections are plain dicts so the layout can be defined in configuration
+    or serialized to JSON::
+
+        FormLayout(sections=[
+            {"title": "Identity", "fields": ["username", "email"],
+             "columns": 2},
+        ])
+
+    Call :meth:`build` (or pass the instance as ``FormBase(layout=...)``)
+    to turn it into renderable layout nodes.
+    """
 
     sections: list[dict[str, Any]] = field(default_factory=list)
+
+    def build(self) -> list[AbstractLayoutNode]:
+        """Convert the schema into ``Section`` layout nodes."""
+        nodes: list[AbstractLayoutNode] = []
+        for section in self.sections:
+            title = section.get("title")
+            description = section.get("description")
+            try:
+                columns = max(1, min(4, int(section.get("columns", 1) or 1)))
+            except (TypeError, ValueError):
+                columns = 1
+            fields = section.get("fields") or []
+            nodes.append(
+                Section(
+                    title=title,
+                    description=description,
+                    columns=columns,
+                    children=[FieldNode(field_name=name) for name in fields],
+                )
+            )
+        return nodes

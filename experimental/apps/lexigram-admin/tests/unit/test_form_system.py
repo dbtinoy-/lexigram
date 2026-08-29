@@ -243,6 +243,42 @@ class TestFormLayoutBuilder:
         assert "General" in html
         assert 'name="name"' in html
 
+    def test_form_base_layout_hides_visible_in_form_false_fields(self):
+        from lexigram.admin.forms import FormBase, FormLayoutBuilder
+        from lexigram.admin.schema import TextField
+
+        class _ProfileForm(FormBase):
+            username = TextField(name="username", label="Username", required=True)
+            internal_note = TextField(
+                name="internal_note",
+                label="Internal note",
+                required=False,
+                visible_in_form=False,
+            )
+
+        layout = FormLayoutBuilder.create().section(
+            "Identity",
+            ["username", "internal_note"],
+        ).build()
+        html = str(_ProfileForm(layout=layout).render())
+        assert 'name="username"' in html
+        assert 'name="internal_note"' not in html
+
+    def test_form_base_renders_formlayout_schema(self):
+        from lexigram.admin.forms import FormBase, FormLayout
+        from lexigram.admin.schema import TextField
+
+        class _ProfileForm(FormBase):
+            name = TextField(name="name", label="Name", required=True)
+            email = TextField(name="email", label="Email", required=False)
+
+        html = str(_ProfileForm(
+            layout=FormLayout(sections=[{"title": "General", "fields": ["name"]}]),
+        ).render())
+        assert "General" in html
+        assert 'name="name"' in html
+        assert 'name="email"' not in html
+
     def test_form_base_renders_validation_errors(self):
         from lexigram.admin.forms import FormBase
         from lexigram.admin.schema import TextField

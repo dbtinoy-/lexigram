@@ -13,6 +13,19 @@ def test_searchbar_with_icon_renders_wrapper_and_padding():
     assert "<input" in html
 
 
+def test_searchbar_exposes_accessible_name_and_search_role():
+    html = render_to_string(
+        SearchBar(value="term", placeholder="Find...", show_icon=True),
+    )
+    assert 'role="search"' in html
+    assert 'aria-label="Search"' in html
+
+
+def test_searchbar_custom_aria_label():
+    html = render_to_string(SearchBar(aria_label="Filter records"))
+    assert 'aria-label="Filter records"' in html
+
+
 def test_searchbar_without_icon_renders_input_directly():
     html = render_to_string(SearchBar(show_icon=False))
     assert "<input" in html

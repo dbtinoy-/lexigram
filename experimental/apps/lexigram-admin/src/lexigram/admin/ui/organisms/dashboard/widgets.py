@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any
+from uuid import uuid4
 
 from lexigram.ui import Component, el
 
@@ -195,12 +196,31 @@ class StatCardGrid(Component):
     Args:
         stats: List of :class:`Stat` items to render.
         cols: Number of columns (2, 3, or 4). Defaults to 4.
+        data_source: Optional endpoint URL fetched via HTMX on load (and
+            ``refresh_interval`` when set). The initial ``stats`` still render
+            server-side, so the grid never shows an empty frame; the endpoint
+            fragment replaces the inner grid on response.
+        refresh_interval: Seconds between automatic refreshes when a
+            ``data_source`` is configured (0/None = load once).
+        aria_label: Accessible name for the live region.
     """
 
-    def __init__(self, stats: list[Stat], *, cols: int = 4) -> None:
+    def __init__(
+        self,
+        stats: list[Stat],
+        *,
+        cols: int = 4,
+        data_source: str | None = None,
+        refresh_interval: int | None = None,
+        aria_label: str = "Summary statistics",
+    ) -> None:
         super().__init__()
         self.stats = stats
         self.cols = cols
+        self.data_source = data_source
+        self.refresh_interval = refresh_interval
+        self.aria_label = aria_label
+        self._body_id = f"stat-grid-{uuid4().hex[:8]}"
 
     def render(self) -> Any:
         col_class = {
@@ -208,10 +228,45 @@ class StatCardGrid(Component):
             3: "sm:grid-cols-2 lg:grid-cols-3",
             4: "sm:grid-cols-2 lg:grid-cols-4",
         }.get(self.cols, "sm:grid-cols-2 lg:grid-cols-4")
-        return el(
+        grid = el(
             "div",
             *[StatCard(s) for s in self.stats],
             class_=f"grid grid-cols-1 {col_class} gap-4",
+        )
+        if not self.data_source:
+            return grid
+
+        # HTMX refresh: the endpoint owns the grid markup, so the outer
+        # container must stay a plain (non-grid) wrapper to avoid nesting
+        # a grid inside a grid after the swap.
+        triggers = ["load"]
+        if self.refresh_interval and self.refresh_interval > 0:
+            triggers.append(f"every {self.refresh_interval * 1000}ms")
+        return el(
+            "div",
+            grid,
+            el(
+                "div",
+                el("span", "Loading…", class_="sr-only"),
+                class_=(
+                    "htmx-indicator absolute inset-0 z-10 flex items-center "
+                    "justify-center bg-card/80 rounded-lg"
+                ),
+                role="status",
+                id=f"{self._body_id}-indicator",
+            ),
+            id=self._body_id,
+            class_="relative",
+            role="region",
+            aria_label=self.aria_label,
+            aria_live="polite",
+            **{
+                "hx-get": self.data_source,
+                "hx-trigger": ", ".join(triggers),
+                "hx-target": f"#{self._body_id}",
+                "hx-swap": "innerHTML",
+                "hx-indicator": f"#{self._body_id}-indicator",
+            },
         )
 
 
