@@ -108,15 +108,23 @@ class WSMessageTypeRegistry:
         self._handlers: dict[Any, WSMessageHandler] = {}
 
     @classmethod
-    def with_defaults(cls) -> WSMessageTypeRegistry:
-        """Return a new instance with default message handlers registered."""
+    def _default_entries(cls) -> dict[Any, WSMessageHandler]:
+        """Declare the built-in WebSocket message handlers."""
         from lexigram.admin.realtime.websocket import WSMessageType
 
+        return {
+            WSMessageType.PING: PingHandler(),
+            WSMessageType.SUBSCRIBE: SubscribeHandler(),
+            WSMessageType.UNSUBSCRIBE: UnsubscribeHandler(),
+            WSMessageType.ACTION: ActionHandler(),
+        }
+
+    @classmethod
+    def with_defaults(cls) -> WSMessageTypeRegistry:
+        """Return a new instance with default message handlers registered."""
         registry = cls()
-        registry._handlers[WSMessageType.PING] = PingHandler()
-        registry._handlers[WSMessageType.SUBSCRIBE] = SubscribeHandler()
-        registry._handlers[WSMessageType.UNSUBSCRIBE] = UnsubscribeHandler()
-        registry._handlers[WSMessageType.ACTION] = ActionHandler()
+        for key, handler in cls._default_entries().items():
+            registry.register(key, handler)
         return registry
 
     def register(self, msg_type: Any, handler: WSMessageHandler) -> None:

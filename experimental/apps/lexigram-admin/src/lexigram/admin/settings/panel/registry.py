@@ -104,30 +104,39 @@ class ConfigRegistry:
         return name in self._stores
 
     @classmethod
+    def _default_entries(cls) -> dict[str, type[ConfigSpec]]:
+        """Declare the built-in config specs keyed by namespace."""
+        from lexigram.admin.settings.panel.branding_spec import BrandingSpec
+        from lexigram.admin.settings.panel.cache_spec import CacheSpec
+        from lexigram.admin.settings.panel.deployment_spec import DeploymentInfoSpec
+        from lexigram.admin.settings.panel.features_spec import FeaturesSpec
+        from lexigram.admin.settings.panel.i18n_spec import I18nSpec
+        from lexigram.admin.settings.panel.profiler_spec import ProfilerSpec
+        from lexigram.admin.settings.panel.rate_limit_spec import RateLimitSpec
+        from lexigram.admin.settings.panel.rbac_spec import RBACSpec
+        from lexigram.admin.settings.panel.security_spec import SecuritySpec
+
+        specs: dict[str, type[ConfigSpec]] = {}
+        for spec in (
+            BrandingSpec,
+            CacheSpec,
+            DeploymentInfoSpec,
+            FeaturesSpec,
+            I18nSpec,
+            ProfilerSpec,
+            RateLimitSpec,
+            RBACSpec,
+            SecuritySpec,
+        ):
+            specs[spec.namespace] = spec
+        return specs
+
+    @classmethod
     def with_defaults(cls) -> ConfigRegistry:
         """Build a registry pre-populated with all built-in bound specs."""
         registry = cls()
-        from lexigram.admin.settings.panel import (
-            register_branding_spec,
-            register_cache_spec,
-            register_deployment_spec,
-            register_features_spec,
-            register_i18n_spec,
-            register_profiler_spec,
-            register_rate_limit_spec,
-            register_rbac_spec,
-            register_security_spec,
-        )
-
-        register_branding_spec(registry)
-        register_cache_spec(registry)
-        register_security_spec(registry)
-        register_features_spec(registry)
-        register_i18n_spec(registry)
-        register_profiler_spec(registry)
-        register_rate_limit_spec(registry)
-        register_rbac_spec(registry)
-        register_deployment_spec(registry)
+        for spec in cls._default_entries().values():
+            registry.register_spec(spec)
         return registry
 
     def get_node(self, full_key: str) -> AbstractConfigNode | None:

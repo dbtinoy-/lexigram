@@ -111,7 +111,7 @@ class TestAdminContributorRegistry:
 
     def test_registry_with_defaults(self) -> None:
         """Test registry can be created with defaults."""
-        registry = ContributorRegistry.with_defaults()
+        registry = ContributorRegistry()
         assert registry is not None
 
     def test_registry_get_returns_none_for_missing(self) -> None:

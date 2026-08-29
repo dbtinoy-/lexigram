@@ -100,12 +100,22 @@ class SeedFileRegistry:
 
     def __init__(self) -> None:
         self._handlers: dict[str, SeedFileHandler] = {}
-        self._register_default_handlers()
 
-    def _register_default_handlers(self) -> None:
-        """Register default seed file handlers."""
-        self.register_handler(".sql", SQLSeedHandler())
-        self.register_handler(".py", PythonSeedHandler())
+    @classmethod
+    def _default_entries(cls) -> dict[str, SeedFileHandler]:
+        """Declare the built-in seed file handlers."""
+        return {
+            ".sql": SQLSeedHandler(),
+            ".py": PythonSeedHandler(),
+        }
+
+    @classmethod
+    def with_defaults(cls) -> SeedFileRegistry:
+        """Create a registry pre-populated with the built-in handlers."""
+        registry = cls()
+        for extension, handler in cls._default_entries().items():
+            registry.register_handler(extension, handler)
+        return registry
 
     def register_handler(self, extension: str, handler: SeedFileHandler) -> None:
         """Register a seed file handler."""
@@ -120,7 +130,7 @@ class SeedFileRegistry:
 
 
 # Global seed file registry
-_seed_file_registry = SeedFileRegistry()
+_seed_file_registry = SeedFileRegistry.with_defaults()
 
 
 class SeedManager:

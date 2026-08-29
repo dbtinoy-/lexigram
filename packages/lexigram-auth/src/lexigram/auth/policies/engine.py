@@ -84,18 +84,19 @@ class PatternMatcherRegistry:
         self._matchers: list[PatternMatcher] = []
 
     @classmethod
+    def _default_entries(cls) -> dict[str, PatternMatcher]:
+        """Declare the standard pattern matchers (exact, wildcard)."""
+        return {
+            "exact": ExactPatternMatcher(),
+            "wildcard": WildcardPatternMatcher(),
+        }
+
+    @classmethod
     def with_defaults(cls) -> PatternMatcherRegistry:
         """Create a registry pre-loaded with the standard pattern matchers."""
         instance = cls()
-        instance._register_default_matchers()
+        instance._matchers = list(cls._default_entries().values())
         return instance
-
-    def _register_default_matchers(self) -> None:
-        """Register the default pattern matchers."""
-        self._matchers = [
-            ExactPatternMatcher(),
-            WildcardPatternMatcher(),
-        ]
 
     def register_matcher(self, matcher: PatternMatcher) -> None:
         """Register a custom pattern matcher."""

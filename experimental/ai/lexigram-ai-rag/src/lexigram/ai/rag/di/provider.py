@@ -108,7 +108,7 @@ class RAGProvider(Provider):
             RerankingStrategyRegistry,
         )
 
-        reranking_registry = RerankingStrategyRegistry.with_defaults()
+        reranking_registry = RerankingStrategyRegistry()
 
         # Register FlashRank handler if available
         if _flashrank_available():

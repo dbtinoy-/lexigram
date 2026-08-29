@@ -106,15 +106,22 @@ class FeedbackProcessorRegistry:
         self._processors: dict[str, FeedbackProcessor] = {}
 
     @classmethod
-    def with_defaults(cls) -> FeedbackProcessorRegistry:
-        """Create a registry pre-populated with the built-in feedback processors."""
+    def _default_entries(cls) -> dict[str, FeedbackProcessor]:
+        """Declare the built-in feedback processors."""
         from lexigram.ai.feedback.types import FeedbackType
 
+        return {
+            FeedbackType.RATING: RatingFeedbackProcessor(),
+            FeedbackType.TEXT: TextFeedbackProcessor(),
+            FeedbackType.CORRECTION: CorrectionFeedbackProcessor(),
+            FeedbackType.LABEL: LabelFeedbackProcessor(),
+        }
+
+    @classmethod
+    def with_defaults(cls) -> FeedbackProcessorRegistry:
+        """Create a registry pre-populated with the built-in feedback processors."""
         registry = cls()
-        registry._processors[FeedbackType.RATING] = RatingFeedbackProcessor()
-        registry._processors[FeedbackType.TEXT] = TextFeedbackProcessor()
-        registry._processors[FeedbackType.CORRECTION] = CorrectionFeedbackProcessor()
-        registry._processors[FeedbackType.LABEL] = LabelFeedbackProcessor()
+        registry._processors = dict(cls._default_entries())
         return registry
 
     def register(self, fb_type: str, processor: FeedbackProcessor) -> None:
