@@ -45,7 +45,6 @@ dependencies = [
     "alembic>=1.17.2",
     "aiosqlite>=0.22.1",
     "jinja2>=3.1.0",
-    "starlette>=0.28.0",
     "typer>=0.9.0",
     "anyio>=4.0.0",
 ]
@@ -95,10 +94,10 @@ all = [
 
 [project.urls]
 Homepage = "https://lexigram.dev"
-Repository = "https://github.com/dbtinoy-/lexigram-dev"
+Repository = "https://github.com/dbtinoy-/lexigram"
 Documentation = "https://docs.lexigram.dev"
-Issues = "https://github.com/dbtinoy-/lexigram-dev/issues"
-Changelog = "https://github.com/dbtinoy-/lexigram-dev/blob/main/CHANGELOG.md"
+Issues = "https://github.com/dbtinoy-/lexigram/issues"
+Changelog = "https://github.com/dbtinoy-/lexigram/blob/main/CHANGELOG.md"
 
 [project.entry-points."lexigram.admin.contributors"]
 sql = "lexigram.sql.admin.contributor:SqlAdminContributor"

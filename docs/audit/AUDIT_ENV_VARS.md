@@ -7,9 +7,9 @@
 ## Summary
 
 - Packages scanned: 1
-- Documented env var entries: 2260
-- Unique env var names: 1811
-- Duplicate env var names: 212
+- Documented env var entries: 2255
+- Unique env var names: 1806
+- Duplicate env var names: 207
 - Intentional non-config env sources: 3
 
 ## Duplicate Analysis
@@ -1907,11 +1907,6 @@
 | `LEX_MONITOR__HEALTH__INTERVAL` | int | (complex) | Health check interval in seconds | `packages/lexigram-monitor/src/lexigram/monitor/config.py:HealthCheckConfig.health.interval` |
 | `LEX_MONITOR__HEALTH__PATH` | str | "/health" | Health endpoint path | `packages/lexigram-monitor/src/lexigram/monitor/config.py:HealthCheckConfig.health.path` |
 | `LEX_MONITOR__HEALTH__TIMEOUT` | float | 5.0 | Health check timeout in seconds | `packages/lexigram-monitor/src/lexigram/monitor/config.py:HealthCheckConfig.health.timeout` |
-| `LEX_MONITOR__LOGGING__ENABLED` | bool | True | Enable structured logging | `packages/lexigram-monitor/src/lexigram/monitor/config.py:LoggingConfig.logging.enabled` |
-| `LEX_MONITOR__LOGGING__FORMAT` | str | "json" | Log format (json, text) | `packages/lexigram-monitor/src/lexigram/monitor/config.py:LoggingConfig.logging.format` |
-| `LEX_MONITOR__LOGGING__INCLUDE_TRACE_CONTEXT` | bool | True | Include trace context in logs | `packages/lexigram-monitor/src/lexigram/monitor/config.py:LoggingConfig.logging.include_trace_context` |
-| `LEX_MONITOR__LOGGING__LEVEL` | str | "INFO" | Default log level | `packages/lexigram-monitor/src/lexigram/monitor/config.py:LoggingConfig.logging.level` |
-| `LEX_MONITOR__LOGGING__REDACT_FIELDS` | list[str] | (required) | Fields to redact from logs | `packages/lexigram-monitor/src/lexigram/monitor/config.py:LoggingConfig.logging.redact_fields` |
 | `LEX_MONITOR__METRICS__COLLECTION_INTERVAL` | float | 60.0 | Metrics collection interval in seconds | `packages/lexigram-monitor/src/lexigram/monitor/config.py:MetricsConfig.metrics.collection_interval` |
 | `LEX_MONITOR__METRICS__DEFAULT_LABELS` | dict[str, str] | (required) | Default labels for all metrics | `packages/lexigram-monitor/src/lexigram/monitor/config.py:MetricsConfig.metrics.default_labels` |
 | `LEX_MONITOR__METRICS__ENABLED` | bool | True | Enable metrics collection | `packages/lexigram-monitor/src/lexigram/monitor/config.py:MetricsConfig.metrics.enabled` |

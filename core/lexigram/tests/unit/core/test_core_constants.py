@@ -39,51 +39,6 @@ class TestPythonVersion:
         assert constants.MIN_PYTHON_VERSION == (3, 11)
 
 
-class TestFeatureFlags:
-    """Test feature flags dictionary."""
-
-    def test_features_is_dict(self) -> None:
-        """FEATURES should be a dictionary."""
-        assert isinstance(constants.FEATURES, dict)
-
-    def test_features_contains_result_chaining(self) -> None:
-        """FEATURES should contain result_chaining flag."""
-        assert "result_chaining" in constants.FEATURES
-
-    def test_features_contains_lazy_imports(self) -> None:
-        """FEATURES should contain lazy_imports flag."""
-        assert "lazy_imports" in constants.FEATURES
-
-    def test_features_contains_strict_injection(self) -> None:
-        """FEATURES should contain strict_injection flag."""
-        assert "strict_injection" in constants.FEATURES
-
-    def test_features_contains_module_visibility(self) -> None:
-        """FEATURES should contain module_visibility flag."""
-        assert "module_visibility" in constants.FEATURES
-
-    def test_feature_flags_are_bools(self) -> None:
-        """All feature flag values should be booleans."""
-        for key, value in constants.FEATURES.items():
-            assert isinstance(value, bool), f"Feature '{key}' should be bool, got {type(value)}"
-
-    def test_result_chaining_is_enabled(self) -> None:
-        """result_chaining should be True."""
-        assert constants.FEATURES["result_chaining"] is True
-
-    def test_lazy_imports_is_enabled(self) -> None:
-        """lazy_imports should be True."""
-        assert constants.FEATURES["lazy_imports"] is True
-
-    def test_strict_injection_is_enabled(self) -> None:
-        """strict_injection should be True."""
-        assert constants.FEATURES["strict_injection"] is True
-
-    def test_module_visibility_is_disabled(self) -> None:
-        """module_visibility should be False (future feature)."""
-        assert constants.FEATURES["module_visibility"] is False
-
-
 class TestExports:
     """Test that constants are properly exported."""
 
@@ -91,6 +46,6 @@ class TestExports:
         """MIN_PYTHON_VERSION should be in __all__."""
         assert "MIN_PYTHON_VERSION" in constants.__all__
 
-    def test_all_contains_features(self) -> None:
-        """FEATURES should be in __all__."""
-        assert "FEATURES" in constants.__all__
+    def test_all_contains_version(self) -> None:
+        """__version__ should be in __all__."""
+        assert "__version__" in constants.__all__

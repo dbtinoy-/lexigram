@@ -1,4 +1,4 @@
-"""Health check and logging configuration."""
+"""Health check configuration."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 from lexigram.config import BaseConfig
 from lexigram.monitor import constants as monitor_const
-from lexigram.validation import Field, field_validator
+from lexigram.validation import Field
 
 
 @dataclass(init=False)
@@ -39,48 +39,6 @@ class HealthCheckConfig(BaseConfig):
     )
 
 
-@dataclass(init=False)
-class LoggingConfig(BaseConfig):
-    """Configuration for structured logging.
-
-    Attributes:
-        enabled: Whether structured logging is enabled.
-        level: Default log level.
-        format: Log format (json, text).
-        include_trace_context: Include trace context in logs.
-        redact_fields: Fields to redact from logs.
-    """
-
-    enabled: bool = Field(True, description="Enable structured logging")
-    level: str = Field("INFO", description="Default log level")
-    format: str = Field("json", description="Log format (json, text)")
-    include_trace_context: bool = Field(
-        True,
-        description="Include trace context in logs",
-    )
-    redact_fields: list[str] = Field(
-        default_factory=lambda: [
-            "password",
-            "secret",
-            "token",
-            "api_key",
-            "authorization",
-        ],
-        description="Fields to redact from logs",
-    )
-
-    @field_validator("level")
-    @classmethod
-    def validate_level(cls, v: str) -> str:
-        """Validate log level."""
-        valid_levels = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
-        v_upper = v.upper()
-        if v_upper not in valid_levels:
-            raise ValueError(f"level must be one of {valid_levels}")
-        return v_upper
-
-
 __all__ = [
     "HealthCheckConfig",
-    "LoggingConfig",
 ]

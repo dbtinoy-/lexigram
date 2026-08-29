@@ -10,7 +10,6 @@ from lexigram.monitor import (
     MetricsCollectorProtocol,
     MonitorProvider,
     PrometheusMiddleware,
-    Tracer,
 )
 
 
@@ -94,7 +93,10 @@ class TestMonitorProvider:
         provider = MonitorProvider(mock_backend)
 
         assert isinstance(provider.metrics_collector, MetricsCollectorProtocol)
-        assert isinstance(provider.tracer, Tracer)
+        # Tracing is composed eagerly only when explicit config is supplied;
+        # the no-config form defers it until register() so the orchestrator
+        # can inject the yaml section first.
+        assert provider.tracer is None
 
     @pytest.mark.asyncio
     async def test_provider_lifecycle(self):

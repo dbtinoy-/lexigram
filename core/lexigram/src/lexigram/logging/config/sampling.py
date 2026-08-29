@@ -16,7 +16,8 @@ class SamplingConfig(DomainModel):
         enabled: Whether log sampling is enabled.
         default_rate: Sampling rate (0.0 to 1.0). For example, 0.1 means 10%
             of log events are kept.
-        rules: Per-logger sampling rate overrides keyed by logger name.
+        rules: Per-event sampling rate overrides keyed by event name. For
+            example, ``{"request_received": 0.01}`` keeps 1% of those events.
     """
 
     enabled: bool = Field(default=False)

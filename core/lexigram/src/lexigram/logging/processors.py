@@ -36,6 +36,7 @@ class _LoggingState:
     """
 
     logger_levels: dict[str, int] = field(default_factory=dict)
+    service_name: str = ""
     sampling_enabled: bool = False
     sampling_default_rate: float = 1.0
     sampling_rules: dict[str, float] = field(default_factory=dict)
@@ -118,6 +119,23 @@ def _add_logger_name(
         name = getattr(logger, "name", None)
         if name:
             event_dict["logger"] = name
+    return event_dict
+
+
+def _service_processor(
+    logger: Any,
+    method_name: str,
+    event_dict: dict[str, Any],
+) -> dict[str, Any]:
+    """Inject the configured service name into the event dict.
+
+    Uses ``setdefault`` so an explicit ``service=`` supplied by the caller
+    or via ``bind(service=...)`` wins over the configured default.
+    """
+    with _state_lock:
+        service_name = _state.service_name
+    if service_name and "service" not in event_dict:
+        event_dict["service"] = service_name
     return event_dict
 
 
@@ -217,6 +235,7 @@ __all__ = [
     "_otel_processor",
     "_redact_processor",
     "_sampling_processor",
+    "_service_processor",
     "_state",
     "_state_lock",
 ]

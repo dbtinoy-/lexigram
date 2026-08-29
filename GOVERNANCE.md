@@ -61,7 +61,7 @@ The Lexigram Framework is an **open-source** project maintained by Lexigram, lic
 
 ### Quality
 - Ruff linting enforced in CI
-- Mypy type checking on core
+- Mypy type checking via `make type` (core, web, and all qualified packages)
 - Import boundary compliance (`.importlinter`)
 
 ### Documentation

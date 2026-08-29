@@ -4,8 +4,15 @@ import pytest
 from lexigram.monitor.config import MonitorConfig
 from lexigram.monitor.di.factories import create_provider_from_config
 
+
+def test_monitor_config_does_not_own_structured_logging() -> None:
+    """Structured logging is core-owned; MonitorConfig must not carry it."""
+    assert not hasattr(MonitorConfig(), "logging")
+
 try:
-    from opentelemetry.sdk.trace import TracerProvider as _OtelTracerProvider  # noqa: F401
+    from opentelemetry.sdk.trace import (
+        TracerProvider as _OtelTracerProvider,  # noqa: F401
+    )
 
     HAS_OPENTELEMETRY = True
 except ImportError:

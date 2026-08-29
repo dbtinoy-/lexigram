@@ -31,6 +31,11 @@ class TestLoggingLazyImports:
         from lexigram.logging import Logger
         assert Logger is not None
 
+    def test_import_redactor_protocol(self) -> None:
+        """Test lazy import of RedactorProtocol."""
+        from lexigram.logging import RedactorProtocol
+        assert RedactorProtocol is not None
+
     def test_import_configure_logging(self) -> None:
         """Test lazy import of configure_logging."""
         from lexigram.logging import configure_logging
@@ -102,6 +107,7 @@ class TestLoggingDir:
         assert "get_logger" in attrs
         assert "Logger" in attrs
         assert "LoggerFactoryProtocol" in attrs
+        assert "RedactorProtocol" in attrs
         assert "LoggingConfig" in attrs
 
 
@@ -114,6 +120,33 @@ class TestLoggingAll:
         assert "get_logger" in logging.__all__
         assert "Logger" in logging.__all__
         assert "LoggerFactoryProtocol" in logging.__all__
+        assert "RedactorProtocol" in logging.__all__
+
+
+class TestLoggingModuleVisibility:
+    """Test the logging contracts are part of CoreModule's public surface."""
+
+    def test_core_module_exports_logging_contracts(self) -> None:
+        """LoggerFactoryProtocol and RedactorProtocol must be module-visible."""
+        from lexigram.app.module import _get_core_exports
+        from lexigram.contracts.core.logging import (
+            LoggerFactoryProtocol,
+            LoggerProtocol,
+            RedactorProtocol,
+        )
+
+        exports = _get_core_exports()
+        assert LoggerProtocol in exports
+        assert LoggerFactoryProtocol in exports
+        assert RedactorProtocol in exports
+
+    def test_root_package_exports_logging_contracts(self) -> None:
+        """The root ``lexigram`` facade exposes the logging contracts."""
+        import lexigram
+
+        assert lexigram.LoggerProtocol is not None
+        assert lexigram.LoggerFactoryProtocol is not None
+        assert lexigram.RedactorProtocol is not None
 
 
 class TestLoggingInvalidImport:
@@ -123,4 +156,4 @@ class TestLoggingInvalidImport:
         """Test that accessing invalid attribute raises AttributeError."""
         from lexigram import logging
         with pytest.raises(AttributeError):
-            logging.nonexistent_attribute
+            _ = logging.nonexistent_attribute

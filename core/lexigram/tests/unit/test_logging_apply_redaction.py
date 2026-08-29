@@ -39,6 +39,14 @@ class TestApplyConfig:
         from lexigram.logging.processors import _state
         assert "lexigram.di" in _state.logger_levels
 
+    def test_apply_with_service_name(self) -> None:
+        """apply_config() forwards service_name to the pipeline state."""
+        config = LoggingConfig()
+        apply_config(config, service_name="orders")
+
+        from lexigram.logging.processors import _state
+        assert _state.service_name == "orders"
+
     def test_apply_with_sampling(self) -> None:
         """apply_config() passes sampling config through."""
         config = LoggingConfig(

@@ -10,6 +10,7 @@ from tests.integration.scenarios.relay_fakes.admin import (
     FakeBilling,
     FakeEventBus,
     FakeHTTPClient,
+    FakeMediaResolver,
     FakeUsageStore,
 )
 from tests.integration.scenarios.relay_fakes.channels import (
@@ -29,6 +30,7 @@ class RelayFakes:
         """Create one instance of every relay fake."""
         self.authorizer = FakeAuthorizer()
         self.http_client = FakeHTTPClient()
+        self.media_resolver = FakeMediaResolver()
         self.converter = FakeRelayConverter()
         self.billing = FakeBilling()
         self.operations = FakeRelayOperations()

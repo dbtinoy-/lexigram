@@ -148,7 +148,9 @@ It passes `BootContainerProtocol` to each provider's `boot()` method — giving 
 Run mypy on your provider package to confirm the container is fully typed:
 
 ```bash
-uv run mypy core/lexigram/src/  # Expect: Success: no issues found
+make type  # core + web + all qualified packages
+# or for just one package:
+make type-pkg PKG=lexigram-web
 ```
 
 Any `# type: ignore[attr-defined]` or `# type: ignore[type-abstract]` on container method calls indicates a signature needs updating.

@@ -86,7 +86,7 @@ type-pkg:  ## Run mypy on one package with its own config: make type-pkg PKG=lex
 	cd $(PKG) && $(MYPY) src
 
 .PHONY: test
-test:  ## Run the full test suite
+test:  ## Run the full offline (unit-only) suite; integration is deselected by default
 	$(PYTEST) --tb=short -q
 
 .PHONY: test-fast
@@ -320,7 +320,7 @@ catalog:  ## Regenerate docs/reference/REF_ERROR_CODES.md from source
 .PHONY: catalog-package
 catalog-package:  ## Run all standalone catalog generators
 	$(UV) run python dev/generators/cli_commands_catalog.py
-	$(UV) run python -m dev.catalogs.env_vars_catalog
+	$(UV) run python -m dev.generators.env_vars_catalog
 	$(UV) run python dev/generators/error_catalog.py
 
 version-check:  ## Compare local versions vs PyPI (exit 1 if bumps needed)

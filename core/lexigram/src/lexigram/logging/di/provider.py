@@ -25,19 +25,19 @@ class LoggingProvider(Provider):
             get_logger,
         )
         from lexigram.logging import LoggerProtocol as Logger
-        from lexigram.logging.redaction import NoOpRedactor
+        from lexigram.logging.redaction import DelegatingRedactor
 
         logger_factory = LoggerFactoryImpl()
         container.singleton(LoggerFactoryProtocol, logger_factory)
         container.singleton(Logger, get_logger("lexigram"))
-        container.singleton(RedactorProtocol, NoOpRedactor())
+        container.singleton(RedactorProtocol, DelegatingRedactor())
 
     async def boot(self, container: ContainerResolverProtocol) -> None:
         """Apply logging configuration from LexigramConfig."""
         from lexigram.logging.configurator import apply_config
 
         config = await container.resolve(LexigramConfig)
-        apply_config(config.logging)
+        apply_config(config.logging, service_name=getattr(config, "app_name", None))
 
     async def shutdown(self) -> None:
         """No resources to release for the logging module."""

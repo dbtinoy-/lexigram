@@ -2,16 +2,14 @@
 
 from __future__ import annotations
 
-import ast
-
-from dev.catalogs.env_vars_catalog._model import (
+from dev.generators.env_vars_catalog._model import (
     DIRECT_ENV_RE,
     EXCLUDED_DIRS,
+    REPO_ROOT,
     ConfigClass,
     ConfigField,
-    REPO_ROOT,
 )
-from dev.catalogs.env_vars_catalog.scan import (
+from dev.generators.env_vars_catalog.scan import (
     discover_packages,
     resolve_config_class,
     scan_config_classes_in_package,

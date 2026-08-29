@@ -47,10 +47,10 @@ sql = ["lexigram-sql>=0.1.4"]
 
 [project.urls]
 Homepage = "https://lexigram.dev"
-Repository = "https://github.com/dbtinoy-/lexigram-dev"
+Repository = "https://github.com/dbtinoy-/lexigram"
 Documentation = "https://docs.lexigram.dev"
-Issues = "https://github.com/dbtinoy-/lexigram-dev/issues"
-Changelog = "https://github.com/dbtinoy-/lexigram-dev/blob/main/lexigram-webhook/CHANGELOG.md"
+Issues = "https://github.com/dbtinoy-/lexigram/issues"
+Changelog = "https://github.com/dbtinoy-/lexigram/blob/main/lexigram-webhook/CHANGELOG.md"
 
 [project.entry-points."lexigram.modules"]
 webhook = "lexigram.webhook.module:WebhookModule"

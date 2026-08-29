@@ -6,6 +6,7 @@ import pytest
 from lexigram.contracts.core.logging import RedactorProtocol
 from lexigram.logging.redaction import (
     DefaultRedactor,
+    DelegatingRedactor,
     NoOpRedactor,
     _redactor_var,
     get_redactor,
@@ -113,6 +114,26 @@ class TestNoOpRedactor:
         value = [1, 2, 3]
         result = redactor.redact_value(value)
         assert result == value
+
+
+class TestDelegatingRedactor:
+    """Tests for DelegatingRedactor — tracks the active pipeline policy."""
+
+    def test_delegates_to_active_redactor(self) -> None:
+        """DelegatingRedactor follows the redactor installed by set_redactor."""
+        active = DefaultRedactor()
+        token = set_redactor(active)
+        try:
+            delegating = DelegatingRedactor()
+            result = delegating.redact_dict({"password": "x"})
+            assert result == {"password": "<redacted>"}
+            assert delegating.redact_value("x") == "x"
+        finally:
+            _redactor_var.reset(token)
+
+    def test_falls_back_to_noop_before_configure(self) -> None:
+        """Before any redactor is installed, DelegatingRedactor is a no-op."""
+        assert DelegatingRedactor().redact_dict({"password": "x"}) == {"password": "x"}
 
 
 class TestGetRedactor:

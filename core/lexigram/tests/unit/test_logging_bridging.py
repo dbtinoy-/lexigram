@@ -84,6 +84,29 @@ class TestConfigureLogging:
         configure_logging(level="ERROR")
 
 
+class TestServiceName:
+    """Test that service_name is injected into the pipeline."""
+
+    def test_service_name_injected(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """configure_logging(service_name=...) adds a service field."""
+        configure_logging(level="DEBUG", json_format=True, service_name="my-app")
+        logger = get_logger()
+        logger.info("service_event", value=1)
+        captured = capsys.readouterr()
+        outerr = captured.out + captured.err
+        assert "my-app" in outerr
+
+    def test_explicit_service_binding_wins(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """A caller-supplied service override is not clobbered."""
+        configure_logging(level="DEBUG", json_format=True, service_name="my-app")
+        logger = get_logger().bind(service="override")
+        logger.info("service_event", value=1)
+        captured = capsys.readouterr()
+        outerr = captured.out + captured.err
+        assert "override" in outerr
+        assert "my-app" not in outerr
+
+
 # ---------------------------------------------------------------------------
 # get_logger
 # ---------------------------------------------------------------------------

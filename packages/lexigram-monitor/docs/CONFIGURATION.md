@@ -52,15 +52,9 @@ Config section: `monitor` (`MonitorConfig`). Env prefix: `LEX_MONITOR__`.
 | `health.checks` | `list[str]` | `[]` | — | Health check names to run |
 | `health.interval` | `int` | `30` | `LEX_MONITOR__HEALTH__INTERVAL` | Health check interval (seconds) |
 
-## Logging (`logging:`)
+## Logging
 
-| Key | Type | Default | Env Var | Description |
-|-----|------|---------|---------|-------------|
-| `logging.enabled` | `bool` | `True` | `LEX_MONITOR__LOGGING__ENABLED` | Enable structured logging |
-| `logging.level` | `str` | `"INFO"` | `LEX_MONITOR__LOGGING__LEVEL` | Log level |
-| `logging.format` | `str` | `"json"` | `LEX_MONITOR__LOGGING__FORMAT` | Log format (json / text) |
-| `logging.include_trace_context` | `bool` | `True` | — | Include trace context in logs |
-| `logging.redact_fields` | `list[str]` | `["password","secret","token","api_key","authorization"]` | — | Fields to redact |
+Structured logging is owned by `lexigram.core` and configured through the core `logging` section (`LEX_LEXIGRAM__LOGGING__*`), not `MonitorConfig`. When the monitor package is used with core, use `LEX_LEXIGRAM__LOGGING__*` to set log level, format, redaction, sampling, and per-logger levels. See the core logging configuration documentation for the full key list.
 
 ## OpenTelemetry (`opentelemetry:`)
 
@@ -106,12 +100,6 @@ monitor:
   health:
     path: /health
     include_details: true
-  logging:
-    level: INFO
-    format: json
-    redact_fields:
-      - password
-      - api_key
   prometheus:
     port: 8000
     path: /metrics
@@ -124,5 +112,4 @@ export LEX_MONITOR__BACKEND_TYPE=prometheus
 export LEX_MONITOR__TRACING__ENABLED=true
 export LEX_MONITOR__TRACING__SAMPLE_RATE=0.1
 export LEX_MONITOR__PROMETHEUS__PORT=8000
-export LEX_MONITOR__LOGGING__LEVEL=INFO
 ```

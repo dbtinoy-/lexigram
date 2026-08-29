@@ -250,8 +250,12 @@ async def relay_app_factory(relay_fakes):
 
 @pytest.fixture
 async def relay_app(relay_app_factory):
-    """Yield one booted relay harness per test."""
-    return await relay_app_factory()
+    """Yield one booted relay harness per test and stop it afterwards."""
+    harness = await relay_app_factory()
+    try:
+        yield harness
+    finally:
+        await harness.app.stop()
 
 
 class _TenantUserMiddleware(BaseHTTPMiddleware):

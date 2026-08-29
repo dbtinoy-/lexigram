@@ -96,6 +96,56 @@ def pytest_configure(config: pytest.Config) -> None:
     # in specified test directories, preventing global discovery conflicts
 
 
+def _explicitly_requests_integration(config: pytest.Config) -> bool:
+    """Return ``True`` when the user explicitly asked for integration tests.
+
+    The default ``pytest`` invocation runs the unit surface only. Integration
+    tests are included when the caller opts in via a ``-m``/``-k`` expression
+    (the user is explicitly controlling selection) or by naming an integration
+    path on the command line (e.g. ``pytest tests/integration/...``).
+    """
+    # ``config.invocation_params.args`` is the raw CLI argument tuple. A path
+    # named on the command line is checked against ``config.args`` so we can
+    # distinguish an explicit path from pytest's default ``testpaths``.
+    invocation = list(config.invocation_params.args)
+
+    if any(arg in ("-m", "--markexpr", "-k", "--keyword") for arg in invocation):
+        return True
+
+    invocation_paths = {
+        str(arg).replace("\\", "/").rstrip("/") for arg in invocation
+    }
+    for candidate in config.args:
+        path = str(candidate).replace("\\", "/").rstrip("/")
+        if path not in invocation_paths:
+            continue
+        if (
+            path == "tests/integration"
+            or path.startswith("tests/integration/")
+            or path.endswith("/integration")
+            or "/integration/" in path
+        ):
+            return True
+    return False
+
+
+def pytest_collection_modifyitems(
+    config: pytest.Config, items: list[pytest.Item]
+) -> None:
+    """Deselect integration tests unless the user explicitly opted in."""
+    if _explicitly_requests_integration(config):
+        return
+
+    deselected = [
+        item for item in items if item.get_closest_marker("integration") is not None
+    ]
+    if not deselected:
+        return
+
+    items[:] = [item for item in items if item not in deselected]
+    config.hook.pytest_deselected(items=deselected)
+
+
 def pytest_load_initial_conftests(
     early_config: pytest.Config,
     parser: pytest.Parser,

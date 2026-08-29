@@ -102,8 +102,8 @@ def _is_sensitive_key(key: str) -> bool:
 class NoOpRedactor:
     """Default redactor that passes data through unchanged.
 
-    Replace with a real implementation via the DI container
-    or ``set_redactor()`` for sensitive environments.
+    Replace with a real implementation via ``set_redactor()`` or
+    a context-local override for sensitive environments.
     """
 
     def redact_dict(self, data: dict[str, Any]) -> dict[str, Any]:
@@ -111,6 +111,22 @@ class NoOpRedactor:
 
     def redact_value(self, value: Any) -> Any:
         return value
+
+
+class DelegatingRedactor:
+    """Redactor bound to the currently active pipeline redactor.
+
+    Useful as the container-registered ``RedactorProtocol`` so application
+    code that injects a redactor observes the same policy that the logging
+    pipeline applies (configured via :func:`configure_logging`), instead of
+    a stale NoOp instance.
+    """
+
+    def redact_dict(self, data: dict[str, Any]) -> dict[str, Any]:
+        return get_redactor().redact_dict(data)
+
+    def redact_value(self, value: Any) -> Any:
+        return get_redactor().redact_value(value)
 
 
 class DefaultRedactor:
@@ -191,24 +207,24 @@ _redactor_var: contextvars.ContextVar[RedactorProtocol | None] = contextvars.Con
 
 
 def get_redactor() -> RedactorProtocol:
-    """Get the current redactor.
+    """Get the redactor active in the current context.
 
     Resolution order:
         1. Context-local override (set via ``set_redactor()``)
-        2. No-op fallback (inject RedactorProtocol via DI for container resolution)
+        2. No-op fallback (before :func:`configure_logging` has run)
 
     This is intentionally synchronous — redaction is called from
-    structlog processors which are sync.
-
-    For container-based resolution, inject ``RedactorProtocol`` via DI
-    in your providers.
+    structlog processors which are sync.  Install the process-wide policy
+    with :func:`configure_logging` (or ``set_redactor``); if you want a
+    container-managed redactor that follows the same policy, inject
+    :class:`DelegatingRedactor`, not a directly-constructed ``NoOpRedactor``.
     """
     # 1. Context-local override (per-request or per-tenant)
     context_redactor = _redactor_var.get()
     if context_redactor is not None:
         return context_redactor
 
-    # 2. Fallback to no-op (container resolution requires DI)
+    # 2. Fallback to no-op until configure_logging() installs the policy
     return NoOpRedactor()
 
 
@@ -232,6 +248,7 @@ def set_redactor(
 
 __all__ = [
     "DefaultRedactor",
+    "DelegatingRedactor",
     "NoOpRedactor",
     "get_redactor",
     "set_redactor",

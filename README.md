@@ -51,9 +51,13 @@ uv sync --group tooling --group qa --group security --locked
 # unset values fall back to framework defaults)
 cp .env.example .env
 
-# run the default suite — this is the offline gate: it requires ZERO
-# external services. no postgres, no redis, no docker compose needed,
-# even on a fresh clone
+# run the default suite — this is the offline gate: plain `pytest`
+# deselects integration-marked tests, so it requires ZERO external
+# services. no postgres, no redis, no docker compose needed, even on a
+# fresh clone
+uv run pytest
+
+# explicit form (equivalent, also accepted)
 uv run pytest -m "not integration"
 
 # optional: only the separate integration suite exercises live services
@@ -155,6 +159,12 @@ latest `main` run); each job has a local one-liner:
 > fully offline: zero postgres/redis/docker required. Only the separate
 > `Integration scenarios` CI job starts the backing services (via
 > `tests/docker-compose.yml`, the same `docker compose up -d` flow).
+
+## repo guidelines
+
+- [AGENTS.md](AGENTS.md) — framework implementation standards (architecture, contracts, DI, style, providers/modules, testing, codegen)
+- [DEVELOPMENT.md](DEVELOPMENT.md) — repository engineering (build/lint/type/test, CI, versioning, git rules)
+- [CONTRIBUTING.md](CONTRIBUTING.md) — human-facing contribution workflow
 
 ## audit
 

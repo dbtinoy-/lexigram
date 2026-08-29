@@ -134,7 +134,7 @@ Providers rarely call `get_section()` themselves — declaring `config_key` and 
 debug: true
 logging:
   level: DEBUG
-  format: text
+  json_format: false
 sql:
   backend:
     url: "sqlite+aiosqlite:///./dev.db"
@@ -144,7 +144,7 @@ sql:
 debug: false
 logging:
   level: WARNING
-  format: json
+  json_format: true
 cache:
   backends:
     - name: redis

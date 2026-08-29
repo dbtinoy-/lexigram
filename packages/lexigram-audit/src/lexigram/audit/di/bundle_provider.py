@@ -39,6 +39,9 @@ class AuditBundleProvider(Provider):
     ) -> None:
         super().__init__(name="audit_bundle", priority=ProviderPriority.INFRASTRUCTURE)
         self.config = config
+        # Explicit config must win over the orchestrator's ``audit`` yaml
+        # section injection (e.g. ``AuditModule.configure(config=...)``).
+        self._config_from_factory = config is not None
         self._enable_admin = enable_admin
         self._sub_providers: list[Provider] = []
         if config is not None:

@@ -25,8 +25,11 @@ cd lexigram
 # Install dependencies
 make dev
 
-# Run tests
+# Run tests (offline unit surface; integration-marked tests are deselected by default)
 make test
+
+# Run the live-service integration suite
+make integration-test
 
 # Check code quality
 make check
@@ -84,62 +87,16 @@ Create a Pull Request with:
 
 ## Code Standards
 
-### Python Version
-- Target: Python 3.11+
-- Use modern syntax: `list[str]`, `dict[str, int]`, `X | None`
+The repository keeps the engineering rules in one authoritative place — do not
+duplicate them here.
 
-### Type Annotations
-All functions must have complete type annotations:
-```python
-def process(items: list[str], count: int = 10) -> dict[str, int]:
-    """Process items and return counts."""
-```
+- [AGENTS.md](./AGENTS.md) — **framework implementation standards** (architecture, contracts, DI, providers/modules, code style, testing, codegen).
+- [DEVELOPMENT.md](./DEVELOPMENT.md) — **repository engineering** (build/lint/type/test commands, CI, versioning, git rules).
+- [CONTRIBUTING.md](./CONTRIBUTING.md) — human-facing workflow (this file).
 
-### Async/Await
-All I/O is async:
-```python
-async def fetch_data(self, id: str) -> Result[Data, Error]:
-    # Use async with for resources
-    async with self.client.session() as session:
-        ...
-```
-
-### Error Handling
-- Use `Result[T, E]` for domain errors
-- Raise exceptions for infrastructure failures
-```python
-async def find_user(self, id: str) -> Result[User, UserNotFound]:
-    user = await self.repo.get(id)
-    if not user:
-        return Err(UserNotFound(id))
-    return Ok(user)
-```
-
-### Documentation
-- Google-style docstrings on all public symbols
-- Clear first line summarizing what the function does
-```python
-def process_batch(items: list[Item]) -> int:
-    """Process a batch of items and return the count processed.
-    
-    Args:
-        items: List of items to process.
-        
-    Returns:
-        Number of items successfully processed.
-        
-    Raises:
-        ValueError: If items list is empty.
-    """
-```
-
-### Testing
-- Write tests for all new features
-- Target 80%+ coverage
-- Use `@pytest.mark.asyncio` for async tests
-```bash
-make test-cov
-```
+Key minimums you are expected to meet: Python 3.11+, complete type annotations,
+`Result[T, E]` for expected domain failures, async I/O, Google-style docstrings,
+and strict package-boundary compliance.
 
 ## Testing
 
@@ -165,6 +122,8 @@ make integration-stop
 make test-pkg PKG=lexigram-web
 uv run pytest packages/lexigram-web/tests/unit/ -v
 ```
+
+For the complete command reference (lint, format, type, coverage, CI, versioning) see [DEVELOPMENT.md](./DEVELOPMENT.md).
 
 ## Linting & Formatting
 
@@ -203,15 +162,19 @@ This regenerates the API surface files from source.
 ## Release Process
 
 ### Version Management
-- Versions follow `0.<minor>.<patch><build>` (see `core/lexigram/pyproject.toml` for the current value)
-- Pre-release: `0.1.3008rc1` style
+- Versions follow `0.<minor>.<patch><build>`.
+- Versions are **per-package**; a package bumps only when that package changes.
+- See [DEVELOPMENT.md](./DEVELOPMENT.md#36-versioning) for the exact scheme and the `make version-bump` flow.
 
 ### Creating a Release
-1. Update version in all `pyproject.toml` files
-2. Update CHANGELOG.md
-3. Create a git tag: `git tag v0.1.1`
-4. Push tag: `git push origin v0.1.1`
-5. Build and publish: `uv build && uv publish`
+Use the repository's version tooling — do **not** hand-edit versions or bump
+every package for a single change.
+
+```bash
+make version-bump PKG=<pkg> APPLY=--apply
+# then publish that package
+cd <pkg> && uv build && uv publish
+```
 
 ## Code Review Process
 

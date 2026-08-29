@@ -15,16 +15,24 @@ configure_logging(level="INFO", json_format=True, service_name="my-app")
 
 Or through configuration (loaded from `LEX_*` env vars):
 
+Core configuration is the `lexigram.logging` section (env prefix
+`LEX_LEXIGRAM__LOGGING__*`). `lexigram-monitor` exposes observability config
+under `LEX_MONITOR__*` but does **not** own structured logging: format, level,
+redaction, and sampling are all driven by the core `LEX_LEXIGRAM__LOGGING__*`
+namespace so there is a single source of truth for the pipeline.
+
 | Config key                      | Meaning                                  | Default  |
 |---------------------------------|------------------------------------------|----------|
-| `LEX_MONITOR__LOGGING__ENABLED` | Enable structured logging                 | false    |
-| `LEX_MONITOR__LOGGING__FORMAT`  | Log format: `json` or `text`              | `text`   |
-| `LEX_MONITOR__LOGGING__LEVEL`   | Default log level                         | `INFO`   |
-| `LEX_MONITOR__LOGGING__INCLUDE_TRACE_CONTEXT` | Inject OTEL trace_id/span_id | true     |
-| `LEX_LEXIGRAM__LOGGING__LEVEL`  | Global level override (DI-configured)     | `INFO`   |
+| `LEX_LEXIGRAM__LOGGING__LEVEL`  | Global log level                         | `INFO`   |
+| `LEX_LEXIGRAM__LOGGING__JSON_FORMAT` | Render JSON instead of console text  | `false`  |
 | `LEX_LEXIGRAM__LOGGING__LEVELS` | Per-logger overrides (`{"lexigram.di": "DEBUG"}`) | —   |
+| `LEX_LEXIGRAM__LOGGING__SAMPLING__ENABLED` | Enable event sampling           | `false`  |
 | `LEX_LEXIGRAM__LOGGING__REDACTION__ENABLED` | Mask denylisted fields       | true     |
 | `LEX_LEXIGRAM__LOGGING__REDACTION__FIELD_DENYLIST` | Denylist tuple        | default  |
+
+`service_name` passed to `configure_logging()` — or the `Application.name` /
+`LexigramConfig.app_name` when using `apply_config()` — is injected into every
+log event as the top-level `service` field.
 
 ## JSON event schema (`json_format=True`)
 
@@ -54,7 +62,7 @@ Each log line is a single JSON object emitted by
 | `level`     | `structlog.stdlib.add_log_level`                             |
 | `logger`    | `_add_logger_name` — auto-prefixed with `lexigram.`          |
 | `event`     | Message passed to `logger.info("...")`                       |
-| `service`   | Bound context, e.g. via `LoggerFactoryImpl` / `bind(service=...)` |
+| `service`   | Injected by `configure_logging(service_name=...)` / `Application.name`; overridable via `bind(service=...)` |
 | `trace_id` / `span_id` | `_otel_processor` — only when an OTEL trace context is active |
 | `filename` / `lineno` / `module` / `func_name` | `CallsiteParameterAdder` |
 | `exception` | Formatted traceback, present on `logger.exception(...)` / `exc_info=True` |

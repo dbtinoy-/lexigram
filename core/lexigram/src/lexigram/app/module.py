@@ -62,7 +62,11 @@ from lexigram.contracts.core.clock import ClockProtocol
 from lexigram.contracts.core.config import ConfigProtocol
 from lexigram.contracts.core.di import ContainerResolverProtocol
 from lexigram.contracts.core.identity import IdGeneratorProtocol
-from lexigram.contracts.core.logging import LoggerProtocol
+from lexigram.contracts.core.logging import (
+    LoggerFactoryProtocol,
+    LoggerProtocol,
+    RedactorProtocol,
+)
 from lexigram.di.integration.provider import DiProvider
 from lexigram.di.module import Module, module
 from lexigram.di.module.dynamic import DynamicModule
@@ -117,7 +121,9 @@ def _get_core_exports() -> list[type]:
         ConfigProtocol,
         IdGeneratorProtocol,
         LexigramConfig,
+        LoggerFactoryProtocol,
         LoggerProtocol,
+        RedactorProtocol,
         ContainerResolverProtocol,
         Context,
         ContextVarRegistry,

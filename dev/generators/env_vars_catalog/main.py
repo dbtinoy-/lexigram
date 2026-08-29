@@ -7,20 +7,19 @@ from collections import defaultdict
 from datetime import UTC, datetime
 from pathlib import Path
 
-from dev.catalogs.env_vars_catalog._model import (
+from dev.generators.env_vars_catalog._model import (
     REPO_ROOT,
     YAML_ONLY_FIELDS,
     ConfigClass,
     _md,
 )
-from dev.catalogs.env_vars_catalog.env_paths import (
+from dev.generators.env_vars_catalog.env_paths import (
     build_field_paths,
     package_sort_key,
     scan_direct_env_vars,
 )
-from dev.catalogs.env_vars_catalog.scan import (
+from dev.generators.env_vars_catalog.scan import (
     discover_packages,
-    resolve_config_class,
     scan_config_classes_in_package,
 )
 
@@ -50,7 +49,7 @@ def _build_registry(
 
 def _resolve_ref(raw_type: str, registry: dict[tuple[str, str], _Keyed], home: str):
     """Resolve a type annotation to a keyed class, preferring same package."""
-    from dev.catalogs.env_vars_catalog.scan import resolve_config_class
+    from dev.generators.env_vars_catalog.scan import resolve_config_class
 
     # Try within the home package first
     home_names = {k[1] for k in registry if k[0] == home}
@@ -64,11 +63,8 @@ def _resolve_ref(raw_type: str, registry: dict[tuple[str, str], _Keyed], home: s
     for k in registry:
         global_by_name[k[1]] = global_by_name.get(k[1], 0) + 1
     view: dict[str, ConfigClass] = {}
-    for k, v in registry.items():
-        if global_by_name[k[1]] == 1:
-            view[k[1]] = v.cls
-    for n, c in ((k[1], v.cls) for k, v in registry.items() if k[0] == home):
-        view[n] = c
+    view.update({k[1]: v.cls for k, v in registry.items() if global_by_name[k[1]] == 1})
+    view.update({k[1]: v.cls for k, v in registry.items() if k[0] == home})
     return resolve_config_class(raw_type, view)
 
 

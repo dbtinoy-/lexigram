@@ -6182,7 +6182,6 @@ dependencies = [
     { name = "lexigram" },
     { name = "lexigram-contracts" },
     { name = "orjson" },
-    { name = "starlette" },
     { name = "typer" },
     { name = "typing-extensions" },
 ]
@@ -6267,7 +6266,6 @@ requires-dist = [
     { name = "redis", marker = "extra == 'all'", specifier = ">=5.0.0" },
     { name = "redis", marker = "extra == 'redis'", specifier = ">=5.0.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.1.0" },
-    { name = "starlette", specifier = ">=0.28.0" },
     { name = "typer", specifier = ">=0.9.0" },
     { name = "types-redis", marker = "extra == 'dev'", specifier = ">=4.6.0" },
     { name = "typing-extensions", specifier = ">=4.0.0" },
@@ -6451,7 +6449,6 @@ dependencies = [
     { name = "jinja2" },
     { name = "lexigram" },
     { name = "lexigram-contracts" },
-    { name = "starlette" },
     { name = "typer" },
     { name = "typing-extensions" },
 ]
@@ -6553,7 +6550,6 @@ requires-dist = [
     { name = "pytest-mock", marker = "extra == 'all'", specifier = ">=3.10.0" },
     { name = "pytest-mock", marker = "extra == 'test'", specifier = ">=3.10.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.1.0" },
-    { name = "starlette", specifier = ">=0.28.0" },
     { name = "typer", specifier = ">=0.9.0" },
     { name = "typing-extensions", specifier = ">=4.0.0" },
 ]
@@ -7815,7 +7811,6 @@ dependencies = [
     { name = "jinja2" },
     { name = "lexigram" },
     { name = "lexigram-contracts" },
-    { name = "starlette" },
 ]
 
 [package.optional-dependencies]
@@ -7844,7 +7839,6 @@ requires-dist = [
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.8.0" },
-    { name = "starlette", specifier = ">=0.28.0" },
 ]
 provides-extras = ["dev"]
 
@@ -8175,7 +8169,6 @@ dependencies = [
     { name = "lexigram" },
     { name = "lexigram-contracts" },
     { name = "sqlalchemy" },
-    { name = "starlette" },
     { name = "typer" },
     { name = "typing-extensions" },
 ]
@@ -8255,7 +8248,6 @@ requires-dist = [
     { name = "pytest-mock", marker = "extra == 'test'", specifier = ">=3.10.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.1.0" },
     { name = "sqlalchemy", specifier = ">=2.0.0" },
-    { name = "starlette", specifier = ">=0.28.0" },
     { name = "typer", specifier = ">=0.9.0" },
     { name = "typing-extensions", specifier = ">=4.0.0" },
 ]
@@ -8391,7 +8383,6 @@ dependencies = [
     { name = "lexigram" },
     { name = "lexigram-contracts" },
     { name = "psutil" },
-    { name = "starlette" },
     { name = "typer" },
     { name = "typing-extensions" },
 ]
@@ -8473,7 +8464,6 @@ requires-dist = [
     { name = "rq", marker = "extra == 'all'", specifier = ">=1.15.0" },
     { name = "rq", marker = "extra == 'redis'", specifier = ">=1.15.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.1.0" },
-    { name = "starlette", specifier = ">=0.28.0" },
     { name = "typer", specifier = ">=0.9.0" },
     { name = "types-croniter", marker = "extra == 'dev'", specifier = ">=2.0.0" },
     { name = "typing-extensions", specifier = ">=4.0.0" },

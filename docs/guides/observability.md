@@ -51,7 +51,7 @@ class OrderService:
             raise
 ```
 
-Keyword arguments become first-class fields in the JSON output. `logger.bind(...)` returns a new logger with permanent context — useful for request-scoped fields like `request_id` or `tenant_id`. Format, level, and `redact_fields` are governed by the `monitor.logging` section below.
+Keyword arguments become first-class fields in the JSON output. `logger.bind(...)` returns a new logger with permanent context — useful for request-scoped fields like `request_id` or `tenant_id`. Format, level, redaction, and sampling are governed by the core logging config — `LEX_LEXIGRAM__LOGGING__*` or the `logging:` section at the core app level — not by `MonitorConfig` (see [YAML Configuration](/fundamentals/yaml-configuration/)).
 
 ### Sentry Error Tracking
 
@@ -226,15 +226,9 @@ monitor:
     path: "/health"
     interval: 30
     timeout: 5
-
-  logging:
-    level: "INFO"
-    format: "json"
-    include_trace_context: true
-    redact_fields: ["password", "token", "authorization"]
 ```
 
-Every key has a `LEX_MONITOR__*` environment-variable equivalent (e.g. `LEX_MONITOR__TRACING__SAMPLE_RATE=0.05`). See [YAML Configuration](/fundamentals/yaml-configuration/) for override semantics.
+Every key shown above has a `LEX_MONITOR__*` environment-variable equivalent (e.g. `LEX_MONITOR__TRACING__SAMPLE_RATE=0.05`). Structured logging is configured separately via the core `LEX_LEXIGRAM__LOGGING__*` namespace. See [YAML Configuration](/fundamentals/yaml-configuration/) for override semantics.
 
 For tests, swap the module for a no-op stub that discards everything:
 

@@ -153,8 +153,13 @@ class MonitorProvider(
         # Exporter registries — owned by this provider, registered via DI
         self._tracing_exporter_registry = TracingExporterRegistry.with_defaults()
         self._metrics_exporter_registry = MetricsExporterRegistry.with_defaults()
-        # Store config for runtime registration decisions
+        # Store config for runtime registration decisions. When explicit
+        # config was supplied at construction time (``configure()`` or
+        # ``create_provider_from_config``), skip the orchestrator's yaml
+        # section injection in ``_inject_provider_config`` so the explicit
+        # values are not overwritten by the default ``monitor`` section.
         self._config = config
+        self._config_from_factory = config is not None
         if config is not None:
             self._compose_tracing()
         self._health_checker_registry: HealthCheckerRegistry | None = None
