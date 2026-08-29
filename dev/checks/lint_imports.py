@@ -24,10 +24,10 @@ Before grimp's finder runs, this script:
    name).  The view mirrors the runtime layout:
    ``lexigram/contracts/...``, ``lexigram/ai/governance/...``, etc.
 
-3. Patches ``ImportLibPackageFinder.determine_package_directories``
-   (grimp >= 3.13 returns a *set* of directories) to return the view
-   for ``lexigram`` and ``lexigram.*``.  Other packages use the
-   original ``find_spec`` logic unchanged.
+3. Patches ``ImportLibPackageFinder.determine_package_directory``
+   (grimp 3.13 returns a single physical directory, patched to return the
+   merged view for ``lexigram`` and ``lexigram.*``).  Other packages use
+   the original finder logic unchanged.
 
 grimp walks the view with ``os.walk(followlinks=True)``, so the
 symlinked tree is fully visible to it. This gives grimp a complete
@@ -98,20 +98,20 @@ _VIEW_ROOT = _build_view()
 # ── 2. Monkey-patch grimp's PackageFinder ───────────────────────────────────────
 from grimp.adaptors.packagefinder import ImportLibPackageFinder as _Finder  # noqa: E402
 
-_original_determine = _Finder.determine_package_directories
+_original_determine = _Finder.determine_package_directory
 
 
 def _namespace_aware_determine(
     self: _Finder, package_name: str, file_system: object
-) -> set[str]:
+) -> str:
     """Return the merged view directory for any ``lexigram.*`` package.
 
-    grimp >= 3.13 resolves packages through ``determine_package_directories``
-    (plural), which returns a *set* of physical directories.  For the
-    ``lexigram`` namespace we return the single merged view directory so
-    sub-packages spread across many physical ``lexigram-*/src`` trees
-    resolve as one tree; any other name uses the original
-    ``importlib.util.find_spec`` resolution.
+    grimp 3.13 (the pinned version) resolves packages through
+    ``determine_package_directory`` (singular), which returns one physical
+    directory.  For the ``lexigram`` namespace we return the single merged
+    view directory so sub-packages spread across many physical
+    ``lexigram-*/src`` trees resolve as one tree; any other name uses the
+    original finder's resolution.
 
     Args:
         package_name: Name of the package grimp is resolving.
@@ -127,13 +127,13 @@ def _namespace_aware_determine(
         for part in parts[1:]:
             view_dir = os.path.join(view_dir, part)
         if os.path.isdir(view_dir):
-            return {view_dir}
-    return _original_determine(  # type: ignore[return-value]
+            return view_dir
+    return _original_determine(
         self, package_name=package_name, file_system=file_system
     )
 
 
-_Finder.determine_package_directories = _namespace_aware_determine  # type: ignore[method-assign]
+_Finder.determine_package_directory = _namespace_aware_determine  # type: ignore[method-assign]
 
 # ── 3. Hand off to import-linter's standard CLI ─────────────────────────────────
 # lint_imports_command is a Click command; calling it with no arguments

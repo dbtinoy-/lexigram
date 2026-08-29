@@ -260,7 +260,11 @@ module = "lexigram.serialization.msgpack_serializer"
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
- module = "yaml"
+module = "yaml"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["opentelemetry", "opentelemetry.*"]
 ignore_missing_imports = true
 
 # =============================================================================

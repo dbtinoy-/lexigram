@@ -32,7 +32,7 @@ from orders.services.orders_api import OrdersApi
 def _freeze_logging_config(monkeypatch: pytest.MonkeyPatch) -> None:
     """Keep structlog processors stable so capture_logs sees lifecycle events."""
     monkeypatch.setattr(
-        "lexigram.app.base._apply_logging_config", lambda _cfg: None
+        "lexigram.app.base._apply_logging_config", lambda _cfg, **kwargs: None
     )
 
 

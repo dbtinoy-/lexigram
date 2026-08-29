@@ -160,6 +160,13 @@ overrides = [
     { module = "prometheus_client.*", ignore_missing_imports = true },
     { module = "opentelemetry.*", ignore_missing_imports = true },
     { module = "sentry_sdk.*", ignore_missing_imports = true },
+    # Optional-dependency shim modules: OTel/prometheus stubs are present or
+    # absent depending on which dependency groups are installed, so the
+    # conditional-import fallback typing (class rebinding, dummy spans, shim
+    # functions) cannot be made stable in both environments. Runtime fallback
+    # behavior is covered by the monitor tests.
+    { module = "lexigram.monitor.instrumentation.*", disable_error_code = ["misc", "assignment", "arg-type"] },
+    { module = "lexigram.monitor.metrics.prometheus", disable_error_code = ["misc", "assignment", "arg-type"] },
 ]
 
 [tool.uv.sources.lexigram]

@@ -1,7 +1,7 @@
 # ── Metadata ────────────────────────────────────────────────────────────────
 name: auth-apikeys
 version: 0.1.0
-description: API key lifecycle: creation, scoping, and revocation
+description: "API key lifecycle: creation, scoping, and revocation"
 # ────────────────────────────────────────────────────────────────────────────
 # ══════════════════════════════════════════════════════════════════════════════
 # Auth-APIKeys Demo — Complete Configuration Reference
