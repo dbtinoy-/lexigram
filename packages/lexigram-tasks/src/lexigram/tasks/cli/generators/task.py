@@ -15,6 +15,7 @@ class TaskGenerator(GeneratorBase):
     name = "task"
     description = "Generate a background task with queue registration"
     default_output_dir = "src/tasks"
+    template_name = "task.py.jinja2"
 
     def __init__(self, output_dir: str | Path = "src/tasks") -> None:
         super().__init__(output_dir=output_dir)
@@ -70,7 +71,7 @@ class TaskGenerator(GeneratorBase):
                 {"name": f.name, "type": f.type, "required": f.required} for f in fields
             ],
         }
-        content = self.render_template("task.py.jinja2", context)
+        content = self.render_template(self.template_name, context)
         file_path = self.output_dir / f"{task_name}_task.py"
         self.stage(file_path, content)
         return self.finalize(self.commit(resolve_options(dry_run=dry_run, force=force)))

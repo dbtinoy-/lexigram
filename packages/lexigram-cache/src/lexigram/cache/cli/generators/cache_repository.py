@@ -20,6 +20,7 @@ class CacheRepositoryGenerator(GeneratorBase):
     name = "cache_repo"
     description = "Generate a cached repository with cache-aside pattern"
     default_output_dir = "src/repositories"
+    template_name = "cache_repository.py.jinja2"
 
     def __init__(self, output_dir: str | Path = "src/repositories") -> None:
         super().__init__(output_dir=output_dir)
@@ -56,7 +57,7 @@ class CacheRepositoryGenerator(GeneratorBase):
         pk_param = f"entity_{pk_name}" if pk_name == "id" else pk_name
 
         content = self.render_template(
-            "cache_repository.py.jinja2",
+            self.template_name,
             {
                 "entity_name": entity_name,
                 "repo_name_snake": repo_snake,

@@ -29,6 +29,7 @@ class TestGenerator(GeneratorBase):
     name = "test"
     description = "Generate test"
     default_output_dir = "tests/unit"
+    template_name = "test_unit.py.jinja2"
 
     def __init__(self, output_dir: str | Path = "tests/unit") -> None:
         super().__init__(output_dir=output_dir)
@@ -107,7 +108,7 @@ class TestGenerator(GeneratorBase):
             "fields": prepared_fields,
         }
 
-        content = self.render_template("test_unit.py.jinja2", context)
+        content = self.render_template(self.template_name, context)
         file_path = self.output_dir / f"test_{model_name}.py"
         self.stage(file_path, content)
         return self.finalize(self.commit(resolve_options(dry_run=dry_run, force=force)))

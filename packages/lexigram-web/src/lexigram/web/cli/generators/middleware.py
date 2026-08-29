@@ -15,6 +15,7 @@ class MiddlewareGenerator(GeneratorBase):
     name = "middleware"
     description = "Generate a web middleware component"
     default_output_dir = "src/middleware"
+    template_name = "middleware.py.jinja2"
 
     def __init__(self, output_dir: str | Path = "src/middleware") -> None:
         super().__init__(output_dir=output_dir)
@@ -43,7 +44,7 @@ class MiddlewareGenerator(GeneratorBase):
         """
         file_path = self.output_dir / f"{self._to_snake_case(name)}_middleware.py"
         content = self.render_template(
-            "middleware.py.jinja2",
+            self.template_name,
             {
                 "name": name,
                 "class_name": f"{self._to_pascal_case(name)}Middleware",
