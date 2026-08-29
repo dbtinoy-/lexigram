@@ -117,6 +117,13 @@ async def relay_app_factory(relay_fakes):
     """
 
     async def _build():
+        # Snapshot the import table before boot so the boot test can assert
+        # that provider boot itself did not import optional LLM SDKs, even
+        # when an earlier test in the session already imported them.
+        import sys as _sys
+
+        modules_before_boot = frozenset(_sys.modules)
+
         from lexigram.admin import AdminModule
         from lexigram.admin.config import AdminConfig
         from lexigram.ai.governance import GovernanceModule
@@ -243,7 +250,11 @@ async def relay_app_factory(relay_fakes):
         container.bind(RelayBillingProtocol, relay_fakes.billing)
         container.bind(RelayConverterProtocol, relay_fakes.converter)
 
-        return RelayAppHarness(app=app, fakes=relay_fakes)
+        return RelayAppHarness(
+            app=app,
+            fakes=relay_fakes,
+            modules_before_boot=modules_before_boot,
+        )
 
     return _build
 

@@ -4,11 +4,9 @@ from __future__ import annotations
 
 import time
 from typing import Any
-from unittest.mock import AsyncMock
 
 import pytest
 
-from lexigram.result import Ok
 from lexigram.web.security.config import CSRFConfig
 from lexigram.web.security.csrf.middleware import CSRFProtectionMiddleware
 
@@ -142,7 +140,13 @@ async def test_post_with_tampered_signature_rejected() -> None:
     token = middleware._build_signed_token(int(time.time()))
     assert token is not None
     payload, _sig = token.rsplit(".", 1)
-    forged = f"{payload}.{_sig[:-1]}A"
+    # Mutate a middle signature character: the final char of an unpadded
+    # 32-byte base64url signature carries only 4 meaningful bits, so
+    # replacing it can decode to the identical digest (1/16 of the time)
+    # and let a "forged" token pass verification. A middle char always
+    # changes the decoded signature bytes.
+    alt = "B" if _sig[10] != "B" else "C"
+    forged = f"{payload}.{_sig[:10]}{alt}{_sig[11:]}"
     scope = _make_scope(
         method="POST",
         headers=[
