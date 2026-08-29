@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
+
 @dataclass
 class TemplateConfig:
     """Configuration for a project template."""
@@ -188,7 +189,12 @@ class TemplateRegistry:
 
 
 class ProjectBuilder:
-    """Builder for creating new projects from templates."""
+    """Builder for creating new projects from templates.
+
+    Delegates to the canonical :mod:`lexigram.cli.scaffold` renderer so the
+    registry templates and ``lexigram new project --template`` produce the
+    exact same, fully aligned project tree.
+    """
 
     def __init__(self, template: ProjectTemplate | str):
         if isinstance(template, str):
@@ -204,169 +210,23 @@ class ProjectBuilder:
         project_name: str,
         target_dir: Path,
         options: dict[str, Any] | None = None,
-    ) -> None:
-        """Create a new project from the template."""
-        options = options or {}
+    ) -> list[Path]:
+        """Create a new project from the template.
 
-        if target_dir.exists() and any(target_dir.iterdir()):
-            raise ValueError(f"Directory {target_dir} is not empty")
+        Args:
+            project_name: Project name (dashes become underscores).
+            target_dir: Destination directory.
+            options: Reserved for feature toggles (currently unused).
 
-        target_dir.mkdir(parents=True, exist_ok=True)
+        Returns:
+            The list of created file paths.
 
-        package_name = project_name.replace("-", "_")
+        Raises:
+            ValueError: Directory is not empty or the template is unknown.
+        """
+        from lexigram.cli.scaffold import render_project
 
-        self._create_project_files(project_name, package_name, target_dir, options)
-        self._create_pyproject_toml(project_name, package_name, target_dir)
-        self._create_lexigram_yaml(project_name, target_dir)
-        self._create_env_example(target_dir)
-
-    def _create_project_files(
-        self,
-        project_name: str,
-        package_name: str,
-        target_dir: Path,
-        options: dict[str, Any],
-    ) -> None:
-        src_dir = target_dir / "src" / package_name
-        src_dir.mkdir(parents=True, exist_ok=True)
-
-        (src_dir / "__init__.py").write_text(f'"""{project_name} package."""\n')
-
-        app_py = src_dir / "app.py"
-        if options.get("auth"):
-            app_py.write_text(_APP_WITH_AUTH_TEMPLATE.format(package_name=package_name))
-        else:
-            app_py.write_text(_APP_TEMPLATE.format(package_name=package_name))
-
-        controllers_dir = src_dir / "api" / "v1" / "controllers"
-        controllers_dir.mkdir(parents=True, exist_ok=True)
-        (controllers_dir / "__init__.py").write_text("")
-
-        models_dir = src_dir / "models"
-        models_dir.mkdir(parents=True, exist_ok=True)
-        (models_dir / "__init__.py").write_text("")
-
-        services_dir = src_dir / "services"
-        services_dir.mkdir(parents=True, exist_ok=True)
-        (services_dir / "__init__.py").write_text("")
-
-    def _create_pyproject_toml(
-        self,
-        project_name: str,
-        package_name: str,
-        target_dir: Path,
-    ) -> None:
-        deps = self.template.get_dependencies()
-        deps_str = '\n    "'.join(deps) if deps else ""
-
-        content = _PYPROJECT_TEMPLATE.format(
-            project_name=project_name,
-            package_name=package_name,
-            dependencies=deps_str,
-        )
-        (target_dir / "pyproject.toml").write_text(content)
-
-    def _create_lexigram_yaml(
-        self,
-        project_name: str,
-        target_dir: Path,
-    ) -> None:
-        content = _LEX_YAML_TEMPLATE.format(project_name=project_name)
-        (target_dir / "application.yaml").write_text(content)
-
-    def _create_env_example(self, target_dir: Path) -> None:
-        (target_dir / ".env.example").write_text(_ENV_EXAMPLE_TEMPLATE)
-
-
-_APP_TEMPLATE = '''"""Application entry point."""
-
-from lexigram import App
-
-
-def create_app() -> App:
-    app = App(name="{package_name}")
-    return app
-
-
-app = create_app()
-
-
-if __name__ == "__main__":
-    from lexigram.web.server.runner import run_server
-    run_server(app, host="0.0.0.0", port=8000)
-'''
-
-_APP_WITH_AUTH_TEMPLATE = '''"""Application entry point with authentication."""
-
-from lexigram import App
-from lexigram.cli.registry.provider import AuthProvider
-
-
-def create_app() -> App:
-    app = App(name="{package_name}")
-    app.add_provider(AuthProvider())
-    return app
-
-
-app = create_app()
-
-
-if __name__ == "__main__":
-    from lexigram.web.server.runner import run_server
-    run_server(app, host="0.0.0.0", port=8000)
-'''
-
-_PYPROJECT_TEMPLATE = """[project]
-name = "{project_name}"
-version = "0.1.0"
-description = "A Lexigram application"
-requires-python = ">=3.11"
-dependencies = [
-    "{dependencies}"
-]
-
-[project.optional-dependencies]
-dev = [
-    "pytest",
-    "ruff",
-    "mypy",
-]
-
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
-[tool.lexigram]
-module = "{package_name}.app:app"
-"""
-
-_LEX_YAML_TEMPLATE = """project:
-  name: {project_name}
-  version: "0.1.0"
-
-logging:
-  level: INFO
-  format: json
-"""
-
-_ENV_EXAMPLE_TEMPLATE = """# Lexigram environment overrides (LEX_<SECTION>__<FIELD> syntax).
-# Sections mirror application.yaml keys; env vars override matching keys.
-# Copy to .env and uncomment what you need.
-
-# Web server (web.server)
-# LEX_WEB__SERVER__HOST=127.0.0.1
-# LEX_WEB__SERVER__PORT=8000
-
-# Logging (logging.level): DEBUG | INFO | WARNING | ERROR
-# LEX_LEXIGRAM__LOGGING__LEVEL=DEBUG
-
-# Database URL (consumed by lexigram-sql's config_key="sql" provider section;
-# also set db.backend.url in application.yaml when adding SQL support)
-# LEX_SQL__BACKEND__URL=postgresql://localhost/mydb
-
-# Auth secret — set a real value before deploying with auth enabled
-# LEX_AUTH__SECRET_KEY=change-me-in-production
-"""
+        return render_project(self.template.name, project_name, target_dir)
 
 
 __all__ = [
