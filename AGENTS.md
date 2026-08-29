@@ -1113,8 +1113,15 @@ class AgentStrategyRegistry:
 
 **Rules:**
 - `__init__` creates an **empty** registry. No `_register_defaults()`.
-- `with_defaults()` classmethod for pre-populated instances.
-- Provider calls `with_defaults()` during `register()` for DI-managed
+- `with_defaults()` is inherited from `lexigram.primitives.registry.Registry`
+  (it is not re-implemented per class) and returns exactly the entries
+  declared by the `_default_entries()` classmethod — the complete,
+  in-package built-in set.  `StrategyRegistry` delegates that hook to
+  `default_strategies()`.
+- Registries with no in-package built-in set (plugin/contributor-driven)
+  leave `_default_entries()` unimplemented: `with_defaults()` raises, and
+  they are populated explicitly via `register()` / `register_many()`.
+- DI providers call `with_defaults()` during `register()` for DI-managed
   registries.
 
 ---

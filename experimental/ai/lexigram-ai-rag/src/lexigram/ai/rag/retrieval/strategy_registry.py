@@ -1,6 +1,7 @@
 """Retrieval strategy registry for RAG document ranking.
 
-Maps strategy names to :class:`~lexigram.contracts.ai.protocols.RetrievalStrategyProtocol`
+Maps strategy names to
+:class:`~lexigram.contracts.ai.protocols.RetrievalStrategyProtocol`
 implementations and instantiates on demand via
 :meth:`~lexigram.primitives.registry.StrategyRegistry.instantiate`.
 """
@@ -32,23 +33,19 @@ class RetrievalStrategyRegistry(StrategyRegistry):
         super().__init__(name="retrieval.strategies", allow_overwrite=True)
 
     @classmethod
-    def with_defaults(cls) -> RetrievalStrategyRegistry:
-        """Create a registry pre-loaded with built-in strategies.
-
-        Registered keys:
-            - ``"vector"``: :class:`~lexigram.ai.rag.retrieval.strategies.VectorRetrievalStrategy`
-            - ``"mmr"``: :class:`~lexigram.ai.rag.retrieval.strategies.MMRRetrievalStrategy`
+    def default_strategies(cls) -> dict[str, type]:
+        """Declare the built-in retrieval strategies.
 
         Returns:
-            A new registry instance with default strategies registered.
+            Mapping of strategy key → class: ``"vector"`` and ``"mmr"``.
         """
         from lexigram.ai.rag.retrieval.strategies.mmr import MMRRetrievalStrategy
         from lexigram.ai.rag.retrieval.strategies.vector import VectorRetrievalStrategy
 
-        registry = cls()
-        registry.register("vector", VectorRetrievalStrategy)
-        registry.register("mmr", MMRRetrievalStrategy)
-        return registry
+        return {
+            "vector": VectorRetrievalStrategy,
+            "mmr": MMRRetrievalStrategy,
+        }
 
 
 __all__ = ["RetrievalStrategyRegistry"]
