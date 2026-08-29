@@ -8,6 +8,11 @@ sidebar:
 :::note[What you'll learn]
 - The recommended layout for **Pattern 2** (Structured App) projects
 - The recommended layout for **Pattern 3** (Modular App) projects
+
+Both layouts are scaffolded with `lexigram new project --structure structured`
+and `lexigram new project --structure modular` respectively; `--structure
+minimal` produces the single-package starter documented in
+[Your First App](/getting-started/first-app/).
 - What each directory and key file does
 :::
 

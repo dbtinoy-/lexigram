@@ -1,9 +1,19 @@
-# Lexigram Project Structures — Proposed Plan
+# Lexigram Project Structures — Implemented
 
-Goal: three first-class project structures, all built from the **same 48
+Three first-class project structures, all built from the **same 48
 `lexigram gen` generators** so scaffolding and code generation stay in
-lockstep. One canonical generator→path map; each structure resolves it
-differently.
+lockstep. One canonical generator→path map (`lexigram/cli/layout.py`);
+each structure resolves it differently.
+
+Implementation status (all shipped in this CLI):
+
+- `lexigram new project --template <t> --structure <s>` — 6 templates × 3 structures
+- `lexigram new module <name>` — bounded-context creation + registry
+- `lexigram gen <generator> <name> --module <feature>` — modular path resolution
+- Canonical map enforced by the dev gate (`dev/checks/generator_output.py`)
+  and the unit suite (`tests/unit/test_layout.py`)
+- SDK renames `src/graphql → src/schema` (+ `schema/dataloaders`) and
+  `src/collections → src/vector/collections`
 
 Structures (matching `docs/getting-started/`):
 
@@ -159,8 +169,8 @@ no shadow exclusions, no import-order surprises.
 | mcp-controller, mcp-server | `src/mcp` |
 | admin_action / admin_resource | `src/admin/actions` / `src/admin/resources` |
 | audited | `src/audit` |
-| graphql / dataloader | `src/schema` / `src/schema/dataloaders` *(renamed)* |
-| vector_collection | `src/vector/collections` *(renamed)* |
+| graphql / dataloader | `src/schema` / `src/schema/dataloaders` |
+| vector_collection | `src/vector/collections` |
 | (special) resource | `src` — writes `src/<name>_resource.py` beside components |
 | migration / seeder | `migrations/versions` / `seeds` |
 | test | `tests/unit` |
@@ -319,15 +329,20 @@ web module collects them (or `discover` scans the module packages).
    installed site-packages — enforced by the alignment gate and by the two
    generator renames above.
 
-## Decision points for you
+## Decisions implemented
 
-1. **Rename `src/graphql`→`src/schema` and `src/collections`→`src/vector/collections`**
-   (SDK change, ~2 packages + docs) — or keep the old dirs and leave them
-   un-pre-created (import-unsafe when generated).
-2. **Minimal structure generator paths**: nest inside `src/<app>/`
-   (recommended) vs. no generator support in `minimal`.
-3. **Modular cross-cutting**: `src/<app>/shared/` (recommended) vs.
-   `src/<app>/infrastructure/` — keep one shared layer, not two.
-4. **`--structure` flag vs. separate template names.** Recommend adding the
-   flag and keeping `--template` as the feature profile (4×3 matrix, no
-   template-name explosion).
+1. **Renames shipped.** `graphql`/`dataloader` now default to
+   `src/schema` / `src/schema/dataloaders` (lexigram-web, lexigram-graphql);
+   `vector_collection` defaults to `src/vector/collections` (lexigram-vector).
+   Every component package is now pre-created by the structured scaffold —
+   no shadow exclusions.
+2. **Minimal generator paths nest inside the app package.**
+   `lexigram gen controller users` in a minimal project writes
+   `src/<app>/controllers/users_controller.py`, and the scaffolded
+   `WebModule.configure(discover=["<app>.controllers"])` picks it up.
+3. **Modular has both layers.** `src/<app>/shared/` holds cross-cutting
+   packages (errors, filters, health, schema, providers, ...);
+   `src/<app>/infrastructure/` holds the framework wiring
+   (`infrastructure_modules()`: db, auth, cache, tasks, queue, monitoring).
+4. **`--structure` is a separate flag** orthogonal to `--template`
+   (6 templates × 3 structures; no template-name explosion).
