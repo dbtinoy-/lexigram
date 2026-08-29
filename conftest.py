@@ -178,14 +178,13 @@ def setup_container_context() -> Generator[Any, None, None]:
     - Improves test performance for tests that don't need DI
     """
     from lexigram.di import Container
-    from lexigram.primitives.context import Context
+    from lexigram.primitives.context import create_default_context
 
-    # Create a test container and set it in context
     container = Container()
-    token = Context.set("container", container)
+    context = create_default_context()
+    token = context.set_dynamic("container", container)
     yield container
-    # Clean up
-    Context.reset("container", token)
+    context.reset_dynamic("container", token)
 
 
 def pytest_asyncio_loop_factories(

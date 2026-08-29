@@ -787,12 +787,6 @@ monitor:
     interval: null  # Health check interval in seconds
     path: null  # Health endpoint path
     timeout: null  # Health check timeout in seconds
-  logging:
-    enabled: null  # Enable structured logging
-    format: null  # Log format (json, text)
-    include_trace_context: null  # Include trace context in logs
-    level: null  # Default log level
-    redact_fields: null  # Fields to redact from logs
   metrics:
     collection_interval: null  # Metrics collection interval in seconds
     default_labels: null  # Default labels for all metrics

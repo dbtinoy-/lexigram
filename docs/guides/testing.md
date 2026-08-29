@@ -154,7 +154,39 @@ Compliance suites ship for caches, repositories, event buses, queues, vector sto
 Mark slower, infrastructure-dependent tests so you can run the fast suite during development:
 
 ```bash
+# Default — runs unit tests only (integration-marked tests deselected)
+uv run pytest
+
+# Explicit form (equivalent)
 uv run pytest -m "not integration"
+
+# Only integration tests (requires docker compose up -d)
+uv run pytest -m integration
+```
+
+### Scenario Suite
+
+The `tests/integration/scenarios/` directory contains **cross-package integration tests** that run entirely in-memory — no live Postgres, Redis, or Docker required. Each scenario boots a minimal Lexigram application configured for a specific package composition (CRUD, events, web auth, audit, cache, tasks, tenancy).
+
+```bash
+# Run scenario tests
+uv run pytest tests/integration/scenarios/ -v
+
+# Or include them via the integration marker
+uv run pytest -m integration -k "scenario"
+```
+
+### Running Specific Packages
+
+```bash
+# One package's unit tests
+uv run pytest packages/lexigram-web/tests/
+
+# One file
+uv run pytest tests/dev/test_registry.py -v
+
+# One test
+uv run pytest tests/dev/test_registry.py::test_audit_registry_contains_expected_generators -v
 ```
 
 ---
