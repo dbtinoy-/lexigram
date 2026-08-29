@@ -16,16 +16,32 @@ The `lexigram` CLI is the primary developer tool for scaffolding, running, and m
 Scaffold a new project or package.
 
 ```
-lexigram new project <name> [--template web-api] [--output-dir .]
+lexigram new project <name> [--template web-api] [--structure structured] [--directory .]
+lexigram new module <name> [--directory .]
 lexigram new package <name> [--output-dir packages/]
 ```
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--template`, `-t` | `web-api` | Project template (`web-api`, `cli`, `library`) |
-| `--output-dir` | `.` | Output directory |
+| `--template`, `-t` | `web-api` | Project template (`minimal`, `api`, `web-api`, `graphql`, `worker`, `full`, `fullstack`) |
+| `--structure`, `-s` | `structured` | Project structure (`minimal` single-package, `structured` component packages, `modular` bounded contexts) |
+| `--directory`, `-d` | `.` | Output directory |
 
-**Example:** `lexigram new project my-api --template web-api`
+**Examples:**
+
+```bash
+lexigram new project my-api --template web-api --structure structured
+lexigram new project my-app --template api --structure minimal
+lexigram new project my-platform --template full --structure modular
+```
+
+`lexigram new module <name>` adds a bounded context to a modular project
+(`src/<app>/modules/<name>/` with a `@module` boundary, `protocols.py`,
+`provider.py` and `services.py`, registered in `modules/__init__.py`).
+
+`lexigram gen <generator> <name> --module <feature>` writes module-local
+components into the matching bounded context; cross-cutting generators
+(`errors`, `filters`, `health`, `schema`, ...) write into `shared/`.
 
 ### `lexigram run`
 
