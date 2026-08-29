@@ -39,3 +39,9 @@ def test_searchbar_quoted_value_renders_valid_alpine_state():
     )
     assert "<input" in html
     assert "x-data" in html
+
+
+def test_searchbar_clear_returns_focus_to_input():
+    html = render_to_string(SearchBar(show_clear=True))
+    assert 'aria-label="Clear search"' in html
+    assert "input.focus()" in html
