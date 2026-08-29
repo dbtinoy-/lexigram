@@ -57,9 +57,9 @@ def iter_pyprojects() -> list[Path]:
                 yield path
 
 
-def collect_definitions() -> dict[str, tuple[str, str]]:
-    """Map generator name -> (generator_path, pyproject dir name)."""
-    definitions: dict[str, tuple[str, str]] = {}
+def collect_definitions() -> dict[str, tuple[str, str, str]]:
+    """Map generator name -> (generator_path, pyproject dir, output dir)."""
+    definitions: dict[str, tuple[str, str, str]] = {}
     for pyproject in iter_pyprojects():
         try:
             data = tomllib.loads(pyproject.read_text())
@@ -87,6 +87,7 @@ def collect_definitions() -> dict[str, tuple[str, str]]:
                 definitions[definition.name] = (
                     definition.generator_path,
                     pyproject.parent.name,
+                    definition.default_output_dir,
                 )
     return definitions
 
@@ -136,6 +137,10 @@ def is_app_local_import(error: ModuleNotFoundError) -> bool:
     )
 
 
+def _iter_pyprojects_for_layout() -> None:  # pragma: no cover
+    """See :mod:`lexigram.cli.layout`; kept for backwards compatibility."""
+
+
 def validate_file(path: Path) -> tuple[bool, str]:
     """Parse and import a single generated file."""
     source = path.read_text()
@@ -167,10 +172,21 @@ def main() -> int:
 
     failures: list[tuple[str, str, str]] = []
     placeholders: list[tuple[str, str, str]] = []
+
+    # Canonical alignment gate: each generator's declared output directory
+    # must match the generator -> path map shared with the scaffold.
+    from lexigram.cli.layout import validate_definition
+
+    for name in sorted(definitions):
+        _generator_path, _project_dir, output_dir = definitions[name]
+        error = validate_definition(name, output_dir)
+        if error:
+            failures.append((name, output_dir, f"alignment: {error}"))
+
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
         for name in sorted(definitions):
-            generator_path, _ = definitions[name]
+            generator_path, _project_dir, _output_dir = definitions[name]
             module_path, _, cls_name = generator_path.partition(":")
             try:
                 cls = getattr(importlib.import_module(module_path), cls_name)
@@ -205,7 +221,10 @@ def main() -> int:
                     failures.append((name, path.relative_to(root).as_posix(), message))
 
     print(
-        f"OK: {len(definitions) - len(failures)}  Placeholders: {len(placeholders)}  Failures: {len(failures)}"
+        (
+            f"OK: {len(definitions) - len(failures)}  "
+            f"Placeholders: {len(placeholders)}  Failures: {len(failures)}"
+        )
     )
     for name, path, message in placeholders:
         print(f"  [placeholder] {name}/{path}: {message}")
