@@ -2,14 +2,55 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from lexigram.contracts.cli.contributions import (
     CommandContribution,
     DoctorCheckContribution,
     HealthCheckContribution,
     HookContribution,
     ShellContextContribution,
+)
+from lexigram.contracts.cli.types import GeneratorDefinition, GeneratorOption
+
+_GENERATOR_SPECS: tuple[tuple[str, str, str, str], ...] = (
+    (
+        "audited",
+        "Generate an audited async handler",
+        "lexigram.audit.cli.generators.audited:AuditedHandlerGenerator",
+        "src/audit",
+    ),
+)
+
+_GENERATOR_OPTIONS: dict[str, tuple[GeneratorOption, ...]] = {
+    "audited": (
+        GeneratorOption(
+            name="action",
+            type_hint="str",
+            description="Dot-notation action identifier (e.g. user.update)",
+        ),
+        GeneratorOption(
+            name="resource_type",
+            type_hint="str",
+            description="Kind of affected resource (e.g. User)",
+        ),
+        GeneratorOption(
+            name="severity",
+            type_hint="str",
+            description="Severity level recorded with the audit entry",
+        ),
+    ),
+}
+
+_GENERATOR_DEFINITIONS: tuple[GeneratorDefinition, ...] = tuple(
+    GeneratorDefinition.make(
+        name,
+        description=description,
+        generator_path=generator_path,
+        output_dir=output_dir,
+        contributor="audit",
+        category="security",
+        options=_GENERATOR_OPTIONS.get(name, ()),
+    )
+    for name, description, generator_path, output_dir in _GENERATOR_SPECS
 )
 
 
@@ -21,9 +62,9 @@ class AuditCliContributor:
         """Return the contributor identifier."""
         return "audit"
 
-    def get_generators(self) -> list[Any]:
-        """Return no generator contributions."""
-        return []
+    def get_generators(self) -> list[GeneratorDefinition]:
+        """Return the contributed audit generator."""
+        return list(_GENERATOR_DEFINITIONS)
 
     def get_commands(self) -> list[CommandContribution]:
         """Return the contributed `audit` command group."""
