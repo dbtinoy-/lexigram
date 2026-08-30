@@ -6,6 +6,7 @@ from typing import Any
 from urllib.parse import urlencode
 
 from lexigram.admin.config import TableConfiguration
+from lexigram.admin.resources.config import clone_table_configuration
 from lexigram.admin.ui.organisms.data_table.actions import ActionManager
 from lexigram.admin.ui.organisms.data_table.layout import LayoutComposer
 from lexigram.admin.ui.organisms.data_table.states import StateRenderer
@@ -32,7 +33,9 @@ class DataTableRenderer:
         props: dict[str, Any] | None = None,
     ):
         self.data = data
-        self.config = config
+        # Keep rendering side effects local. In particular, ActionManager adds
+        # defaults and view strategies may reorder columns.
+        self.config = clone_table_configuration(config)
         self.state = state
         self.total = total
         self.user = user
@@ -44,18 +47,30 @@ class DataTableRenderer:
 
         # Permission state: framework never binds a permission service at
         # construction time; async callers hoist checks and inject the dict.
-        self.permissions = (props or {}).get("permissions") or {
-            "can_view": True,
-            "can_create": True,
-            "can_update": True,
-            "can_delete": True,
-        }
+        supplied_permissions = (props or {}).get("permissions")
+        if supplied_permissions is None:
+            self.permissions = {
+                "can_view": True,
+                "can_create": True,
+                "can_update": True,
+                "can_delete": True,
+            }
+        else:
+            self.permissions = {
+                permission: bool(supplied_permissions.get(permission, False))
+                for permission in (
+                    "can_view",
+                    "can_create",
+                    "can_update",
+                    "can_delete",
+                )
+            }
 
-        self.action_manager = ActionManager(config, self.permissions)
+        self.action_manager = ActionManager(self.config, self.permissions)
         self.action_manager.configure_actions()
 
-        self.layout_composer = LayoutComposer(config, state)
-        self.state_renderer = StateRenderer(config, state)
+        self.layout_composer = LayoutComposer(self.config, state)
+        self.state_renderer = StateRenderer(self.config, state)
 
         # Pre-compute IDs
         self._all_ids = self._extract_all_ids()
@@ -66,7 +81,15 @@ class DataTableRenderer:
             extract_row_id,
         )
 
-        return [extract_row_id(item) for item in self.data]
+        # Bulk operations require an addressable record. Do not put empty IDs
+        # into Alpine's selection set, otherwise several id-less rows collapse
+        # into one selected value and a destructive action can target the wrong
+        # server record.
+        return [
+            row_id
+            for item in self.data
+            if (row_id := extract_row_id(item))
+        ]
 
     @property
     def all_ids_json(self) -> str:
@@ -75,8 +98,12 @@ class DataTableRenderer:
 
     def render(self) -> str:
         """Render the complete data table."""
-        # Toolbar sections
-        toolbar = self._render_toolbar()
+        can_view = self.permissions.get("can_view", True)
+
+        # Toolbar sections are not useful when the view itself is denied and
+        # can accidentally reveal action affordances. Keep the denied state
+        # deliberately data-free.
+        toolbar = self._render_toolbar() if can_view else {}
         header_section = toolbar.get("header", "")
         search_section = toolbar.get("search", "")
         filter_section = toolbar.get("filter", "")
@@ -85,7 +112,7 @@ class DataTableRenderer:
 
         # Scope tabs — inline for full render, OOB for HTMX data-only
         tabs_html = ""
-        if not (self.props.get("render_fragment") or is_htmx):
+        if can_view and not (self.props.get("render_fragment") or is_htmx):
             tabs_html = self._render_scope_tabs()
 
         # View content
@@ -241,6 +268,9 @@ class DataTableRenderer:
 
         Returns a list of htpy elements with hx-swap-oob attributes.
         """
+        if not self.permissions.get("can_view", True):
+            return []
+
         from lexigram.admin.ui.organisms.table.toolbar import TableToolbar
 
         fragments: list[Any] = []
@@ -260,6 +290,8 @@ class DataTableRenderer:
 
     def _render_view_content(self) -> Any:
         """Render the appropriate view content based on state."""
+        if not self.permissions.get("can_view", True):
+            return self.state_renderer.render_permission_denied()
         if self.loading:
             return self.state_renderer.render_skeleton()
         if self.error:
@@ -281,6 +313,8 @@ class DataTableRenderer:
 
     def _render_pagination(self) -> Any:
         """Render pagination if needed."""
+        if not self.permissions.get("can_view", True):
+            return None
         if self.total is None or self.total <= 0:
             return None
 
@@ -359,7 +393,11 @@ class DataTableRenderer:
         for action in self.config.bulk_actions:
             if not action.is_visible(None):
                 continue
-            btn = render_bulk_action_button(action)
+            btn = render_bulk_action_button(
+                action,
+                resource_name=self.config.resource_name,
+                resource_prefix=self.config.resource_prefix,
+            )
             if btn:
                 bulk_buttons.append(btn)
 

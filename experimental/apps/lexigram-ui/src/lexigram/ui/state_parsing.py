@@ -22,6 +22,7 @@ KNOWN_QUERY_KEYS: frozenset[str] = frozenset(
     {
         "collapsed_groups",
         "col_order",
+        "cursor",
         "data_view",
         "filters",
         "flash_message",
@@ -41,8 +42,10 @@ KNOWN_QUERY_KEYS: frozenset[str] = frozenset(
         "render_fragment",
         "search",
         "select_all",
+        "sort",
         "sort_by",
         "sort_order",
+        "dir",
     }
 )
 
@@ -97,13 +100,24 @@ def parse_table_state(
     except (ValueError, TypeError):
         page = 1
 
+    # ``per_page`` is request-controlled and is eventually passed to a data
+    # source.  Always use a positive value, and honor the resource default
+    # when no override was supplied.  ``limit`` remains a compatibility alias
+    # but only wins when ``per_page`` is malformed.
+    default_per_page = defaults.get("per_page", 20)
     try:
-        per_page = int(q.get("per_page", 20))
+        default_per_page = max(1, int(default_per_page))
     except (ValueError, TypeError):
-        per_page = 20
-        # Explicitly check for 'limit' as an alias often used in APIs
+        default_per_page = 20
+
+    raw_per_page = q.get("per_page")
+    try:
+        per_page = max(1, int(raw_per_page)) if raw_per_page is not None else default_per_page
+    except (ValueError, TypeError):
+        per_page = default_per_page
+        # Explicitly check for 'limit' as an alias often used in APIs.
         with contextlib.suppress(ValueError, TypeError):
-            per_page = int(q.get("limit", 20))
+            per_page = max(1, int(q.get("limit", default_per_page)))
 
     view = q.get("data_view") or defaults.get("view", "tabular")
     layout = q.get("layout_type") or defaults.get("layout", "stack")
@@ -121,6 +135,12 @@ def parse_table_state(
         if isinstance(defaults.get("sort_order", "asc"), str)
         else "asc"
     )
+    if default_sort_order not in ("asc", "desc"):
+        logger.warning(
+            "Unknown default sort_order '%s'; using fallback 'asc'",
+            default_sort_order,
+        )
+        default_sort_order = "asc"
     default_view = (
         defaults.get("view", "tabular")
         if isinstance(defaults.get("view", "tabular"), str)

@@ -8,6 +8,7 @@ find_many service patterns. Composed by
 
 from __future__ import annotations
 
+import hashlib
 from typing import Any
 
 from lexigram.admin.data.query import QuerySpec
@@ -146,11 +147,7 @@ class ListDataFetcher:
                     fetcher = _fetch
 
                 if cache_spec and self._cache_integration:
-                    cache_key = self._cache_integration.cache_key(
-                        self.resource_name,
-                        str(state.page),
-                        state.sort_by or "",
-                    )
+                    cache_key = self._build_cache_key(request, state)
                     items, total = await self._cache_integration.get_or_compute(
                         cache_key,
                         fetcher,
@@ -230,6 +227,72 @@ class ListDataFetcher:
             duration_seconds=timer.elapsed(),
         )
         return items, total
+
+    def _build_cache_key(self, request: Any, state: TableState) -> str:
+        """Build a cache key that cannot cross tenant/user/table state boundaries.
+
+        A list response can vary by tenant, principal permissions, filters,
+        search, pagination, sort, or soft-delete scope. The former key only
+        used page and sort, which could serve another tenant's or another
+        user's response when caching was enabled. Keep the structured state
+        out of the backend key itself and hash it to avoid leaking query data
+        into cache instrumentation/logs.
+        """
+        request_state = getattr(request, "state", None)
+        tenant_id = getattr(request_state, "tenant_id", None)
+        if not tenant_id:
+            from lexigram.admin.multitenancy.context import get_current_tenant
+
+            tenant_id = get_current_tenant()
+        tenant_id = tenant_id or "__unresolved__"
+        user = getattr(request_state, "user", None)
+        if user is None:
+            request_scope = getattr(request, "scope", None)
+            user = (
+                request_scope.get("user")
+                if isinstance(request_scope, dict)
+                else None
+            )
+        principal = (
+            getattr(user, "id", None)
+            or getattr(user, "user_id", None)
+            or getattr(user, "email", None)
+            or ("anonymous" if user is None else str(user))
+        )
+        permissions = getattr(request_state, "permissions", None)
+        if permissions is None:
+            permissions = getattr(user, "permissions", None)
+        if isinstance(permissions, dict):
+            permissions = sorted(
+                (str(key), str(value)) for key, value in permissions.items()
+            )
+        elif permissions is not None:
+            try:
+                permissions = sorted(str(value) for value in permissions)
+            except TypeError:
+                # A service object is not a principal permission set; the
+                # principal identifier above still prevents cross-user reuse.
+                permissions = type(permissions).__qualname__
+
+        payload = {
+            "tenant": str(tenant_id),
+            "principal": str(principal),
+            "permissions": permissions,
+            "page": state.page,
+            "per_page": state.per_page,
+            "cursor": state.cursor,
+            "sort_by": state.sort_by,
+            "sort_order": state.sort_order,
+            "search": state.search,
+            "filters": state.filters,
+            "group_by": state.group_by,
+            "include_deleted": state.include_deleted,
+        }
+        from lexigram.serialization import dumps_str
+
+        serialized = dumps_str(payload, sort_keys=True)
+        digest = hashlib.sha256(serialized.encode("utf-8")).hexdigest()
+        return self._cache_integration.cache_key(self.resource_name, digest)
 
     def _resolve_cache_spec(self, resource: Any) -> Any:
         """Return a CacheableSpec if resource is cacheable, else None."""

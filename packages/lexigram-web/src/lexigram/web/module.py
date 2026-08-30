@@ -21,6 +21,7 @@ class WebModule(Module):
         discover: list[str] | tuple[str, ...] | None = None,
         host: str | None = None,
         port: int | None = None,
+        websocket_handlers: list[type] | None = None,
         **kwargs: Any,
     ) -> DynamicModule:
         """Create a WebModule with explicit configuration.
@@ -32,20 +33,27 @@ class WebModule(Module):
 
         Args:
             controllers: Controller classes to register with the web server.
-            discover: Package paths to scan for controllers and merge with
-                any explicitly provided controller classes.
+            discover: Package paths to scan for controllers and decorated
+                WebSocket handlers, merging them with explicit classes.
             host: Override the server host (builds a ``WebConfig`` internally).
             port: Override the server port (builds a ``WebConfig`` internally).
             **kwargs: Additional keyword arguments forwarded to
                 :class:`~lexigram.web.di.provider.WebProvider`.
         """
         resolved_controllers = list(controllers or [])
+        resolved_websocket_handlers = list(websocket_handlers or [])
         if discover:
-            from lexigram.web.routing.discovery import discover_controllers
+            from lexigram.web.routing.discovery import (
+                discover_controllers,
+                discover_websocket_handlers,
+            )
 
             for controller in discover_controllers(list(discover)):
                 if controller not in resolved_controllers:
                     resolved_controllers.append(controller)
+            for handler in discover_websocket_handlers(list(discover)):
+                if handler not in resolved_websocket_handlers:
+                    resolved_websocket_handlers.append(handler)
 
         if (host is not None or port is not None) and "web_config" not in kwargs:
             server_kwargs: dict[str, Any] = {}
@@ -64,7 +72,13 @@ class WebModule(Module):
 
         return DynamicModule(
             module=cls,
-            providers=[WebProvider(controllers=resolved_controllers, **kwargs)],
+            providers=[
+                WebProvider(
+                    controllers=resolved_controllers,
+                    websocket_handlers=resolved_websocket_handlers,
+                    **kwargs,
+                )
+            ],
             is_global=True,
             exports=[
                 WebProvider,

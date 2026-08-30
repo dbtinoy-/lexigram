@@ -177,6 +177,7 @@ def _wrap_websocket_handler(handler_cls: type) -> Callable:
     method.
     """
 
+    from lexigram.contracts.exceptions.container import UnresolvableDependencyError
     from lexigram.web.transport.websockets import WebSocket
 
     async def endpoint(starlette_ws: Any) -> None:
@@ -192,8 +193,9 @@ def _wrap_websocket_handler(handler_cls: type) -> Callable:
             try:
                 # Try to resolve from container (preferred for singleton/lifecycle)
                 handler = await container.resolve(handler_cls)
-            except (LookupError, RuntimeError):
-                # Fallback to direct instantiation if not injectable
+            except (LookupError, RuntimeError, UnresolvableDependencyError):
+                # Fallback to direct instantiation if not injectable. Other
+                # configuration and visibility failures remain fail-closed.
                 handler = handler_cls()
         else:
             handler = handler_cls()
@@ -326,6 +328,30 @@ class ControllerRouteHandler:
             await manager.register_controller_routes(controller_cls, app.container)
 
 
+class WebSocketRouteHandler:
+    """Register explicitly discovered ``@websocket_handler`` classes."""
+
+    async def register(self, manager: WebRouterManager, _app: Application) -> None:
+        """Mount each configured WebSocket handler as a Starlette route."""
+        websocket_handlers = getattr(manager.provider, "websocket_handlers", [])
+        for handler_cls in websocket_handlers:
+            path = getattr(handler_cls, "_ws_path", None)
+            if not isinstance(path, str) or not path:
+                logger.warning(
+                    "websocket_handler_missing_path",
+                    handler=getattr(handler_cls, "__name__", repr(handler_cls)),
+                )
+                continue
+
+            await manager.add_route(
+                path=path,
+                handler=_wrap_websocket_handler(handler_cls),
+                method="WEBSOCKET",
+                origin_type="websocket",
+                handler_metadata=handler_cls,
+            )
+
+
 class OpenAPIRouteHandler:
     """Handles OpenAPI documentation routes."""
 
@@ -365,14 +391,15 @@ class DebugRouteHandler:
 class RouteHandlerRegistry:
     """Registry for route source handlers.
 
-    Each handler (controllers, OpenAPI, health, debug) knows how to
-    discover and register its routes with the router manager.
+    Each handler (core routes, controllers, WebSockets, OpenAPI, health,
+    debug) knows how to discover and register its routes with the router manager.
     """
 
     def __init__(self) -> None:
         self._handlers: list[RouteHandlerProtocol] = [
             CoreRouteHandler(),
             ControllerRouteHandler(),
+            WebSocketRouteHandler(),
             OpenAPIRouteHandler(),
             HealthRouteHandler(),
             DebugRouteHandler(),

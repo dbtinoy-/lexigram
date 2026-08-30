@@ -2,16 +2,17 @@
 
 from __future__ import annotations
 
-from lexigram.logging import get_logger
-
-logger = get_logger(__name__)
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, ClassVar, Self
 
 from lexigram.contracts.core.config import ConfigIssue, Environment
 from lexigram.domain import DomainModel
+from lexigram.logging import get_logger
 from lexigram.validation import ConfigDict
+
+logger = get_logger(__name__)
+_MISSING = object()
 
 
 @dataclass(init=False)
@@ -180,7 +181,9 @@ class BaseConfig(DomainModel):
             val: Any = self
             for part in parts:
                 if isinstance(val, dict):
-                    val = val.get(part)
+                    val = val.get(part, _MISSING)
+                    if val is _MISSING:
+                        return default
                 elif hasattr(val, part):
                     val = getattr(val, part)
                 else:

@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import sys
 from pathlib import Path
+import sys
 from unittest.mock import MagicMock
 
 import pytest
@@ -39,6 +39,30 @@ def _write_task_package(tmp_path: Path, package_name: str, module_name: str) -> 
         "    return {'order_id': order_id}\n"
     )
     return f"{package_name}.{module_name}"
+
+
+@pytest.mark.asyncio
+async def test_task_provider_boot_discovers_already_imported_tasks() -> None:
+    """Decorated tasks in imported application modules need no hand wiring."""
+    _clear_registered_tasks()
+
+    @task(name="already_imported")
+    async def already_imported() -> dict[str, bool]:
+        return {"ok": True}
+
+    provider = TaskProvider(
+        queue=MemoryTaskQueue(),
+        worker_count=1,
+        enable_scheduler=False,
+    )
+    try:
+        await provider.boot(_ContainerStub())
+        assert provider.registry.get("already_imported") is unwrap_task_handler(
+            already_imported
+        )
+    finally:
+        await provider.shutdown()
+        _clear_registered_tasks()
 
 
 @pytest.mark.asyncio

@@ -3,6 +3,9 @@ from __future__ import annotations
 from pathlib import Path
 import py_compile
 import tempfile
+from uuid import uuid4
+
+import pytest
 
 from lexigram.events.cli.generators.event_generator import EventGenerator
 
@@ -57,3 +60,32 @@ class TestEventGenerator:
         gen.generate("Item", fields_str="name:str")
         result = gen.generate("Item", fields_str="name:str", force=True)
         assert result.files_overwritten == [self.tmp_dir / "item_event.py"]
+
+    def test_generated_builder_attaches_domain_event_context(self) -> None:
+        gen = EventGenerator(output_dir=str(self.tmp_dir))
+        gen.generate("OrderCreated", fields_str="order_id:str")
+        path = self.tmp_dir / "order_created_event.py"
+
+        namespace: dict[str, object] = {}
+        exec(compile(path.read_text(), str(path), "exec"), namespace)  # noqa: S102
+        event = namespace["build_order_created_event"](
+            aggregate_id=uuid4(), order_id="order-1"
+        )  # type: ignore[operator]
+
+        assert event.event_type == "OrderCreatedEvent"
+        assert event.aggregate_type == "order_created"
+        assert event.order_id == "order-1"
+        assert event.occurred_at.tzinfo is not None
+
+    def test_generated_builder_rejects_undeclared_payload_fields(self) -> None:
+        gen = EventGenerator(output_dir=str(self.tmp_dir))
+        gen.generate("OrderCreated", fields_str="order_id:str")
+        path = self.tmp_dir / "order_created_event.py"
+
+        namespace: dict[str, object] = {}
+        exec(compile(path.read_text(), str(path), "exec"), namespace)  # noqa: S102
+        builder = namespace["build_order_created_event"]
+
+        assert "**payload" not in path.read_text()
+        with pytest.raises(TypeError, match="unexpected keyword argument"):
+            builder(unknown="not-declared")  # type: ignore[operator]

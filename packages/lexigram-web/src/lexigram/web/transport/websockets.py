@@ -36,5 +36,10 @@ class WebSocket:
 
     @property
     def state(self) -> Any:
-        """WebSocket state for middleware"""
+        """WebSocket state for middleware."""
         return self._starlette.state
+
+    @property
+    def path_params(self) -> dict[str, Any]:
+        """Path parameters captured by the Starlette WebSocket route."""
+        return dict(self._starlette.path_params)

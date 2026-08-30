@@ -50,6 +50,12 @@ class TableToolbar(Component):
                     and not action.get_hx_post()
                     and not action.get_hx_delete()
                 ):
+                    # Legacy actions are mutable. Clone before filling in a
+                    # default URL so a shared Resource declaration is not
+                    # changed by one request.
+                    from copy import copy
+
+                    action = copy(action)
                     prefix = self.config.resource_prefix or ""
                     action.hx(get=f"{prefix.rstrip('/')}/create")
 
@@ -150,10 +156,12 @@ class TableToolbar(Component):
                         resource_name=self.config.resource_name or "",
                         resource_prefix=self.config.resource_prefix or "",
                     )
-                    url = f"{ctx.resource_prefix}/bulk"
+                    url = f"{ctx.resource_prefix.rstrip('/')}/bulk"
                     if hasattr(action, "_get_htmx_attrs"):
                         htmx_attrs = action._get_htmx_attrs(url, None, ctx)
-                        htmx_attrs["hx-vals"] = f'{{"action":"{action.name}"}}'
+                        from lexigram.serialization import dumps_str
+
+                        htmx_attrs["hx-vals"] = dumps_str({"action": action.name})
                     else:
                         from lexigram.ui import HTMXAttrs
 
