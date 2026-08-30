@@ -5,7 +5,9 @@ from typing import Any
 from lexigram.admin.ui.molecules.filter_bar import FilterBar
 from lexigram.ui import (
     ActionButton,
+    ColumnVisibilitySwitcher,
     Component,
+    DensitySwitcher,
     GroupBySwitcher,
     LayoutSwitcher,
     SearchBar,
@@ -282,12 +284,25 @@ class TableToolbar(Component):
             columns=self.config.columns,
             state=self.state,
         )
+        density_switch = DensitySwitcher(
+            current=self.state.density or self.config.density,
+            resource_prefix=self.config.resource_prefix,
+            state=self.state,
+        )
+        column_visibility_switch = ColumnVisibilitySwitcher(
+            columns=self.config.columns,
+            current_hidden=self.state.hidden_columns or [],
+            resource_prefix=self.config.resource_prefix,
+            state=self.state,
+        )
 
         return el(
             "div",
             layout_switch.render(),
             view_switch.render(),
             group_by_switch.render(),
+            density_switch.render(),
+            column_visibility_switch.render(),
             *clear_buttons,
             class_="flex flex-wrap items-center gap-2",
             id=Zones.TOOLBAR.id + "-switchers",

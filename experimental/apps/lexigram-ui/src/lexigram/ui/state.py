@@ -30,6 +30,8 @@ class TableState(DomainModel):
     group_by: str | None = None
     collapsed_groups: list[str] = Field(default_factory=list)
     include_deleted: bool = False
+    density: Literal["compact", "normal", "comfortable"] = "normal"
+    hidden_columns: list[str] = Field(default_factory=list)
 
     # Internal defaults for clean URL generation (not part of model fields)
     _defaults: ClassVar[dict] = {}
@@ -62,12 +64,15 @@ class TableState(DomainModel):
             object.__setattr__(self, "view", "tabular")
         if self.layout not in ("sidebar", "stack"):
             object.__setattr__(self, "layout", "stack")
+        if self.density not in ("compact", "normal", "comfortable"):
+            object.__setattr__(self, "density", "normal")
         object.__setattr__(self, "filters", dict(self.filters or {}))
         object.__setattr__(
             self,
             "collapsed_groups",
             list(self.collapsed_groups or []),
         )
+        object.__setattr__(self, "hidden_columns", list(self.hidden_columns or []))
         if self.column_order is not None:
             object.__setattr__(self, "column_order", list(self.column_order))
 
@@ -116,11 +121,14 @@ class TableState(DomainModel):
         add("sort_order", self.sort_order, "asc")
         add("data_view", self.view, "tabular")
         add("layout_type", self.layout, "stack")
+        add("density", self.density, "normal")
 
         if self.cursor:
             add("cursor", self.cursor)
         if self.column_order:
             add("col_order", ",".join(self.column_order))
+        if self.hidden_columns:
+            add("hide_cols", ",".join(self.hidden_columns))
         if self.group_by:
             add("group_by", self.group_by)
         if self.collapsed_groups:
@@ -283,6 +291,51 @@ class TableState(DomainModel):
         return self.model_copy(
             update={"include_deleted": include_deleted, "page": 1, "cursor": None},
         )
+
+    def with_density(
+        self,
+        density: Literal["compact", "normal", "comfortable"],
+    ) -> TableState:
+        """Return a copy with a new row density.
+
+        Density only affects presentation (row height / spacing), not the
+        result set, so pagination state is preserved.
+
+        Example:
+            new_state = state.with_density("compact")
+        """
+        return self.model_copy(update={"density": density})
+
+    def with_hidden_columns(self, hidden_columns: list[str]) -> TableState:
+        """Return a copy with the given set of hidden column names.
+
+        Column visibility is presentation-only, so pagination state is
+        preserved.
+
+        Example:
+            new_state = state.with_hidden_columns(["secret", "internal_note"])
+        """
+        return self.model_copy(update={"hidden_columns": list(hidden_columns)})
+
+    def toggle_column(self, column: str) -> TableState:
+        """Return a copy with the visibility of ``column`` toggled.
+
+        Hides the column when it is currently visible, and reveals it when
+        it is currently hidden. Other hidden columns are preserved.
+
+        Example:
+            toggled = state.toggle_column("email")
+        """
+        hidden = list(self.hidden_columns or [])
+        if column in hidden:
+            hidden.remove(column)
+        else:
+            hidden.append(column)
+        return self.with_hidden_columns(hidden)
+
+    def is_column_hidden(self, column: str) -> bool:
+        """Return whether ``column`` is currently hidden."""
+        return column in (self.hidden_columns or [])
 
     def clear_filters(self) -> TableState:
         """

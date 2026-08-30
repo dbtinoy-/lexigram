@@ -271,3 +271,119 @@ class TestResourcePrefixAndInputs:
         state = TableState.from_request(_Req({"search": "x"}))
         inputs = state.render_hidden_inputs(exclude=["search"])
         assert inputs == []
+
+class TestDensity:
+    """Density state: parsing, URL round-trip and mutation helpers."""
+
+    def test_default_density(self) -> None:
+        state = TableState.from_request(_Req({}))
+        assert state.density == "normal"
+
+    def test_parse_density(self) -> None:
+        state = TableState.from_request(_Req({"density": "compact"}))
+        assert state.density == "compact"
+
+    def test_invalid_density_falls_back(self) -> None:
+        state = TableState.from_request(_Req({"density": "huge"}))
+        assert state.density == "normal"
+
+    def test_density_not_treated_as_filter(self) -> None:
+        """density is table machinery: it must never leak into data filters."""
+        state = TableState.from_request(_Req({"density": "compact"}))
+        assert "density" not in state.filters
+
+    def test_with_density(self) -> None:
+        state = TableState(page=3, per_page=50)
+        updated = state.with_density("comfortable")
+        assert updated.density == "comfortable"
+        # Presentation-only: pagination preserved
+        assert updated.page == 3
+        assert updated.per_page == 50
+        assert state.density == "normal"  # immutability
+
+    def test_to_query_params_only_when_non_default(self) -> None:
+        assert "density" not in TableState().to_query_params()
+        params = TableState(density="compact").to_query_params()
+        assert params["density"] == "compact"
+
+    def test_round_trip(self) -> None:
+        state = TableState.from_request(_Req({"density": "comfortable"}))
+        params = state.to_query_params()
+        again = TableState.from_request(_Req(params))
+        assert again.density == "comfortable"
+
+
+class TestHiddenColumns:
+    """Column-visibility state: parsing, URL round-trip and mutation helpers."""
+
+    def test_default_hidden_columns(self) -> None:
+        state = TableState.from_request(_Req({}))
+        assert state.hidden_columns == []
+
+    def test_parse_hide_cols(self) -> None:
+        state = TableState.from_request(_Req({"hide_cols": "secret,internal_note"}))
+        assert state.hidden_columns == ["secret", "internal_note"]
+
+    def test_parse_hide_cols_ignores_empty_segments(self) -> None:
+        state = TableState.from_request(_Req({"hide_cols": "a,,b,"}))
+        assert state.hidden_columns == ["a", "b"]
+
+    def test_hide_cols_not_treated_as_filter(self) -> None:
+        """hide_cols is table machinery: it must never leak into data filters."""
+        state = TableState.from_request(_Req({"hide_cols": "secret"}))
+        assert "hide_cols" not in state.filters
+        assert "secret" not in state.filters
+
+    def test_to_query_params_joins_hidden(self) -> None:
+        params = TableState(hidden_columns=["a", "b"]).to_query_params()
+        assert params["hide_cols"] == "a,b"
+
+    def test_to_query_params_empty_hidden_omitted(self) -> None:
+        assert "hide_cols" not in TableState().to_query_params()
+
+    def test_round_trip(self) -> None:
+        state = TableState.from_request(_Req({"hide_cols": "a,b", "search": "x"}))
+        params = state.to_query_params()
+        again = TableState.from_request(_Req(params))
+        assert again.hidden_columns == ["a", "b"]
+        assert again.search == "x"
+
+    def test_toggle_column_hides_visible(self) -> None:
+        state = TableState()
+        toggled = state.toggle_column("email")
+        assert toggled.hidden_columns == ["email"]
+        assert state.hidden_columns == []  # immutability
+
+    def test_toggle_column_reveals_hidden(self) -> None:
+        state = TableState(hidden_columns=["email", "phone"])
+        toggled = state.toggle_column("email")
+        assert toggled.hidden_columns == ["phone"]
+
+    def test_toggle_preserves_other_state(self) -> None:
+        state = TableState(search="x", page=2)
+        toggled = state.toggle_column("email")
+        assert toggled.search == "x"
+        assert toggled.page == 2  # presentation-only: no page reset
+
+    def test_with_hidden_columns(self) -> None:
+        state = TableState()
+        updated = state.with_hidden_columns(["a"])
+        assert updated.hidden_columns == ["a"]
+        assert state.hidden_columns == []
+
+    def test_is_column_hidden(self) -> None:
+        state = TableState(hidden_columns=["a"])
+        assert state.is_column_hidden("a") is True
+        assert state.is_column_hidden("b") is False
+
+    def test_normalization_on_model_copy(self) -> None:
+        state = TableState()
+        copied = state.model_copy(update={"hidden_columns": "sneaky"})
+        assert isinstance(copied.hidden_columns, list)
+
+    def test_hidden_inputs_include_hide_cols(self) -> None:
+        state = TableState(hidden_columns=["a", "b"])
+        inputs = state.render_hidden_inputs()
+        rendered = "".join("".join(el.iter_chunks()) for el in inputs)
+        assert 'name="hide_cols"' in rendered
+        assert 'value="a,b"' in rendered

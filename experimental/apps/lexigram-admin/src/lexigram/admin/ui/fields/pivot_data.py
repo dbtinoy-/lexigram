@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import html as _html
 from typing import Any
 
 from lexigram.admin.schema.base import SchemaField
@@ -74,13 +75,25 @@ class PivotDataField(SchemaField):
         )
 
     def _build_pivot_input(self, col: PivotColumn, value: str) -> str:
-        attrs = f'name="pivot_{col.name}" '
+        # These fragments are inserted via raw() and must therefore escape
+        # every dynamic value themselves: record data (``value``) and the
+        # declarative field type both cross into attribute/HTML context.
+        attrs = f'name="pivot_{_html.escape(col.name, quote=True)}" '
         if col.field_type == "checkbox":
             checked = "checked" if value else ""
             return f'<input type="checkbox" {attrs} {checked} class="rounded border-border text-primary-600" />'
         if col.field_type == "select":
-            return f'<select {attrs} class="px-2 py-1 text-sm border rounded">{value}</select>'
-        return f'<input type="{col.field_type}" {attrs} value="{value}" class="px-2 py-1 text-sm border rounded w-full" />'
+            option_text = _html.escape(str(value))
+            return (
+                f'<select {attrs} class="px-2 py-1 text-sm border rounded">'
+                f"{option_text}</select>"
+            )
+        field_type = _html.escape(str(col.field_type), quote=True)
+        escaped_value = _html.escape(str(value), quote=True)
+        return (
+            f'<input type="{field_type}" {attrs} value="{escaped_value}" '
+            f'class="px-2 py-1 text-sm border rounded w-full" />'
+        )
 
     def render_column(self, record: Any, value: dict[str, Any] | None) -> Element:
         if value is None:

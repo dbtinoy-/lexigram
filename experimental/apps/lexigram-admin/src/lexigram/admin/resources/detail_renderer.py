@@ -272,18 +272,15 @@ class DetailRenderer:
 
     async def _get_item_html(self, resource, item_id: str, label: str) -> str:
         """Get HTML representation of the item."""
-        if resource and hasattr(resource, "service") and resource.service:
+        if not resource:
+            return render_to_string(el("p", f"Item #{item_id}"))
+
+        item = None
+        # Legacy service attribute (pre-IDataSource resources)
+        service = getattr(resource, "service", None)
+        if service is not None and hasattr(service, "get"):
             try:
-                if hasattr(resource.service, "get"):
-                    item = await resource.service.get(item_id)
-                    if item:
-                        item_dict = (
-                            item.model_dump()
-                            if hasattr(item, "model_dump")
-                            else dict(item)
-                        )
-                        return self._render_item_infolist(resource, item_dict)
-                    return render_to_string(el("p", "Item not found"))
+                item = await service.get(item_id)
             except DataError as e:
                 logger.debug(
                     "Failed to get item %s/%s: %s",
@@ -296,7 +293,26 @@ class DetailRenderer:
                     original_error=e,
                 ) from None
 
-        return render_to_string(el("p", f"Item #{item_id}"))
+        # Modern path: the data source wired by the mount pipeline
+        # (resource.set_data_source). Without this, detail pages only ever
+        # render the fallback placeholder for standard resources.
+        if item is None:
+            data_source = getattr(resource, "_data_source", None)
+            if data_source is not None and hasattr(data_source, "find_one"):
+                try:
+                    item = await data_source.find_one(item_id)
+                except (AttributeError, TypeError, ValueError, KeyError) as exc:
+                    logger.debug(
+                        "Failed to get item %s/%s via data source: %s",
+                        self.resource_name,
+                        item_id,
+                        exc,
+                    )
+
+        if item:
+            item_dict = item.model_dump() if hasattr(item, "model_dump") else dict(item)
+            return self._render_item_infolist(resource, item_dict)
+        return render_to_string(el("p", "Item not found"))
 
     def _render_item_infolist(self, resource, item_dict: dict) -> str:
         """Render item fields as an infolist widget.

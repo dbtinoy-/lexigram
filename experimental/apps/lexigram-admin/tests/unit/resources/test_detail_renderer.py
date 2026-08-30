@@ -82,9 +82,10 @@ async def test_detail_falls_back_to_table_without_model() -> None:
 
 @pytest.mark.asyncio
 async def test_detail_falls_back_without_service() -> None:
+    """A resource with no data access reports not-found instead of a placeholder."""
     renderer = _renderer()
     resource = SimpleNamespace(service=None, model=_Model)
 
     html = await renderer._get_item_html(resource, "w-1", "Widget")
 
-    assert "Item #w-1" in html
+    assert "Item not found" in html
