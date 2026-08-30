@@ -39,6 +39,7 @@ dependencies = [
     "lexigram-contracts>=0.1.4",
     "lexigram-ui>=0.1.4",
     "aiofiles>=23.0.0",
+    "bcrypt>=4.0.0",
     "htpy>=0.9",
     "orjson>=3.9.0",
     "pydantic>=2.10.0",
