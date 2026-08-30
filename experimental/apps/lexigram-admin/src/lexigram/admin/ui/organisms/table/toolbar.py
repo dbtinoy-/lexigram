@@ -216,9 +216,9 @@ class TableToolbar(Component):
                 *bulk_buttons,
                 # Header buttons (Create) - NO x-cloak, always visible
                 *header_buttons,
-                class_="flex items-center gap-2",
+                class_="flex flex-wrap items-center gap-2",
             ),
-            class_="flex items-center justify-between mb-2 pb-2 border-b border-border",
+            class_="flex flex-wrap gap-2 items-center justify-between mb-2 pb-2 border-b border-border",
             id=Zones.TOOLBAR.id,
         )
 
@@ -281,7 +281,7 @@ class TableToolbar(Component):
             view_switch.render(),
             group_by_switch.render(),
             *clear_buttons,
-            class_="flex items-center gap-2",
+            class_="flex flex-wrap items-center gap-2",
             id=Zones.TOOLBAR.id + "-switchers",
         )
 
