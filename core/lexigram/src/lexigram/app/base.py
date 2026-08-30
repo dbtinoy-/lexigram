@@ -384,8 +384,14 @@ class Application(SecretsMixin, HealthProbeMixin):
 
         self._state = AppState.STOPPING
 
+        from lexigram.app.config.models import AppConfig
+
+        app_config = self._config.get_section("app", AppConfig)
+        configured_timeout = app_config.shutdown_timeout
         shutdown_timeout = float(
-            self._config.get("app.shutdown_timeout", DEFAULT_SHUTDOWN_TIMEOUT)
+            configured_timeout
+            if configured_timeout is not None
+            else DEFAULT_SHUTDOWN_TIMEOUT
         )
         try:
             await asyncio.wait_for(self._lifecycle.shutdown(), timeout=shutdown_timeout)

@@ -38,8 +38,11 @@ class HealthProbeMixin:
         """
         if timeout is not None:
             return timeout
+        from lexigram.app.config.models import AppConfig
+
         cfg = self._config
-        app_value = cfg.get("app.health_check_timeout", None)
+        app_config = cfg.get_section("app", AppConfig)
+        app_value = app_config.health_check_timeout
         if app_value is not None:
             return float(app_value)
         return float(cfg.health.check_timeout)

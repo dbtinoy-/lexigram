@@ -1,6 +1,5 @@
 """Unit tests for the config module main classes."""
 
-
 from lexigram.config import BaseConfig, ConfigSourceType, LexigramConfig
 from lexigram.config.constants import (
     DEFAULT_CONFIG_FILENAMES,
@@ -71,6 +70,20 @@ class TestBaseConfig:
         config.app_name = "test-app"
         assert config.get("app_name") == "test-app"
 
+    def test_get_returns_default_for_missing_nested_dict_leaf(self) -> None:
+        """A missing leaf in a present dict still uses the caller default."""
+        config = LexigramConfig.from_dict({})
+        config.app = {"health_check_timeout": 2.0}
+
+        assert config.get("app.shutdown_timeout", 30.0) == 30.0
+
+    def test_get_preserves_explicit_none_nested_dict_value(self) -> None:
+        """An explicit null remains distinguishable from a missing leaf."""
+        config = LexigramConfig.from_dict({})
+        config.app = {"shutdown_timeout": None}
+
+        assert config.get("app.shutdown_timeout", 30.0) is None
+
     def test_has_section_returns_false_for_missing(self) -> None:
         """Test has_section returns False for missing section."""
         config = BaseConfig.from_dict({})
@@ -96,6 +109,41 @@ class TestLexigramConfig:
         """Test default app name."""
         config = LexigramConfig.from_dict({})
         assert config.app_name == "lexigram-app"
+
+    def test_app_section_is_typed_and_uses_defaults(self) -> None:
+        """The application lifecycle section is bound to AppConfig."""
+        from lexigram.app.config.models import AppConfig
+
+        config = LexigramConfig.from_dict({})
+
+        assert isinstance(config.app, AppConfig)
+        assert config.app.shutdown_timeout == 30.0
+        assert config.app.health_check_timeout == 5.0
+
+    def test_app_section_accepts_name_alias_and_coerces_values(self) -> None:
+        """Nested app.name is compatible with legacy app_name consumers."""
+        from lexigram.app.config.models import AppConfig
+
+        config = LexigramConfig.from_dict(
+            {
+                "app": {
+                    "name": "orders",
+                    "debug": "false",
+                    "env": "staging",
+                    "shutdown_timeout": "45",
+                }
+            }
+        )
+
+        assert isinstance(config.app, AppConfig)
+        assert config.app.name == "orders"
+        assert config.app.app_name == "orders"
+        assert config.app_name == "orders"
+        assert config.app.debug is False
+        assert config.app.env == "staging"
+        assert config.debug is False
+        assert config.env.value == "staging"
+        assert config.app.shutdown_timeout == 45.0
 
     def test_default_debug_false(self) -> None:
         """Test default debug is False."""
@@ -160,7 +208,9 @@ class TestLexigramConfig:
         """Test debug=True is allowed in development."""
         from lexigram.contracts.core.config import Environment
 
-        config = LexigramConfig.from_dict({"debug": True, "env": Environment.DEVELOPMENT})
+        config = LexigramConfig.from_dict(
+            {"debug": True, "env": Environment.DEVELOPMENT}
+        )
         issues = config.validate_for_environment()
         assert issues == []
 
@@ -168,7 +218,9 @@ class TestLexigramConfig:
         """Test debug=True is blocked in production."""
         from lexigram.contracts.core.config import Environment
 
-        config = LexigramConfig.from_dict({"debug": True, "env": Environment.PRODUCTION})
+        config = LexigramConfig.from_dict(
+            {"debug": True, "env": Environment.PRODUCTION}
+        )
         issues = config.validate_for_environment()
         assert len(issues) == 1
         assert issues[0].field == "debug"
