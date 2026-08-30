@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 import html
 import importlib
+import re
 from types import TracebackType
 from typing import Any, Self, cast
 
@@ -106,12 +107,7 @@ class Element:
         parts.append(">")
 
         for c in self.children:
-            # Escape plain-string children in text context. Markup/raw()
-            # children pass through verbatim (explicit opt-outs).
-            if isinstance(c, str) and not isinstance(c, Markup):
-                parts.append(html.escape(c, quote=False))
-            else:
-                parts.append(render_to_string(c))
+            parts.append(_render_child(c))
 
         parts.append(f"</{self.tag}>")
         return "".join(parts)
@@ -152,6 +148,46 @@ def el(tag: str, *children: Any, **attrs: Any) -> Any:
     # We always use our local Element for blocks that might be used with `with`,
     # even if htpy is present, to ensure they support the context manager protocol.
     return Element(tag, *children, **attrs)
+
+
+def _render_child(child: Any) -> str:
+    """Render one Element child under the framework's escaping policy.
+
+    Policy — *strings are data, elements are structure*:
+
+    - Plain strings are escaped (they are text content). This includes
+      plain strings returned by ``Component.render()``: a component is
+      resolved first and its string result is treated as data.
+    - ``Markup`` (markupsafe), ``RawHTML`` (via ``raw()``), ``Element``
+      and any other ``__html__``-bearing object pass through verbatim —
+      those are explicit opt-outs signalling pre-rendered HTML.
+    - Iterables are rendered element-wise under the same policy.
+
+    This closes the previous inconsistency where a ``Component`` child
+    bypassed escaping entirely (``render_to_string`` returns strings
+    verbatim), so a component whose ``render()`` returned
+    ``"<b>" + user_input + "</b>"`` injected unescaped markup.
+    """
+    if child is None:
+        return ""
+    if isinstance(child, str):
+        if isinstance(child, Markup):
+            return child
+        return html.escape(child, quote=False)
+    if isinstance(child, Component):
+        as_child_result = child._render_as_child()
+        if as_child_result is not None:
+            return _render_child(as_child_result)
+        return _render_child(child.render())
+    # Elements / RawHTML / htpy elements and any other __html__-bearing
+    # object are structure: render verbatim (escaping already happened at
+    # their own boundaries). Must be checked before Iterable because htpy
+    # elements are iterable (for `with` support).
+    if _is_htpy_element(child):
+        return render_to_string(child)
+    if isinstance(child, Iterable) and not isinstance(child, (bytes, dict)):
+        return "".join(_render_child(item) for item in child)
+    return render_to_string(child)
 
 
 # Context stack to support Streamlit-like `with` usage
@@ -343,3 +379,60 @@ def render_to_string(value: str | Any) -> str:
         return render_to_string(value.render())
 
     return html.escape(str(value))
+
+
+# ---------------------------------------------------------------------------
+# Developer-experience helpers for the "raw HTML" failure mode.
+#
+# The most common admin bug: a custom renderer (e.g. a ``Column.render()``
+# override) returns a pre-built HTML *string*. Under the escaping policy
+# above that string is treated as data and escaped, so the browser shows
+# the markup as literal text (``&lt;span class=...&gt;...``). These helpers
+# detect that situation at the render boundaries and log a one-time warning
+# telling the developer exactly what to change.
+# ---------------------------------------------------------------------------
+
+_HTML_TAG_RE = re.compile(r"</?[a-zA-Z][a-zA-Z0-9-]*\b[^>]*>")
+
+#: (origin, snippet-prefix) pairs already warned about — avoids log spam on
+#: every cell of every request.
+_warned_html_strings: set[tuple[str, str]] = set()
+
+
+def looks_like_html(value: Any) -> bool:
+    """Heuristic: does this string look like it contains an HTML tag?"""
+    return isinstance(value, str) and bool(_HTML_TAG_RE.search(value))
+
+
+def warn_html_string_render(
+    origin: str,
+    snippet: Any,
+    *,
+    fix: str = (
+        "return an element built with el(...), or wrap the string in "
+        "raw()/Markup when pre-rendered HTML is intended"
+    ),
+) -> None:
+    """Warn (once per origin/snippet) that a renderer returned an HTML string.
+
+    The string will be escaped by the element layer, so the browser shows
+    literal markup instead of rendered HTML. Emitting a warning here turns a
+    confusing UI bug into an actionable log message.
+
+    Args:
+        origin: Where the string came from (e.g. ``Column.render() 'name'``).
+        snippet: The offending string (only a prefix is kept for dedup).
+        fix: Developer guidance included in the warning.
+    """
+    if not looks_like_html(snippet):
+        return
+    key = (origin, str(snippet)[:80])
+    if key in _warned_html_strings:
+        return
+    _warned_html_strings.add(key)
+    logger.warning(
+        "renderer_returned_html_string origin=%r snippet=%r fix=%r",
+        origin,
+        str(snippet)[:120],
+        fix,
+    )

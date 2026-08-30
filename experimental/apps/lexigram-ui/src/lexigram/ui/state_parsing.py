@@ -24,10 +24,12 @@ KNOWN_QUERY_KEYS: frozenset[str] = frozenset(
         "col_order",
         "cursor",
         "data_view",
+        "density",
         "filters",
         "flash_message",
         "flash_type",
         "group_by",
+        "hide_cols",
         "hx-current-url",
         "hx-request",
         "hx-target",
@@ -46,6 +48,7 @@ KNOWN_QUERY_KEYS: frozenset[str] = frozenset(
         "sort_by",
         "sort_order",
         "dir",
+        "order",
     }
 )
 
@@ -122,6 +125,14 @@ def parse_table_state(
     view = q.get("data_view") or defaults.get("view", "tabular")
     layout = q.get("layout_type") or defaults.get("layout", "stack")
     cursor = q.get("cursor") or None
+
+    density = q.get("density") or defaults.get("density", "normal")
+    if density not in ("compact", "normal", "comfortable"):
+        logger.debug(
+            "Invalid or missing request density %r; using default 'normal'",
+            density,
+        )
+        density = "normal"
 
     include_deleted_raw = q.get("include_deleted", "false")
     include_deleted = include_deleted_raw.lower() == "true"
@@ -230,6 +241,13 @@ def parse_table_state(
         col_order_raw.split(",") if col_order_raw else defaults.get("column_order")
     )
 
+    hide_cols_raw = q.get("hide_cols")
+    hidden_columns = (
+        [name for name in hide_cols_raw.split(",") if name]
+        if hide_cols_raw
+        else list(defaults.get("hidden_columns") or [])
+    )
+
     group_by = q.get("group_by", defaults.get("group_by"))
     collapsed_raw = q.get("collapsed_groups", "")
     collapsed_groups = collapsed_raw.split(",") if collapsed_raw else []
@@ -246,10 +264,12 @@ def parse_table_state(
         filters=filters,
         view=view,
         layout=layout,
+        density=density,
         column_order=col_order,
         group_by=group_by,
         collapsed_groups=collapsed_groups,
         include_deleted=include_deleted,
+        hidden_columns=hidden_columns,
     )
     object.__setattr__(state, "_defaults", defaults or {})
     return state

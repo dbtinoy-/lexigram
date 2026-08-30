@@ -18,7 +18,11 @@ if TYPE_CHECKING:
     from lexigram.ui.molecules.breadcrumbs import Breadcrumbs
     from lexigram.ui.molecules.builder import Builder
     from lexigram.ui.molecules.card import Card
+    from lexigram.ui.molecules.column_visibility_switcher import (
+        ColumnVisibilitySwitcher,
+    )
     from lexigram.ui.molecules.data_table_client_logic import DataTableScriptRenderer
+    from lexigram.ui.molecules.density_switcher import DensitySwitcher
     from lexigram.ui.molecules.date_hierarchy import DateHierarchyFilter
     from lexigram.ui.molecules.date_range_filter import DateRangeFilter
     from lexigram.ui.molecules.dropdown import Dropdown
@@ -70,7 +74,9 @@ if TYPE_CHECKING:
         "Breadcrumbs",
         "Builder",
         "Card",
+        "ColumnVisibilitySwitcher",
         "DataTableScriptRenderer",
+        "DensitySwitcher",
         "DateHierarchyFilter",
         "DateRangeFilter",
         "Dropdown",
