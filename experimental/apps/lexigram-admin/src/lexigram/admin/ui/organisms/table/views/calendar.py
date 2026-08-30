@@ -15,6 +15,7 @@ import datetime
 import re
 from typing import Any
 
+from lexigram.admin.ui.organisms.data_table.actions import render_action_button
 from lexigram.admin.ui.organisms.table.views.tabular import (
     AbstractDataView,
     TabularView,
@@ -23,7 +24,7 @@ from lexigram.admin.ui.organisms.table.views.tabular_rows import (
     extract_row_id,
     get_attr,
 )
-from lexigram.ui import DateColumn, HTMXAttrs, el
+from lexigram.ui import Checkbox, DateColumn, HTMXAttrs, el
 
 _MONTH_RE = re.compile(r"^(\d{4})-(\d{2})$")
 
@@ -342,27 +343,7 @@ class CalendarView(AbstractDataView):
         """Render a single calendar day cell."""
         event_els = []
         for event in day_events[:3]:
-            title = (
-                get_attr(event, "name")
-                or get_attr(event, "title")
-                or get_attr(event, "label")
-                or "Event"
-            )
-            rid = extract_row_id(event)
-            href = f"{prefix}/{rid}" if prefix and rid else "#"
-            event_els.append(
-                el(
-                    "a",
-                    title,
-                    href=href,
-                    title=str(title),
-                    class_=(
-                        "text-xs bg-primary-100 text-primary-700 rounded px-1 "
-                        "py-0.5 truncate mb-1 block hover:bg-primary-200 "
-                        "transition-colors"
-                    ),
-                ),
-            )
+            event_els.append(self._render_event(event, prefix))
 
         if len(day_events) > 3:
             more_href = (
@@ -399,9 +380,8 @@ class CalendarView(AbstractDataView):
         if is_today:
             cell_cls += " border-primary-500 ring-1 ring-primary-500/50"
 
-        day_cls = (
-            "text-right text-sm font-medium mb-1 "
-            + ("text-primary-600" if is_today else "text-foreground")
+        day_cls = "text-right text-sm font-medium mb-1 " + (
+            "text-primary-600" if is_today else "text-foreground"
         )
 
         return el(
@@ -416,4 +396,79 @@ class CalendarView(AbstractDataView):
             role="gridcell",
             class_=cell_cls,
             aria_label=f"{curr_date.isoformat()}, {len(day_events)} events",
+        )
+
+    def _render_event(self, event: Any, prefix: str) -> Any:
+        """Render one calendar event chip with bulk select and row actions."""
+        title = (
+            get_attr(event, "name")
+            or get_attr(event, "title")
+            or get_attr(event, "label")
+            or "Event"
+        )
+        rid = extract_row_id(event)
+        href = f"{prefix}/{rid}" if prefix and rid else "#"
+
+        select_node: Any = ""
+        if prefix and self.config.bulk_actions and rid:
+            select_node = Checkbox(
+                name="ids",
+                value=rid,
+                x_model="selectedIds",
+                class_="flex-shrink-0 mt-0.5",
+                aria_label=f"Select {rid}",
+            )
+
+        action_nodes: list[Any] = []
+        if prefix:
+            for action in self.config.actions:
+                if not action.is_visible(
+                    user=self.user,
+                    resource_name=self.resource_name,
+                    record=event,
+                ):
+                    continue
+                node = render_action_button(
+                    action,
+                    record=event,
+                    user=self.user,
+                    resource_name=self.resource_name,
+                    resource_prefix=prefix,
+                )
+                if node:
+                    action_nodes.append(node)
+
+        actions_row = (
+            el(
+                "div",
+                *action_nodes,
+                class_=(
+                    "flex flex-wrap items-center gap-1 mt-0.5 "
+                    "opacity-0 group-hover:opacity-100 transition-opacity"
+                ),
+            )
+            if action_nodes
+            else ""
+        )
+
+        return el(
+            "div",
+            select_node,
+            el(
+                "div",
+                el(
+                    "a",
+                    title,
+                    href=href,
+                    title=str(title),
+                    class_="truncate block hover:underline",
+                ),
+                actions_row,
+                class_="min-w-0 flex-1",
+            ),
+            class_=(
+                "group flex items-start gap-1 text-xs bg-primary-100 "
+                "text-primary-700 rounded px-1 py-0.5 mb-1 "
+                "hover:bg-primary-200 transition-colors"
+            ),
         )

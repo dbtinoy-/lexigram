@@ -187,8 +187,16 @@ class ResourceConfig:
             self._group_order = order
         return self
 
-    def view(self, view: Literal["tabular", "grid", "kanban"] | Any) -> ResourceConfig:
-        """Set the default view."""
+    def view(
+        self,
+        view: Literal["tabular", "stacked", "grid", "calendar", "kanban"] | Any,
+    ) -> ResourceConfig:
+        """Set the default data view.
+
+        The four built-in strategies are ``tabular``, ``stacked``, ``grid``,
+        and ``calendar``. Unknown values are stored as strings so a custom
+        view registered on the strategy registry can still be selected.
+        """
         self._view = str(view) if hasattr(view, "__str__") else "tabular"
         return self
 
