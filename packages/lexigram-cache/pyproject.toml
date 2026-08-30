@@ -72,7 +72,7 @@ test = [
 ]
 dev = [
     "black>=23.0.0",
-    "ruff>=0.1.0",
+    "ruff>=0.16.4",
     "mypy>=1.0.0",
     "types-redis>=4.6.0",
 ]
@@ -110,7 +110,7 @@ cache = "lexigram.cache.config:CacheConfig"
 [dependency-groups]
 dev = [
     "black>=23.0.0",
-    "ruff>=0.1.0",
+    "ruff>=0.16.4",
     "mypy>=1.0.0",
     "types-redis>=4.6.0",
 ]

@@ -85,7 +85,7 @@ madmom = ["Cython", "numpy"]
 
 [dependency-groups]
 tooling = [
-    "ruff>=0.8.0",
+    "ruff>=0.16.4",
     "mypy>=1.0.0",
     "itsdangerous>=2.2.0",
     "playwright>=1.58.0",
