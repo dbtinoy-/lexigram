@@ -8,9 +8,8 @@ for serialization and validation.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Literal, Union
-
+from dataclasses import dataclass
+from typing import Literal
 
 # ── Existing node configs ─────────────────────────────────────────────
 
@@ -152,19 +151,19 @@ class ContractConfig:
 
 # ── Union type ────────────────────────────────────────────────────────
 
-NodeConfig = Union[
-    RouteConfig,
-    RouteGroupConfig,
-    EntityConfig,
-    ServiceConfig,
-    JobConfig,
-    MiddlewareConfig,
-    FeatureFlagConfig,
-    AuthConfig,
-    RoleConfig,
-    RateLimitConfig,
-    ContractConfig,
-]
+NodeConfig = (
+    RouteConfig
+    | RouteGroupConfig
+    | EntityConfig
+    | ServiceConfig
+    | JobConfig
+    | MiddlewareConfig
+    | FeatureFlagConfig
+    | AuthConfig
+    | RoleConfig
+    | RateLimitConfig
+    | ContractConfig
+)
 
 __all__ = [
     "AuthConfig",

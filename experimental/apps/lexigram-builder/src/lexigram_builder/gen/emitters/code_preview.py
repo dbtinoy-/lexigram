@@ -8,8 +8,8 @@ so it must match ``generate`` exactly.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
 
+from lexigram_builder.gen.emitters.scaffold import emit_scaffold_files
 from lexigram_builder.graph.models import (
     AuthConfig,
     ContractConfig,
@@ -17,7 +17,6 @@ from lexigram_builder.graph.models import (
     RateLimitConfig,
     RoleConfig,
 )
-from lexigram_builder.gen.emitters.scaffold import emit_scaffold_files
 
 
 @dataclass(frozen=True, slots=True)

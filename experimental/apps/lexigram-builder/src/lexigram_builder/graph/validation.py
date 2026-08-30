@@ -26,7 +26,6 @@ from lexigram_builder.graph.models import (
 )
 from lexigram_builder.graph.palette import (
     ALLOWED_EDGES,
-    KNOWN_KINDS,
     KIND_AUTH,
     KIND_CONTRACT,
     KIND_ENTITY,
@@ -38,6 +37,7 @@ from lexigram_builder.graph.palette import (
     KIND_ROUTE,
     KIND_ROUTE_GROUP,
     KIND_SERVICE,
+    KNOWN_KINDS,
 )
 
 # ── Helpers ───────────────────────────────────────────────────────────

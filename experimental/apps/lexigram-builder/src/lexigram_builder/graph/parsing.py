@@ -23,7 +23,19 @@ from lexigram_builder.graph.models import (
     RouteGroupConfig,
     ServiceConfig,
 )
-from lexigram_builder.graph.palette import KIND_AUTH, KIND_CONTRACT, KIND_ENTITY, KIND_FEATURE_FLAG, KIND_JOB, KIND_MIDDLEWARE, KIND_RATE_LIMIT, KIND_ROLE, KIND_ROUTE, KIND_ROUTE_GROUP, KIND_SERVICE
+from lexigram_builder.graph.palette import (
+    KIND_AUTH,
+    KIND_CONTRACT,
+    KIND_ENTITY,
+    KIND_FEATURE_FLAG,
+    KIND_JOB,
+    KIND_MIDDLEWARE,
+    KIND_RATE_LIMIT,
+    KIND_ROLE,
+    KIND_ROUTE,
+    KIND_ROUTE_GROUP,
+    KIND_SERVICE,
+)
 
 
 def _coerce_tuple(value: Any) -> tuple[str, ...]:

@@ -6,41 +6,35 @@ generators, emits scaffold files, and prunes stale generated files.
 
 from __future__ import annotations
 
-import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from lexigram_builder.gen.emitters.scaffold import emit_scaffold_files
+from lexigram_builder.gen.node_generators import (
+    ENTITY_ATTACHED,
+    VERB_SPECS,
+    entity_attached_extra_kwargs,
+    get_verb_spec,
+)
 from lexigram_builder.graph.models import (
     AuthConfig,
     ContractConfig,
     EntityConfig,
     FeatureFlagConfig,
-    JobConfig,
     RateLimitConfig,
     RoleConfig,
     RouteConfig,
-    ServiceConfig,
 )
 from lexigram_builder.graph.palette import (
     KIND_AUTH,
     KIND_CONTRACT,
     KIND_ENTITY,
     KIND_FEATURE_FLAG,
-    KIND_JOB,
     KIND_RATE_LIMIT,
     KIND_ROLE,
     KIND_ROUTE,
-    KIND_SERVICE,
 )
-from lexigram_builder.gen.node_generators import (
-    ENTITY_ATTACHED,
-    VERB_SPECS,
-    VerbSpec,
-    entity_attached_extra_kwargs,
-    get_verb_spec,
-)
-from lexigram_builder.gen.emitters.scaffold import ScaffoldResult, emit_scaffold_files
 
 
 @dataclass
@@ -274,7 +268,7 @@ class ProjectWriter:
                 # Entity-attached nodes get extra kwargs
                 if kind in ENTITY_ATTACHED:
                     # Find the entity this node is wired to
-                    for target_id, edge_kind in edges_by_source.get(node["id"], []):
+                    for target_id, _edge_kind in edges_by_source.get(node["id"], []):
                         if target_id in entities:
                             entity = entities[target_id]
                             gen_kwargs.update(
