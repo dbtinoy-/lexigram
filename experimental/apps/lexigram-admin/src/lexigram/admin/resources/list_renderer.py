@@ -163,13 +163,28 @@ class ListRenderer:
             configured_group = getattr(table_config, "group_by", None)
             group_by = configured_group if configured_group in allowed_fields else None
 
-        if sort_by == state.sort_by and sort_order == state.sort_order and group_by == state.group_by:
+        # URL-driven column visibility: drop any requested hidden column that
+        # is not a known/available field so the table can never be told to
+        # suppress fields it does not own.
+        hidden_columns = [
+            name
+            for name in (state.hidden_columns or [])
+            if name in allowed_fields
+        ]
+
+        if (
+            sort_by == state.sort_by
+            and sort_order == state.sort_order
+            and group_by == state.group_by
+            and hidden_columns == (state.hidden_columns or [])
+        ):
             return state
         return state.model_copy(
             update={
                 "sort_by": sort_by,
                 "sort_order": sort_order,
                 "group_by": group_by,
+                "hidden_columns": hidden_columns,
                 "page": 1,
                 "cursor": None,
             }
@@ -218,6 +233,7 @@ class ListRenderer:
                 "view": table_config.default_view if table_config else "tabular",
                 "layout": table_config.default_layout if table_config else "stack",
                 "per_page": table_config.per_page if table_config else 20,
+                "density": table_config.density if table_config else "normal",
             }
             if table_config
             else {},
@@ -227,7 +243,11 @@ class ListRenderer:
         # assign onto request state directly: state is the canonical value
         # object shared by HTMX URL generation and downstream fetchers.
         legacy_sort = request.query_params.get("sort")
-        legacy_direction = request.query_params.get("dir")
+        # "order" is the legacy direction param emitted by older table sort
+        # links (?sort=name&order=desc); "dir" is the other historical alias.
+        legacy_direction = request.query_params.get("dir") or request.query_params.get(
+            "order"
+        )
         if legacy_sort:
             direction = legacy_direction if legacy_direction in ("asc", "desc") else "asc"
             state = state.model_copy(
