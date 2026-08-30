@@ -8,7 +8,7 @@ import os
 from typing import Any, ClassVar, TypeVar, cast, overload
 
 from lexigram.app.config.discovery import ModuleDiscoveryConfig
-from lexigram.app.config.models import HealthConfig
+from lexigram.app.config.models import AppConfig, HealthConfig
 from lexigram.config.base import (
     BaseConfig,
     _field_leaf_names,
@@ -40,6 +40,7 @@ class LexigramConfig(BaseConfig):
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="allow")
 
     app_name: str = Field(default="lexigram-app", description="Application name")
+    app: AppConfig = Field(default_factory=AppConfig)
     debug: bool = Field(
         default=False,
         description="Enable debug mode. Also toggled by the LEX_DEBUG env var.",
@@ -68,12 +69,15 @@ class LexigramConfig(BaseConfig):
         deep-merged into the top level for fields such as ``debug`` and
         ``logging`` to be populated.  Extension sections (``db``, ``cache``,
         ``monitor``, ...) are left in ``model_extra`` for ``get_section()``.
+        The typed ``app`` section accepts both the canonical ``app.name``
+        spelling and the legacy ``app_name`` spelling.
 
         Args:
             data: Raw config dict before field validation.
 
         Returns:
-            The same dict with the ``lexigram`` section folded into the root.
+            The same dict with the ``lexigram`` section folded into the root
+            and application-name aliases normalized.
         """
         if not isinstance(data, dict):
             return data
@@ -81,6 +85,28 @@ class LexigramConfig(BaseConfig):
         if isinstance(section, dict):
             deep_merge(data, section)
             data.pop("lexigram", None)
+
+        app_section = data.get("app")
+        root_name = data.get("app_name")
+        if isinstance(app_section, dict):
+            normalized_app = dict(app_section)
+            app_name = normalized_app.get(
+                "name", normalized_app.get("app_name", root_name)
+            )
+            if app_name is not None:
+                # ``app.name`` is the public nested spelling. Keep both names
+                # in the model so existing AppConfig consumers remain valid.
+                normalized_app["name"] = app_name
+                normalized_app["app_name"] = app_name
+                data["app_name"] = app_name
+            for field_name in ("debug", "env"):
+                if field_name in normalized_app:
+                    # The flat fields remain compatibility aliases used by
+                    # application validation and logging.
+                    data[field_name] = normalized_app[field_name]
+            data["app"] = normalized_app
+        elif root_name is not None:
+            data["app"] = {"name": root_name, "app_name": root_name}
         return data
 
     @property
