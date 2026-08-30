@@ -4372,6 +4372,7 @@ version = "0.1.5010"
 source = { editable = "experimental/apps/lexigram-admin" }
 dependencies = [
     { name = "aiofiles" },
+    { name = "bcrypt" },
     { name = "cryptography" },
     { name = "htpy" },
     { name = "httpx" },
