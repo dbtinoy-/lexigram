@@ -69,6 +69,21 @@ class TestAdminTenantMiddleware:
         app.assert_awaited_once()
 
     @pytest.mark.asyncio
+    async def test_public_path_matching_does_not_allow_prefix_collisions(
+        self, mock_receive: AsyncMock, mock_send: AsyncMock
+    ) -> None:
+        """A protected resource named ``login-evil`` still resolves tenancy."""
+        app = AsyncMock()
+        config = TenancyConfig(enabled=True, default_tenant_id="tenant-acme")
+        middleware = AdminTenantMiddleware(app, config)
+        scope = self._make_scope(path="/login-evil")
+
+        await middleware(scope, mock_receive, mock_send)
+
+        app.assert_awaited_once()
+        assert scope["state"]["tenant_id"] == "tenant-acme"
+
+    @pytest.mark.asyncio
     async def test_tenant_resolved_from_state(
         self, mock_receive: AsyncMock, mock_send: AsyncMock
     ) -> None:

@@ -75,6 +75,20 @@ class StateRenderer:
             ).render(),
         )
 
+    def render_permission_denied(self) -> Any:
+        """Render a non-data state when the caller cannot view the resource."""
+        return el(
+            "div",
+            el("h2", "You do not have access to this resource", class_="font-semibold"),
+            el(
+                "p",
+                "Contact an administrator if you believe this is incorrect.",
+                class_="text-sm text-muted-foreground mt-1",
+            ),
+            role="alert",
+            class_="rounded-lg border border-border bg-card p-8 text-center",
+        )
+
     def render_empty(self) -> Any:
         """Render empty state, honoring configure table overrides."""
         return EmptyState(

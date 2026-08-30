@@ -7,6 +7,7 @@ Provides :class:`TableConfiguration` (static DataTable config),
 
 from __future__ import annotations
 
+import copy
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
@@ -81,6 +82,38 @@ class TableConfiguration(DomainModel):
         """Row height in px for current density."""
         heights = {"compact": "32px", "normal": "48px", "comfortable": "64px"}
         return heights.get(self.density, "48px")
+
+
+def clone_table_configuration(config: TableConfiguration) -> TableConfiguration:
+    """Return a render-local copy of a table configuration.
+
+    Resource configurations are commonly cached on a resource class and can
+    therefore be shared by many requests. Rendering must not append default
+    actions or reorder columns on that shared object: doing so can leak state
+    between requests (and, in particular, between users with different RBAC
+    results). A shallow copy preserves intentionally shared column/action
+    instances while copying every mutable configuration collection that the
+    table pipeline may modify.
+    """
+    cloned = copy.copy(config)
+    for name in (
+        "columns",
+        "actions",
+        "header_actions",
+        "bulk_actions",
+        "search_fields",
+    ):
+        value = getattr(config, name, None)
+        if isinstance(value, list):
+            setattr(cloned, name, list(value))
+
+    filter_options = getattr(config, "filter_options", None)
+    if isinstance(filter_options, list):
+        cloned.filter_options = list(filter_options)
+    elif isinstance(filter_options, dict):
+        cloned.filter_options = dict(filter_options)
+
+    return cloned
 
 
 class ResourceConfig:

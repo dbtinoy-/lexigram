@@ -27,6 +27,29 @@ class AllowAdmin:
         return "admin" in getattr(user, "roles", [])
 
 
+class _ResourcePermissions:
+    def __init__(self, **overrides: bool) -> None:
+        self.values = {
+            "can_view": True,
+            "can_create": True,
+            "can_update": True,
+            "can_delete": True,
+        }
+        self.values.update(overrides)
+
+    async def can_view(self, user: object, resource: str) -> bool:
+        return self.values["can_view"]
+
+    async def can_create(self, user: object, resource: str) -> bool:
+        return self.values["can_create"]
+
+    async def can_update(self, user: object, resource: str) -> bool:
+        return self.values["can_update"]
+
+    async def can_delete(self, user: object, resource: str) -> bool:
+        return self.values["can_delete"]
+
+
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -102,6 +125,71 @@ async def test_admin_passes_through() -> None:
 
 
 @pytest.mark.asyncio
+async def test_resource_capability_denies_create_route() -> None:
+    """A request-level allow does not bypass resource CRUD permissions."""
+    mw = AdminAuthorizationMiddleware(
+        app=None,
+        authorizer=AllowAdmin(),
+        permission_authorizer=_ResourcePermissions(can_create=False),
+    )
+    admin = MagicMock()
+    admin.roles = ["admin"]
+    request = _make_request(path="/admin/users/create", user=admin)
+
+    resp = await mw.dispatch(request, _ok_call_next)
+
+    assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_resource_capabilities_are_attached_for_rendering() -> None:
+    """Allowed resource capabilities are made available to UI renderers."""
+    mw = AdminAuthorizationMiddleware(
+        app=None,
+        authorizer=AllowAdmin(),
+        permission_authorizer=_ResourcePermissions(can_delete=False),
+    )
+    admin = MagicMock()
+    admin.roles = ["admin"]
+    request = _make_request(path="/admin/users", user=admin)
+
+    async def inspect_request(current_request: Request) -> PlainTextResponse:
+        assert current_request.state.permissions == {
+            "can_view": True,
+            "can_create": True,
+            "can_update": True,
+            "can_delete": False,
+        }
+        return PlainTextResponse("OK")
+
+    resp = await mw.dispatch(request, inspect_request)
+
+    assert resp.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_non_resource_routes_use_request_authorization_only() -> None:
+    """Search and contributor routes are not mistaken for resources."""
+    mw = AdminAuthorizationMiddleware(
+        app=None,
+        authorizer=AllowAdmin(),
+        permission_authorizer=_ResourcePermissions(can_view=False),
+        resource_names={"users"},
+    )
+    admin = MagicMock()
+    admin.roles = ["admin"]
+    request = _make_request(path="/admin/search", user=admin)
+
+    async def inspect_request(current_request: Request) -> PlainTextResponse:
+        assert not hasattr(current_request.state, "permissions")
+        return PlainTextResponse("OK")
+
+    resp = await mw.dispatch(request, inspect_request)
+
+    assert resp.status_code == 200
+
+
+@pytest.mark.asyncio
 async def test_public_path_skips_authorization() -> None:
     """Login, static, and health paths bypass authorizer."""
     mw = AdminAuthorizationMiddleware(app=None, authorizer=DenyAll())
@@ -132,6 +220,17 @@ async def test_public_paths_follow_configured_prefix() -> None:
     # The default-prefix public paths no longer bypass under /console.
     request = _make_request(path="/admin/login")
     resp = await mw.dispatch(request, _ok_call_next)
+    assert resp.status_code == 302
+
+
+@pytest.mark.asyncio
+async def test_public_path_matching_does_not_allow_prefix_collisions() -> None:
+    """A resource named login-evil must not inherit the public login bypass."""
+    mw = AdminAuthorizationMiddleware(app=None, authorizer=DenyAll())
+    request = _make_request(path="/admin/login-evil")
+
+    resp = await mw.dispatch(request, _ok_call_next)
+
     assert resp.status_code == 302
 
 
