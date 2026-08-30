@@ -47,13 +47,16 @@ class AdminUserRecord:
     def has_permission(self, permission: str) -> bool:
         """Return True if the user has the given permission.
 
+        The wildcard ``"*"`` grants all permissions.
+
         Args:
             permission: Permission name to check.
 
         Returns:
-            True when the permission is present in :attr:`permissions`.
+            True when the permission is present in :attr:`permissions`
+            or when ``"*"`` is in the list.
         """
-        return permission in self.permissions
+        return permission in self.permissions or "*" in self.permissions
 
 
 __all__ = ["AdminUserRecord"]
