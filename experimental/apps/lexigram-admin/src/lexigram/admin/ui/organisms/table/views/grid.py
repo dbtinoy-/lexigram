@@ -134,6 +134,9 @@ class GridView(AbstractDataView):
             class_="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6",
         )
 
+        # Select-all bar for bulk operations
+        select_all_bar = self.render_select_all_bar()
+
         # Only show trigger if we have a next cursor (more data to load)
         next_cursor = (
             self.next_cursor
@@ -152,6 +155,6 @@ class GridView(AbstractDataView):
                 target=f"#{Zones.DATA.id}",  # Target the content container
                 swap="beforeend",
             )
-            return el("div", grid, trigger.render())
+            return el("div", select_all_bar, grid, trigger.render())
 
-        return grid
+        return el("div", select_all_bar, grid) if select_all_bar else grid

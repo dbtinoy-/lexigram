@@ -135,6 +135,9 @@ class StackedView(AbstractDataView):
 
         stack = el("div", *cards, class_="block space-y-4")
 
+        # Select-all bar for bulk operations
+        select_all_bar = self.render_select_all_bar()
+
         # Virtual Scroll Logic
         next_cursor = (
             self.next_cursor
@@ -155,6 +158,6 @@ class StackedView(AbstractDataView):
                 target=f"#{Zones.DATA.id}",
                 swap="beforeend",
             )
-            return el("div", stack, trigger.render())
+            return el("div", select_all_bar, stack, trigger.render())
 
-        return stack
+        return el("div", select_all_bar, stack) if select_all_bar else stack

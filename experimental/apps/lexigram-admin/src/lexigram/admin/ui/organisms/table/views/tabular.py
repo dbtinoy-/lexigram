@@ -52,6 +52,40 @@ class AbstractDataView(ABC):
             ordered_cols.extend(col_map.values())
             self.config.columns = ordered_cols
 
+    def render_select_all_bar(self) -> Any:
+        """Render a 'Select all' checkbox bar for non-tabular views.
+
+        TabularView embeds a per-column header checkbox; stacked, grid and
+        calendar views lack a table header so this bar provides the same
+        affordance above the view content.
+        """
+        from lexigram.ui import Checkbox
+
+        if not (self.config.resource_prefix and self.config.bulk_actions):
+            return ""
+
+        return el(
+            "div",
+            Checkbox(
+                name="select_all",
+                aria_label="Select all rows on this page",
+                **{
+                    ":checked": "allIds.length > 0 && selectedIds.length === allIds.length",
+                    "x-effect": "$el.indeterminate = selectedIds.length > 0 && selectedIds.length < allIds.length",
+                    "@change": "handleSelectAll($event)",
+                },
+            ),
+            el(
+                "span",
+                el("strong", x_text="selectedIds.length"),
+                " of ",
+                el("strong", x_text="allIds.length"),
+                " selected",
+                class_="text-sm text-muted-foreground ml-2",
+            ),
+            class_="flex items-center gap-2 px-4 py-2 bg-muted/50 dark:bg-card/50 border border-border rounded-lg mb-3",
+        )
+
     @abstractmethod
     def render(self) -> Any:
         pass
