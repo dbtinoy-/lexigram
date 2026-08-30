@@ -342,7 +342,10 @@ class HTMXAttrs:
             f"hx-{method.lower()}": url,
             "hx-target": Zones.DATA.selector,
             "hx-swap": Zones.DATA.swap_mode.value,
-            "hx-params": "none",
+            # Do not set hx-params="none" here: HTMX applies that filter to
+            # the request as a whole and can discard values supplied by
+            # hx-include. The selector below already limits the payload to
+            # checked row IDs.
             # Only include checked checkboxes
             "hx-include": f"{Zones.TABLE.selector} [name='ids']:checked",
         }

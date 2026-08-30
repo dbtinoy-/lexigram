@@ -143,6 +143,7 @@ class CreateActionHandler:
                     resource,
                     user=getattr(getattr(request, "state", None), "user", None),
                     errors=_validation_errors_to_dict(error),
+                    data=data,
                 )
 
             validated_data = validation.unwrap()
@@ -213,6 +214,7 @@ class EditActionHandler:
                     item_id,
                     user=getattr(getattr(request, "state", None), "user", None),
                     errors=_validation_errors_to_dict(error),
+                    data=data,
                 )
 
             validated_data = validation.unwrap()
@@ -296,8 +298,16 @@ class RestoreActionHandler:
                 "<h1>Restore not supported for this resource</h1>", status_code=400
             )
 
+        data_source = get_resource_data_source(resource)
+        item = await data_source.find_one(item_id) if data_source is not None else None
+        can_update = getattr(resource, "can_update", None)
+        if item is None:
+            return HTMLResponse("Not found", status_code=404)
+        if can_update and not can_update(item):
+            return HTMLResponse("This record cannot be restored", status_code=403)
+
         restored = await resource.restore(item_id)
-        new_id = str(getattr(restored, "id", "?"))
+        new_id = str(getattr(restored, "id", item_id))
         from starlette.responses import RedirectResponse
 
         url = admin_url(
@@ -325,6 +335,14 @@ class PurgeActionHandler:
             return HTMLResponse(
                 "<h1>Purge not supported for this resource</h1>", status_code=400
             )
+
+        data_source = get_resource_data_source(resource)
+        item = await data_source.find_one(item_id) if data_source is not None else None
+        can_delete = getattr(resource, "can_delete", None)
+        if item is None:
+            return HTMLResponse("Not found", status_code=404)
+        if can_delete and not can_delete(item):
+            return HTMLResponse("This record cannot be deleted", status_code=403)
 
         await resource.purge(item_id)
         from starlette.responses import RedirectResponse
@@ -376,10 +394,30 @@ class RelationOptionsActionHandler:
         needle = (request.query_params.get("q") or "").strip().lower()
         options: list[str] = []
         for record in records:
-            label = str(record)
+            if isinstance(record, dict):
+                record_id = record.get("id", record.get("pk"))
+                label = (
+                    record.get("name")
+                    or record.get("title")
+                    or record.get("label")
+                    or record.get("email")
+                    or record_id
+                )
+            else:
+                record_id = getattr(record, "id", getattr(record, "pk", None))
+                label = (
+                    getattr(record, "name", None)
+                    or getattr(record, "title", None)
+                    or getattr(record, "label", None)
+                    or getattr(record, "email", None)
+                    or record_id
+                )
+            if record_id is None:
+                continue
+            value = str(record_id)
+            label = str(label if label is not None else value)
             if needle and needle not in label.lower():
                 continue
-            value = str(getattr(record, "id", record))
             options.append(
                 f'<option value="{escape(value)}">{escape(label)}</option>'
             )

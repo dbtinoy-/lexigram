@@ -119,15 +119,21 @@ class DetailRenderer:
         label = self.resource_name.replace("_", " ").title()
         item_dict: dict = {}
 
-        if resource and hasattr(resource, "service") and resource.service:
+        if resource:
             try:
-                if hasattr(resource.service, "get"):
-                    item = await resource.service.get(item_id)
+                from lexigram.admin.resources.data_access import get_resource_data_source
+
+                data_source = get_resource_data_source(resource)
+                getter = getattr(data_source, "find_one", None)
+                if getter is not None:
+                    item = await getter(item_id)
                     if item:
                         item_dict = (
-                            item.model_dump()
+                            dict(item)
+                            if isinstance(item, dict)
+                            else item.model_dump()
                             if hasattr(item, "model_dump")
-                            else dict(item)
+                            else dict(vars(item))
                         )
             except DataError as exc:
                 logger.debug(
@@ -276,43 +282,31 @@ class DetailRenderer:
             return render_to_string(el("p", f"Item #{item_id}"))
 
         item = None
-        # Legacy service attribute (pre-IDataSource resources)
-        service = getattr(resource, "service", None)
-        if service is not None and hasattr(service, "get"):
+        # Resolve the canonical source first. This keeps detail and inline
+        # editing consistent with list/forms when a resource still exposes a
+        # legacy service alongside a mounted modern source.
+        from lexigram.admin.resources.data_access import get_resource_data_source
+
+        data_source = get_resource_data_source(resource)
+        if data_source is not None and hasattr(data_source, "find_one"):
             try:
-                item = await service.get(item_id)
-            except DataError as e:
+                item = await data_source.find_one(item_id)
+            except (AttributeError, TypeError, ValueError, KeyError, DataError) as exc:
                 logger.debug(
-                    "Failed to get item %s/%s: %s",
+                    "Failed to get item %s/%s via data source: %s",
                     self.resource_name,
                     item_id,
-                    e,
+                    exc,
                 )
-                raise DataError(
-                    message=f"Failed to retrieve {self.resource_name} item {item_id}",
-                    original_error=e,
-                ) from None
-
-        # Modern path: the data source wired by the mount pipeline
-        # (resource.set_data_source). Without this, detail pages only ever
-        # render the fallback placeholder for standard resources.
-        if item is None:
-            from lexigram.admin.resources.data_access import get_resource_data_source
-
-            data_source = get_resource_data_source(resource)
-            if data_source is not None and hasattr(data_source, "find_one"):
-                try:
-                    item = await data_source.find_one(item_id)
-                except (AttributeError, TypeError, ValueError, KeyError) as exc:
-                    logger.debug(
-                        "Failed to get item %s/%s via data source: %s",
-                        self.resource_name,
-                        item_id,
-                        exc,
-                    )
 
         if item:
-            item_dict = item.model_dump() if hasattr(item, "model_dump") else dict(item)
+            item_dict = (
+                dict(item)
+                if isinstance(item, dict)
+                else item.model_dump()
+                if hasattr(item, "model_dump")
+                else dict(vars(item))
+            )
             return self._render_item_infolist(resource, item_dict)
         return render_to_string(el("p", "Item not found"))
 

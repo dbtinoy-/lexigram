@@ -114,7 +114,20 @@ class ResourceBulkMixin:
             if not action or not ids:
                 return HTMLResponse("Missing action or ids", status_code=400)
 
-            result = await self.execute_bulk_action(action, ids)  # type: ignore[arg-type]
+            required_capability = {
+                "delete": "can_delete",
+                "purge": "can_delete",
+                "restore": "can_update",
+            }.get(str(action))
+            capabilities = getattr(getattr(request, "state", None), "permissions", None)
+            if (
+                required_capability
+                and isinstance(capabilities, dict)
+                and not capabilities.get(required_capability, False)
+            ):
+                return HTMLResponse("Forbidden", status_code=403)
+
+            result = await self.execute_bulk_action(str(action), ids)  # type: ignore[arg-type]
 
             ToastNotification.make(str(result)).success().title("Bulk action").send()
             if ctx.is_htmx:
@@ -161,7 +174,13 @@ class ResourceBulkMixin:
 
         if action == "restore":
             restored = 0
+            can_update = getattr(self, "can_update", None)
             for item_id in ids:
+                item = await data_source.find_one(item_id)
+                if item is None:
+                    continue
+                if can_update and not can_update(item):
+                    return f"Refused: record {item_id} is protected from update"
                 updated = await data_source.update(item_id, {"deleted_at": None})
                 if updated is not None:
                     restored += 1

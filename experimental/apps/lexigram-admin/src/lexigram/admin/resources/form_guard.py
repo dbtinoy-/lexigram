@@ -21,7 +21,9 @@ Rules
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
-from typing import Any, Final
+from typing import Any, Final, get_type_hints
+
+from dataclasses import MISSING, fields as dataclass_fields, is_dataclass
 
 from lexigram.admin.resources.form_coercion import _coerce_form_data
 
@@ -48,6 +50,42 @@ def model_field_names(model: type | None) -> set[str]:
             continue
         allowed.add(key)
     return allowed
+
+
+def _add_missing_required_booleans(
+    cleaned: dict[str, Any],
+    model: type,
+) -> None:
+    """Apply native HTML checkbox semantics to required model booleans.
+
+    Browsers omit unchecked checkboxes entirely. A required ``bool`` therefore
+    needs an explicit ``False`` before model validation; optional booleans are
+    left alone so their model defaults and nullable semantics remain intact.
+    """
+    try:
+        hints = get_type_hints(model)
+    except Exception:
+        hints = getattr(model, "__annotations__", {})
+
+    model_fields = getattr(model, "model_fields", None)
+    if model_fields:
+        for name, field_info in model_fields.items():
+            if name in cleaned or hints.get(name) is not bool:
+                continue
+            is_required = getattr(field_info, "is_required", None)
+            if callable(is_required) and is_required():
+                cleaned[name] = False
+        return
+
+    if is_dataclass(model):
+        for field_info in dataclass_fields(model):
+            if (
+                field_info.name not in cleaned
+                and hints.get(field_info.name) is bool
+                and field_info.default is MISSING
+                and field_info.default_factory is MISSING
+            ):
+                cleaned[field_info.name] = False
 
 
 def sanitize_form_data(
@@ -77,6 +115,7 @@ def sanitize_form_data(
 
     if model is not None:
         cleaned = _coerce_form_data(cleaned, model)
+        _add_missing_required_booleans(cleaned, model)
         if not allow_extra_fields:
             allowed = model_field_names(model) - protected
             return {key: value for key, value in cleaned.items() if key in allowed}

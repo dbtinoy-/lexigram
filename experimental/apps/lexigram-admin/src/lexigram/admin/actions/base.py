@@ -226,6 +226,37 @@ class BulkAction(Action[list[Any], Any]):
         prefix = ctx.resource_prefix or f"/{ctx.resource_name}"
         return f"{prefix}/bulk/{self.name}"
 
+    def _get_htmx_attrs(
+        self,
+        url: str,
+        records: list[Any],
+        ctx: ActionContext,
+    ) -> dict[str, str]:
+        """Submit through the mounted generic bulk route.
+
+        Bulk routes are registered at ``/{resource}/bulk`` and dispatch the
+        action from the request's ``action`` value; the action-specific URL
+        returned by ``_get_url`` is not a mounted route.
+        """
+        from lexigram.ui import HTMXAttrs
+
+        confirmation = self.confirm()
+        confirm_message = (
+            confirmation.message or confirmation.title
+            if confirmation is not None
+            else None
+        )
+        if confirm_message is None and getattr(self, "_requires_confirmation", False):
+            confirm_message = getattr(self, "_confirmation_message", None) or getattr(
+                self, "_confirmation_title", None
+            )
+        return HTMXAttrs.for_bulk_action(
+            url=url,
+            method="POST",
+            action_name=self.name,
+            confirm_message=confirm_message,
+        )
+
 
 class HeaderAction(Action[None, Any]):
     """Action with no record context, rendered in header areas.

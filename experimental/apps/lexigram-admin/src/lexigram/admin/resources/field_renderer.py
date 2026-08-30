@@ -7,6 +7,7 @@ from typing import Any
 from starlette.responses import HTMLResponse
 
 from lexigram.admin.config import AdminConfig
+from lexigram.admin.resources.data_access import get_resource_data_source
 from lexigram.admin.resources.field_renderers_common import (
     FieldRendererProtocol as FieldRendererProtocol,
 )
@@ -178,18 +179,27 @@ class FieldRenderer:
         """Render a single field for inline editing."""
         self.resource_name.replace("_", " ").title()
 
-        # Fetch current item data
+        # Fetch current item data. Prefer the legacy service when explicitly
+        # supplied, then fall back to the same shared data-source resolver used
+        # by detail/forms/CRUD paths.
         current_data: dict[str, Any] = {}
-        if item_id and resource and hasattr(resource, "service") and resource.service:
+        if item_id and resource:
+            # Use the mounted canonical source even when a deprecated
+            # ``service`` attribute remains on the resource.
+            data_source = get_resource_data_source(resource)
             try:
-                if hasattr(resource.service, "get"):
-                    item = await resource.service.get(item_id)
-                    if item:
-                        current_data = (
-                            item.model_dump()
-                            if hasattr(item, "model_dump")
-                            else dict(item)
-                        )
+                if data_source is not None:
+                    getter = getattr(data_source, "get", None) or getattr(
+                        data_source, "find_one", None
+                    )
+                    if getter is not None:
+                        item = await getter(item_id)
+                        if item:
+                            current_data = (
+                                item.model_dump()
+                                if hasattr(item, "model_dump")
+                                else dict(item)
+                            )
             except (AttributeError, TypeError, ValueError, RuntimeError) as e:
                 logger.debug(
                     "Failed to get item %s/%s for field edit: %s",

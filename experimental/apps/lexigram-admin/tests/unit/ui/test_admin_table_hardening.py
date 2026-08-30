@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
+from lexigram.admin.actions.base import BulkAction
 from lexigram.admin.actions.standard import DeleteAction, DeleteBulkAction, EditAction
 from lexigram.admin.resources.config import TableConfiguration
 from lexigram.admin.resources.list_columns import get_bulk_actions
@@ -190,6 +191,20 @@ def test_canonical_bulk_action_uses_the_registered_bulk_route():
 
     assert "/admin/users/bulk" in str(html)
     assert "/admin/users/bulk/delete" not in str(html)
+
+
+def test_generic_bulk_action_posts_to_canonical_route_with_selected_ids():
+    html = render_bulk_action_button(
+        BulkAction(name="archive", label="Archive"),
+        resource_name="users",
+        resource_prefix="/admin/users",
+    )
+
+    rendered = str(html)
+    assert 'hx-post="/admin/users/bulk"' in rendered
+    assert 'hx-vals=' in rendered
+    assert 'hx-include=' in rendered
+    assert 'hx-params=' not in rendered
 
 
 def test_cache_key_isolated_by_tenant_and_table_state():

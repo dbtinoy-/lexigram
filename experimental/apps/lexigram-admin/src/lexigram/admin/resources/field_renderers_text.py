@@ -137,8 +137,26 @@ class TextFieldRenderer:
         return TextInput(**_atom_args(common_args, value))
 
 
+class _SchemaFieldComponent:
+    """Component adapter for schema fields without a dedicated renderer."""
+
+    def __init__(
+        self,
+        field_schema: SchemaField,
+        value: Any,
+        errors: list[str] | None = None,
+    ) -> None:
+        self.field_schema = field_schema
+        self.value = value
+        self.error = errors
+
+    def render(self) -> Any:
+        """Use the field's own form widget instead of degrading to text."""
+        return self.field_schema.render_form(self.value, errors=self.error)
+
+
 class DefaultFieldRenderer:
-    """Default renderer for unknown field types."""
+    """Fallback that preserves a custom schema field's widget contract."""
 
     def can_render(self, field_schema: SchemaField) -> bool:
         return True
@@ -149,4 +167,7 @@ class DefaultFieldRenderer:
         value: Any,
         common_args: dict[str, Any],
     ) -> Any:
-        return TextInput(**_atom_args(common_args, value))
+        errors = common_args.get("error")
+        if not isinstance(errors, list):
+            errors = [str(errors)] if errors else None
+        return _SchemaFieldComponent(field_schema, value, errors)

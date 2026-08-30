@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from dataclasses import field as dataclass_field
 from typing import Any, Generic, TypeVar
 
-from lexigram.admin.schema import SchemaField
+from lexigram.admin.schema import BooleanField, SchemaField
 from lexigram.domain import DomainModel
 from lexigram.ui import el, render_to_string
 
@@ -108,7 +108,12 @@ class Form(Generic[T]):
                 value is None or (isinstance(value, str) and not value.strip())
             ):
                 errors.setdefault(name, []).append("This field is required.")
-            elif name in data:
+            elif name in data or (
+                isinstance(field, BooleanField) and field.required
+            ):
+                # An unchecked required checkbox is intentionally omitted by
+                # HTML, but BooleanField.from_form(None) turns that omission
+                # into the valid value False. Keep it in the model payload.
                 validated = field.validate_value(value)
                 if validated.is_err():
                     errors.setdefault(name, []).append(str(validated.unwrap_err()))

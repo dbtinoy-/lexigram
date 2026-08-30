@@ -19,7 +19,8 @@ def test_bulk_action_bar_includes_bulk_buttons_and_hx_include():
     # hx-include attribute present for selected ids (HTML-escaped quotes are expected)
     assert "hx-include" in html
     assert "name=&#x27;ids&#x27;" in html or "[name='ids']:checked" in html
-    # Ensure ActionButton styling is used (inline-flex) and HTMX attrs preserved
+    # Ensure ActionButton styling is used (inline-flex) and the action
+    # opens the confirmation GET before posting the bulk mutation.
     assert "inline-flex" in html
     assert "hx-get" in html
 

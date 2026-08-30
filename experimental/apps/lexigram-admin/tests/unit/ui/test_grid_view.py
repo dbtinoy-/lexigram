@@ -7,6 +7,7 @@ shared ``extract_row_id`` helper.
 
 from __future__ import annotations
 
+from lexigram.admin.actions.standard import DeleteBulkAction, EditAction
 from lexigram.admin.resources.config import TableConfiguration
 from lexigram.admin.ui.organisms.table.views.grid import GridView
 from lexigram.admin.ui.organisms.table.views.tabular_rows import extract_row_id
@@ -48,3 +49,23 @@ class TestGridView:
     def test_extract_row_id_shared_helper_handles_dict(self) -> None:
         assert extract_row_id({"id": 7}) == "7"
         assert extract_row_id({"user_id": 8}) == "8"
+        assert extract_row_id({"id": None}) == ""
+
+    def test_idless_cards_do_not_render_selection_or_detail_controls(self) -> None:
+        config = TableConfiguration(
+            columns=[TextColumn("name")],
+            resource_prefix="/admin/events",
+            resource_name="events",
+            actions=[EditAction()],
+            bulk_actions=[DeleteBulkAction()],
+        )
+        view = GridView(
+            [{"name": "Unaddressable"}],
+            config,
+            TableState(view="grid"),
+            resource_name="events",
+        )
+        html = render_to_string(view.render())
+        assert 'name="ids"' not in html
+        assert "View details" not in html
+        assert "/admin/events/row-0" not in html

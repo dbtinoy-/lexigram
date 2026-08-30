@@ -427,7 +427,7 @@ class CalendarView(AbstractDataView):
             )
 
         action_nodes: list[Any] = []
-        if prefix:
+        if prefix and rid:
             for action in self.config.actions:
                 if not action.is_visible(
                     user=self.user,
@@ -466,12 +466,21 @@ class CalendarView(AbstractDataView):
             select_node,
             el(
                 "div",
-                el(
-                    "a",
-                    title,
-                    href=href,
-                    title=str(title),
-                    class_="truncate block hover:underline",
+                (
+                    el(
+                        "a",
+                        title,
+                        href=href,
+                        title=str(title),
+                        class_="truncate block hover:underline",
+                    )
+                    if rid
+                    else el(
+                        "span",
+                        title,
+                        title=str(title),
+                        class_="truncate block",
+                    )
                 ),
                 actions_row,
                 class_="min-w-0 flex-1",

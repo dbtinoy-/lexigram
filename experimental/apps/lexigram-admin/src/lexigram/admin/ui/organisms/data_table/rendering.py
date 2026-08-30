@@ -373,9 +373,13 @@ class DataTableRenderer:
 
         if self.config.filters:
             if isinstance(self.config.filters, list):
-                exclude_keys.extend([f.name for f in self.config.filters])
+                for filter_config in self.config.filters:
+                    name = getattr(filter_config, "name", None)
+                    if name:
+                        exclude_keys.extend((name, f"filter_{name}"))
             elif isinstance(self.config.filters, dict):
-                exclude_keys.extend(self.config.filters.keys())
+                for name in self.config.filters:
+                    exclude_keys.extend((name, f"filter_{name}"))
 
         return self.state.render_hidden_inputs(exclude=exclude_keys)
 

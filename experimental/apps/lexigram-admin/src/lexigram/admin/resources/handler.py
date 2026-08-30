@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import inspect
 from typing import Any
 
 from starlette.requests import Request as StarletteRequest
@@ -222,13 +223,58 @@ class BulkActionHandler:
         form = request.scope.get("admin_form_data")
         if form is None:
             form = await request.form()
-        action_name = form.get("action", "")
+        action_name = str(form.get("action", "") or "")
         form_ids = form.getlist("ids") if hasattr(form, "getlist") else []
+
+        # Authorization for the generic endpoint is view-level so safe bulk
+        # actions (such as export) remain available. Enforce the submitted
+        # mutating action here as well, including legacy resource hooks.
+        required_capability = {
+            "delete": "can_delete",
+            "purge": "can_delete",
+            "restore": "can_update",
+        }.get(action_name)
+        if required_capability:
+            capabilities = getattr(getattr(request, "state", None), "permissions", None)
+            if isinstance(capabilities, dict) and not capabilities.get(required_capability, False):
+                return HTMLResponse("Forbidden", status_code=403)
+            hook_name = (
+                "has_delete_permission"
+                if required_capability == "can_delete"
+                else "has_change_permission"
+            )
+            hook = getattr(resource, hook_name, None)
+            if callable(hook):
+                allowed = hook(getattr(getattr(request, "state", None), "user", None))
+                if inspect.isawaitable(allowed):
+                    allowed = await allowed
+                if not allowed:
+                    return HTMLResponse("Forbidden", status_code=403)
 
         if not form_ids:
             return HTMLResponse("No records selected", status_code=400)
 
         is_htmx = request.headers.get("HX-Request") == "true"
+
+        # Bulk UI visibility is not authorization. Mirror the single-record
+        # delete guard for every selected record before performing any write,
+        # so a protected row cannot be deleted through the bulk endpoint.
+        if action_name in {"delete", "purge"}:
+            can_delete = getattr(resource, "can_delete", None)
+            if can_delete:
+                for item_id in form_ids:
+                    item = await data_source.find_one(item_id)
+                    if item is not None and not can_delete(item):
+                        message = "One or more selected records cannot be deleted"
+                        if is_htmx:
+                            response = HTMLResponse("", status_code=409)
+                            response.headers["HX-Trigger"] = (
+                                '{"show-toast":{"message":"'
+                                + message
+                                + '","type":"error"}}'
+                            )
+                            return response
+                        return HTMLResponse(message, status_code=409)
 
         if action_name == "delete":
             count = await data_source.bulk_delete(form_ids)
@@ -236,7 +282,59 @@ class BulkActionHandler:
         elif action_name == "purge":
             count = await data_source.bulk_delete(form_ids)
             message = f"Purged {count} item(s)"
+        elif action_name in {"export", "export_csv"}:
+            import csv
+            from io import StringIO
+
+            records = []
+            for item_id in form_ids:
+                item = await data_source.find_one(item_id)
+                if item is None:
+                    continue
+                if isinstance(item, dict):
+                    records.append(dict(item))
+                elif hasattr(item, "model_dump"):
+                    records.append(dict(item.model_dump()))
+                elif hasattr(item, "dict") and callable(item.dict):
+                    records.append(dict(item.dict()))
+                else:
+                    records.append(dict(vars(item)))
+
+            fieldnames: list[str] = []
+            for record in records:
+                for key in record:
+                    if key not in fieldnames:
+                        fieldnames.append(str(key))
+            output = StringIO()
+            if fieldnames:
+                writer = csv.DictWriter(output, fieldnames=fieldnames, extrasaction="ignore")
+                writer.writeheader()
+                writer.writerows(records)
+            filename = f"{resource.name or 'records'}-export.csv"
+            response = HTMLResponse(output.getvalue(), media_type="text/csv")
+            response.headers["Content-Disposition"] = f'attachment; filename="{filename}"'
+            if is_htmx:
+                # An HTMX swap must not put CSV bytes into the table. A
+                # non-HTMX submission downloads normally; callers using HTMX
+                # can consume the response as a download in their event hook.
+                response.headers["HX-Reswap"] = "none"
+            return response
         elif action_name == "restore":
+            can_update = getattr(resource, "can_update", None)
+            if can_update:
+                for item_id in form_ids:
+                    item = await data_source.find_one(item_id)
+                    if item is not None and not can_update(item):
+                        message = "One or more selected records cannot be restored"
+                        if is_htmx:
+                            response = HTMLResponse("", status_code=409)
+                            response.headers["HX-Trigger"] = (
+                                '{"show-toast":{"message":"'
+                                + message
+                                + '","type":"error"}}'
+                            )
+                            return response
+                        return HTMLResponse(message, status_code=409)
             count = 0
             for item_id in form_ids:
                 updated = await data_source.update(
@@ -352,5 +450,38 @@ class ResourceHandler:
         scope["admin_action"] = self.action
         scope["admin_prefix"] = self._config.prefix.rstrip("/")
         resource = self._resources.get(self.name) if self._resources else None
+        if resource is not None:
+            permission_method = {
+                "list": "has_view_permission",
+                "detail": "has_view_permission",
+                "relation-options": "has_view_permission",
+                "create": "has_add_permission",
+                "import-example": "has_add_permission",
+                "import-report": "has_view_permission",
+                "clone": "has_add_permission",
+                "edit": "has_change_permission",
+                "restore": "has_change_permission",
+                "permissions": "has_change_permission",
+                "delete": "has_delete_permission",
+                "delete-confirm": "has_delete_permission",
+                "purge": "has_delete_permission",
+                # The generic endpoint also handles non-destructive bulk
+                # actions (for example export); the handler checks the
+                # submitted action's capability after parsing the form.
+                "bulk": "has_view_permission",
+                "bulk-delete-confirm": "has_delete_permission",
+                "bulk-purge-confirm": "has_delete_permission",
+                "bulk-restore-confirm": "has_change_permission",
+            }.get(self.action)
+            checker = getattr(resource, permission_method, None) if permission_method else None
+            if callable(checker):
+                user = getattr(request.state, "user", None)
+                allowed = checker(user)
+                if inspect.isawaitable(allowed):
+                    allowed = await allowed
+                if not allowed:
+                    response = HTMLResponse("Forbidden", status_code=403)
+                    await response(scope, receive, send)
+                    return
         response = await self._registry.handle(request, resource, self.action)
         await response(scope, receive, send)

@@ -37,9 +37,23 @@ class BooleanFieldRenderer:
         common_args: dict[str, Any],
     ) -> Any:
         hx_props = {k: v for k, v in common_args.items() if k.startswith("hx_")}
+        if isinstance(value, str):
+            value = value.strip().lower() in {"true", "1", "yes", "on"}
+        elif isinstance(value, (list, tuple)):
+            value = any(
+                str(item).strip().lower() in {"true", "1", "yes", "on"}
+                for item in value
+            )
+        else:
+            value = bool(value)
+        error = common_args.get("error")
+        if isinstance(error, list):
+            error = error[0] if error else None
         return Switch(
             label=common_args.get("label") or "",
             name=common_args["name"],
             value=bool(value),
+            error=error,
+            disabled=bool(common_args.get("readonly", common_args.get("disabled", False))),
             **hx_props,
         )

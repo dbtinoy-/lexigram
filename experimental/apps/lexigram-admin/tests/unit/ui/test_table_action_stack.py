@@ -1,5 +1,6 @@
 from types import SimpleNamespace
 
+from lexigram.admin.actions.standard import DeleteBulkAction
 from lexigram.ui.actions.standard import EditAction
 from lexigram.admin.ui.organisms.table.views.stacked import StackedView
 from lexigram.admin.ui.organisms.table.views.tabular import TabularView
@@ -59,3 +60,15 @@ def test_stacked_view_actions_stack_vertically():
     # The card header action container should use vertical stacking classes
     assert "flex flex-col" in html
     assert "items-start" in html
+
+
+def test_idless_stacked_rows_do_not_render_selection_or_actions():
+    config = make_config(actions=[EditAction()])
+    config.bulk_actions = [DeleteBulkAction()]
+    state = State()
+    view = StackedView(data=[{"name": "Unaddressable"}], config=config, state=state)
+
+    html = str(view.render())
+
+    assert 'name="ids"' not in html
+    assert "edit" not in html.lower()

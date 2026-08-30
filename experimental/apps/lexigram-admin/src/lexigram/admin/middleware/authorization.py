@@ -94,8 +94,12 @@ class AdminAuthorizationMiddleware(BaseHTTPMiddleware):
         operation = parts[1]
         if operation == "create":
             return resource, "create"
+        if operation == "bulk":
+            # The generic POST endpoint also serves non-destructive actions
+            # such as export. The handler applies the action-specific delete
+            # or update check after parsing the submitted action.
+            return resource, "view"
         if operation in {
-            "bulk",
             "bulk-delete-confirm",
             "bulk-purge-confirm",
             "bulk-restore-confirm",

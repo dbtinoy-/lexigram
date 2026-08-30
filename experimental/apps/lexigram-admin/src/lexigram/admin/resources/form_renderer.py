@@ -61,6 +61,7 @@ class FormRenderer(WizardRendererMixin):
         resource,
         user=None,
         errors: dict[str, list[str]] | None = None,
+        data: dict[str, Any] | None = None,
     ) -> HTMLResponse:
         """Render create form using Modal/SlideOver components based on form_display_mode."""
         label = self.resource_name.replace("_", " ").title()
@@ -85,6 +86,8 @@ class FormRenderer(WizardRendererMixin):
             resource,
             label,
             mode="create",
+            initial_data=data,
+            data=data,
             user=user,
             errors=errors,
             in_slide_over=overlay_mode,
@@ -161,6 +164,7 @@ class FormRenderer(WizardRendererMixin):
         item_id: str,
         user=None,
         errors: dict[str, list[str]] | None = None,
+        data: dict[str, Any] | None = None,
     ) -> HTMLResponse:
         """Render edit form using Modal/SlideOver components based on form_display_mode."""
         label = self.resource_name.replace("_", " ").title()
@@ -180,6 +184,11 @@ class FormRenderer(WizardRendererMixin):
         # Fetch existing item data for edit
         initial_data = await self._fetch_item_data(resource, item_id)
 
+        # On a failed submission, submitted values must win over the
+        # persisted record so validation does not reset the user's inputs.
+        if data:
+            initial_data = {**initial_data, **data}
+
         # Build form component with initial data
         await self._ensure_csrf_token(request)
         form_component = await self._build_form_component(
@@ -187,6 +196,7 @@ class FormRenderer(WizardRendererMixin):
             label,
             mode="edit",
             initial_data=initial_data,
+            data=data,
             record_id=item_id,
             user=user,
             errors=errors,
@@ -265,25 +275,20 @@ class FormRenderer(WizardRendererMixin):
         """Fetch existing item data for edit mode."""
         initial_data: dict[str, Any] = {}
         try:
-            if (
-                hasattr(resource, "service")
-                and resource.service
-                and hasattr(resource.service, "get")
-            ):
-                item = await resource.service.get(item_id)
-                if item:
-                    initial_data = (
-                        item.model_dump() if hasattr(item, "model_dump") else dict(item)
-                    )
-            else:
-                data_source = get_resource_data_source(resource)
-                if data_source is None or not hasattr(data_source, "find_one"):
-                    return initial_data
-                item = await data_source.find_one(item_id)
-                if item:
-                    initial_data = (
-                        item.model_dump() if hasattr(item, "model_dump") else dict(item)
-                    )
+            # Resolve the canonical source first. A legacy ``service`` may
+            # still be present for compatibility, but must not shadow a
+            # mounted modern data source during edit rendering.
+            data_source = get_resource_data_source(resource)
+            if data_source is None or not hasattr(data_source, "find_one"):
+                return initial_data
+            item = await data_source.find_one(item_id)
+            if item:
+                if isinstance(item, dict):
+                    initial_data = dict(item)
+                elif hasattr(item, "model_dump"):
+                    initial_data = item.model_dump()
+                else:
+                    initial_data = dict(vars(item))
         except (AttributeError, TypeError, ValueError, RuntimeError) as e:
             logger.debug(
                 "Failed to get item %s/%s for edit: %s",
@@ -309,6 +314,7 @@ class FormRenderer(WizardRendererMixin):
         label: str,
         mode: str = "create",
         initial_data: dict | None = None,
+        data: dict | None = None,
         record_id: str | None = None,
         user=None,
         errors: dict[str, list[str]] | None = None,
@@ -349,6 +355,7 @@ class FormRenderer(WizardRendererMixin):
             # to the form via the ``form`` attribute.
             submit_label = "Update" if mode == "edit" else "Create"
             form = form_class(
+                data=data if data is not None else None,
                 initial=initial_data,
                 action=action_url,
                 form_id=f"{self.resource_name}-{mode}-form",
@@ -359,6 +366,8 @@ class FormRenderer(WizardRendererMixin):
                 hx_swap="innerHTML",
             )
             await self._populate_form_relation_options(form)
+            if errors:
+                form.errors.update(errors)
             return form
 
         # Generate form from Pydantic model
@@ -413,6 +422,7 @@ class FormRenderer(WizardRendererMixin):
                     field_component = self._create_field_component(
                         field_schema,
                         field_value,
+                        errors=errors.get(field_schema.name) if errors else None,
                     )
                     if field_component:
                         if errors and field_schema.name in errors:
@@ -675,7 +685,12 @@ class FormRenderer(WizardRendererMixin):
             body.append(el("div", *leftovers, class_="space-y-6"))
         return body
 
-    def _create_field_component(self, field_schema, value) -> Any:
+    def _create_field_component(
+        self,
+        field_schema,
+        value,
+        errors: list[str] | None = None,
+    ) -> Any:
         """Create a field component from a SchemaField.
 
         Args:
@@ -695,6 +710,7 @@ class FormRenderer(WizardRendererMixin):
             "default": field_schema.default,
             "placeholder": field_schema.placeholder,
             "name": field_schema.name,
+            "error": errors,
         }
         # Searchable relation selects load options over HTMX from the related
         # resource's registered relation-options endpoint.

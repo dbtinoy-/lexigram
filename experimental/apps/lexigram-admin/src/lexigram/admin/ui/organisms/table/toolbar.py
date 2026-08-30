@@ -183,8 +183,11 @@ class TableToolbar(Component):
                     else:
                         from lexigram.ui import HTMXAttrs
 
+                        # Legacy declarations without an explicit HTMX
+                        # endpoint still use the mounted generic bulk route;
+                        # the action name is carried in the form payload.
                         htmx_attrs = HTMXAttrs.for_bulk_action(
-                            url=f"{url}/{action.name}",
+                            url=url,
                             method="POST",
                             action_name=action.name,
                         )

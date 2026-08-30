@@ -223,6 +223,7 @@ class TestHTMXAttrs:
         # Should include checked checkboxes
         assert "hx-include" in attrs
         assert "[name='ids']:checked" in attrs["hx-include"]
+        assert "hx-params" not in attrs
 
     def test_for_bulk_action_with_confirm(self):
         """for_bulk_action with confirm should add hx-confirm."""

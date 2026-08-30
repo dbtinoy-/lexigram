@@ -17,7 +17,9 @@ class GridView(AbstractDataView):
     def render(self) -> Any:
         cards = []
         for _, item in enumerate(self.data):
-            rid = extract_row_id(item) or f"row-{_}"
+            extracted_id = extract_row_id(item)
+            has_row_id = bool(extracted_id)
+            rid = extracted_id or f"row-{_}"
             # Smart Field Detection
             image = (
                 get_attr(item, "image_url")
@@ -44,7 +46,7 @@ class GridView(AbstractDataView):
             action_nodes = []
             if self.config.resource_prefix:
                 # Checkbox
-                if self.config.bulk_actions:
+                if self.config.bulk_actions and has_row_id:
                     action_nodes.append(
                         Checkbox(
                             name="ids",
@@ -55,8 +57,11 @@ class GridView(AbstractDataView):
                         )
                     )
 
-                # Row Actions
-                for action in self.config.actions:
+                # Row Actions require a real record id; a synthetic display
+                # id must never become a destructive/action URL.
+                if not has_row_id:
+                    action_nodes = []
+                for action in self.config.actions if has_row_id else ():
                     if not action.is_visible(
                         user=self.user,
                         resource_name=self.resource_name,
@@ -123,7 +128,7 @@ class GridView(AbstractDataView):
                         href=detail_href,
                         class_="text-sm text-primary-600 hover:text-primary-700 font-medium",
                     )
-                    if self.config.resource_prefix
+                    if self.config.resource_prefix and has_row_id
                     else "",
                     class_="p-4",
                 ),

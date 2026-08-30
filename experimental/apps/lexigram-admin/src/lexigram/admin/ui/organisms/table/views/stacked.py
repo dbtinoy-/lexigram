@@ -17,11 +17,13 @@ class StackedView(AbstractDataView):
     def render(self) -> Any:
         cards = []
         for _, item in enumerate(self.data):
-            rid = extract_row_id(item) or f"row-{_}"
+            extracted_id = extract_row_id(item)
+            has_row_id = bool(extracted_id)
+            rid = extracted_id or f"row-{_}"
             # Row Header (Checkbox + Title + Actions)
             header_parts = []
 
-            if self.config.resource_prefix and self.config.bulk_actions:
+            if self.config.resource_prefix and self.config.bulk_actions and has_row_id:
                 header_parts.append(
                     el(
                         "div",
@@ -55,7 +57,7 @@ class StackedView(AbstractDataView):
             )
 
             # Row Actions
-            if self.config.resource_prefix:
+            if self.config.resource_prefix and has_row_id:
                 action_nodes = []
                 for action in self.config.actions:
                     if not action.is_visible(

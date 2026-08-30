@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime, timezone
 from types import SimpleNamespace
 from typing import Any
 
@@ -198,6 +198,22 @@ class TestRendererOutput:
     def test_date_field_renders_iso_value(self) -> None:
         html = _render(DateField(name="d"), value=date(2026, 1, 2))
         assert 'value="2026-01-02"' in html
+
+    def test_date_field_strips_datetime_suffix_for_browser_input(self) -> None:
+        html = _render(DateField(name="d"), value="2026-01-02T10:30:00Z")
+        assert 'value="2026-01-02"' in html
+
+    def test_datetime_field_uses_browser_datetime_local_format(self) -> None:
+        html = _render(
+            DateTimeField(name="dt"),
+            value=datetime(2026, 1, 2, 10, 30, 45, tzinfo=timezone.utc),
+        )
+        assert 'type="datetime-local"' in html
+        assert 'value="2026-01-02T10:30"' in html
+
+    def test_datetime_field_preserves_failed_value_without_timezone_suffix(self) -> None:
+        html = _render(DateTimeField(name="dt"), value="2026-01-02T10:30:45+00:00")
+        assert 'value="2026-01-02T10:30"' in html
 
     def test_inline_editing_props_are_forwarded(self) -> None:
         html = _render(TextField(name="name"), value="x")

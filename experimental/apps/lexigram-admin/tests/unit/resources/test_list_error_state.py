@@ -6,6 +6,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from lexigram.admin.resources.base import Resource
 from lexigram.admin.resources.list_query import ListDataFetcher
 from lexigram.admin.ui.organisms.data_table import DataTable
 from lexigram.ui import TableState, render_to_string
@@ -16,6 +17,39 @@ class _BrokenResource:
 
     async def fetch_list(self, **kwargs):
         raise RuntimeError("database details must not reach the browser")
+
+
+class _LegacyService:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    async def list(self):
+        self.calls += 1
+        return [{"id": "legacy-1", "name": "Legacy"}]
+
+
+class _LegacyResource(Resource):
+    name = "legacy"
+    model = None
+    search_fields: list[str] = []
+
+
+@pytest.mark.asyncio
+async def test_resource_fetch_list_uses_legacy_service_resolver() -> None:
+    service = _LegacyService()
+    resource = _LegacyResource()
+    resource.service = service
+
+    items, total = await ListDataFetcher("legacy").fetch_data(
+        SimpleNamespace(state=SimpleNamespace()),
+        resource,
+        TableState(),
+        [],
+    )
+
+    assert items == [{"id": "legacy-1", "name": "Legacy"}]
+    assert total == 1
+    assert service.calls == 1
 
 
 @pytest.mark.asyncio

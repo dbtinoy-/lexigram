@@ -269,7 +269,11 @@ def render_bulk_action_button(
     from lexigram.ui import HTMXAttrs
 
     _method = "DELETE" if _hx_delete else "POST"
-    _url = _hx_delete or _hx_post or ""
+    _url = _hx_delete or _hx_post or (
+        f"{(resource_prefix or '').rstrip('/')}/bulk"
+        if resource_prefix
+        else ""
+    )
 
     bulk_attrs = HTMXAttrs.for_bulk_action(
         url=_url,

@@ -38,21 +38,35 @@ def get_attr(item: Any, key: str, default: Any = None) -> Any:
 
 
 def extract_row_id(item: Any) -> str:
-    """Resolve a stable string id from a dict-like or attribute-like record."""
+    """Resolve a stable, non-empty string id from a record.
+
+    ``None`` is not an identifier: converting it to the literal string
+    ``"None"`` would make an id-less row look selectable and could send a
+    synthetic value to a destructive endpoint.
+    """
+    value: Any = None
+    found = False
     if isinstance(item, dict):
-        return str(item.get("id", item.get("user_id", item.get("pk", ""))))
-    if hasattr(item, "id"):
-        return str(item.id)
-    if hasattr(item, "user_id"):
-        return str(item.user_id)
-    if hasattr(item, "pk"):
-        return str(item.pk)
-    if hasattr(item, "__getitem__"):
-        try:
-            return str(item[0])
-        except (IndexError, TypeError):
-            return ""
-    return ""
+        for key in ("id", "user_id", "pk"):
+            if key in item:
+                value = item[key]
+                found = True
+                break
+    else:
+        for key in ("id", "user_id", "pk"):
+            if hasattr(item, key):
+                value = getattr(item, key)
+                found = True
+                break
+        if not found and hasattr(item, "__getitem__"):
+            try:
+                value = item[0]
+                found = True
+            except (IndexError, KeyError, TypeError):
+                pass
+    if not found or value is None:
+        return ""
+    return str(value).strip()
 
 
 def render_table_rows(
@@ -159,6 +173,7 @@ def _render_single_row(
     cells = []
     row_left_offset = 0
     rid = extract_row_id(item)
+    has_row_id = bool(rid)
 
     # Checkbox cell
     if config.resource_prefix and config.bulk_actions and rid:
@@ -193,7 +208,7 @@ def _render_single_row(
         )
 
     # Expandable Toggle
-    if config.expandable_relationship:
+    if config.expandable_relationship and has_row_id:
         toggle_btn = el(
             "button",
             el(
@@ -286,7 +301,7 @@ def _render_single_row(
         )
 
         action_nodes = []
-        for action in config.actions:
+        for action in config.actions if has_row_id else ():
             node = render_action_button(
                 action,
                 record=item,
@@ -331,7 +346,7 @@ def _render_single_row(
     rendered: list[Any] = [el("tr", *cells, **{**row_attrs, "data-row-id": rid})]
 
     # Expandable Row (Detail)
-    if config.expandable_relationship:
+    if config.expandable_relationship and has_row_id:
         colspan = (
             len(config.columns)
             + (1 if config.resource_prefix else 0)
