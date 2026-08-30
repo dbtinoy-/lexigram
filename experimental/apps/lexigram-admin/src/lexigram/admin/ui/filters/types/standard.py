@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING, Any
 
 from lexigram.admin.data.filter_specs import GreaterThanOrEqualSpec, LessThanOrEqualSpec
 from lexigram.admin.ui.filters.base import Filter
-from lexigram.serialization import dumps_str
 from lexigram.ui import Zones, el
 
 if TYPE_CHECKING:
@@ -67,24 +66,12 @@ class RangeFilter(Filter):
         resource_prefix = getattr(state, "_resource_prefix", None) if state else url
         base_url = resource_prefix.rstrip("/") if resource_prefix else ""
 
-        # Canonical HTMX attrs: prefer stored from FilterBar, else fallback
+        # Canonical HTMX attrs: prefer stored from FilterBar, else fallback.
+        # Always use hx-include (not hx-vals) so the filter dynamically picks
+        # up the current search, sort, and other filter values at request time.
         stored = self.get_htmx_attrs()
         if stored:
             htmx_attrs = stored
-        elif state:
-            param_key = f"{self.name}_{suffix}"
-            params = state.to_query_params()
-            params.pop(param_key, None)
-            params.pop("page", None)
-            params.pop("cursor", None)
-            htmx_attrs = {
-                "hx-get": f"{base_url}/",
-                "hx-target": Zones.DATA.selector,
-                "hx-swap": Zones.DATA.swap_mode.value,
-                "hx-select": Zones.DATA.selector,
-                "hx-push-url": "true",
-                "hx-vals": dumps_str(params),
-            }
         else:
             htmx_attrs = {
                 "hx-get": f"{base_url}/",
@@ -93,7 +80,7 @@ class RangeFilter(Filter):
                 "hx-swap": Zones.DATA.swap_mode.value,
                 "hx-select": Zones.DATA.selector,
                 "hx-push-url": "true",
-                "hx-include": f"{Zones.DATA.selector} [data-state='true'], #{Zones.SEARCH.id}",
+                "hx-include": f"{Zones.DATA.selector} [data-state='true'], #{Zones.SEARCH.id}, #{Zones.FILTERS.id}",
                 "hx-params": "*",
             }
 

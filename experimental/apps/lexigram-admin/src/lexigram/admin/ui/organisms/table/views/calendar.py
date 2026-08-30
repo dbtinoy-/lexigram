@@ -103,11 +103,18 @@ class CalendarView(AbstractDataView):
             now = datetime.datetime.now()
             curr_year, curr_month = now.year, now.month
 
-        return self._render_month_grid(
+        month_grid = self._render_month_grid(
             events_by_date,
             curr_year,
             curr_month,
         )
+
+        # Select-all bar for bulk operations
+        select_all_bar = self.render_select_all_bar()
+        if select_all_bar:
+            return el("div", select_all_bar, month_grid)
+
+        return month_grid
 
     def _detect_date_field(self) -> str | None:
         """Resolve the column that carries the event date."""

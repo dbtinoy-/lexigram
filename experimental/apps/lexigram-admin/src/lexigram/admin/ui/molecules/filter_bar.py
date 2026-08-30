@@ -121,6 +121,10 @@ class FilterBar(Component):
         # Dict of {field_name: {"type": ..., "options": [...], ...}} format
         from lexigram.admin.ui.filters.types import SelectFilter, ToggleFilter
 
+        # Set resource prefix on state once so all filters can build proper URLs
+        if self.state and self.resource_prefix:
+            self.state.set_resource_prefix(self.resource_prefix)
+
         for field_name, filter_config in self.filters.items():
             current_val = self.current_values.get(field_name, "")
 
