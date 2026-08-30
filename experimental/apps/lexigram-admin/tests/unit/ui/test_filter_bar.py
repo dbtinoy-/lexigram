@@ -30,7 +30,7 @@ def test_filter_bar_renders_various_controls_and_htmx_attrs():
 
 
 def test_filter_bar_preserves_search_sort_layout():
-    """FilterBar with state should include state via hx-vals."""
+    """FilterBar with state should include state via hx-include."""
     state = TableState(
         search="findme", sort_by="name", sort_order="asc", layout="sidebar"
     )
@@ -43,8 +43,6 @@ def test_filter_bar_preserves_search_sort_layout():
 
     # Targets data zone (canonical contract)
     assert 'hx-target="#table-data"' in html
-    # hx-vals carries search/sort/layout state (no longer needs hidden data-state inputs)
-    assert "hx-vals" in html
-    assert "findme" in html
-    assert "sort_by" in html
-    assert "layout_type" in html or "sidebar" in html
+    # hx-include dynamically picks up state from hidden inputs at request time
+    assert "hx-include" in html
+    assert "hx-vals" not in html  # no longer baked — hx-include replaces it

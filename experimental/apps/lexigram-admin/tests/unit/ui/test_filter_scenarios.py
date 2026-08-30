@@ -1,7 +1,9 @@
 """Scenario tests for combined filter+search+sort+page-size state propagation.
 
-These tests verify that the baked state pattern (hx-vals) correctly propagates
+These tests verify that the hx-include pattern correctly propagates
 all active state dimensions across controls when multiple are active.
+Previously used hx-vals (baked state); now uses hx-include (dynamic state
+from hidden inputs at request time).
 """
 
 from lexigram.admin.ui.filters.types import SelectFilter
@@ -12,7 +14,7 @@ from lexigram.ui import render_to_string
 
 
 class TestFilterCarriesCombinedState:
-    """Filter controls carry all non-filter state via hx-vals."""
+    """Filter controls use hx-include to dynamically pick up all state."""
 
     def test_filter_carries_search_term(self) -> None:
         state = TableState(search="findme", filters={"status": "active"})
@@ -22,8 +24,8 @@ class TestFilterCarriesCombinedState:
             resource_prefix="/admin/users",
         )
         html = render_to_string(fb)
-        assert "hx-vals" in html
-        assert "findme" in html
+        assert "hx-include" in html
+        assert "hx-vals" not in html  # hx-include replaces hx-vals
 
     def test_filter_carries_sort(self) -> None:
         state = TableState(sort_by="name", sort_order="desc")
@@ -33,9 +35,8 @@ class TestFilterCarriesCombinedState:
             resource_prefix="/admin/users",
         )
         html = render_to_string(fb)
-        assert "hx-vals" in html
-        assert "sort_by" in html
-        assert "desc" in html
+        assert "hx-include" in html
+        assert "hx-vals" not in html
 
     def test_filter_carries_other_filter_value(self) -> None:
         state = TableState(filters={"status": "active"})
@@ -45,8 +46,8 @@ class TestFilterCarriesCombinedState:
             resource_prefix="/admin/users",
         )
         html = render_to_string(fb)
-        assert "hx-vals" in html
-        assert "active" in html
+        assert "hx-include" in html
+        assert "hx-vals" not in html
 
     def test_filter_carries_custom_page_size(self) -> None:
         state = TableState(per_page=50)
@@ -56,8 +57,8 @@ class TestFilterCarriesCombinedState:
             resource_prefix="/admin/users",
         )
         html = render_to_string(fb)
-        assert "hx-vals" in html
-        assert "50" in html
+        assert "hx-include" in html
+        assert "hx-vals" not in html
 
     def test_multiple_filters_each_has_full_state(self) -> None:
         state = TableState(
@@ -76,9 +77,8 @@ class TestFilterCarriesCombinedState:
             resource_prefix="/admin/users",
         )
         html = render_to_string(fb)
-        assert "hx-vals" in html
-        assert "desc" in html
-        assert "50" in html
+        assert "hx-include" in html
+        assert "hx-vals" not in html
 
 
 class TestPaginationCarriesCombinedState:
