@@ -219,3 +219,28 @@ class TestApplicationShutdownTimeout:
 
         mock_shutdown.assert_awaited_once()
         assert app._state == AppState.STOPPED
+
+    @pytest.mark.asyncio
+    async def test_stop_uses_default_when_timeout_is_missing(self) -> None:
+        """A missing nested timeout must not reach float() as None."""
+        from lexigram.app.constants import DEFAULT_SHUTDOWN_TIMEOUT
+        from lexigram.config import LexigramConfig
+
+        app = Application()
+        app._state = AppState.RUNNING
+        app._config = LexigramConfig(app={})
+
+        async def passthrough(awaitable: object, *, timeout: float) -> None:
+            await awaitable  # type: ignore[misc]
+
+        wait_for = AsyncMock(side_effect=passthrough)
+        with patch.object(
+            app._lifecycle, "shutdown", new_callable=AsyncMock
+        ) as mock_shutdown:
+            with patch("lexigram.app.base.asyncio.wait_for", new=wait_for):
+                await app.stop()
+
+        wait_for.assert_awaited_once()
+        assert wait_for.call_args.kwargs["timeout"] == DEFAULT_SHUTDOWN_TIMEOUT
+        mock_shutdown.assert_awaited_once()
+        assert app._state == AppState.STOPPED

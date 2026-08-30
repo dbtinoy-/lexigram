@@ -30,9 +30,18 @@ class TestEffectiveHealthTimeout:
         app = Application()
         assert app._effective_timeout(2.5) == 2.5
 
-    def test_defaults_to_health_config(self) -> None:
+    def test_defaults_to_app_config(self) -> None:
         app = Application()
-        assert app._effective_timeout(None) == app._config.health.check_timeout
+        app._config.health.check_timeout = 12.0
+
+        assert app._effective_timeout(None) == 5.0
+
+    def test_falls_back_to_health_config_when_app_value_is_none(self) -> None:
+        app = Application()
+        app._config.app.health_check_timeout = None
+        app._config.health.check_timeout = 12.0
+
+        assert app._effective_timeout(None) == 12.0
 
     def test_app_section_overrides_health_section(self) -> None:
         app = Application()

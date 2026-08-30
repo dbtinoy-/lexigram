@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from markupsafe import Markup
+
 from lexigram.admin.actions.standard import (
     CreateAction,
     DeleteAction,
@@ -12,7 +14,7 @@ from lexigram.admin.actions.standard import (
     EditAction,
     ViewAction,
 )
-from lexigram.admin.actions.types import ActionColor
+from lexigram.admin.actions.types import ActionColor, ActionContext
 from lexigram.admin.config import TableConfiguration
 from lexigram.ui import Action as OldActionBase
 
@@ -116,12 +118,25 @@ def _normalize_new_action(action: Any) -> ActionDescriptor:
 
     is_bulk = hasattr(action, "task_runner") or "BulkAction" in type(action).__name__
 
+    # URL builders require a real ActionContext. Normalization is also used
+    # by tooling where no record exists, so leave row URLs unresolved rather
+    # than invoking them with ``None`` and risking a runtime error.
+    url = None
+    if hasattr(action, "_get_url") and not is_bulk:
+        try:
+            url = action._get_url(
+                None,
+                ActionContext(resource_name="", resource_prefix=""),
+            )
+        except (AttributeError, TypeError, ValueError):
+            url = None
+
     return ActionDescriptor(
         label=action.label or action.name,
         name=action.name,
         icon=action.icon,
         color=color_str,
-        url=action._get_url(None, None) if hasattr(action, "_get_url") else None,
+        url=url,
         hx_confirm=confirm,
         is_bulk=is_bulk,
         variant="ghost",
@@ -149,23 +164,59 @@ def render_action_button(
     if isinstance(action, OldActionBase):
         return action.render(record=record, user=user, resource_name=resource_name)
 
-    from lexigram.admin.actions.types import ActionContext
-
     ctx = ActionContext(
         user=user,
         resource_name=resource_name or "",
         resource_prefix=resource_prefix or f"/{resource_name}" if resource_name else "",
     )
-    return action.render_button(record=record, ctx=ctx)
+    rendered = action.render_button(record=record, ctx=ctx)
+    # New admin actions return an HTML string for compatibility. Mark it safe
+    # only after it was produced by ActionButton; otherwise Element would
+    # escape the complete button when it is nested in a row container.
+    return Markup(rendered) if rendered else ""
 
 
-def render_bulk_action_button(action: Any) -> Any:
+def render_bulk_action_button(
+    action: Any,
+    *,
+    resource_name: str | None = None,
+    resource_prefix: str | None = None,
+) -> Any:
     """Render a bulk action (old or new API) as a button element.
 
     Handles the deprecated private-field access pattern for bulk actions.
     """
     if not isinstance(action, OLD_ACTION_TYPES):
-        return ""
+        # New admin bulk actions use the canonical ActionContext/HTMX
+        # protocol. Keep this helper compatible with the toolbar path so
+        # alternate renderers do not silently drop custom bulk actions.
+        if not hasattr(action, "_get_url"):
+            return ""
+
+        ctx = ActionContext(
+            resource_name=resource_name or "",
+            resource_prefix=resource_prefix or f"/{resource_name}" if resource_name else "",
+        )
+        # The generic resource bulk route receives the action name in
+        # ``hx-vals``. BulkAction._get_url() is an action-specific convention
+        # (for example ``/bulk/delete``) and is not the route registered by
+        # ResourceHandler, so use the canonical ``/bulk`` endpoint here.
+        url = f"{ctx.resource_prefix.rstrip('/')}/bulk"
+        attrs = action._get_htmx_attrs(url, [], ctx)
+        from lexigram.serialization import dumps_str
+
+        attrs["hx-vals"] = dumps_str({"action": getattr(action, "name", "")})
+        from lexigram.ui import ActionButton
+
+        rendered = ActionButton(
+            label=getattr(action, "label", None) or getattr(action, "name", ""),
+            variant=action._color_to_variant(),
+            icon=getattr(action, "icon", None),
+            size="md",
+            type="button",
+            **attrs,
+        ).render()
+        return Markup(str(rendered)) if rendered else ""
 
     attrs = {}
     _hx_delete = getattr(action, "_hx_delete", None)
@@ -214,15 +265,58 @@ class ActionManager:
         self.permissions = permissions
 
     def configure_actions(self) -> None:
-        """Configure actions based on permissions and configuration."""
+        """Configure actions based on permissions and configuration.
+
+        The manager runs against a render-local configuration. It still keeps
+        the filtering here, rather than relying on CSS/HTMX visibility, so a
+        denied CRUD action is not emitted into the page at all.
+        """
         if not self.config.resource_prefix:
             return
 
         # Fill in missing URLs for existing standard actions
         self._configure_existing_actions()
+        self._filter_declared_actions()
 
         # Add default actions if none provided
         self._add_default_actions()
+
+    def _required_permission(self, action: Any) -> str | None:
+        """Return the CRUD permission implied by a standard action name.
+
+        Custom actions are deliberately not guessed: their server-side
+        ``authorize`` implementation remains the source of truth.
+        """
+        name = str(getattr(action, "name", "")).lower().replace("-", "_")
+        if name in {"view", "read", "show"}:
+            return "can_view"
+        if name in {"create", "import"}:
+            return "can_create"
+        if name in {"edit", "update"}:
+            return "can_update"
+        if name in {"delete", "destroy", "purge", "restore"}:
+            return "can_delete"
+        return None
+
+    def _is_allowed(self, action: Any) -> bool:
+        permission = self._required_permission(action)
+        return permission is None or self.permissions.get(permission, False)
+
+    def _filter_declared_actions(self) -> None:
+        """Remove known-denied actions from the render-local collections."""
+        self.config.actions = [
+            action for action in self.config.actions if self._is_allowed(action)
+        ]
+        self.config.header_actions = [
+            action
+            for action in self.config.header_actions
+            if self._is_allowed(action)
+        ]
+        self.config.bulk_actions = [
+            action
+            for action in self.config.bulk_actions
+            if self._is_allowed(action)
+        ]
 
     def _configure_existing_actions(self) -> None:
         """Configure URLs for existing standard actions."""
@@ -232,18 +326,21 @@ class ActionManager:
 
     def _add_default_actions(self) -> None:
         """Add default actions if none are configured."""
+        if not self.permissions.get("can_view", True):
+            return
+
         if not self.config.actions:
             if self.permissions.get("can_view", True):
                 self.config.actions.append(ViewAction(label=""))
 
-            if self.permissions["can_update"]:
+            if self.permissions.get("can_update", False):
                 self.config.actions.append(EditAction(label=""))
 
-            if self.permissions["can_delete"]:
+            if self.permissions.get("can_delete", False):
                 self.config.actions.append(DeleteAction(label=""))
 
-        if not self.config.header_actions and self.permissions["can_create"]:
+        if not self.config.header_actions and self.permissions.get("can_create", False):
             self.config.header_actions.append(CreateAction(label="Create New"))
 
-        if not self.config.bulk_actions and self.permissions["can_delete"]:
+        if not self.config.bulk_actions and self.permissions.get("can_delete", False):
             self.config.bulk_actions.append(DeleteBulkAction(label="Delete Selected"))

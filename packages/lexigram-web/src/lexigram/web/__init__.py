@@ -22,6 +22,10 @@ if TYPE_CHECKING:
 _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     # Discovery
     "discover_controllers": ("lexigram.web.routing.discovery", "discover_controllers"),
+    "discover_websocket_handlers": (
+        "lexigram.web.routing.discovery",
+        "discover_websocket_handlers",
+    ),
     # Config & Provider
     "WebConfig": ("lexigram.web.config", "WebConfig"),
     "WebProvider": ("lexigram.web.di.provider", "WebProvider"),
@@ -256,6 +260,7 @@ __all__ = [
     "cookie",
     "delete",
     "discover_controllers",
+    "discover_websocket_handlers",
     "error_status",
     "file",
     "file_response",

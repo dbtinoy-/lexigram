@@ -72,7 +72,12 @@ class DetailActionHandler:
         self, request: StarletteRequest, resource: Any, **kwargs: Any
     ) -> Any:
         item_id = request.path_params.get("id", "?")
-        return await self.detail_renderer.render_detail(request, resource, item_id)
+        return await self.detail_renderer.render_detail(
+            request,
+            resource,
+            item_id,
+            user=getattr(getattr(request, "state", None), "user", None),
+        )
 
 
 class CreateActionHandler:
@@ -85,9 +90,14 @@ class CreateActionHandler:
     async def handle(
         self, request: StarletteRequest, resource: Any, **kwargs: Any
     ) -> Any:
+        request_user = getattr(getattr(request, "state", None), "user", None)
         if request.method == "POST":
             return await self._handle_create(request, resource)
-        return await self.form_renderer.render_create(request, resource)
+        return await self.form_renderer.render_create(
+            request,
+            resource,
+            user=request_user,
+        )
 
     async def _handle_create(self, request: StarletteRequest, resource: Any) -> Any:
         from lexigram.admin.resources.base import Resource
@@ -101,7 +111,10 @@ class CreateActionHandler:
             if validation.is_err():
                 error = validation.unwrap_err()
                 return await self.form_renderer.render_create(
-                    request, resource, errors=_validation_errors_to_dict(error)
+                    request,
+                    resource,
+                    user=getattr(getattr(request, "state", None), "user", None),
+                    errors=_validation_errors_to_dict(error),
                 )
 
             validated_data = validation.unwrap()
@@ -124,7 +137,11 @@ class CreateActionHandler:
                 return response
             return RedirectResponse(url=url, status_code=302)
 
-        return await self.form_renderer.render_create(request, resource)
+        return await self.form_renderer.render_create(
+            request,
+            resource,
+            user=getattr(getattr(request, "state", None), "user", None),
+        )
 
 
 class EditActionHandler:
@@ -138,9 +155,15 @@ class EditActionHandler:
         self, request: StarletteRequest, resource: Any, **kwargs: Any
     ) -> Any:
         item_id = request.path_params.get("id", "?")
+        request_user = getattr(getattr(request, "state", None), "user", None)
         if request.method == "POST":
             return await self._handle_update(request, resource, item_id)
-        return await self.form_renderer.render_edit(request, resource, item_id)
+        return await self.form_renderer.render_edit(
+            request,
+            resource,
+            item_id,
+            user=request_user,
+        )
 
     async def _handle_update(
         self, request: StarletteRequest, resource: Any, item_id: str
@@ -159,6 +182,7 @@ class EditActionHandler:
                     request,
                     resource,
                     item_id,
+                    user=getattr(getattr(request, "state", None), "user", None),
                     errors=_validation_errors_to_dict(error),
                 )
 
@@ -187,7 +211,12 @@ class EditActionHandler:
                 return response
             return RedirectResponse(url=url, status_code=302)
 
-        return await self.form_renderer.render_edit(request, resource, item_id)
+        return await self.form_renderer.render_edit(
+            request,
+            resource,
+            item_id,
+            user=getattr(getattr(request, "state", None), "user", None),
+        )
 
 
 class CloneActionHandler:

@@ -36,8 +36,40 @@ class TableState(DomainModel):
 
     def __init__(self, **data: Any) -> None:
         super().__init__(**data)
+        self._normalize_state()
         if "_defaults" not in self.__dict__:
             object.__setattr__(self, "_defaults", {})
+
+    def _normalize_state(self) -> None:
+        """Normalize state values after construction and immutable copying."""
+        # ``model_copy(update=...)`` intentionally skips validation in the
+        # domain model implementation, so the invariant must be restored on
+        # every transition as well as at initial construction.
+        try:
+            page = max(1, int(self.page))
+        except (TypeError, ValueError):
+            page = 1
+        try:
+            per_page = max(1, min(int(self.per_page), 1000))
+        except (TypeError, ValueError):
+            per_page = 20
+        object.__setattr__(self, "page", page)
+        object.__setattr__(self, "per_page", per_page)
+
+        if self.sort_order not in ("asc", "desc"):
+            object.__setattr__(self, "sort_order", "asc")
+        if self.view not in ("tabular", "grid", "calendar", "stacked"):
+            object.__setattr__(self, "view", "tabular")
+        if self.layout not in ("sidebar", "stack"):
+            object.__setattr__(self, "layout", "stack")
+        object.__setattr__(self, "filters", dict(self.filters or {}))
+        object.__setattr__(
+            self,
+            "collapsed_groups",
+            list(self.collapsed_groups or []),
+        )
+        if self.column_order is not None:
+            object.__setattr__(self, "column_order", list(self.column_order))
 
     @classmethod
     def from_request(cls, request: Any, defaults: dict | None = None) -> TableState:
@@ -122,8 +154,9 @@ class TableState(DomainModel):
         return url
 
     def model_copy(self, *args: Any, **kwargs: Any) -> TableState:
-        """Override model_copy to preserve internal defaults."""
+        """Override model_copy to preserve defaults and state invariants."""
         new_state = super().model_copy(*args, **kwargs)
+        new_state._normalize_state()
         object.__setattr__(new_state, "_defaults", getattr(self, "_defaults", {}))
         return cast("TableState", new_state)
 
@@ -148,7 +181,13 @@ class TableState(DomainModel):
 
         Resets to page 1 since row counts change.
         """
-        return self.model_copy(update={"per_page": per_page, "page": 1, "cursor": None})
+        return self.model_copy(
+            update={
+                "per_page": max(1, int(per_page)),
+                "page": 1,
+                "cursor": None,
+            }
+        )
 
     def with_search(self, search: str) -> TableState:
         """
@@ -196,8 +235,17 @@ class TableState(DomainModel):
         """
         if self.sort_by == column:
             new_order = "desc" if self.sort_order == "asc" else "asc"
-            return self.model_copy(update={"sort_order": new_order})
-        return self.model_copy(update={"sort_by": column, "sort_order": "asc"})
+            return self.model_copy(
+                update={"sort_order": new_order, "page": 1, "cursor": None}
+            )
+        return self.model_copy(
+            update={
+                "sort_by": column,
+                "sort_order": "asc",
+                "page": 1,
+                "cursor": None,
+            }
+        )
 
     def with_view(
         self,
@@ -252,8 +300,15 @@ class TableState(DomainModel):
         )
 
     def clear_sort(self) -> TableState:
-        """Return a copy with sorting cleared."""
-        return self.model_copy(update={"sort_by": None, "sort_order": "asc"})
+        """Return a copy with sorting cleared and pagination reset."""
+        return self.model_copy(
+            update={
+                "sort_by": None,
+                "sort_order": "asc",
+                "page": 1,
+                "cursor": None,
+            }
+        )
 
     def set_resource_prefix(self, prefix: str) -> None:
         """Set the resource prefix for URL generation."""

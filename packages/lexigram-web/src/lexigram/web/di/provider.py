@@ -84,11 +84,13 @@ class WebProvider(Provider):
         web_config: WebConfig | None = None,
         provider_config: WebProviderConfig | None = None,
         debug_routes_auth: Callable[..., Any] | None = None,
+        websocket_handlers: list[type] | None = None,
     ) -> None:
         super().__init__()
         self.middleware = middleware or []
         self.exception_handlers = exception_handlers or {}
         self.controllers = controllers or []
+        self.websocket_handlers = websocket_handlers or []
 
         self.web_config = web_config or WebConfig()
         self._explicit_web_config = web_config is not None
@@ -140,6 +142,7 @@ class WebProvider(Provider):
             web_config=config,
             middleware=context.get("middleware"),
             controllers=context.get("controllers"),
+            websocket_handlers=context.get("websocket_handlers"),
             exception_handlers=context.get("exception_handlers"),
         )
 
@@ -150,15 +153,15 @@ class WebProvider(Provider):
         web_config: WebConfig | None = None,
         **kwargs: Any,
     ) -> WebProvider:
-        """Create a WebProvider with controllers auto-discovered from packages.
+        """Create a WebProvider with routes auto-discovered from packages.
 
         Scans each package recursively for
         :class:`~lexigram.web.routing.controllers.Controller` subclasses and
-        registers them automatically.
+        ``@websocket_handler`` classes, registering both automatically.
 
         Args:
-            *packages: Dotted Python package paths to scan for controllers,
-                e.g. ``"my_app.api.controllers"``.
+            *packages: Dotted Python package paths to scan for controllers and
+                WebSocket handlers, e.g. ``"my_app.api"``.
             web_config: Optional web configuration. Falls back to defaults.
             **kwargs: Extra kwargs forwarded to :class:`WebProvider.__init__`.
 
@@ -169,10 +172,19 @@ class WebProvider(Provider):
 
             app.add_provider(WebProvider.auto_discover("my_app.api.controllers"))
         """
-        from lexigram.web.routing.discovery import discover_controllers
+        from lexigram.web.routing.discovery import (
+            discover_controllers,
+            discover_websocket_handlers,
+        )
 
         controllers = discover_controllers(list(packages))
-        return cls(controllers=controllers, web_config=web_config, **kwargs)
+        websocket_handlers = discover_websocket_handlers(list(packages))
+        return cls(
+            controllers=controllers,
+            websocket_handlers=websocket_handlers,
+            web_config=web_config,
+            **kwargs,
+        )
 
     async def register(self, container: ContainerRegistrarProtocol) -> None:
         """Register web services in DI container.

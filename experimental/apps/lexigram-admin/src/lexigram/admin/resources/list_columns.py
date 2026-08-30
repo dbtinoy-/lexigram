@@ -87,22 +87,30 @@ def get_row_actions(table_config: Any, resource: Any, resource_prefix: str) -> A
         )
         row_actions = list(actions)
 
-    # Inject default URLs for standard actions if missing
+    # Inject default URLs for standard legacy actions without mutating a
+    # Resource's shared action instances. New admin actions resolve URLs from
+    # ActionContext at render time and need no injection.
+    from copy import copy
+
     from lexigram.ui.actions.standard import EditAction, ViewAction
 
+    resolved_actions = []
     for action in row_actions:
+        resolved = action
         if (
             isinstance(action, (EditAction, ViewAction))
             and not action.get_url()
             and not action.get_hx_get()
         ):
+            resolved = copy(action)
             # Default logic: {prefix}/{id}/edit or {prefix}/{id}
             postfix = "/edit" if isinstance(action, EditAction) else ""
 
             # Use hx_get for partial updates (SlideOver/Modal)
-            action.hx(get=f"{resource_prefix.rstrip('/')}/{{id}}{postfix}")
+            resolved.hx(get=f"{resource_prefix.rstrip('/')}/{{id}}{postfix}")
+        resolved_actions.append(resolved)
 
-    return row_actions
+    return resolved_actions
 
 
 def get_header_actions(table_config: Any, resource: Any) -> Any:
@@ -136,11 +144,16 @@ def get_bulk_actions(table_config: Any, resource: Any) -> Any:
             else resource.bulk_actions()
         )
 
+    # Keep both the legacy lexigram-ui action API and the canonical admin
+    # action API. Dropping admin BulkAction instances here caused custom
+    # resource declarations to disappear before the DataTable could render
+    # them (and silently replaced them with the default delete action).
+    from lexigram.admin.actions.base import BulkAction as AdminBulkAction
     from lexigram.ui.actions.standard import BulkAction as OrgBulkAction
     from lexigram.ui.actions.standard import DeleteBulkAction
 
     for ba in source_bulk:
-        if isinstance(ba, OrgBulkAction):
+        if isinstance(ba, (OrgBulkAction, AdminBulkAction)):
             bulk_actions_list.append(ba)
         elif ba == "delete_selected":
             bulk_actions_list.append(DeleteBulkAction(label="Delete Selected"))

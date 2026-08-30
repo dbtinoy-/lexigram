@@ -1,7 +1,7 @@
 """Health Check for {{ name }}."""
 
-from lexigram.contracts.core import HealthStatus
-from lexigram.monitor.health import HealthCheck, HealthCheckResult
+from lexigram.contracts.core import HealthCheckResult, HealthStatus
+from lexigram.monitor.health import HealthCheck
 
 
 class {{ name }}(HealthCheck):
@@ -13,14 +13,15 @@ class {{ name }}(HealthCheck):
     async def check(self) -> HealthCheckResult:
         try:
             return HealthCheckResult(
-                name=self.name,
+                component=self.name,
                 status=HealthStatus.HEALTHY,
                 message="{{ name }} is healthy",
-                metadata={},
+                details={},
             )
-        except RuntimeError as error:
+        except Exception as error:  # noqa: BLE001
             return HealthCheckResult(
-                name=self.name,
+                component=self.name,
                 status=HealthStatus.UNHEALTHY,
-                message=f"{{ name }} check failed: {error}",
+                error=f"{{ name }} check failed: {error}",
+                details={},
             )

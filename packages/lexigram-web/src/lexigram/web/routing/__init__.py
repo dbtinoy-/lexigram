@@ -21,7 +21,10 @@ from lexigram.web.routing.decorators import (
     trace,
     websocket,
 )
-from lexigram.web.routing.discovery import discover_controllers
+from lexigram.web.routing.discovery import (
+    discover_controllers,
+    discover_websocket_handlers,
+)
 
 
 def __dir__() -> list[str]:
@@ -87,6 +90,7 @@ __all__ = [
     "cookie",
     "delete",
     "discover_controllers",
+    "discover_websocket_handlers",
     "file",
     "form",
     "get",

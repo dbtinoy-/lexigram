@@ -35,12 +35,12 @@ class TablePagination(Component):
         self.state = state
         # If state provided, extract values from it
         if state:
-            self.page = state.page
-            self.per_page = state.per_page
+            self.page = max(1, int(state.page))
+            self.per_page = max(1, int(state.per_page))
         else:
-            self.page = int(page)
-            self.per_page = int(per_page)
-        self.total = int(total)
+            self.page = max(1, int(page))
+            self.per_page = max(1, int(per_page))
+        self.total = max(0, int(total))
         self.base_url = base_url
         self.show_size_selector = show_size_selector
 

@@ -30,19 +30,30 @@ class TestWebModule:
         result = WebModule.configure(controllers=[DummyController])
         assert isinstance(result, DynamicModule)
 
-    def test_configure_discovers_controllers_from_packages(self, monkeypatch) -> None:
+    def test_configure_discovers_controllers_and_websockets_from_packages(
+        self, monkeypatch
+    ) -> None:
         class DummyController:
             pass
+
+        class DummyWebSocket:
+            _is_websocket_handler = True
+            _ws_path = "/ws/dummy"
 
         monkeypatch.setattr(
             "lexigram.web.routing.discovery.discover_controllers",
             lambda _packages: [DummyController],
+        )
+        monkeypatch.setattr(
+            "lexigram.web.routing.discovery.discover_websocket_handlers",
+            lambda _packages: [DummyWebSocket],
         )
 
         result = WebModule.configure(discover=["dummy.package"])
         assert isinstance(result, DynamicModule)
         provider = result.providers[0]
         assert provider.controllers == [DummyController]
+        assert provider.websocket_handlers == [DummyWebSocket]
 
     def test_legacy_auto_discover_factory_is_removed(self) -> None:
         assert not hasattr(WebModule, "auto_discover")

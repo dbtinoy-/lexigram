@@ -23,6 +23,49 @@ from lexigram.events.di.sub_providers.store_provider import StoreSubProvider
 from lexigram.events.types import EventStoreBackend
 from lexigram.logging import get_logger
 
+
+async def _resolve_optional_framework_service(
+    container: Any, service_type: type
+) -> Any:
+    """Resolve an optional framework service without crossing module boundaries.
+
+    Provider boot hooks run inside their owning module's visibility context.
+    Cross-cutting services such as tracing and hooks are intentionally wired by
+    the framework, so their optional lookup must use the internal visibility
+    bypass. Small test doubles and older resolver implementations may not
+    accept that keyword; those fall back to their optional resolver.
+    """
+    from inspect import Parameter, signature
+
+    from lexigram.contracts.exceptions.container import UnresolvableDependencyError
+
+    resolver = getattr(container, "resolve", None)
+    if resolver is None:
+        return await container.resolve_optional(service_type)
+
+    try:
+        parameters = signature(resolver).parameters.values()
+        supports_bypass = any(
+            parameter.name == "bypass_visibility"
+            or parameter.kind is Parameter.VAR_KEYWORD
+            for parameter in parameters
+        )
+    except (TypeError, ValueError):
+        # Resolver proxies may not expose a useful signature; the canonical
+        # container supports the keyword, so prefer the internal path.
+        supports_bypass = True
+
+    if not supports_bypass:
+        # Compatibility with lightweight resolver doubles that predate the
+        # internal bypass keyword.
+        return await container.resolve_optional(service_type)
+
+    try:
+        return await resolver(service_type, bypass_visibility=True)
+    except (LookupError, UnresolvableDependencyError):
+        return None
+
+
 if TYPE_CHECKING:
     from lexigram.contracts.core.di import (
         BootContainerProtocol,
@@ -190,8 +233,10 @@ class EventsProvider(Provider):
 
         _, buses, _ = self._ensure_composed()
 
-        tracer = await container.resolve_optional(TracerProtocol)
-        hooks = await container.resolve_optional(HookRegistryProtocol)
+        tracer = await _resolve_optional_framework_service(container, TracerProtocol)
+        hooks = await _resolve_optional_framework_service(
+            container, HookRegistryProtocol
+        )
         buses.set_tracer(tracer)
         buses.set_hook_registry(hooks)
 

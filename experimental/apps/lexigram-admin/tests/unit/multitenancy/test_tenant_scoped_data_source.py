@@ -35,11 +35,83 @@ class TestTenantScopedDataSource:
     # -- list() --
 
     @pytest.mark.asyncio
+    async def test_query_spec_is_scoped_without_mutating_original(
+        self, scoped: TenantScopedDataSource, mock_ds: AsyncMock
+    ) -> None:
+        from lexigram.admin.data.query import QuerySpec
+
+        query = QuerySpec().with_where_eq("status", "active")
+        mock_ds.list.return_value = []
+        await scoped.list(query)
+
+        sent_query = mock_ds.list.await_args.args[0]
+        assert query is not sent_query
+        assert sent_query.to_repository_filters() == {
+            "status": "active",
+            "tenant_id": "tenant-acme",
+        }
+        assert query.to_repository_filters() == {"status": "active"}
+
+    @pytest.mark.asyncio
+    async def test_find_many_uses_canonical_scoped_query(
+        self, scoped: TenantScopedDataSource, mock_ds: AsyncMock
+    ) -> None:
+        from lexigram.admin.data.data_source import QueryResult
+        from lexigram.admin.data.query import QuerySpec
+
+        mock_ds.find_many.return_value = QueryResult(items=[], total=0)
+        await scoped.find_many(QuerySpec())
+
+        sent_query = mock_ds.find_many.await_args.args[0]
+        assert sent_query.to_repository_filters() == {"tenant_id": "tenant-acme"}
+
+    @pytest.mark.asyncio
+    async def test_find_many_filters_unscoped_backend_results(
+        self, scoped: TenantScopedDataSource, mock_ds: AsyncMock
+    ) -> None:
+        from lexigram.admin.data.data_source import QueryResult
+        from lexigram.admin.data.query import QuerySpec
+
+        mock_ds.find_many.return_value = QueryResult(
+            items=[
+                {"id": "owned", "tenant_id": "tenant-acme"},
+                {"id": "other", "tenant_id": "tenant-beta"},
+                {"id": "unscoped"},
+            ],
+            total=3,
+        )
+
+        result = await scoped.find_many(QuerySpec())
+
+        assert [item["id"] for item in result.items] == ["owned"]
+        assert result.total == 3
+
+    @pytest.mark.asyncio
+    async def test_request_context_overrides_startup_fallback(
+        self, scoped: TenantScopedDataSource, mock_ds: AsyncMock
+    ) -> None:
+        from lexigram.admin.data.query import QuerySpec
+        from lexigram.admin.multitenancy.context import (
+            reset_current_tenant,
+            set_current_tenant,
+        )
+
+        token = set_current_tenant("tenant-beta")
+        try:
+            mock_ds.list.return_value = []
+            await scoped.list(QuerySpec())
+        finally:
+            reset_current_tenant(token)
+
+        sent_query = mock_ds.list.await_args.args[0]
+        assert sent_query.to_repository_filters() == {"tenant_id": "tenant-beta"}
+
+    @pytest.mark.asyncio
     async def test_list_injects_tenant_filter(self, scoped: TenantScopedDataSource, mock_ds: AsyncMock) -> None:
         query = _QueryWithAddFilter()
-        mock_ds.list.return_value = ["record1"]
+        mock_ds.list.return_value = [{"id": "record1", "tenant_id": "tenant-acme"}]
         result = await scoped.list(query)
-        assert result == ["record1"]
+        assert result == [{"id": "record1", "tenant_id": "tenant-acme"}]
         assert query.filters == [("tenant_id", "eq", "tenant-acme")]
         mock_ds.list.assert_awaited_once_with(query)
 
@@ -109,6 +181,7 @@ class TestTenantScopedDataSource:
 
     @pytest.mark.asyncio
     async def test_update_passthrough(self, scoped: TenantScopedDataSource, mock_ds: AsyncMock) -> None:
+        mock_ds.find_one.return_value = None
         mock_ds.update.return_value = {"id": "rec-1"}
         result = await scoped.update("rec-1", {"name": "updated"})
         mock_ds.update.assert_awaited_once_with("rec-1", {"name": "updated"})
@@ -116,10 +189,22 @@ class TestTenantScopedDataSource:
 
     @pytest.mark.asyncio
     async def test_delete_passthrough(self, scoped: TenantScopedDataSource, mock_ds: AsyncMock) -> None:
+        mock_ds.find_one.return_value = None
         mock_ds.delete.return_value = True
         result = await scoped.delete("rec-1")
         mock_ds.delete.assert_awaited_once_with("rec-1")
         assert result is True
+
+    @pytest.mark.asyncio
+    async def test_update_rejects_missing_tenant_metadata(
+        self, scoped: TenantScopedDataSource, mock_ds: AsyncMock
+    ) -> None:
+        mock_ds.find_one.return_value = {"id": "rec-1", "name": "unscoped"}
+
+        with pytest.raises(PermissionError, match="tenant scope"):
+            await scoped.update("rec-1", {"name": "updated"})
+
+        mock_ds.update.assert_not_awaited()
 
     # -- tenant_id property --
 

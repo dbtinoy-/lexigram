@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+import copy
 from typing import Any
 
 from lexigram.admin.ui.organisms.table.views.tabular_header import render_table_header
@@ -37,8 +38,11 @@ class AbstractDataView(ABC):
         self.resource_name = resource_name
         self.next_cursor = next_cursor
 
-        # Apply column ordering if present in state
+        # Apply column ordering to a view-local copy. Resource configurations
+        # are shared and must not be rewritten by one user's URL state.
         if self.state.column_order:
+            self.config = copy.copy(self.config)
+            self.config.columns = list(self.config.columns)
             ordered_cols = []
             col_map = {col.name: col for col in self.config.columns}
             for name in self.state.column_order:
