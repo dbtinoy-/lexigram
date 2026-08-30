@@ -41,7 +41,7 @@ jobs:
         run: uv run pytest -m "not integration" -q --no-cov
 
       - name: Open refresh PR
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@v8
         with:
           branch: deps/auto-refresh
           delete-branch: true
