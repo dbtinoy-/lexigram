@@ -110,7 +110,7 @@ class AppPrincipalUserStoreAdapter:
 
         Internal stores expose ``get_by_id`` (via ``AuthStoreBase``); the
         session-loading middleware calls it, so the app-mode adapter mirrors
-        the shape for parity (record with ``is_active`` and ``user_id``).
+        the same shape (record with ``is_active`` and ``user_id``).
         """
         return await self.get_user_by_id(user_id)
 

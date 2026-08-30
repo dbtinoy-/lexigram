@@ -2,7 +2,7 @@
 ImportAction example CSV, and bulk purge/restore wiring.
 
 Covers the data-driven execution paths (chunked purge, per-id restore),
-Filament Replicate parity hooks on CloneAction, the ImportAction example
+replica hooks on CloneAction, the ImportAction example
 template download, and the confirmation slide-over rendering used by the
 new bulk actions.
 """
@@ -214,7 +214,7 @@ class TestRestoreBulkAction:
 
 
 class TestCloneActionReplicateParity:
-    """Tests for CloneAction Filament Replicate parity hooks."""
+    """Tests for CloneAction replica hooks."""
 
     @pytest.mark.asyncio
     async def test_execute_strips_id_and_copies(self) -> None:

@@ -5,7 +5,7 @@ from __future__ import annotations
 from lexigram.ui.molecules.alert import Alert
 from lexigram.ui.molecules.card import Card
 from lexigram.ui.molecules.modal import Modal
-from lexigram.ui.molecules.toast import Toast
+from lexigram.ui.molecules.toast import InlineToast
 
 
 class TestCurrentShadcnClasses:
@@ -114,43 +114,43 @@ class TestAlert:
         assert "Dismissible" in result
 
 
-class TestToast:
-    """Tests for Toast component."""
+class TestInlineToast:
+    """Tests for the InlineToast component."""
 
     def test_toast_creation_default(self) -> None:
         """Test creating a toast with default values."""
-        toast = Toast("Item saved")
+        toast = InlineToast("Item saved")
         result = str(toast)
         assert "Item saved" in result
 
     def test_toast_with_variant_success(self) -> None:
         """Test toast with success variant."""
-        toast = Toast("Saved successfully", variant="success")
+        toast = InlineToast("Saved successfully", toast_type="success")
         result = str(toast)
         assert "Saved successfully" in result
 
     def test_toast_with_variant_error(self) -> None:
         """Test toast with error variant."""
-        toast = Toast("Failed to save", variant="error")
+        toast = InlineToast("Failed to save", toast_type="error")
         result = str(toast)
         assert "Failed to save" in result
 
     def test_toast_with_duration(self) -> None:
         """Test toast with custom duration."""
-        toast = Toast("Auto-dismiss", duration=5000)
+        toast = InlineToast("Auto-dismiss", duration=5000)
         result = str(toast)
         assert "Auto-dismiss" in result
 
     def test_toast_with_action(self) -> None:
         """Test toast with action button."""
-        toast = Toast("Undo?", action_label="Undo")
+        toast = InlineToast("Undo?", action_label="Undo")
         result = str(toast)
         assert "Undo?" in result
         assert "Undo" in result
 
     def test_toast_with_icon(self) -> None:
         """Test toast with icon."""
-        toast = Toast("With icon", icon="check")
+        toast = InlineToast("With icon", icon="check")
         result = str(toast)
         assert "With icon" in result
 
@@ -210,17 +210,17 @@ class TestAlertStates:
 
 
 class TestToastStates:
-    """Tests for Toast state variations."""
+    """Tests for InlineToast state variations."""
 
     def test_toast_persistent(self) -> None:
         """Test toast that doesn't auto-dismiss."""
-        toast = Toast("Persistent", persistent=True)
+        toast = InlineToast("Persistent", persistent=True)
         result = str(toast)
         assert "Persistent" in result
 
     def test_toast_with_auto_id(self) -> None:
         """Test toast generates an ID when no custom ID provided."""
-        toast = Toast("Auto ID")
+        toast = InlineToast("Auto ID")
         result = str(toast)
         assert "Auto ID" in result
 

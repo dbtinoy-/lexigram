@@ -46,7 +46,7 @@ class DashboardController(AdminController):
 
     prefix = ""
 
-    # Declared page-level filter schema (Filament HasFiltersForm parity).
+    # Declared page-level dashboard filter schema.
     # Subclass to declare filters; the dashboard renders an apply/reset bar
     # and propagates the values to widget fetch URLs.
     page_filters: list[PageFilterField] = []

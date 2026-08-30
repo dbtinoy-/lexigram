@@ -28,10 +28,8 @@ from lexigram.ui.layouts.mixins import (
 )
 from lexigram.ui.layouts.server_toasts import (
     ServerToastChannel,
-    Toast,
     ToastConfig,
     ToastData,
-    ToastRenderer,
     ToastType,
     flash_to_toast,
 )
@@ -50,10 +48,8 @@ __all__ = [
     "JSManager",
     "LayoutBase",
     "ServerToastChannel",
-    "Toast",
     "ToastConfig",
     "ToastData",
-    "ToastRenderer",
     "ToastType",
     "flash_to_toast",
 ]

@@ -1,4 +1,4 @@
-"""Fluent toast notification builder (Filament ``Notification::make()`` parity).
+"""Fluent toast notification builder (chainable ``ToastNotification.make()`` API).
 
 Builds a ``ToastData`` for ``ServerToastChannel`` through a chainable API, and
 can either render the toast HTML directly or flash it to the admin session for

@@ -240,8 +240,9 @@ class AdminRouter:
     ) -> list[Route]:
         """Build routes for a resource."""
         prefix = f"/{name}"
-        # Pass the resource in a single-entry dict so ResourceHandler can look it up
-        resources_dict = {name: resource} if resource is not None else {}
+        # Pass the mounted resource register so handlers resolve sibling
+        # resources (e.g. relation-options lookups by name).
+        resources_dict = self._resources or ({name: resource} if resource else {})
         routes: list[Route] = [
             Route(
                 prefix,
@@ -305,6 +306,18 @@ class AdminRouter:
                     self._config, name, "import-report", resources=resources_dict
                 ),
                 name=f"admin_{name}_import_report",
+                methods=["GET"],
+            ),
+            # Fixed-path route before the {id} catch-all below.
+            Route(
+                f"{prefix}/relation-options",
+                ResourceHandler(
+                    self._config,
+                    name,
+                    "relation-options",
+                    resources=resources_dict,
+                ),
+                name=f"admin_{name}_relation_options",
                 methods=["GET"],
             ),
             Route(

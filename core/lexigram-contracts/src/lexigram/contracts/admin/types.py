@@ -86,8 +86,7 @@ class NavigationContribution:
 
 @dataclass(frozen=True)
 class PageFilterField:
-    """Schema field for a page-level dashboard filter (Filament
-    ``HasFiltersForm``/``InteractsWithPageFilters`` parity).
+    """Schema field for a page-level dashboard filter.
 
     Mirrors the admin-side ``ConfigField`` shape, but lives here because it
     crosses the contributor boundary: ``ManagementPageDefinition`` carries a

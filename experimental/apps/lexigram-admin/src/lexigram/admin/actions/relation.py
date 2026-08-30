@@ -1,7 +1,7 @@
 """Relation actions for relation managers (associate, attach, detach, dissociate).
 
-These actions drive relation-manager operations from the action layer,
-mirroring Filament's relation-scoped actions. Pivot-based operations
+These actions drive relation-manager operations from the action layer.
+Pivot-based operations
 (associate/attach/detach) require a :class:`BelongsToManyRelationManager`
 configured with a pivot table and an attached data source; they fail
 with an :class:`ActionError` otherwise.

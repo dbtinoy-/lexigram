@@ -327,7 +327,7 @@ class QuerySpec:
         combined = list(set(self.include) | set(relations))
         return self._copy(include=combined)
 
-    # ========== Structured filter condition methods (replaces QueryBuilder) ==========
+    # ========== Structured filter condition methods ==========
 
     def with_where(
         self,

@@ -24,3 +24,24 @@ class TestAdminRouterRefactored:
         from lexigram.admin.core.routing import AdminRouter
         sig = inspect.signature(AdminRouter.__init__)
         assert "provider" not in sig.parameters
+
+
+class TestRelationOptionsRoute:
+    def test_relation_options_route_before_id_catchall(self):
+        """The fixed relation-options path must precede the {id} catch-all."""
+        from lexigram.admin.config import AdminConfig
+        from lexigram.admin.core.routing import AdminRouter
+
+        router = AdminRouter(config=AdminConfig(prefix="/admin"))
+        routes = router._build_resource_routes("categories", object())
+        paths = [route.path for route in routes]
+        assert "/categories/relation-options" in paths
+        assert paths.index("/categories/relation-options") < paths.index(
+            "/categories/{id}"
+        )
+        options_route = next(
+            route
+            for route in routes
+            if route.path == "/categories/relation-options"
+        )
+        assert "GET" in options_route.methods

@@ -69,7 +69,7 @@ CANONICAL_API_SYMBOLS: list[str] = [
     "RichSelect", "Section", "StatCard", "Tabs", "TabPanel",
     # Molecules — toasts
     "InlineToast", "ServerToastChannel",
-    "Toast", "ToastData", "ToastRenderer", "ToastType", "flash_to_toast",
+    "ToastData", "ToastType", "flash_to_toast",
     # Molecules — realtime / scroll
     "InfiniteScrollTrigger", "VirtualScroll", "RealTimeFeed", "LiveCounter",
     # Molecules — Builder

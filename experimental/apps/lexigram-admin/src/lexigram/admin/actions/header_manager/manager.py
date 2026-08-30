@@ -26,6 +26,7 @@ from lexigram.admin.actions.header_manager.types import (
     TableDensity,
 )
 from lexigram.admin.actions.header_manager.visibility import ColumnVisibilityManager
+from lexigram.primitives.registry import Registry
 
 
 class HeaderActionManager:
@@ -61,9 +62,12 @@ class HeaderActionManager:
         )
         self.shortcut_manager = KeyboardShortcutManager()
 
-        # Action collections
-        self._actions: dict[str, HeaderAction] = {}
-        self._action_groups: dict[str, list[str]] = {}
+        # Action registry keyed by action name (core Registry; re-registering
+        # an action name replaces the previous binding).
+        self._actions: Registry[str, HeaderAction] = Registry(
+            name="admin.header_actions",
+            allow_overwrite=True,
+        )
 
         # Initialize with default actions
         self._initialize_default_actions()
@@ -88,16 +92,16 @@ class HeaderActionManager:
 
     def add_action(self, action: HeaderAction) -> None:
         """Add a header action."""
-        self._actions[action.name] = action
+        self._actions.register(action.name, action)
         self.shortcut_manager.register_action(action)
 
     def remove_action(self, action_name: str) -> None:
         """Remove a header action."""
-        if action_name in self._actions:
-            action = self._actions[action_name]
-            if action.keyboard_shortcut:
+        if self._actions.has(action_name):
+            action = self._actions.get(action_name)
+            if action and action.keyboard_shortcut:
                 self.shortcut_manager.unregister_action(action.keyboard_shortcut)
-            del self._actions[action_name]
+            self._actions.unregister(action_name)
 
     def get_action(self, action_name: str) -> HeaderAction | None:
         """Get a header action by name."""

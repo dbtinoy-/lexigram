@@ -13,7 +13,6 @@ from lexigram.ui.core.base import Component, el
 from lexigram.ui.layouts.server_toasts import (
     ServerToastChannel,
     ToastData,
-    ToastRenderer,
     ToastType,
     flash_to_toast,
 )
@@ -21,10 +20,8 @@ from lexigram.ui.styles import get_semantic_icon, get_toast_classes
 
 __all__ = [
     "InlineToast",
-    "Toast",  # deprecated alias for InlineToast
     "ToastData",
     "ServerToastChannel",
-    "ToastRenderer",  # deprecated alias for ServerToastChannel
     "ToastType",
     "flash_to_toast",
 ]
@@ -130,17 +127,4 @@ class InlineToast(Component):
         )
 
 
-class Toast(InlineToast):
-    """Deprecated alias for InlineToast. Will be removed in a future release."""
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        import warnings
-
-        warnings.warn(
-            "`Toast` (the Alpine inline-notification Component) is deprecated; "
-            "use `InlineToast` instead. For the toast payload dataclass, use `ToastData`. "
-            "For server-driven toasts, use `ServerToastChannel`.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        super().__init__(*args, **kwargs)

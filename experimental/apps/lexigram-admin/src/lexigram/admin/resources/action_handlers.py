@@ -30,6 +30,7 @@ __all__ = [
     "ImportActionHandler",
     "ListActionHandler",
     "PurgeActionHandler",
+    "RelationOptionsActionHandler",
     "ResourceActionHandler",
     "RestoreActionHandler",
 ]
@@ -275,6 +276,56 @@ class PurgeActionHandler:
             resource.name or "",
         )
         return RedirectResponse(url=url, status_code=302)
+
+
+class RelationOptionsActionHandler:
+    """Serve ``<option>`` markup for searchable relation selects.
+
+    Registered as ``relation-options``; the route lives on the *related*
+    resource (``/{prefix}/{resource}/relation-options``) and is resolved
+    against the mounted resource register, so the response is generated from
+    the same data-source instance the related resource uses at runtime.
+    """
+
+    def __init__(self, resources: dict[str, Any] | None = None) -> None:
+        self._resources = resources or {}
+
+    def can_handle(self, action: str) -> bool:
+        return action == "relation-options"
+
+    async def handle(
+        self, request: StarletteRequest, resource: Any, **kwargs: Any
+    ) -> HTMLResponse:
+        from html import escape
+
+        if resource is None:
+            return HTMLResponse("", status_code=404)
+
+        ds = getattr(resource, "_data_source", None)
+        if ds is None or not hasattr(ds, "find_many"):
+            return HTMLResponse("", status_code=200)
+
+        from lexigram.admin.data.query import QuerySpec
+
+        result = await ds.find_many(QuerySpec(per_page=200, sort_by="id"))
+        if hasattr(result, "items"):
+            records = result.items
+        elif isinstance(result, list):
+            records = result
+        else:
+            records = []
+
+        needle = (request.query_params.get("q") or "").strip().lower()
+        options: list[str] = []
+        for record in records:
+            label = str(record)
+            if needle and needle not in label.lower():
+                continue
+            value = str(getattr(record, "id", record))
+            options.append(
+                f'<option value="{escape(value)}">{escape(label)}</option>'
+            )
+        return HTMLResponse("".join(options))
 
 
 class ImportActionHandler:

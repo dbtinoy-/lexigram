@@ -90,8 +90,26 @@ class FormSchema:
 class FormSchemaGenerator:
     """Generates FormSchema from various data model types."""
 
-    def __init__(self, resource_registry: dict[str, type] | None = None) -> None:
+    def __init__(self, resource_registry: dict[str, Any] | None = None) -> None:
         self.resource_registry = resource_registry
+
+    def _related_resource_name(self, base: str) -> str:
+        """Resolve the registered resource name for a model base name.
+
+        Prefers an exact match in the resource registry, then common plural
+        forms, so irregular names (``category`` → ``categories``) resolve
+        without string-mangling guesses. Without a registry the naive plural
+        (``base + "s"``) is used as a last resort.
+        """
+        if self.resource_registry:
+            candidates = [base, f"{base}s"]
+            if base.endswith("y") and not base.endswith(("ey", "ay", "oy", "uy")):
+                candidates.append(f"{base[:-1]}ies")
+            candidates.append(f"{base}es")
+            for candidate in candidates:
+                if candidate in self.resource_registry:
+                    return candidate
+        return f"{base}s"
 
     def from_pydantic(self, model: type) -> FormSchema:
         """Generate a FormSchema from a model class.
@@ -219,7 +237,7 @@ class FormSchemaGenerator:
                 help_text=help_text,
                 required=required,
                 default=default,
-                resource=f"{name[:-3]}s",
+                resource=self._related_resource_name(name[:-3]),
             )
 
         origin = get_origin(annotation)
@@ -265,7 +283,9 @@ class FormSchemaGenerator:
                     help_text=help_text,
                     required=required,
                     default=default,
-                    resource=f"{args[0].__name__.lower()}s",
+                    resource=self._related_resource_name(
+                        args[0].__name__.lower()
+                    ),
                 )
             if args[0] is str:
                 return MultiSelectField(

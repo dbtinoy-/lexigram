@@ -215,10 +215,8 @@ LAZY_IMPORTS: dict[str, str] = {
     "ToggleIcon": "lexigram.ui.molecules.toggle",
     # ---- Molecules — toasts ----
     "InlineToast": "lexigram.ui.molecules.toast",
-    "Toast": "lexigram.ui.molecules.toast",  # deprecated alias for InlineToast
     "ToastData": "lexigram.ui.molecules.toast",
     "ServerToastChannel": "lexigram.ui.molecules.toast",
-    "ToastRenderer": "lexigram.ui.molecules.toast",  # deprecated alias for ServerToastChannel
     "ToastType": "lexigram.ui.molecules.toast",
     "flash_to_toast": "lexigram.ui.molecules.toast",
     # ---- Molecules — realtime / scroll ----

@@ -202,7 +202,7 @@ class Resource(
             if not has_filters:
                 cls.filters = [f for f in cls.fields if getattr(f, "filterable", False)]
 
-    # Relation managers for inline related-record editing on the ViewPage
+    # Relation managers for inline related-record editing on detail pages
     relations: list[type[RelationManager]] = []
 
     # Search Configuration

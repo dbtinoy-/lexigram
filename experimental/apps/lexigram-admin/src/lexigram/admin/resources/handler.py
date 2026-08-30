@@ -20,6 +20,7 @@ from lexigram.admin.resources.action_handlers import (
     ImportActionHandler,
     ListActionHandler,
     PurgeActionHandler,
+    RelationOptionsActionHandler,
     ResourceActionHandler,
     RestoreActionHandler,
 )
@@ -294,7 +295,12 @@ class ActionHandlerRegistry:
 
         list_renderer = ListRenderer(self._config, self.name, renderer)
         detail_renderer = DetailRenderer(self._config, self.name, renderer)
-        form_renderer = FormRenderer(self._config, self.name, renderer)
+        form_renderer = FormRenderer(
+            self._config,
+            self.name,
+            renderer,
+            resources=self._resources,
+        )
 
         self._handlers = [
             ListActionHandler(list_renderer),
@@ -306,6 +312,7 @@ class ActionHandlerRegistry:
             PurgeActionHandler(),
             DeleteActionHandler(),
             ImportActionHandler(),
+            RelationOptionsActionHandler(self._resources),
             UserPermissionsActionHandler(self._config),
             BulkActionHandler(),
             DefaultActionHandler(),

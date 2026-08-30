@@ -44,16 +44,15 @@ class BelongsToFieldRenderer:
     ) -> Any:
         if not isinstance(field_schema, BelongsToField):
             return None
-        return BelongsTo(
-            **_atom_args(
-                common_args,
-                value,
-                extra={
-                    "resource": field_schema.resource,
-                    "choices": field_schema.options or [],
-                },
-            )
-        )
+        extra = {
+            "resource": field_schema.resource,
+            "choices": field_schema.options or [],
+            "searchable": field_schema.searchable,
+        }
+        options_url = common_args.get("relation_options_url")
+        if options_url:
+            extra["options_url"] = options_url
+        return BelongsTo(**_atom_args(common_args, value, extra=extra))
 
 
 class MorphFieldRenderer:

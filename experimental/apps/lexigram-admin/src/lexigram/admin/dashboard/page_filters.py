@@ -1,11 +1,10 @@
 """Page-level dashboard filter state (session-persisted) and form rendering.
 
-Implements the Filament ``HasFiltersForm``/``InteractsWithPageFilters`` parity
-gap for the admin dashboard: a page declares a filter schema
-(``PageFilterField`` list), and this module owns reading/merging that state
-(schema defaults → session → query params, query wins), persisting it per page
-in the request session, rendering the apply/reset filter form, and building
-widget fetch URLs annotated with the current filter values.
+A page declares a filter schema (``PageFilterField`` list), and this module
+owns reading/merging that state (schema defaults → session → query params,
+query wins), persisting it per page in the request session, rendering the
+apply/reset filter form, and building widget fetch URLs annotated with the
+current filter values.
 """
 
 from __future__ import annotations

@@ -182,7 +182,7 @@ def collapse_cluster_in_primary(
 
     Args:
         flat_items: Flat primary nav items.
-        current_path: Request path (unused, retained for signature parity).
+        current_path: Request path (unused, retained for API compatibility).
         items: Contributed cluster items.
         cluster: Cluster whose group is collapsed.
 

@@ -63,9 +63,8 @@ class DeleteBulkAction(BulkAction):
 class PurgeBulkAction(BulkAction):
     """Permanently delete multiple selected records.
 
-    Deletes are issued in chunks via the data source's ``bulk_delete``,
-    mirroring Filament's ``chunkSelectedRecords`` behaviour for large
-    selections.
+    Deletes are issued in chunks via the data source's ``bulk_delete``
+    so large selections are processed in bounded batches.
     """
 
     def __init__(

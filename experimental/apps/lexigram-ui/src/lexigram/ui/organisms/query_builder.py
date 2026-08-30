@@ -4,7 +4,7 @@ The :class:`QueryBuilder` renders a constraint tree editor (rules + nested
 ``AND``/``OR`` groups) and serializes the tree to a JSON block model in a
 hidden form field.  The block model is the transport contract with
 ``lexigram.search.filterset.BlockQueryTranslator`` (which lowers it to
-``SafeSearchQuery``) — see the Filament-parity design doc 05 part 2.
+``SafeSearchQuery``) in the search package.
 
 Block model JSON::
 

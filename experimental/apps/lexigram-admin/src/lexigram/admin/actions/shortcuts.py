@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from typing import Generic, Protocol, TypeVar
 
+from lexigram.primitives.registry import Registry
+
 
 class _HasShortcut(Protocol):
     """Minimal protocol for actions that support keyboard shortcuts."""
@@ -25,20 +27,27 @@ class KeyboardShortcutManager(Generic[ActionT]):
     Handles shortcut registration, lookup, and formatting.  Sub-managers
     extend this class to add type-specific execution logic (e.g., passing
     a ``record_id`` for row actions).
+
+    The backing store is a lexigram core :class:`Registry` keyed by the
+    normalized shortcut string (``allow_overwrite`` mirrors the historical
+    dict behaviour where re-registering a shortcut replaces the action).
     """
 
     def __init__(self) -> None:
         """Initialize the shortcut manager."""
-        self._shortcuts: dict[str, ActionT] = {}
+        self._shortcuts: Registry[str, ActionT] = Registry(
+            name="admin.action_shortcuts",
+            allow_overwrite=True,
+        )
 
     def register_action(self, action: ActionT) -> None:
         """Register an action under its keyboard shortcut."""
         if action.keyboard_shortcut:
-            self._shortcuts[action.keyboard_shortcut] = action
+            self._shortcuts.register(action.keyboard_shortcut, action)
 
     def unregister_action(self, shortcut: str) -> None:
         """Remove a shortcut registration."""
-        self._shortcuts.pop(shortcut, None)
+        self._shortcuts.unregister(shortcut)
 
     def get_action_for_shortcut(self, shortcut: str) -> ActionT | None:
         """Return the action bound to *shortcut*, or ``None``."""
@@ -50,7 +59,7 @@ class KeyboardShortcutManager(Generic[ActionT]):
 
     def is_shortcut_registered(self, shortcut: str) -> bool:
         """Return ``True`` if *shortcut* is currently registered."""
-        return shortcut in self._shortcuts
+        return self._shortcuts.has(shortcut)
 
     def clear_all_shortcuts(self) -> None:
         """Remove all registered shortcuts."""

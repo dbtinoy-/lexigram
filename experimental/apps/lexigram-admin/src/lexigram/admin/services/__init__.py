@@ -22,7 +22,6 @@ from lexigram.admin.services.feature_flags import (
     AdminFeatureFlagService,
     require_feature,
 )
-from lexigram.admin.services.form_renderer import FormRenderer
 from lexigram.admin.services.htmx_perf import HTMXPerformanceMonitor, get_htmx_monitor
 from lexigram.admin.services.notifications import (
     AdminNotificationService,
@@ -76,7 +75,6 @@ __all__ = [
     "ExportTemplate",
     "FileUploadService",
     "FileValidator",
-    "FormRenderer",
     "HTMXPerformanceMonitor",
     "Notification",
     "NotificationChannel",
