@@ -9,6 +9,7 @@ from starlette.responses import HTMLResponse, RedirectResponse, Response
 
 from lexigram.admin.controllers.resource.meta import ResourceMeta
 from lexigram.admin.state.context import AdminContextManager
+from lexigram.admin.ui.molecules.toast_notification import ToastNotification
 from lexigram.admin.ui.organisms.admin_slide_over import render_bulk_delete_confirm
 from lexigram.ui import el, render_to_string
 
@@ -115,7 +116,7 @@ class ResourceBulkMixin:
 
             result = await self.execute_bulk_action(action, ids)  # type: ignore[arg-type]
 
-            ctx.add_flash(result, "success")
+            ToastNotification.make(str(result)).success().title("Bulk action").send()
             if ctx.is_htmx:
                 response = HTMLResponse(render_to_string(el("p", str(result))))
                 response.headers["HX-Trigger"] = (

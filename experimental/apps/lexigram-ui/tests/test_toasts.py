@@ -43,3 +43,64 @@ def test_close_toast_event_absent_when_disabled():
     channel = ServerToastChannel(config=ToastConfig(listen_for_events=False))
     html = channel.render_container([])
     assert "lexigram:close-toast" not in html
+
+
+def test_flash_to_toast_handles_struct_dicts_full_fidelity():
+    """Structured flash entries must keep title/icon/duration/actions."""
+    from lexigram.ui import ToastData, flash_to_toast
+
+    toasts = flash_to_toast(
+        [
+            {
+                "message": "Created successfully",
+                "category": "success",
+                "title": "Saved",
+                "icon": "sparkles",
+                "duration_ms": 4000,
+                "dismissible": True,
+                "actions": [{"label": "View", "onclick": "open()"}],
+            }
+        ]
+    )
+    assert len(toasts) == 1
+    toast = toasts[0]
+    assert isinstance(toast, ToastData)
+    assert toast.message == "Created successfully"
+    assert str(toast.type) == "success"
+    assert toast.title == "Saved"
+    assert toast.icon == "sparkles"
+    assert toast.duration_ms == 4000
+    assert toast.auto_dismiss is True
+    assert toast.dismissible is True
+    assert toast.actions == [{"label": "View", "onclick": "open()"}]
+
+
+def test_flash_to_toast_still_accepts_legacy_tuples():
+    """Legacy (category, message) tuples keep working."""
+    from lexigram.ui import flash_to_toast
+
+    toasts = flash_to_toast([("error", "Something broke")])
+    assert len(toasts) == 1
+    assert toasts[0].message == "Something broke"
+    assert str(toasts[0].type) == "error"
+
+
+def test_flash_to_toast_dict_titles_render_in_markup():
+    """The full-fidelity payload must survive render_toast markup."""
+    from lexigram.ui import ServerToastChannel, flash_to_toast
+
+    toasts = flash_to_toast(
+        [
+            {
+                "message": "Updated successfully",
+                "category": "success",
+                "title": "Saved",
+                "icon": "check-circle",
+                "duration_ms": 4000,
+            }
+        ]
+    )
+    html = ServerToastChannel().render(toasts)
+    assert "Updated successfully" in html
+    assert "Saved" in html
+    assert "check-circle" in html

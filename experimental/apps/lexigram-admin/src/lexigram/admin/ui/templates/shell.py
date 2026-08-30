@@ -17,7 +17,15 @@ from lexigram.admin.ui.templates.shell_sections import (
     build_sidebar_container,
     prepare_navigation,
 )
-from lexigram.ui import Component, InlineToast, Zones, el, raw, render_to_string
+from lexigram.ui import (
+    Component,
+    ServerToastChannel,
+    Zones,
+    el,
+    flash_to_toast,
+    raw,
+    render_to_string,
+)
 
 
 class AdminShell(Component):
@@ -36,7 +44,7 @@ class AdminShell(Component):
         system_menu_items: list | None = None,
         sidebar: Sidebar | None = None,
         topbar: TopBar | None = None,
-        flash_messages: list[dict[str, str]] | None = None,
+        flash_messages: list[dict[str, Any]] | None = None,
         breadcrumbs: list[dict[str, Any]] | None = None,
         commands: list[dict[str, str]] | None = None,
         features: dict[str, bool] | None = None,
@@ -154,14 +162,13 @@ class AdminShell(Component):
         content_inner = raw(render_to_string(self.content))
 
         # 4. Handle Notifications (Toast)
-        # We wrap in a container to allow OOB swaps
-        toasts = ""
-        for msg in self.flash_messages:
-            toasts += render_to_string(
-                InlineToast(
-                    msg.get("message", ""), toast_type=msg.get("category", "info")
-                ),
-            )
+        # We wrap in a container to allow OOB swaps. Structured flash entries
+        # keep full fidelity (title/icon/duration/actions) via flash_to_toast.
+        channel = ServerToastChannel()
+        toasts = "".join(
+            channel.render_toast(toast)
+            for toast in flash_to_toast(self.flash_messages)
+        )
         toast_node = raw(toasts) if toasts else ""
 
         flash_container = el("div", toast_node, id=Zones.FLASH.id)
