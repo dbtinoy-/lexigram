@@ -7,7 +7,7 @@ from typing import Any
 from lexigram.admin.schema.base import SchemaField
 from lexigram.admin.schema.exceptions import FieldError
 from lexigram.result import Err, Ok, Result
-from lexigram.ui import Element, MultiSelect, Radio, Select
+from lexigram.ui import Element, MultiSelect, Radio, Select, TagsInput
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -155,7 +155,24 @@ class MultiSelectField(SelectField):
     def render_form(  # type: ignore[override]
         self, value: list[str] | None, *, errors: list[str] | None = None
     ) -> Element:
-        kwargs: dict[str, Any] = {
+        # A list annotation does not necessarily have a finite choice set.
+        # Use the free-form tags control when options were not configured,
+        # rather than rendering an empty select that cannot submit anything.
+        if not self.options:
+            kwargs: dict[str, Any] = {"name": self.name}
+            if value is not None:
+                kwargs["value"] = value
+            if self.label is not None:
+                kwargs["label"] = self.label
+            if errors:
+                kwargs["error"] = errors[0]
+            if self.placeholder is not None:
+                kwargs["placeholder"] = self.placeholder
+            if self.readonly:
+                kwargs["disabled"] = True
+            return TagsInput(**kwargs).render()
+
+        kwargs = {
             "name": self.name,
             "choices": self.options,
         }
@@ -189,6 +206,11 @@ class MultiSelectField(SelectField):
                 return Ok(None)
             return Err(FieldError("Invalid option"))
         values = [v.strip() for v in stripped.split(",") if v.strip()]
+        # With no configured options this is a free-form list (the same
+        # contract as TagsField). Finite option lists remain strict so invalid
+        # submitted values cannot bypass relation/choice validation.
+        if not self.options:
+            return Ok(values)
         for v in values:
             if self._get_label(v) is None:
                 return Err(FieldError(f"Invalid option: {v}"))
@@ -200,6 +222,8 @@ class MultiSelectField(SelectField):
         return ",".join(str(v) for v in value)
 
     def render_filter(self, current_value: Any | None = None) -> Element | None:
+        if not self.options:
+            return None
         return Select(
             name=self.name,
             choices=self.options,

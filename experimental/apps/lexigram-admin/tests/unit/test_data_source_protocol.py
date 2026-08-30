@@ -131,6 +131,28 @@ class TestResourceFetchList:
         assert total == 0
 
     @pytest.mark.asyncio
+    async def test_fetch_list_uses_accessor_data_source(self) -> None:
+        """fetch_list should support resources exposing get_data_source()."""
+        from lexigram.admin.data.adapters.memory_adapter import InMemoryDataSource
+        from lexigram.admin.resources.base import Resource
+
+        class AccessorResource(Resource):
+            search_fields = ["name"]
+
+            def __init__(self) -> None:
+                self.source = InMemoryDataSource(data=[{"id": 1, "name": "A"}])
+
+            def get_data_source(self):
+                return self.source
+
+        resource = AccessorResource()
+        items, total = await resource.fetch_list(limit=10)
+
+        assert total == 1
+        assert items == [{"id": 1, "name": "A"}]
+
+
+    @pytest.mark.asyncio
     async def test_fetch_list_delegates_to_find_many(self) -> None:
         """fetch_list should call _data_source.find_many with a Query."""
         from lexigram.admin.data.adapters.memory_adapter import InMemoryDataSource

@@ -25,6 +25,7 @@ import warnings
 
 from lexigram.admin.data.data_source import IDataSource
 from lexigram.admin.resources.archive_ops import ArchiveOperationsMixin
+from lexigram.admin.resources.data_access import get_resource_data_source
 from lexigram.admin.resources.form_guard import PROTECTED_FORM_FIELDS
 from lexigram.admin.resources.hooks import ResourceHooksMixin
 from lexigram.admin.resources.specs import IntegrationSpecsMixin
@@ -250,7 +251,8 @@ class Resource(
         Returns:
             List of dicts with ``id``, ``title``, and ``subtitle`` keys.
         """
-        if not self.search_fields or self._data_source is None:
+        data_source = get_resource_data_source(self)
+        if not self.search_fields or data_source is None:
             return []
 
         from lexigram.admin.data.query import QuerySpec
@@ -262,7 +264,7 @@ class Resource(
             .with_per_page(limit)
         )
         try:
-            result = await self._data_source.find_many(qs)
+            result = await data_source.find_many(qs)
         except (AttributeError, TypeError, ValueError, KeyError, RuntimeError):
             return []
 
@@ -314,7 +316,8 @@ class Resource(
         Returns:
             Tuple of (items, total_count).
         """
-        if self._data_source is None:
+        data_source = get_resource_data_source(self)
+        if data_source is None:
             return [], 0
 
         from lexigram.admin.data.query import QuerySpec
@@ -337,7 +340,7 @@ class Resource(
             else:
                 qs = qs.with_where_eq(field, value)
 
-        result = await self._data_source.find_many(qs)
+        result = await data_source.find_many(qs)
         items = list(result.items)
         total = result.total
         return items, total

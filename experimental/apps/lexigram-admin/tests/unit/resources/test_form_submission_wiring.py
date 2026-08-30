@@ -123,6 +123,22 @@ def test_builder_handles_repeated_list_controls() -> None:
     assert result.data.tags == ["one", "two"]  # type: ignore[attr-defined]
 
 
+def test_builder_list_without_options_uses_freeform_tags_control() -> None:
+    class Model(BaseModel):
+        tags: list[str]
+
+    form = FormBuilder(Model).build()
+
+    html = form.render_html("/submit")
+    result = __import__("asyncio").run(form.validate({"tags": "one,two"}))
+
+    assert 'name="tags"' in html
+    assert "TagsInput" not in html
+    assert result.success is True
+    assert result.data is not None
+    assert result.data.tags == ["one", "two"]  # type: ignore[attr-defined]
+
+
 def test_form_data_dict_preserves_repeated_controls() -> None:
     class FormData:
         def multi_items(self):
