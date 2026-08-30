@@ -10,10 +10,6 @@ from lexigram.contracts.infra.tasks import TaskQueueProtocol
 from lexigram.di.provider import Provider
 from lexigram.tasks.backends.registry import TaskBackendRegistry
 from lexigram.tasks.config import TaskConfig
-from lexigram.tasks.execution.pool import WorkerPool
-from lexigram.tasks.execution.registry import HandlerRegistry
-from lexigram.tasks.middleware.core import TaskMiddlewarePipeline
-from lexigram.tasks.results.core import InMemoryResultStore, ResultStore
 from lexigram.tasks.di._lifecycle import (  # noqa: F401 — re-export
     _check_queue_health,
     _connect_queue,
@@ -22,6 +18,10 @@ from lexigram.tasks.di._lifecycle import (  # noqa: F401 — re-export
 )
 from lexigram.tasks.di._operations import _TaskOperationsMixin
 from lexigram.tasks.di._registration import _TaskRegistrationMixin
+from lexigram.tasks.execution.pool import WorkerPool
+from lexigram.tasks.execution.registry import HandlerRegistry
+from lexigram.tasks.middleware.core import TaskMiddlewarePipeline
+from lexigram.tasks.results.core import InMemoryResultStore, ResultStore
 
 
 class TaskProvider(

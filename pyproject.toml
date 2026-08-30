@@ -674,6 +674,8 @@ exclude = [
     "^tests/",
     "^docs/",
     "alembic/.*",
+    "packages/.*/tests/",
+    "experimental/.*/tests/",
 ]
 
 # Per-module overrides for third-party packages that lack type stubs.

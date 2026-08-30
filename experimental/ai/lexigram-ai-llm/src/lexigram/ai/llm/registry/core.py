@@ -167,7 +167,7 @@ class ProviderRegistry(Registry[str, ProviderInfo]):
             pricing_url=pricing_url,
             description=description,
         )
-        return cast("ProviderInfo", super().register(name, info))
+        return super().register(name, info)
 
     def get_provider(self, name: str) -> ProviderInfo:
         """Get provider information."""
