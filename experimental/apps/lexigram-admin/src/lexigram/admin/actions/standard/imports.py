@@ -128,8 +128,7 @@ class ImportAction(_ImportReportMixin, HeaderAction):
     def example_csv(self) -> str:
         """Build a header-only example CSV from ``example_columns``.
 
-        Mirrors Filament's ``ImportAction::exampleCsv()``. Returns an empty
-        string when no example columns are configured.
+        Returns an empty string when no example columns are configured.
         """
         if not self._example_columns:
             return ""

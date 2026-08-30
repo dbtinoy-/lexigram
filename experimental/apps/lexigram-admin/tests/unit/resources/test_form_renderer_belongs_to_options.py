@@ -54,7 +54,6 @@ class _RelatedResource(Resource):
 class _OwnerResource(Resource):
     name = "widgets"
     model = _Widget
-    _admin_registry = {"owners": _RelatedResource}
 
 
 def _create_request() -> StarletteRequest:
@@ -84,6 +83,7 @@ class TestBelongsToOptions:
             AdminConfig(prefix="/admin", title="Test"),
             "widgets",
             AdminRenderer(),
+            resources={"owners": _RelatedResource},
         )
         response = await renderer.render_create(_create_request(), _OwnerResource)
         html = response.body.decode("utf-8", "replace")
@@ -111,12 +111,12 @@ class TestBelongsToOptions:
         class _OwnerResourceSpy(Resource):
             name = "widgets"
             model = _Widget
-            _admin_registry = {"owners": _RelatedResourceSpy}
 
         renderer = FormRenderer(
             AdminConfig(prefix="/admin", title="Test"),
             "widgets",
             AdminRenderer(),
+            resources={"owners": _RelatedResourceSpy},
         )
         await renderer.render_create(_create_request(), _OwnerResourceSpy)
         assert len(captured) == 1
@@ -130,6 +130,7 @@ class TestBelongsToOptions:
             AdminConfig(prefix="/admin", title="Test"),
             "widgets",
             AdminRenderer(),
+            resources={"owners": _RelatedResource},
         )
         response = await renderer.render_create(_create_request(), _OwnerResource)
         html = response.body.decode("utf-8", "replace")

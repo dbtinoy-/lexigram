@@ -1,8 +1,8 @@
 """Admin dashboard widget type definitions.
 
 Provides WidgetType, WidgetConfig, DashboardConfig and the widget/store
-protocols plus the in-memory persistence implementation used for legacy
-dashboard builder assembly.
+protocols plus the in-memory persistence implementation used by dashboard
+assembly.
 """
 
 from __future__ import annotations
@@ -14,7 +14,7 @@ from typing import Any, Protocol
 
 
 class WidgetType(StrEnum):
-    """Widget types for legacy dashboard builder."""
+    """Widget types for dashboard assembly."""
 
     METRIC = "metric"
     CHART = "chart"

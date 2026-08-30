@@ -107,7 +107,7 @@ class ImportReport:
 
     Persisted by :class:`AdminImportService` whenever a commit has
     failed rows, so callers can surface a downloadable error report
-    (mirrors Filament's "Reviewing failed rows" flow).
+    of the failed rows.
 
     Attributes:
         id: Unique report identifier.

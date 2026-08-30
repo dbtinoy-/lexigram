@@ -214,12 +214,10 @@ class ImpersonateAction(RowAction):
 class CloneAction(RowAction):
     """Clone a single record through the data source.
 
-    Mirrors Filament's ``Replicate`` action: ``exclude_attributes`` drops
-    fields from the copy (``excludeAttributes``), ``mutate_record_data``
-    transforms the record data before creation (``mutateRecordDataUsing``),
-    and ``before_replica_saved`` runs just before the new record is
-    persisted (``beforeReplicaSaved``). The ``id`` field is always stripped
-    so a fresh identifier is assigned.
+    ``exclude_attributes`` drops fields from the copy, ``mutate_record_data``
+    transforms the record data before creation, and ``before_replica_saved``
+    runs just before the new record is persisted. The ``id`` field is always
+    stripped so a fresh identifier is assigned.
     """
 
     def __init__(

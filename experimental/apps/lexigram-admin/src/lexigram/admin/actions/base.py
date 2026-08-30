@@ -72,8 +72,8 @@ class Action(ABC, Generic[R, Outcome]):
     ) -> bool:
         """Determine whether this action is visible in the current context.
 
-        Legacy compatibility shim called by rendering code. Defaults to True.
-        Subclasses like HeaderAction override this directly.
+        Compatibility accessor used by table/header rendering paths. Defaults
+        to True; subclasses like HeaderAction override this directly.
         """
         return self.visible_for(record, user)
 
@@ -128,7 +128,7 @@ class Action(ABC, Generic[R, Outcome]):
         return None
 
     def get_url(self, record: Any = None) -> str | None:
-        """Public URL accessor for legacy rendering code.
+        """Public URL accessor used by table rendering paths.
 
         Delegates to _get_url with a minimal ActionContext when called
         from non-framework rendering paths.

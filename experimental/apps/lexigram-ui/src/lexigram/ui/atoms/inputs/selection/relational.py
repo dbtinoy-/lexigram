@@ -10,7 +10,10 @@ from lexigram.ui.core.base import el
 class BelongsTo(Select):
     """Select field for BelongsTo relationships.
 
-    Links to another resource and can be searchable.
+    Links to another resource. When ``searchable`` is enabled and an
+    ``options_url`` is provided, a filter input is rendered above the select;
+    typing loads matching options from the endpoint over HTMX
+    (``hx-get`` → ``<option>`` markup swapped into the select).
     """
 
     def __init__(
@@ -18,18 +21,43 @@ class BelongsTo(Select):
         name: str,
         resource: str,
         searchable: bool = False,
+        options_url: str | None = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(name=name, **kwargs)
         self.resource = resource
         self.searchable = searchable
+        self.options_url = options_url
 
     def _render_input(self) -> Any:
         select_el = super()._render_input()
         if self.searchable:
-            select_el.props["data-searchable"] = "true"
-            select_el.props["data-resource"] = self.resource
-        return select_el
+            select_el.attrs["data-searchable"] = "true"
+            select_el.attrs["data-resource"] = self.resource
+        if not self.options_url:
+            return select_el
+
+        select_id = f"{self.name}-select"
+        select_el.attrs["id"] = select_id
+        filter_input = el(
+            "input",
+            type="search",
+            name="q",
+            placeholder="Search…",
+            autocomplete="off",
+            class_=(
+                "w-full bg-background border border-border rounded-md px-3 py-2 "
+                "text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            ),
+            **{
+                "hx-get": self.options_url,
+                "hx-trigger": "keyup changed delay:300ms",
+                "hx-target": f"#{select_id}",
+                "hx-swap": "innerHTML",
+                "hx-include": "this",
+            },
+        )
+        return el("div", filter_input, select_el, class_="space-y-2")
 
 
 class MorphTo(AbstractInput):

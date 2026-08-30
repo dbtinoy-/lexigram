@@ -60,7 +60,7 @@ def _sparkline_points(values: list[float]) -> str:
 
 
 class StatsOverviewWidget(Component):
-    """A single-number overview card (Filament stats-overview parity).
+    """A single-number overview card.
 
     Args:
         title: Label shown beneath the value.

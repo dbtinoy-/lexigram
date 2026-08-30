@@ -30,11 +30,13 @@ class FormRenderer(WizardRendererMixin):
         resource_name: str,
         renderer: AdminRenderer,
         permission_service: PermissionService | None = None,
+        resources: dict[str, Any] | None = None,
     ):
         self._config = config
         self.resource_name = resource_name
         self._renderer = renderer
         self._permission_service = permission_service
+        self._resources = resources or {}
         self._csrf_service = AdminCsrfService(
             secret=config.auth.session_secret.get_secret_value()
         )
@@ -302,63 +304,16 @@ class FormRenderer(WizardRendererMixin):
             try:
                 from dataclasses import replace as dc_replace
 
-                from lexigram.admin.data.query import QuerySpec
                 from lexigram.admin.forms.components import FormSchemaGenerator
-                from lexigram.admin.schema import BelongsToField
 
-                generator = FormSchemaGenerator()
+                generator = FormSchemaGenerator(
+                    resource_registry=dict(self._resources)
+                )
                 schema = generator.from_pydantic(resource.model)
 
                 # Populate relation field options from the related resource's
-                # data source (IDataSource protocol: find_many, not list_all).
-                for idx, field_schema in enumerate(schema.fields):
-                    if isinstance(field_schema, BelongsToField):
-                        related_resource_name = field_schema.resource
-                        if related_resource_name and hasattr(
-                            resource, "_admin_registry"
-                        ):
-                            try:
-                                related_resource_cls = resource._admin_registry.get(
-                                    related_resource_name
-                                )
-                                if related_resource_cls:
-                                    related_instance = related_resource_cls()
-                                    if (
-                                        hasattr(related_instance, "_data_source")
-                                        and related_instance._data_source
-                                    ):
-                                        ds = related_instance._data_source
-                                        if hasattr(ds, "find_many"):
-                                            result = await ds.find_many(
-                                                QuerySpec(
-                                                    per_page=200,
-                                                    sort_by="id",
-                                                )
-                                            )
-                                            if hasattr(result, "items"):
-                                                records = result.items
-                                            elif isinstance(result, list):
-                                                records = result
-                                            else:
-                                                records = []
-                                            options = [
-                                                (
-                                                    str(getattr(r, "id", r)),
-                                                    str(r),
-                                                )
-                                                for r in records
-                                            ]
-                                            schema.fields[idx] = dc_replace(
-                                                field_schema, options=options
-                                            )
-                            except Exception:
-                                import logging
-
-                                logging.getLogger(__name__).debug(
-                                    "Failed to load options for %s.%s",
-                                    self.resource_name,
-                                    field_schema.name,
-                                )
+                # registered instance/class (IDataSource protocol: find_many).
+                await self._populate_relation_options(schema)
 
                 # Build field components from schema
                 rendered_fields: dict[str, Any] = {}
@@ -443,6 +398,58 @@ class FormRenderer(WizardRendererMixin):
             "No form configuration available for this resource.",
             class_="text-muted-foreground",
         )
+
+    def _resolve_related_resource(self, resource_name: str) -> Any | None:
+        """Resolve a registered resource instance/class by resource name.
+
+        Resource instances are resolved at mount time and shared through the
+        route registry, so relation options load from the same data source the
+        related resource uses at runtime (including search wrappers).
+        """
+        if not resource_name:
+            return None
+        entry = self._resources.get(resource_name)
+        if entry is None:
+            return None
+        return entry() if isinstance(entry, type) else entry
+
+    async def _populate_relation_options(self, schema: Any) -> None:
+        """Load selectable options for relation fields into the form schema.
+
+        Handles belongs-to and has-many relation fields; the related resource
+        must be registered and expose an ``IDataSource``-compatible
+        ``find_many``. Failures are non-fatal (the field renders empty).
+        """
+        from dataclasses import replace as dc_replace
+
+        from lexigram.admin.data.query import QuerySpec
+        from lexigram.admin.schema import BelongsToField, HasManyField
+
+        for idx, field_schema in enumerate(schema.fields):
+            if not isinstance(field_schema, (BelongsToField, HasManyField)):
+                continue
+            related = self._resolve_related_resource(field_schema.resource)
+            if related is None:
+                continue
+            ds = getattr(related, "_data_source", None)
+            if not ds or not hasattr(ds, "find_many"):
+                continue
+            try:
+                result = await ds.find_many(QuerySpec(per_page=200, sort_by="id"))
+                if hasattr(result, "items"):
+                    records = result.items
+                elif isinstance(result, list):
+                    records = result
+                else:
+                    records = []
+                options = [(str(getattr(r, "id", r)), str(r)) for r in records]
+                schema.fields[idx] = dc_replace(field_schema, options=options)
+            except Exception:
+                logger.debug(
+                    "Failed to load options for %s.%s",
+                    self.resource_name,
+                    field_schema.name,
+                )
 
     @staticmethod
     def _resolve_form_sections(resource: Any) -> list[Any]:
@@ -546,6 +553,13 @@ class FormRenderer(WizardRendererMixin):
             "placeholder": field_schema.placeholder,
             "name": field_schema.name,
         }
+        # Searchable relation selects load options over HTMX from the related
+        # resource's registered relation-options endpoint.
+        if getattr(field_schema, "searchable", False) and field_schema.resource:
+            common_args["relation_options_url"] = (
+                f"{self._config.prefix.rstrip('/')}/{field_schema.resource}"
+                "/relation-options"
+            )
 
         # Use registry to get the appropriate renderer and field instance
         renderer = _field_renderer_registry.get_renderer(field_schema)

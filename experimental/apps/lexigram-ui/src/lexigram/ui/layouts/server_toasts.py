@@ -7,7 +7,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import StrEnum
-from typing import Any
 
 from markupsafe import escape
 
@@ -324,41 +323,9 @@ def flash_to_toast(
 
 
 __all__ = [
-    "Toast",  # deprecated alias for ToastData
     "ToastConfig",
     "ToastData",
-    "ToastRenderer",  # deprecated alias for ServerToastChannel
     "ServerToastChannel",
     "ToastType",
     "flash_to_toast",
 ]
-
-
-class Toast(ToastData):
-    """Deprecated alias for ToastData. Will be removed in a future release."""
-
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        import warnings
-
-        warnings.warn(
-            "`Toast` (the toast payload dataclass) is deprecated; use `ToastData` instead. "
-            "For the inline Alpine component, use `InlineToast`.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        super().__init__(*args, **kwargs)
-
-
-class ToastRenderer(ServerToastChannel):
-    """Deprecated alias for ServerToastChannel. Will be removed in a future release."""
-
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        import warnings
-
-        warnings.warn(
-            "`ToastRenderer` is deprecated; use `ServerToastChannel` instead. "
-            "For inline Alpine toasts, use `InlineToast`.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        super().__init__(*args, **kwargs)
