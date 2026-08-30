@@ -18,9 +18,14 @@ logger = get_logger(__name__)
 _TENANT_BYPASS_PATHS: frozenset[str] = frozenset(
     {
         "/login",
+        "/logout",
         "/setup",
         "/health",
         "/static",
+        "/login/2fa",
+        "/verify-email",
+        "/password-reset",
+        "/register",
     }
 )
 
@@ -46,6 +51,15 @@ class AdminTenantMiddleware:
         self.app = app
         self.config = config
 
+    @staticmethod
+    def _is_bypass_path(path: str) -> bool:
+        """Match public paths on segment boundaries, never by raw prefix."""
+        normalized = path.rstrip("/") or path
+        return any(
+            normalized == public or normalized.startswith(f"{public}/")
+            for public in _TENANT_BYPASS_PATHS
+        )
+
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
@@ -57,13 +71,22 @@ class AdminTenantMiddleware:
 
         request = Request(scope, receive=receive)
 
+        from lexigram.admin.multitenancy.context import (
+            reset_current_tenant,
+            set_current_tenant,
+        )
+
         # Extract path relative to admin mount
         path = request.url.path
 
         # Bypass for public paths
-        if any(path.startswith(p) or path == p for p in _TENANT_BYPASS_PATHS):
+        if self._is_bypass_path(path):
             request.state.tenant_id = ""
-            await self.app(scope, receive, send)
+            token = set_current_tenant("")
+            try:
+                await self.app(scope, receive, send)
+            finally:
+                reset_current_tenant(token)
             return
 
         # Resolve tenant ID (delegates to lexigram-tenancy when available)
@@ -94,4 +117,11 @@ class AdminTenantMiddleware:
             headers = MutableHeaders(scope=scope)
             headers.append("X-Tenant-Id", tenant_id)
 
-        await self.app(scope, receive, send)
+        # Bind the resolved tenant to this async request. A ContextVar keeps
+        # concurrent requests isolated while allowing data sources resolved at
+        # application startup to follow the request's tenant.
+        token = set_current_tenant(tenant_id)
+        try:
+            await self.app(scope, receive, send)
+        finally:
+            reset_current_tenant(token)

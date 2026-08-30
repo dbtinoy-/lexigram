@@ -344,6 +344,11 @@ class AdminProvider(
                 {
                     "authorizer": self._authorizer,
                     "admin_prefix": self._config.prefix,
+                    "permission_authorizer": self._authorizer_service,
+                    # Keep the live dict view so contributor resources added
+                    # later in the mount pipeline receive the same boundary
+                    # authorization as built-in resources.
+                    "resource_names": ctx.resources.keys(),
                 },
             )
         )
@@ -407,7 +412,11 @@ class AdminProvider(
                     tenant_id=tenant_id,
                     tenant_field=tenant_field,
                 )
-                resource.data_source = scoped
+                # Resource.fetch_list/search use the canonical private data
+                # source slot. Assign through the resource API so tenant
+                # scoping is actually used by list and mutation paths rather
+                # than only being exposed as an unused dynamic attribute.
+                resource.set_data_source(scoped)
         _log.debug("admin.resource_data_sources_tenant_scoped")
 
     async def boot(self, container: ContainerResolverProtocol) -> None:

@@ -44,9 +44,9 @@ class Pagination(Component):
             **props,
         )
         self.state = state
-        self.page = page
-        self.total = total
-        self.per_page = per_page
+        self.page = max(1, int(page))
+        self.total = max(0, int(total))
+        self.per_page = max(1, int(per_page))
         self.base_url = base_url
         self.next_cursor = next_cursor
         self.show_size_selector = show_size_selector

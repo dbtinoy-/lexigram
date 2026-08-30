@@ -161,7 +161,7 @@ def _render_single_row(
     rid = extract_row_id(item)
 
     # Checkbox cell
-    if config.resource_prefix and config.bulk_actions:
+    if config.resource_prefix and config.bulk_actions and rid:
         is_pinned = any(
             getattr(col, "_pinned", None) == "left" for col in config.columns
         )

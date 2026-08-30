@@ -7,6 +7,8 @@ paginated data fetcher (:mod:`..list_query`) into the DataTable-driven
 list view for an admin resource.
 """
 
+from typing import Any
+
 from starlette.responses import HTMLResponse
 
 from lexigram.admin.config import AdminConfig
@@ -43,6 +45,135 @@ class ListRenderer:
         self._renderer = renderer
         self._metrics = metrics or AdminMetrics(None)
         self._fetcher = ListDataFetcher(resource_name, metrics)
+
+    def _permissions_for_request(
+        self,
+        request,
+        user: Any | None = None,
+    ) -> dict[str, bool] | None:
+        """Normalize request-bound RBAC state for the DataTable renderer.
+
+        ``None`` means no permission context was installed (useful for
+        standalone component callers). Once auth middleware installs a
+        permission attribute, malformed or unavailable values fail closed.
+        Direct user permissions are used only when middleware did not install
+        a permission attribute at all; a present ``None`` remains a denial.
+        """
+        state = getattr(request, "state", None)
+        if state is None:
+            return None
+
+        if hasattr(state, "permissions"):
+            raw = getattr(state, "permissions", None)
+            if raw is None:
+                return {
+                    "can_view": False,
+                    "can_create": False,
+                    "can_update": False,
+                    "can_delete": False,
+                }
+        else:
+            request_user = user if user is not None else getattr(state, "user", None)
+            raw = getattr(request_user, "permissions", None)
+            if raw is None:
+                scope = getattr(request, "scope", None)
+                scope_user = scope.get("user") if isinstance(scope, dict) else None
+                raw = getattr(scope_user, "permissions", None)
+            if raw is None:
+                return None
+
+        resource = self.resource_name
+        has_method = getattr(raw, "has", None)
+        if callable(has_method):
+            has = has_method
+        elif isinstance(raw, dict) and any(
+            key in raw
+            for key in ("can_view", "can_create", "can_update", "can_delete")
+        ):
+            return {
+                key: bool(raw.get(key, False))
+                for key in ("can_view", "can_create", "can_update", "can_delete")
+            }
+        elif isinstance(raw, (set, frozenset, list, tuple)):
+            values = {str(value) for value in raw}
+
+            def has(permission: str) -> bool:
+                return permission in values or "*" in values or f"{resource}.*" in values
+        else:
+            return {
+                "can_view": False,
+                "can_create": False,
+                "can_update": False,
+                "can_delete": False,
+            }
+
+        return {
+            "can_view": bool(has(f"{resource}.view") or has(f"{resource}.list")),
+            "can_create": bool(has(f"{resource}.create")),
+            "can_update": bool(
+                has(f"{resource}.edit") or has(f"{resource}.update")
+            ),
+            "can_delete": bool(has(f"{resource}.delete")),
+        }
+
+    @staticmethod
+    def _available_fields(source_columns, resource) -> set[str]:
+        """Return fields that may safely be addressed by URL-driven state."""
+        fields = {
+            str(column.name)
+            for column in source_columns or []
+            if getattr(column, "name", None)
+        }
+        if fields:
+            return fields
+
+        model = getattr(resource, "model", None)
+        model_fields = getattr(model, "model_fields", None) or getattr(
+            model,
+            "__fields__",
+            None,
+        )
+        return {str(name) for name in (model_fields or {})}
+
+    def _sanitize_table_state(self, state: TableState, table_config, source_columns, resource):
+        """Whitelist URL-controlled sort/group fields before data access/rendering."""
+        allowed_fields = self._available_fields(source_columns, resource)
+        default_sort = getattr(table_config, "default_sort_by", None)
+        safe_default_sort = (
+            default_sort if default_sort in allowed_fields else None
+        )
+
+        sort_by = state.sort_by
+        sort_order = state.sort_order
+        if sort_by:
+            descending_prefix = sort_by.startswith("-")
+            candidate = sort_by[1:] if descending_prefix else sort_by
+            if candidate not in allowed_fields:
+                sort_by = safe_default_sort
+                sort_order = getattr(table_config, "default_sort_order", "asc")
+            else:
+                sort_by = candidate
+                if descending_prefix:
+                    sort_order = "desc"
+        elif default_sort and default_sort not in allowed_fields:
+            sort_by = None
+
+        group_by = state.group_by
+        if group_by and group_by not in allowed_fields:
+            configured_group = getattr(table_config, "group_by", None)
+            group_by = configured_group if configured_group in allowed_fields else None
+
+        if sort_by == state.sort_by and sort_order == state.sort_order and group_by == state.group_by:
+            return state
+        return state.model_copy(
+            update={
+                "sort_by": sort_by,
+                "sort_order": sort_order,
+                "group_by": group_by,
+                "page": 1,
+                "cursor": None,
+            }
+        )
 
     async def render(
         self,
@@ -92,11 +223,39 @@ class ListRenderer:
             else {},
         )
 
-        # Map list_view sort params to TableState params
-        if request.query_params.get("sort"):
-            state.sort_by = request.query_params.get("sort")
-        if request.query_params.get("dir"):
-            state.sort_order = request.query_params.get("dir")
+        # Map legacy list-view aliases to a new immutable TableState. Never
+        # assign onto request state directly: state is the canonical value
+        # object shared by HTMX URL generation and downstream fetchers.
+        legacy_sort = request.query_params.get("sort")
+        legacy_direction = request.query_params.get("dir")
+        if legacy_sort:
+            direction = legacy_direction if legacy_direction in ("asc", "desc") else "asc"
+            state = state.model_copy(
+                update={
+                    "sort_by": legacy_sort,
+                    "sort_order": direction,
+                    "page": 1,
+                    "cursor": None,
+                }
+            )
+        elif legacy_direction in ("asc", "desc") and state.sort_by:
+            state = state.model_copy(
+                update={
+                    "sort_order": legacy_direction,
+                    "page": 1,
+                    "cursor": None,
+                }
+            )
+
+        # Never pass arbitrary URL field names to a resource/repository. The
+        # same allowlist also keeps group-by from introspecting private or
+        # unrelated record attributes during rendering.
+        state = self._sanitize_table_state(
+            state,
+            table_config,
+            source_columns,
+            resource,
+        )
 
         # Fetch data from service
         items, total = await self._fetcher.fetch_data(
@@ -116,6 +275,12 @@ class ListRenderer:
 
         # Prepare Bulk Actions
         bulk_actions_list = get_bulk_actions(table_config, resource)
+
+        # Prefer request-bound identity/permissions over an omitted handler
+        # argument. The auth middleware may expose either PermissionSet or a
+        # compatible mapping; normalize it once at the rendering boundary.
+        request_user = getattr(getattr(request, "state", None), "user", None)
+        table_permissions = self._permissions_for_request(request, user=user)
 
         # Prepare DataTable
         dt = DataTable(
@@ -148,7 +313,8 @@ class ListRenderer:
                 search_fields=getattr(resource, "search_fields", None),
             ),
             total=total,
-            user=user,
+            user=user if user is not None else request_user,
+            permissions=table_permissions,
             loading=False,
         )
 
