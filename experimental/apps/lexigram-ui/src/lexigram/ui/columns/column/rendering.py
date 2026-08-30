@@ -154,7 +154,9 @@ class ColumnRenderingMixin:
             # Determine next sort order
             next_order = "desc" if (is_current and sort_order == "asc") else "asc"
 
-            # Build HTMX attrs directly on the th element (entire header clickable)
+            # Build HTMX attrs on a real <button> inside the header cell so
+            # sorting is keyboard-accessible and announced to screen readers
+            # (th itself is not focusable).
             if state and resource_prefix:
                 # Use immutable mutation to get new state with sort
                 new_state = state.with_sort(self.name)
@@ -163,22 +165,17 @@ class ColumnRenderingMixin:
                     resource_prefix,
                     push_url=True,
                 )
-                # Convert hx-* to hx_* for element builder
-                for k, v in htmx_attrs.items():
-                    th_props[k.replace("-", "_")] = v
             else:
                 # Fallback: manual construction
                 sort_params = f"sort_by={self.name}&sort_order={next_order}"
-                th_props.update(
-                    {
-                        "hx_get": f"?{sort_params}",
-                        "hx_target": Zones.DATA.selector,
-                        "hx_swap": Zones.DATA.swap_mode.value,
-                        "hx_select": Zones.DATA.selector,
-                        "hx_params": "none",
-                        "hx_push_url": "true",
-                    },
-                )
+                htmx_attrs = {
+                    "hx-get": f"?{sort_params}",
+                    "hx-target": Zones.DATA.selector,
+                    "hx-swap": Zones.DATA.swap_mode.value,
+                    "hx-select": Zones.DATA.selector,
+                    "hx-params": "none",
+                    "hx-push-url": "true",
+                }
 
             # Build sort icon
             if is_current:
@@ -191,12 +188,34 @@ class ColumnRenderingMixin:
 
             sort_icon = get_icon(icon_name, size=icon_classes)
 
-            # Content with label + icon
+            # Content with label + icon inside the sort button
+            sort_button_attrs = {
+                k.replace("-", "_"): v for k, v in htmx_attrs.items()
+            }
             content = el(
-                "span",
-                self.label,
-                sort_icon,
-                class_="inline-flex items-center gap-1.5",
+                "button",
+                el(
+                    "span",
+                    self.label,
+                    sort_icon,
+                    class_="inline-flex items-center gap-1.5",
+                ),
+                type="button",
+                class_=(
+                    "inline-flex items-center w-full h-full text-left "
+                    "focus-visible:outline-none focus-visible:ring-2 "
+                    "focus-visible:ring-ring focus-visible:ring-offset-2 rounded-md"
+                ),
+                **sort_button_attrs,
+            )
+
+            # Announce current sort state on the header cell
+            th_props["aria-sort"] = (
+                "ascending"
+                if is_current and sort_order == "asc"
+                else "descending"
+                if is_current
+                else "none"
             )
         else:
             # Non-sortable column - just the label

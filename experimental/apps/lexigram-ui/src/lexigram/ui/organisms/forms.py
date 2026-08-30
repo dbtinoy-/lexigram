@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from lexigram.ui.atoms.button import Button
+from lexigram.ui.atoms.button import SubmitButton
 from lexigram.ui.core.base import Component, el
 
 
@@ -51,6 +51,8 @@ class Form(Component):
             "method": self.method,
             "class": "space-y-6",
         }
+        if self.form_id:
+            attrs["id"] = self.form_id
 
         submit_button_attrs: dict[str, str] = {}
         if self.action_url:
@@ -105,11 +107,10 @@ class Form(Component):
                 "div",
                 el(
                     "div",
-                    Button(
+                    SubmitButton(
                         self.submit_label,
-                        type=submit_button_attrs.get("type", "submit"),
                         class_="w-full sm:w-auto",
-                        onclick=submit_button_attrs.get("onclick"),
+                        type=submit_button_attrs.get("type", "submit"),
                     ),
                     autosave_indicator,
                     class_="flex items-center justify-between w-full",
