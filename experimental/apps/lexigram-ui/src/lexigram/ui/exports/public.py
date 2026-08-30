@@ -137,6 +137,7 @@ __all__ = (
     "PaginationLinks",
     "TablePagination",
     "ViewSwitcher",
+    "SortSwitcher",
     "GroupBySwitcher",
     "DensitySwitcher",
     "ColumnVisibilitySwitcher",

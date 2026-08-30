@@ -158,6 +158,7 @@ LAZY_IMPORTS: dict[str, str] = {
     "PaginationLinks": "lexigram.ui.molecules.pagination_links",
     "TablePagination": "lexigram.ui.molecules.table_pagination",
     "ViewSwitcher": "lexigram.ui.molecules.view_switcher",
+    "SortSwitcher": "lexigram.ui.molecules.sort_switcher",
     "GroupBySwitcher": "lexigram.ui.molecules.group_by_switcher",
     "DensitySwitcher": "lexigram.ui.molecules.density_switcher",
     "ColumnVisibilitySwitcher": "lexigram.ui.molecules.column_visibility_switcher",

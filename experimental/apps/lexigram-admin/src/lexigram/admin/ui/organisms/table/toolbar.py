@@ -3,6 +3,10 @@ from __future__ import annotations
 from typing import Any
 
 from lexigram.admin.ui.molecules.filter_bar import FilterBar
+from lexigram.admin.ui.organisms.data_table.view_controls import (
+    DATA_VIEW_OPTIONS,
+    controls_for,
+)
 from lexigram.ui import (
     ActionButton,
     ColumnVisibilitySwitcher,
@@ -11,6 +15,7 @@ from lexigram.ui import (
     GroupBySwitcher,
     LayoutSwitcher,
     SearchBar,
+    SortSwitcher,
     ViewSwitcher,
     Zones,
     el,
@@ -233,16 +238,74 @@ class TableToolbar(Component):
         )
 
     def _render_switchers(self) -> Any:
-        """Render the left-hand switcher cluster (view/layout/group-by + clear)."""
-        # Clear Filters Button (shown when filters/search are available)
-        clear_buttons = []
-        has_search_enabled = self.config.enable_search
-        has_filters_available = bool(self.config.filters)
+        """Render the left-hand switcher cluster gated by ``data_view``."""
+        caps = controls_for(getattr(self.state, "view", None))
+        nodes: list[Any] = []
 
+        if caps.layout:
+            nodes.append(
+                LayoutSwitcher(
+                    current=self.state.layout,
+                    resource_prefix=self.config.resource_prefix,
+                    state=self.state,
+                ).render()
+            )
+
+        # Highest-order structure: tabular / stacked / grid / calendar.
+        nodes.append(
+            ViewSwitcher(
+                current=self.state.view,
+                resource_prefix=self.config.resource_prefix,
+                options=list(DATA_VIEW_OPTIONS),
+                state=self.state,
+            ).render()
+        )
+
+        if caps.toolbar_sort:
+            nodes.append(
+                SortSwitcher(
+                    current=self.state.sort_by,
+                    current_order=self.state.sort_order,
+                    resource_prefix=self.config.resource_prefix,
+                    columns=self.config.columns,
+                    state=self.state,
+                ).render()
+            )
+
+        if caps.group_by:
+            nodes.append(
+                GroupBySwitcher(
+                    current=self.state.group_by or self.config.group_by,
+                    resource_prefix=self.config.resource_prefix,
+                    columns=self.config.columns,
+                    state=self.state,
+                ).render()
+            )
+
+        if caps.density:
+            nodes.append(
+                DensitySwitcher(
+                    current=self.state.density or self.config.density,
+                    resource_prefix=self.config.resource_prefix,
+                    state=self.state,
+                ).render()
+            )
+
+        if caps.column_visibility:
+            nodes.append(
+                ColumnVisibilitySwitcher(
+                    columns=self.config.columns,
+                    current_hidden=self.state.hidden_columns or [],
+                    resource_prefix=self.config.resource_prefix,
+                    state=self.state,
+                ).render()
+            )
+
+        has_search_enabled = caps.search and self.config.enable_search
+        has_filters_available = caps.filters and bool(self.config.filters)
         if self.config.resource_prefix and (
             has_search_enabled or has_filters_available
         ):
-            # Use new HTMX API for clear button
             from lexigram.ui import HTMXAttrs
 
             clear_state = self.state.clear_filters()
@@ -251,64 +314,37 @@ class TableToolbar(Component):
                 resource_prefix=self.config.resource_prefix,
                 push_url=True,
             )
-
-            clear_btn = ActionButton(
-                label="Clear",
-                variant="ghost",
-                icon="x",
-                size="sm",
-                **clear_attrs,  # type: ignore[arg-type]
-                **{  # type: ignore[arg-type]
-                    "x-bind:class": "{ 'opacity-50 cursor-not-allowed': !hasActiveFiltersState }",
-                    "x-bind:disabled": "!hasActiveFiltersState",
-                    "@click": "if (!hasActiveFiltersState) $event.preventDefault()",
-                    "x-ref": "clearFiltersButton",
-                },
+            nodes.append(
+                ActionButton(
+                    label="Clear",
+                    variant="ghost",
+                    icon="x",
+                    size="sm",
+                    **clear_attrs,  # type: ignore[arg-type]
+                    **{  # type: ignore[arg-type]
+                        "x-bind:class": (
+                            "{ 'opacity-50 cursor-not-allowed': "
+                            "!hasActiveFiltersState }"
+                        ),
+                        "x-bind:disabled": "!hasActiveFiltersState",
+                        "@click": (
+                            "if (!hasActiveFiltersState) $event.preventDefault()"
+                        ),
+                        "x-ref": "clearFiltersButton",
+                    },
+                ).render()
             )
-            clear_buttons.append(clear_btn.render())
-
-        # Global Switchers
-        layout_switch = LayoutSwitcher(
-            current=self.state.layout,
-            resource_prefix=self.config.resource_prefix,
-            state=self.state,
-        )
-        view_switch = ViewSwitcher(
-            current=self.state.view,
-            resource_prefix=self.config.resource_prefix,
-            state=self.state,
-        )
-        group_by_switch = GroupBySwitcher(
-            current=self.state.group_by or self.config.group_by,
-            resource_prefix=self.config.resource_prefix,
-            columns=self.config.columns,
-            state=self.state,
-        )
-        density_switch = DensitySwitcher(
-            current=self.state.density or self.config.density,
-            resource_prefix=self.config.resource_prefix,
-            state=self.state,
-        )
-        column_visibility_switch = ColumnVisibilitySwitcher(
-            columns=self.config.columns,
-            current_hidden=self.state.hidden_columns or [],
-            resource_prefix=self.config.resource_prefix,
-            state=self.state,
-        )
 
         return el(
             "div",
-            layout_switch.render(),
-            view_switch.render(),
-            group_by_switch.render(),
-            density_switch.render(),
-            column_visibility_switch.render(),
-            *clear_buttons,
+            *nodes,
             class_="flex flex-wrap items-center gap-2",
             id=Zones.TOOLBAR.id + "-switchers",
         )
 
     def render_search(self) -> Any:
+        if not controls_for(getattr(self.state, "view", None)).search:
+            return ""
         if not self.config.enable_search:
             return ""
 
@@ -345,6 +381,8 @@ class TableToolbar(Component):
         return el("div", search_bar.render(), class_="flex-1 mb-2", id=Zones.SEARCH.id)
 
     def render_filters(self) -> Any:
+        if not controls_for(getattr(self.state, "view", None)).filters:
+            return ""
         active_filters = self.config.filters
 
         if not (self.config.resource_prefix and active_filters):

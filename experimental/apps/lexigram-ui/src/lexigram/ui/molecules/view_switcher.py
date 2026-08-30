@@ -28,9 +28,9 @@ class ViewSwitcher(Component):
         self.resource_prefix = resource_prefix or ""
         self.options = options or [
             ("tabular", "Tabular"),
+            ("stacked", "Stacked"),
             ("grid", "Grid"),
             ("calendar", "Calendar"),
-            ("stacked", "Stacked"),
         ]
         # Optional TableState instance for generating HTMX attrs
         self.state = state

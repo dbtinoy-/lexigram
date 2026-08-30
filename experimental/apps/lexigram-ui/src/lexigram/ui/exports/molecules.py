@@ -50,6 +50,7 @@ if TYPE_CHECKING:
     from lexigram.ui.molecules.rich_select import RichSelect
     from lexigram.ui.molecules.section import Section
     from lexigram.ui.molecules.simple_alert import SimpleAlert
+    from lexigram.ui.molecules.sort_switcher import SortSwitcher
     from lexigram.ui.molecules.stack import Stack
     from lexigram.ui.molecules.stat_card import StatCard
     from lexigram.ui.molecules.tab_group import Tab, TabGroup
@@ -103,6 +104,7 @@ if TYPE_CHECKING:
         "RichSelect",
         "Section",
         "SimpleAlert",
+        "SortSwitcher",
         "Stack",
         "StatCard",
         "Tab",
