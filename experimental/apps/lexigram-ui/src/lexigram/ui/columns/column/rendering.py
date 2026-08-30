@@ -6,7 +6,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from markupsafe import Markup
+
 from lexigram.ui import HTMXAttrs, Zones, el
+from lexigram.ui.core.base import warn_html_string_render
 
 if TYPE_CHECKING:
     from lexigram.ui.state import TableState
@@ -75,8 +78,20 @@ class ColumnRenderingMixin:
         ):
             formatted_value = formatted_value[: self._limit] + "..."
 
-        # Render the value
+        # Render the value. A plain HTML string returned here is data, not
+        # structure: the element layer will escape it and the browser will
+        # show literal markup. Detect that and warn once so the developer
+        # knows to return an el() tree or wrap the string in raw()/Markup.
         content = self.render(formatted_value, record)
+        if isinstance(content, str) and not isinstance(content, Markup):
+            warn_html_string_render(
+                origin=f"Column.render() for column {self.name!r}",
+                snippet=content,
+                fix=(
+                    "return an element via el(...) (e.g. el('span', value)), "
+                    "or wrap the string in raw()/Markup when HTML is intended"
+                ),
+            )
 
         # Build CSS classes
         classes = [f"text-{self._alignment}", "px-6", "py-4"]

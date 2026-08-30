@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 from typing import Any
 from urllib.parse import urlencode
 
@@ -36,6 +37,11 @@ class DataTableRenderer:
         # Keep rendering side effects local. In particular, ActionManager adds
         # defaults and view strategies may reorder columns.
         self.config = clone_table_configuration(config)
+        # Per-request density: the state's density (URL-driven) wins over the
+        # resource-level default so each user's choice applies without
+        # mutating the shared resource configuration.
+        if state.density:
+            self.config.density = state.density
         self.state = state
         self.total = total
         self.user = user
@@ -301,7 +307,7 @@ class DataTableRenderer:
         view_strategy = view_strategy_registry.create_view(
             self.state.view or "tabular",
             self.data,
-            self.config,
+            self._view_config(),
             self.state,
             self.total,
             self.summary,
@@ -310,6 +316,26 @@ class DataTableRenderer:
             next_cursor=self.next_cursor,
         )
         return view_strategy.render()
+
+    def _view_config(self) -> Any:
+        """Return the configuration with URL-hidden columns removed.
+
+        Column visibility is a per-request concern (``TableState.hidden_columns``)
+        and must not mutate the shared resource configuration. The toolbar and
+        the column-visibility switcher keep the full column list via
+        ``self.config``; only the rendered view drops hidden columns, so
+        colspan/pinned-offset math stays consistent within the view.
+        """
+        hidden = set(self.state.hidden_columns or [])
+        if not hidden:
+            return self.config
+        view_config = copy.copy(self.config)
+        view_config.columns = [
+            column
+            for column in self.config.columns
+            if getattr(column, "name", column) not in hidden
+        ]
+        return view_config
 
     def _render_pagination(self) -> Any:
         """Render pagination if needed."""
