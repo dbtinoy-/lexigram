@@ -1,9 +1,8 @@
 """Column-spec and action extraction for admin list views.
 
-Builds DataTable column definitions from resource configuration (or
-auto-generates them from fetched items) and resolves filter, row,
-header, and bulk action specs. Composed by
-:class:`lexigram.admin.resources.list_renderer.ListRenderer`.
+Builds the DataTable's reusable UI columns from resource configuration (or
+auto-generates them from fetched items) and resolves filter, row, header,
+and bulk action specs. Composed by :class:`ListRenderer`.
 """
 
 from __future__ import annotations
@@ -14,11 +13,42 @@ from lexigram.ui import Column as OrgColumn
 from lexigram.ui import TextColumn
 
 
-def build_columns(source_columns: Any, items: Any) -> Any:
+class SchemaFieldColumn(TextColumn):
+    """Adapt a declarative admin ``SchemaField`` to a UI table column.
+
+    ``Resource.fields`` is the single declarative source for form, filter, and
+    list metadata. Passing those fields through the old fallback converted
+    every value to plain text, losing boolean/date/relation renderers and
+    searchable/sortable flags. This adapter keeps the UI Column protocol while
+    delegating cell formatting and visibility to the field schema.
+    """
+
+    def __init__(self, field_schema: Any) -> None:
+        super().__init__(
+            field_schema.name,
+            label=getattr(field_schema, "label", None),
+        )
+        self.field_schema = field_schema
+        self._sortable = bool(getattr(field_schema, "sortable", True))
+        self._searchable = bool(getattr(field_schema, "searchable", False))
+        self._filterable = bool(getattr(field_schema, "filterable", False))
+        self._toggleable = True
+
+    def is_visible(self, **kwargs: Any) -> bool:
+        """Honor declarative list visibility, including dynamic UI kwargs."""
+        return bool(getattr(self.field_schema, "visible_in_list", True))
+
+    def render(self, value: Any, record: dict) -> Any:
+        """Delegate formatting to the schema field renderer."""
+        return self.field_schema.render_column(record, value)
+
+
+def build_columns(source_columns: Any, items: Any) -> list[Any]:
     """Build column definitions for the data table."""
+    from lexigram.admin.schema import SchemaField
     from lexigram.admin.ui.filters.base import Filter
 
-    columns = []
+    columns: list[Any] = []
     # Auto-generate columns if missing (post-fetch)
     if not source_columns and items:
         first_item = items[0]
@@ -40,8 +70,10 @@ def build_columns(source_columns: Any, items: Any) -> Any:
         for col in source_columns:
             if isinstance(col, Filter):
                 continue
-            if hasattr(col, "render") or isinstance(col, OrgColumn):
-                # Already a component
+            if isinstance(col, SchemaField):
+                columns.append(SchemaFieldColumn(col))
+            elif hasattr(col, "render") or isinstance(col, OrgColumn):
+                # Already a UI component/column
                 columns.append(col)
             else:
                 # Fallback for simple objects
@@ -167,6 +199,7 @@ def get_bulk_actions(table_config: Any, resource: Any) -> Any:
 
 
 __all__ = [
+    "SchemaFieldColumn",
     "build_columns",
     "get_bulk_actions",
     "get_filter_options",

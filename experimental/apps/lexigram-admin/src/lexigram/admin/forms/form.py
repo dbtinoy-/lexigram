@@ -43,6 +43,8 @@ class Form(Generic[T]):
         submit_label: str,
         cancel_url: str | None,
         group_labels: dict[str, str] | None = None,
+        request: Any | None = None,
+        csrf_token: str | None = None,
     ):
         self.model = model
         self.fields = {f.name: f for f in fields}
@@ -53,47 +55,71 @@ class Form(Generic[T]):
         self.columns = columns
         self.submit_label = submit_label
         self.cancel_url = cancel_url
+        self.request = request
+        self.csrf_token = csrf_token
         self.values: dict[str, Any] = {}
         self.errors: dict[str, list[str]] = {}
 
     def bind(self, data: dict[str, Any]) -> Form[T]:
-        """Bind data to form values."""
-        for name in self.fields:
-            if name in data:
-                self.values[name] = data[name]
+        """Bind a new submission to the form.
+
+        A form instance can be reused after a failed submission. Replacing the
+        bound values (rather than only updating keys present in *data*) keeps a
+        removed control from accidentally submitting the previous value.
+        """
+        self.values = {name: data[name] for name in self.fields if name in data}
+        self.errors = {}
         return self
 
+    @staticmethod
+    def _raw_value(value: Any) -> str | None:
+        """Normalize scalar and repeated HTML form values for schema fields."""
+        if value is None or isinstance(value, str):
+            return value
+        if isinstance(value, (list, tuple)):
+            return ",".join(str(item) for item in value)
+        return str(value)
+
     async def validate(self, data: dict[str, Any]) -> FormResult[T]:
-        """Validate form data against model."""
+        """Validate form data against model.
+
+        Every declared field is visited, including controls omitted from the
+        request (unchecked booleans and missing required inputs). This keeps
+        the standalone builder form consistent with the declarative FormBase
+        pipeline and prevents a required optional-model field from being
+        silently skipped.
+        """
+        self.bind(data)
         errors: dict[str, list[str]] = {}
         cleaned: dict[str, Any] = {}
 
-        # Run field-level validation first
+        # Run field-level validation first. Missing optional fields are left
+        # out so the model can apply its own default; missing required fields
+        # are passed as None so the schema's required contract is enforced.
         for name, field in self.fields.items():
-            if name not in data:
-                continue
-            raw = data.get(name)
-            raw = raw if raw is None or isinstance(raw, str) else str(raw)
+            raw = self._raw_value(data.get(name))
             result = field.from_form(raw)
             if result.is_err():
-                message = str(result.unwrap_err())
-                errors.setdefault(name, []).append(message)
-                self.errors[name] = [message]
-            else:
-                value = result.unwrap()
-                if field.required and (
-                    value is None or (isinstance(value, str) and not value)
-                ):
-                    message = "This field is required."
-                    errors.setdefault(name, []).append(message)
-                    self.errors[name] = [message]
+                errors.setdefault(name, []).append(str(result.unwrap_err()))
+                continue
+
+            value = result.unwrap()
+            if field.required and (
+                value is None or (isinstance(value, str) and not value.strip())
+            ):
+                errors.setdefault(name, []).append("This field is required.")
+            elif name in data:
+                validated = field.validate_value(value)
+                if validated.is_err():
+                    errors.setdefault(name, []).append(str(validated.unwrap_err()))
                 else:
-                    cleaned[name] = value
+                    cleaned[name] = validated.unwrap()
 
         # If field validation passed, try Pydantic model validation
         if not errors and self.model is not None:
             try:
                 instance = self.model.model_validate(cleaned)
+                self.errors = {}
                 return FormResult(success=True, data=instance)
             except (ValueError, TypeError, AttributeError) as e:
                 if hasattr(e, "errors"):
@@ -101,14 +127,16 @@ class Form(Generic[T]):
                         field_name = (
                             str(error["loc"][0]) if error["loc"] else "__root__"
                         )
-                        message = error["msg"]
-                        errors.setdefault(field_name, []).append(message)
-                        self.errors[field_name] = [message]
+                        errors.setdefault(field_name, []).append(error["msg"])
                 else:
-                    message = str(e)
-                    errors.setdefault("__root__", []).append(message)
-                    self.errors["__root__"] = [message]
+                    errors.setdefault("__root__", []).append(str(e))
+        elif not errors:
+            # Dynamic forms created with FormBuilder.create() have no model,
+            # but their field-level validation is still meaningful.
+            self.errors = {}
+            return FormResult(success=True, data=None)
 
+        self.errors = errors
         return FormResult(success=False, errors=errors)
 
     def _render_field_el(self, name: str) -> Any:
@@ -201,6 +229,26 @@ class Form(Generic[T]):
             ),
         )
 
+    def _csrf_input(self) -> Any:
+        """Render a CSRF input when a request/token was attached to the form."""
+        token = self.csrf_token
+        request = self.request or getattr(self, "_request", None)
+        if token is None:
+            token = getattr(getattr(request, "state", None), "csrf_token", None)
+        if not token:
+            return ""
+        return el(
+            "input",
+            type="hidden",
+            name="csrf_token",
+            value=str(token),
+        )
+
+    def bind_request(self, request: Any) -> Form[T]:
+        """Attach a request context so rendered submissions include CSRF."""
+        self.request = request
+        return self
+
     def render_html(self, action: str, method: str = "POST") -> str:
         """Render form as HTML."""
         field_els = self._render_field_els()
@@ -214,6 +262,7 @@ class Form(Generic[T]):
         return render_to_string(
             el(
                 "form",
+                self._csrf_input(),
                 self._fields_container_el(field_els),
                 el("div", *btns, class_="form-actions", style="margin-top:1.5rem"),
                 action=action,
@@ -241,6 +290,7 @@ class Form(Generic[T]):
         return render_to_string(
             el(
                 "form",
+                self._csrf_input(),
                 el("div", "Saving...", id=spinner_id, class_="htmx-indicator"),
                 self._fields_container_el(field_els),
                 el("div", *btns, class_="form-actions", style="margin-top:1.5rem"),
@@ -248,7 +298,7 @@ class Form(Generic[T]):
                     "hx-post": action,
                     "hx-target": target,
                     "hx-swap": swap,
-                    "hx-indicator": "#form-spinner",
+                    "hx-indicator": f"#{spinner_id}",
                     "class": f"admin-form layout-{self.layout}",
                 },
             )

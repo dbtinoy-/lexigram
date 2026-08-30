@@ -33,6 +33,9 @@ class ListDataFetcher:
         self._cache_integration: Any = None
         self._search_integration: Any = None
         self._resilience_integration: Any = None
+        # Set per fetch so callers can render a recoverable table error
+        # instead of mistaking a failed query for a valid empty result.
+        self.error: str | None = None
 
     async def fetch_data(
         self, request, resource, state: TableState, source_columns
@@ -43,6 +46,7 @@ class ListDataFetcher:
         total = 0
         status = "success"
         failed = False
+        self.error = None
 
         if not resource:
             self._metrics.record_operation(
@@ -63,6 +67,8 @@ class ListDataFetcher:
             search_fields = []
             for col in source_columns:
                 if hasattr(col, "is_searchable") and col.is_searchable():
+                    search_fields.append(col.name)
+                elif getattr(col, "searchable", False):
                     search_fields.append(col.name)
 
         # Extract active filters from TableState
@@ -89,13 +95,14 @@ class ListDataFetcher:
                     offset=(state.page - 1) * state.per_page,
                 )
                 if hasattr(result, "rows"):
-                    items = list(result.rows)
+                    items = list(result.rows or [])
                     total = result.row_count
                 elif isinstance(result, dict):
-                    items = list(result.get("results", []))
+                    items = list(result.get("results", []) or [])
                     total = result.get("total", len(items))
                 else:
                     items, total = [], 0
+                total = int(total) if total is not None else len(items)
 
                 # If search returned results, return them.
                 # Otherwise fall through to fetch_list when fallback_to_like is enabled
@@ -155,6 +162,8 @@ class ListDataFetcher:
                     )
                 else:
                     items, total = await fetcher()
+                items = list(items or [])
+                total = int(total) if total is not None else len(items)
 
                 logger.info(
                     "search.fetch_list_result",
@@ -184,12 +193,18 @@ class ListDataFetcher:
                         else:
                             qs = qs.with_where_eq(field, value)
                     result = await service.find_many(qs)
-                    items = result.items if hasattr(result, "items") else result
+                    items = list(
+                        (result.items if hasattr(result, "items") else result) or []
+                    )
                     total = result.total if hasattr(result, "total") else len(items)
+                    total = int(total) if total is not None else len(items)
                 elif hasattr(service, "list"):
-                    items = await service.list(
-                        limit=state.per_page,
-                        offset=(state.page - 1) * state.per_page,
+                    items = list(
+                        await service.list(
+                            limit=state.per_page,
+                            offset=(state.page - 1) * state.per_page,
+                        )
+                        or []
                     )
                     total = len(items)
         except DataError as e:
@@ -199,12 +214,11 @@ class ListDataFetcher:
                 e,
                 exc_info=True,
             )
-            raise DataError(
-                message=f"Failed to retrieve {self.resource_name} items",
-                original_error=e,
-            ) from None
+            self.error = f"Failed to retrieve {self.resource_name} items"
+            failed = True
         except Exception:  # noqa: BLE001
             logger.exception("admin.resource_fetch_error", resource=self.resource_name)
+            self.error = f"Failed to retrieve {self.resource_name} items"
             failed = True
 
         if failed:

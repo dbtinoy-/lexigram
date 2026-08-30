@@ -293,6 +293,7 @@ def _render_single_row(
                 user=user,
                 resource_name=resource_name,
                 resource_prefix=config.resource_prefix,
+                form_display_mode=getattr(config, "form_display_mode", None),
             )
             if node:
                 action_nodes.append(node)

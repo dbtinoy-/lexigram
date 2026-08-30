@@ -90,7 +90,7 @@ class FormBase(Component, metaclass=FormMeta):
             self.is_valid()
 
     def _initialize_fields(self) -> None:
-        for name, field_schema in self._declared_fields.items():
+        for name, field_schema in self.fields.items():
             if name in self.data:
                 self.values[name] = self.data[name]
             elif name in self.initial:
@@ -98,12 +98,21 @@ class FormBase(Component, metaclass=FormMeta):
             else:
                 self.values[name] = field_schema.default
 
+    @staticmethod
+    def _raw_value(value: Any) -> str | None:
+        """Normalize scalar and repeated HTML form values for schema fields."""
+        if value is None or isinstance(value, str):
+            return value
+        if isinstance(value, (list, tuple)):
+            return ",".join(str(item) for item in value)
+        return str(value)
+
     def is_valid(self) -> bool:
         self.errors = {}
         is_valid = True
-        for name, field_schema in self._declared_fields.items():
+        for name, field_schema in self.fields.items():
             value = self.values.get(name)
-            raw = value if value is None or isinstance(value, str) else str(value)
+            raw = self._raw_value(value)
             result = field_schema.from_form(raw)
             if result.is_err():
                 error = result.unwrap_err()
@@ -112,12 +121,18 @@ class FormBase(Component, metaclass=FormMeta):
                 continue
             cleaned = result.unwrap()
             if field_schema.required and (
-                cleaned is None or (isinstance(cleaned, str) and not cleaned)
+                cleaned is None
+                or (isinstance(cleaned, str) and not cleaned.strip())
             ):
                 self.errors[name] = ["This field is required."]
                 is_valid = False
             else:
-                self.values[name] = cleaned
+                validated = field_schema.validate_value(cleaned)
+                if validated.is_err():
+                    self.errors[name] = [str(validated.unwrap_err())]
+                    is_valid = False
+                else:
+                    self.values[name] = validated.unwrap()
         return is_valid
 
     async def validate(self) -> Result[dict[str, Any], AdminValidationError]:

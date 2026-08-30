@@ -198,7 +198,7 @@ class DataTableRenderer:
         """Render toolbar sections."""
         from lexigram.admin.ui.organisms.table.toolbar import TableToolbar
 
-        toolbar = TableToolbar(self.config, self.state)
+        toolbar = TableToolbar(self.config, self.state, user=self.user)
         return {
             "header": toolbar.render_header(bulk_actions=self.config.bulk_actions)
             if self.config.resource_prefix
@@ -282,7 +282,7 @@ class DataTableRenderer:
         fragments: list[Any] = []
 
         # Toolbar switchers + clear button (existing OOB method)
-        toolbar = TableToolbar(self.config, self.state)
+        toolbar = TableToolbar(self.config, self.state, user=self.user)
         switchers = toolbar.render_switchers_oob()
         if switchers is not None:
             fragments.append(switchers)
@@ -347,7 +347,7 @@ class DataTableRenderer:
         params = self.state.to_query_params()
         params.pop("page", None)
         params.pop("per_page", None)
-        base_query = "&" + urlencode(params) if params else ""
+        base_query = "&" + urlencode(params, doseq=True) if params else ""
         base_url = (
             f"{self.config.resource_prefix}/" if self.config.resource_prefix else ""
         )

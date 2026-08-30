@@ -1,0 +1,77 @@
+"""Resource form display modes must select the configured UI path."""
+
+from __future__ import annotations
+
+from pydantic import BaseModel
+from starlette.requests import Request
+
+from lexigram.admin.config import AdminConfig
+from lexigram.admin.engine.renderer import AdminRenderer
+from lexigram.admin.resources.base import Resource
+from lexigram.admin.resources.form_renderer import FormRenderer
+
+
+def _request(target: str) -> Request:
+    scope = {
+        "type": "http",
+        "method": "GET",
+        "path": "/admin/widgets/create",
+        "raw_path": b"/admin/widgets/create",
+        "query_string": b"",
+        "headers": [(b"hx-target", target.encode())],
+        "scheme": "http",
+        "server": ("testserver", 80),
+        "client": ("127.0.0.1", 1234),
+        "asgi": {"version": "3.0", "spec_version": "2.0"},
+        "path_params": {},
+        "state": {},
+        "app": None,
+        "session": {},
+    }
+    return Request(scope)
+
+
+class _Widget(BaseModel):
+    name: str
+
+
+class _ModalResource(Resource):
+    name = "modal_widgets"
+    model = _Widget
+    form_display_mode = "modal"
+
+
+class _PageResource(Resource):
+    name = "page_widgets"
+    model = _Widget
+    form_display_mode = "page"
+
+
+async def _render(resource: type[Resource], target: str) -> str:
+    renderer = FormRenderer(
+        AdminConfig(prefix="/admin", title="Test"),
+        resource.name or "widgets",
+        AdminRenderer(),
+    )
+    response = await renderer.render_create(_request(target), resource)
+    return response.body.decode("utf-8", "replace")
+
+
+async def test_modal_mode_renders_bound_modal_footer() -> None:
+    html = await _render(_ModalResource, "#modal-container")
+
+    assert 'role="dialog"' in html
+    assert 'hx-target="#modal-container"' in html
+    assert 'form="modal_widgets-create-form"' in html
+    assert html.count('type="submit"') == 1
+
+
+async def test_page_mode_does_not_emit_overlay_htmx_submission() -> None:
+    # A stale HX target must not turn a configured page form into a drawer.
+    html = await _render(_PageResource, "#slide-over-container")
+
+    assert "Create Page Widgets" in html
+    assert 'action="/admin/page_widgets/create"' in html
+    assert "hx-post=\"/admin/page_widgets/create\"" not in html
+    assert 'id="modal-title-' not in html
+    assert 'aria-labelledby="slide-over-title"' not in html

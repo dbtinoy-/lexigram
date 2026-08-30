@@ -70,6 +70,9 @@ class StackedView(AbstractDataView):
                         user=self.user,
                         resource_name=self.resource_name,
                         resource_prefix=self.config.resource_prefix,
+                        form_display_mode=getattr(
+                            self.config, "form_display_mode", None
+                        ),
                     )
                     if node:
                         action_nodes.append(node)
@@ -151,7 +154,7 @@ class StackedView(AbstractDataView):
             from lexigram.ui import InfiniteScrollTrigger, Zones
 
             params = {**self.state.to_query_params(), "cursor": next_cursor}
-            next_url = f"{self.config.resource_prefix}/?{urlencode(params)}"
+            next_url = f"{self.config.resource_prefix}/?{urlencode(params, doseq=True)}"
 
             trigger = InfiniteScrollTrigger(
                 url=next_url,

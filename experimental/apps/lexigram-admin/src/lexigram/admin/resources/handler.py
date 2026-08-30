@@ -24,6 +24,7 @@ from lexigram.admin.resources.action_handlers import (
     ResourceActionHandler,
     RestoreActionHandler,
 )
+from lexigram.admin.resources.data_access import get_resource_data_source
 from lexigram.admin.resources.urls import (
     admin_prefix_from_request,
     admin_url,
@@ -61,7 +62,7 @@ class UserPermissionsActionHandler:
                 status_code=404,
             )
         item_id = request.path_params.get("id", "?")
-        data_source = getattr(resource, "_data_source", None)
+        data_source = get_resource_data_source(resource)
         if data_source is None:
             return HTMLResponse("Permissions not available", status_code=400)
 
@@ -188,7 +189,8 @@ class BulkActionHandler:
             render_bulk_delete_confirm,
         )
 
-        if not isinstance(resource, AdminResource) or not resource._data_source:
+        data_source = get_resource_data_source(resource)
+        if not isinstance(resource, AdminResource) or data_source is None:
             return HTMLResponse(
                 "<h1>Bulk actions not supported for this resource</h1>",
                 status_code=400,
@@ -229,15 +231,15 @@ class BulkActionHandler:
         is_htmx = request.headers.get("HX-Request") == "true"
 
         if action_name == "delete":
-            count = await resource._data_source.bulk_delete(form_ids)
+            count = await data_source.bulk_delete(form_ids)
             message = f"Deleted {count} item(s)"
         elif action_name == "purge":
-            count = await resource._data_source.bulk_delete(form_ids)
+            count = await data_source.bulk_delete(form_ids)
             message = f"Purged {count} item(s)"
         elif action_name == "restore":
             count = 0
             for item_id in form_ids:
-                updated = await resource._data_source.update(
+                updated = await data_source.update(
                     item_id, {"deleted_at": None}
                 )
                 if updated is not None:

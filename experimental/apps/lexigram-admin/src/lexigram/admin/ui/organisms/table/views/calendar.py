@@ -275,7 +275,7 @@ class CalendarView(AbstractDataView):
                 params = self.state.to_query_params()
                 params[f"filter_{MONTH_FILTER_KEY}"] = target_month
                 url = prefix.rstrip("/") + "/"
-                return f"{url}?{urlencode(params)}" if params else url
+                return f"{url}?{urlencode(params, doseq=True)}" if params else url
             return f"?filter_{MONTH_FILTER_KEY}={target_month}"
 
         def _nav_link(
@@ -441,6 +441,9 @@ class CalendarView(AbstractDataView):
                     user=self.user,
                     resource_name=self.resource_name,
                     resource_prefix=prefix,
+                    form_display_mode=getattr(
+                        self.config, "form_display_mode", None
+                    ),
                 )
                 if node:
                     action_nodes.append(node)

@@ -126,8 +126,10 @@ class Resource(
 
     # Form Configuration
     form_class: type[FormBase] | None = None
-    # Form display mode: "page" (full page), "modal" (centered modal), "slider" (side panel)
-    form_display_mode: str = "modal"  # Options: "page", "modal", "slider"
+    # Form display mode: "page" (full page), "modal" (centered modal), "slider" (side panel).
+    # Slider preserves the existing HTMX action behavior; resources can opt
+    # into a centered modal or full-page navigation explicitly.
+    form_display_mode: str = "slider"  # Options: "page", "modal", "slider"
     # Model fields excluded from generated forms (e.g. secrets, framework-managed
     # columns).  Resources may extend the default to exclude their own fields.
     form_exclude_fields: tuple[str, ...] = ("id", "created_at", "updated_at")

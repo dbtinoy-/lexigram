@@ -10,6 +10,27 @@ from lexigram.ui.core.base import Component, el, raw, render_to_string
 _counter = itertools.count()
 
 
+def _first_form_id(html: str) -> str | None:
+    """Return the ``id`` of the first ``<form>`` element in *html*."""
+    match = re.search(r"<form[^>]*\bid=[\"']([^\"']+)[\"']", html, re.IGNORECASE)
+    return match.group(1) if match else None
+
+
+def _inject_form_id(html: str, form_id: str) -> str:
+    """Inject ``id=`` into the first ``<form>`` element of *html*.
+
+    Used for raw form fragments without an id so a footer SubmitButton can
+    be bound with the ``form`` attribute.
+    """
+    return re.sub(
+        r"<form(?![^>]*\bid=)",
+        f'<form id="{form_id}"',
+        html,
+        count=1,
+        flags=re.IGNORECASE,
+    )
+
+
 class Modal(Component):
     """
     A FAANG-level modal dialog powered by Alpine.js.
@@ -118,23 +139,41 @@ class Modal(Component):
             footer_html = list(map(raw, footer_found))
 
         if not footer_html:
-            form_present = any(
-                (
-                    (getattr(getattr(c, "__class__", None), "__name__", "") == "Form")
-                    for c in self.children
-                ),
+            # Match SlideOver's form contract: a delegated form action bar
+            # needs a real form binding, while a form that already owns its
+            # submit control must not receive a duplicate footer submit.
+            content_html = "".join(rendered_children)
+            form_present = "<form" in content_html.lower()
+            form_obj = next(
+                (c for c in self.children if hasattr(c, "submit_label")),
+                None,
             )
-            if form_present:
+            form_suppresses = bool(getattr(form_obj, "suppress_submit", False))
+            form_id = getattr(form_obj, "form_id", None) or _first_form_id(content_html)
+            has_own_submit = bool(
+                re.search(r'<button[^>]*type=["\\\']submit', content_html)
+            )
+
+            if form_present and not form_id and (form_suppresses or not has_own_submit):
+                auto_form_id = "modal-form"
+                rendered_children = [
+                    _inject_form_id(s, auto_form_id) if isinstance(s, str) else s
+                    for s in rendered_children
+                ]
+                form_id = auto_form_id
+
+            if form_present and form_id and (form_suppresses or not has_own_submit):
                 cancel_btn = Button(
                     "Cancel",
                     variant=self.DEFAULT_CANCEL_VARIANT,
                     x_on_click="open = false",
                 )
-                create_btn = SubmitButton(
-                    label="Create",
+                save_btn = SubmitButton(
+                    label=getattr(form_obj, "submit_label", "Save"),
                     variant=self.DEFAULT_CREATE_VARIANT,
+                    form=form_id,
                 )
-                footer_html = [cancel_btn, create_btn]
+                footer_html = [cancel_btn, save_btn]
 
         children_html = list(
             map(raw, filter(lambda s: s and s.strip(), rendered_children)),

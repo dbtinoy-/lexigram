@@ -12,6 +12,7 @@ from typing import Any, Protocol
 from starlette.requests import Request as StarletteRequest
 from starlette.responses import HTMLResponse
 
+from lexigram.admin.resources.data_access import get_resource_data_source
 from lexigram.admin.resources.form_coercion import (
     _validation_errors_to_dict,
 )
@@ -36,6 +37,32 @@ __all__ = [
 ]
 
 logger = get_logger(__name__)
+
+
+def _form_data_dict(form: Any) -> dict[str, Any]:
+    """Convert form data while preserving repeated controls.
+
+    ``dict(FormData)`` keeps only the last value for a repeated key, which
+    drops selections from ``<select multiple>`` and has-many relation fields.
+    Keep repeated values as a list so the resource coercion and form schemas
+    can validate them instead of silently losing user input.
+    """
+    items = form.multi_items() if hasattr(form, "multi_items") else form.items()
+    data: dict[str, Any] = {}
+    for raw_key, value in items:
+        # Native multi-select/checkbox widgets conventionally submit
+        # ``field[]``. Normalize that transport suffix before model/form
+        # validation so the declared field receives every selected value.
+        key = str(raw_key)
+        if key.endswith("[]"):
+            key = key[:-2]
+        if key not in data:
+            data[key] = value
+        elif isinstance(data[key], list):
+            data[key].append(value)
+        else:
+            data[key] = [data[key], value]
+    return data
 
 
 class ResourceActionHandler(Protocol):
@@ -103,10 +130,11 @@ class CreateActionHandler:
         from lexigram.admin.resources.base import Resource
 
         form = request.scope.get("admin_form_data") or await request.form()
-        data = dict(form)
+        data = _form_data_dict(form)
         data.pop("csrf_token", None)
 
-        if isinstance(resource, Resource) and resource._data_source:
+        data_source = get_resource_data_source(resource)
+        if isinstance(resource, Resource) and data_source is not None:
             validation = await resource.before_validate(data)
             if validation.is_err():
                 error = validation.unwrap_err()
@@ -119,7 +147,7 @@ class CreateActionHandler:
 
             validated_data = validation.unwrap()
             validated = await resource.before_create(validated_data)
-            record = await resource._data_source.create(validated)
+            record = await data_source.create(validated)
             await resource.after_create(record)
 
             from starlette.responses import RedirectResponse
@@ -171,10 +199,11 @@ class EditActionHandler:
         from lexigram.admin.resources.base import Resource
 
         form = request.scope.get("admin_form_data") or await request.form()
-        data = dict(form)
+        data = _form_data_dict(form)
         data.pop("csrf_token", None)
 
-        if isinstance(resource, Resource) and resource._data_source:
+        data_source = get_resource_data_source(resource)
+        if isinstance(resource, Resource) and data_source is not None:
             validation = await resource.before_validate(data)
             if validation.is_err():
                 error = validation.unwrap_err()
@@ -188,11 +217,11 @@ class EditActionHandler:
 
             validated_data = validation.unwrap()
             validated = await resource.before_update(item_id, validated_data)
-            record = await resource._data_source.find_one(item_id)
+            record = await data_source.find_one(item_id)
             can_update = getattr(resource, "can_update", None)
             if can_update and not can_update(record):
                 return HTMLResponse("This record cannot be updated", status_code=403)
-            updated_record = await resource._data_source.update(item_id, validated)
+            updated_record = await data_source.update(item_id, validated)
             await resource.after_update(updated_record)
 
             from starlette.responses import RedirectResponse
@@ -330,7 +359,7 @@ class RelationOptionsActionHandler:
         if resource is None:
             return HTMLResponse("", status_code=404)
 
-        ds = getattr(resource, "_data_source", None)
+        ds = get_resource_data_source(resource)
         if ds is None or not hasattr(ds, "find_many"):
             return HTMLResponse("", status_code=200)
 
@@ -447,9 +476,10 @@ class DeleteActionHandler:
         label = getattr(resource, "label", "Record")
         record_label = f"{label} #{item_id}"
 
-        if isinstance(resource, AdminResource) and resource._data_source:
+        data_source = get_resource_data_source(resource)
+        if isinstance(resource, AdminResource) and data_source is not None:
             try:
-                item = await resource._data_source.find_one(item_id)
+                item = await data_source.find_one(item_id)
                 if item:
                     for field in ("name", "title", "email", "username", "label"):
                         val = (
@@ -482,8 +512,9 @@ class DeleteActionHandler:
     ) -> Any:
         from lexigram.admin.resources.base import Resource as AdminResource
 
-        if isinstance(resource, AdminResource) and resource._data_source:
-            item = await resource._data_source.find_one(item_id)
+        data_source = get_resource_data_source(resource)
+        if isinstance(resource, AdminResource) and data_source is not None:
+            item = await data_source.find_one(item_id)
             if item is None:
                 return HTMLResponse("Not found", status_code=404)
 
@@ -501,7 +532,7 @@ class DeleteActionHandler:
                     status_code=409,
                 )
 
-            success = await resource._data_source.delete(item_id)
+            success = await data_source.delete(item_id)
             if not success:
                 return HTMLResponse("Not found", status_code=404)
 

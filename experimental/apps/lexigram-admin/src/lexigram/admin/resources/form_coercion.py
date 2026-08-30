@@ -33,11 +33,36 @@ def _coerce_form_data(data: dict, model: type | None) -> dict:
     for key, value in list(data.items()):
         if key not in hints:
             continue
-        if not isinstance(value, str):
-            continue
 
         expected = _unwrap_optional(hints[key])
         origin = get_origin(expected)
+
+        # Multi-select and has-many controls submit repeated values. Preserve
+        # and coerce every value instead of dropping the list because it is not
+        # a scalar string.
+        if origin is list:
+            if isinstance(value, (list, tuple)):
+                items = list(value)
+            elif value == "":
+                items = []
+            elif isinstance(value, str):
+                items = [s.strip() for s in value.split(",") if s.strip()]
+            else:
+                continue
+            args = get_args(expected)
+            inner = args[0] if args else str
+            if inner is str:
+                data[key] = [str(item) for item in items]
+            else:
+                try:
+                    data[key] = [inner(item) for item in items]
+                except (ValueError, TypeError):
+                    pass
+            continue
+
+        if not isinstance(value, str):
+            continue
+
         if expected is bool:
             data[key] = value == "on"
         elif expected is int:
@@ -85,20 +110,6 @@ def _coerce_form_data(data: dict, model: type | None) -> dict:
                     data[key] = date.fromisoformat(value)
                 except (ValueError, TypeError):
                     pass
-        elif origin is list:
-            if value == "":
-                data[key] = []
-            else:
-                args = get_args(expected)
-                inner = args[0] if args else str
-                items = [s.strip() for s in value.split(",")]
-                if inner is not str:
-                    try:
-                        data[key] = [inner(item) for item in items]
-                    except (ValueError, TypeError):
-                        pass
-                else:
-                    data[key] = items
         elif isinstance(expected, type) and issubclass(expected, Enum):
             if value != "":
                 try:

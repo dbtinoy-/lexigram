@@ -11,13 +11,27 @@ from lexigram.admin.config import AdminConfig
 from lexigram.admin.engine.renderer import AdminRenderer
 from lexigram.admin.exceptions import AdminValidationError
 from lexigram.admin.rbac.service import PermissionService
+from lexigram.admin.resources.data_access import get_resource_data_source
 from lexigram.admin.resources.wizard_renderer import WizardRendererMixin
 from lexigram.admin.state.context import wants_fragment
 from lexigram.di.decorators import inject
 from lexigram.logging import get_logger
-from lexigram.ui import Form, SlideOver, el, render_to_string
+from lexigram.ui import Form, Modal, SlideOver, Zones, el, render_to_string
 
 logger = get_logger(__name__)
+
+_VALID_FORM_DISPLAY_MODES = {"page", "modal", "slider"}
+
+
+def _form_display_mode(resource: Any) -> str:
+    """Resolve a resource's form display mode with a safe fallback."""
+    mode = None
+    getter = getattr(resource, "get_form_display_mode", None)
+    if callable(getter):
+        mode = getter()
+    else:
+        mode = getattr(resource, "form_display_mode", None)
+    return mode if mode in _VALID_FORM_DISPLAY_MODES else "slider"
 
 
 @inject
@@ -54,12 +68,16 @@ class FormRenderer(WizardRendererMixin):
         # Check if HTMX request (for modal/slider loading)
         is_htmx = wants_fragment(request)
 
-        # Get form display mode from resource configuration
-        display_mode = "modal"  # default
-        if resource and hasattr(resource, "get_form_display_mode"):
-            display_mode = resource.get_form_display_mode()
-        elif resource and hasattr(resource, "form_display_mode"):
-            display_mode = resource.form_display_mode
+        # Get form display mode from resource configuration. A page form is
+        # always rendered as a normal page, even if a stale client sends an
+        # HX target; modal and slider are the only overlay modes.
+        display_mode = _form_display_mode(resource)
+        overlay_mode = is_htmx and display_mode != "page"
+        overlay_target = (
+            Zones.MODAL.selector
+            if display_mode == "modal"
+            else Zones.SLIDE_OVER.selector
+        )
 
         # Build form component
         await self._ensure_csrf_token(request)
@@ -69,12 +87,22 @@ class FormRenderer(WizardRendererMixin):
             mode="create",
             user=user,
             errors=errors,
-            in_slide_over=is_htmx,
+            in_slide_over=overlay_mode,
+            overlay_target=overlay_target,
+            htmx_enabled=display_mode != "page",
         )
         form_component._request = request
 
-        # If HTMX request, always render as SlideOver
-        if is_htmx:
+        if overlay_mode and display_mode == "modal":
+            overlay = Modal(
+                title=f"Create {label}",
+                trigger=None,
+                render_trigger=False,
+                is_open=True,
+                children=[form_component],
+            )
+            return HTMLResponse(render_to_string(overlay))
+        if overlay_mode:
             overlay = SlideOver(
                 title=f"Create {label}",
                 subtitle=f"Fill in the details to create a new {label.lower()} record.",
@@ -140,12 +168,14 @@ class FormRenderer(WizardRendererMixin):
         # Check if HTMX request (for modal/slide-over loading)
         is_htmx = wants_fragment(request)
 
-        # Get form display mode from resource configuration
-        display_mode = "slider"  # default for edit
-        if resource and hasattr(resource, "get_form_display_mode"):
-            display_mode = resource.get_form_display_mode()
-        elif resource and hasattr(resource, "form_display_mode"):
-            display_mode = resource.form_display_mode
+        # Get form display mode from resource configuration.
+        display_mode = _form_display_mode(resource)
+        overlay_mode = is_htmx and display_mode != "page"
+        overlay_target = (
+            Zones.MODAL.selector
+            if display_mode == "modal"
+            else Zones.SLIDE_OVER.selector
+        )
 
         # Fetch existing item data for edit
         initial_data = await self._fetch_item_data(resource, item_id)
@@ -160,12 +190,22 @@ class FormRenderer(WizardRendererMixin):
             record_id=item_id,
             user=user,
             errors=errors,
-            in_slide_over=is_htmx,
+            in_slide_over=overlay_mode,
+            overlay_target=overlay_target,
+            htmx_enabled=display_mode != "page",
         )
         form_component._request = request
 
-        # If HTMX request, always render as SlideOver
-        if is_htmx:
+        if overlay_mode and display_mode == "modal":
+            overlay = Modal(
+                title=f"Edit {label}",
+                trigger=None,
+                render_trigger=False,
+                is_open=True,
+                children=[form_component],
+            )
+            return HTMLResponse(render_to_string(overlay))
+        if overlay_mode:
             overlay = SlideOver(
                 title=f"Edit {label}",
                 subtitle=f"Editing record #{item_id}",
@@ -235,12 +275,11 @@ class FormRenderer(WizardRendererMixin):
                     initial_data = (
                         item.model_dump() if hasattr(item, "model_dump") else dict(item)
                     )
-            elif (
-                hasattr(resource, "_data_source")
-                and resource._data_source
-                and hasattr(resource._data_source, "find_one")
-            ):
-                item = await resource._data_source.find_one(item_id)
+            else:
+                data_source = get_resource_data_source(resource)
+                if data_source is None or not hasattr(data_source, "find_one"):
+                    return initial_data
+                item = await data_source.find_one(item_id)
                 if item:
                     initial_data = (
                         item.model_dump() if hasattr(item, "model_dump") else dict(item)
@@ -274,6 +313,8 @@ class FormRenderer(WizardRendererMixin):
         user=None,
         errors: dict[str, list[str]] | None = None,
         in_slide_over: bool = False,
+        overlay_target: str = Zones.SLIDE_OVER.selector,
+        htmx_enabled: bool = True,
     ) -> Any:
         """Build a Form component from resource model or form_class.
 
@@ -303,20 +344,22 @@ class FormRenderer(WizardRendererMixin):
             form_class = resource.form_class
 
         if form_class:
-            # Use the declared form class. Slide-over embeds suppress the
-            # in-form action bar — the panel footer owns Cancel/Save and is
-            # bound to the form via the ``form`` attribute.
+            # Use the declared form class. Overlay embeds suppress the in-form
+            # action bar — the panel/modal footer owns Cancel/Save and is bound
+            # to the form via the ``form`` attribute.
             submit_label = "Update" if mode == "edit" else "Create"
-            return form_class(
+            form = form_class(
                 initial=initial_data,
                 action=action_url,
                 form_id=f"{self.resource_name}-{mode}-form",
                 submit_label=submit_label,
                 suppress_submit=in_slide_over,
-                hx_post=action_url,
-                hx_target="#slide-over-container",
+                hx_post=action_url if htmx_enabled else None,
+                hx_target=overlay_target if htmx_enabled else None,
                 hx_swap="innerHTML",
             )
+            await self._populate_form_relation_options(form)
+            return form
 
         # Generate form from Pydantic model
         if resource and resource.model:
@@ -400,7 +443,8 @@ class FormRenderer(WizardRendererMixin):
                     submit_label=submit_label,
                     form_id=f"{self.resource_name}-{mode}-form",
                     suppress_submit=in_slide_over,
-                    hx_target="#slide-over-container",
+                    htmx_enabled=htmx_enabled,
+                    hx_target=overlay_target,
                     hx_swap="innerHTML",
                 )
                 form.children = body_fields
@@ -434,6 +478,45 @@ class FormRenderer(WizardRendererMixin):
             return None
         return entry() if isinstance(entry, type) else entry
 
+    async def _populate_form_relation_options(self, form: Any) -> None:
+        """Populate relation options on a declared FormBase instance.
+
+        FormBase keeps an instance-local ``fields`` mapping, so replacing a
+        frozen relation field here does not mutate the resource's shared form
+        class or leak one request's options into another request.
+        """
+        fields = getattr(form, "fields", None)
+        if not isinstance(fields, dict):
+            return
+        from dataclasses import replace as dc_replace
+        from lexigram.admin.data.query import QuerySpec
+        from lexigram.admin.schema import BelongsToField, HasManyField
+
+        for name, field_schema in list(fields.items()):
+            if not isinstance(field_schema, (BelongsToField, HasManyField)):
+                continue
+            related = self._resolve_related_resource(field_schema.resource)
+            ds = get_resource_data_source(related)
+            if ds is None or not hasattr(ds, "find_many"):
+                continue
+            try:
+                result = await ds.find_many(QuerySpec(per_page=200, sort_by="id"))
+                records = (
+                    result.items
+                    if hasattr(result, "items")
+                    else result
+                    if isinstance(result, list)
+                    else []
+                )
+                options = [(str(getattr(r, "id", r)), str(r)) for r in records]
+                fields[name] = dc_replace(field_schema, options=options)
+            except Exception:
+                logger.debug(
+                    "Failed to load options for %s.%s",
+                    self.resource_name,
+                    name,
+                )
+
     async def _populate_relation_options(self, schema: Any) -> None:
         """Load selectable options for relation fields into the form schema.
 
@@ -452,8 +535,8 @@ class FormRenderer(WizardRendererMixin):
             related = self._resolve_related_resource(field_schema.resource)
             if related is None:
                 continue
-            ds = getattr(related, "_data_source", None)
-            if not ds or not hasattr(ds, "find_many"):
+            ds = get_resource_data_source(related)
+            if ds is None or not hasattr(ds, "find_many"):
                 continue
             try:
                 result = await ds.find_many(QuerySpec(per_page=200, sort_by="id"))

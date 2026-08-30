@@ -66,6 +66,9 @@ class TableConfiguration(DomainModel):
     empty_state_title: str | None = None
     empty_state_message: str | None = None
     empty_state_icon: str | None = None
+    # Target used by standard create/edit actions. Standalone table users
+    # retain the historical slider default; resources can override it.
+    form_display_mode: Literal["page", "modal", "slider"] = "slider"
 
     @property
     def filters(self) -> Any | None:

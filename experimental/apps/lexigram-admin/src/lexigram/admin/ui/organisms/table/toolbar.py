@@ -27,9 +27,10 @@ class TableToolbar(Component):
     Handles the top area of the DataTable: Actions, Switchers, Search, Filters.
     """
 
-    def __init__(self, config: Any, state: Any):
+    def __init__(self, config: Any, state: Any, user: Any = None):
         self.config = config
         self.state = state
+        self.user = user
 
     def render(self) -> Any:
         return el(
@@ -43,7 +44,7 @@ class TableToolbar(Component):
         # 1. Header Actions (Create New, etc.) - Always visible but grouped with Bulk
         header_buttons = []
         for action in self.config.header_actions:
-            if not action.is_visible(None):
+            if not action.is_visible(self.user):
                 continue
 
             # Old-style (lexigram.ui) header action: inject default create URL
@@ -74,6 +75,9 @@ class TableToolbar(Component):
                     action,
                     resource_name=self.config.resource_name,
                     resource_prefix=self.config.resource_prefix,
+                    form_display_mode=getattr(
+                        self.config, "form_display_mode", None
+                    ),
                 )
                 if node:
                     header_buttons.append(node)
@@ -82,8 +86,14 @@ class TableToolbar(Component):
             from lexigram.admin.actions.types import ActionContext as _ActionContext
 
             ctx = _ActionContext(
+                user=self.user,
                 resource_name=self.config.resource_name or "",
                 resource_prefix=self.config.resource_prefix or "",
+                metadata={
+                    "form_display_mode": getattr(
+                        self.config, "form_display_mode", "slider"
+                    )
+                },
             )
             url = action._get_url(None, ctx)
             htmx_attrs = action._get_htmx_attrs(url, None, ctx) if url else {}
@@ -111,7 +121,7 @@ class TableToolbar(Component):
             )
 
             for action in bulk_actions:
-                if not action.is_visible(None):
+                if not action.is_visible(self.user):
                     continue
 
                 from lexigram.admin.actions.types import ActionContext as _ActionContext
@@ -160,6 +170,7 @@ class TableToolbar(Component):
                 else:
                     # New-style action — use _get_url + _get_htmx_attrs
                     ctx = _ActionContext(
+                        user=self.user,
                         resource_name=self.config.resource_name or "",
                         resource_prefix=self.config.resource_prefix or "",
                     )

@@ -55,16 +55,70 @@ class ResourceHooksMixin:
 
         # Mass-assignment protection: strip framework-managed columns (and
         # unknown keys when a model is bound) before coercion + validation.
+        protected_fields = getattr(
+            self, "protected_form_fields", PROTECTED_FORM_FIELDS
+        )
+        allow_extra_fields = bool(getattr(self, "form_allow_extra_fields", False))
         coerced = sanitize_form_data(
             data,
             model=self.model,
-            protected_fields=getattr(
-                self, "protected_form_fields", PROTECTED_FORM_FIELDS
-            ),
-            allow_extra_fields=bool(
-                getattr(self, "form_allow_extra_fields", False)
-            ),
+            protected_fields=protected_fields,
+            allow_extra_fields=allow_extra_fields,
         )
+
+        # A declared FormBase is not only a renderer: it may make optional
+        # model fields required, normalize relation/multi-select values, and
+        # expose field-level validation errors. Run that declarative contract
+        # before the model-level validation instead of silently bypassing it
+        # in the CRUD handlers.
+        form_class = getattr(self, "get_form_class", lambda: None)()
+        if form_class is not None:
+            try:
+                form_instance = form_class(data=coerced)
+                form_result = await form_instance.validate()
+            except (TypeError, ValueError, AttributeError) as exc:
+                return Err(
+                    AdminValidationError(
+                        message="Form validation failed",
+                        errors=[FieldError(field="__all__", message=str(exc))],
+                    )
+                )
+
+            if hasattr(form_result, "is_err") and form_result.is_err():
+                return form_result
+            if hasattr(form_result, "is_ok") and form_result.is_ok():
+                form_data = form_result.unwrap()
+                if isinstance(form_data, dict):
+                    coerced = sanitize_form_data(
+                        form_data,
+                        model=self.model,
+                        protected_fields=protected_fields,
+                        allow_extra_fields=allow_extra_fields,
+                    )
+            elif hasattr(form_result, "success") and not form_result.success:
+                errors = [
+                    FieldError(field=field, message=messages[0])
+                    for field, messages in form_result.errors.items()
+                    if messages
+                ]
+                return Err(
+                    AdminValidationError(
+                        message="Form validation failed",
+                        errors=errors,
+                    )
+                )
+            elif hasattr(form_result, "data") and form_result.data is not None:
+                form_data = form_result.data
+                if hasattr(form_data, "model_dump"):
+                    form_data = form_data.model_dump()
+                if isinstance(form_data, dict):
+                    coerced = sanitize_form_data(
+                        form_data,
+                        model=self.model,
+                        protected_fields=protected_fields,
+                        allow_extra_fields=allow_extra_fields,
+                    )
+
         if self.model is None:
             return Ok(coerced)
 

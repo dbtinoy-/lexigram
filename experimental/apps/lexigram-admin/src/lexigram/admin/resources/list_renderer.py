@@ -330,12 +330,16 @@ class ListRenderer:
                 empty_state_icon=(
                     table_config.empty_state_icon if table_config else None
                 ),
+                form_display_mode=(
+                    table_config.form_display_mode if table_config else "slider"
+                ),
                 search_fields=getattr(resource, "search_fields", None),
             ),
             total=total,
             user=user if user is not None else request_user,
             permissions=table_permissions,
             loading=False,
+            error=self._fetcher.error,
         )
 
         is_htmx = wants_fragment(request)

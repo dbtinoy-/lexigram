@@ -297,7 +297,9 @@ class DetailRenderer:
         # (resource.set_data_source). Without this, detail pages only ever
         # render the fallback placeholder for standard resources.
         if item is None:
-            data_source = getattr(resource, "_data_source", None)
+            from lexigram.admin.resources.data_access import get_resource_data_source
+
+            data_source = get_resource_data_source(resource)
             if data_source is not None and hasattr(data_source, "find_one"):
                 try:
                     item = await data_source.find_one(item_id)

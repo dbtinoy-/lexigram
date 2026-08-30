@@ -46,10 +46,15 @@ class EditAction(RowAction):
     def _get_htmx_attrs(
         self, url: str, record: Any, ctx: ActionContext
     ) -> dict[str, str]:
+        mode = ctx.metadata.get("form_display_mode", "slider")
+        if mode == "page":
+            return {"href": url}
+        zone = Zones.MODAL if mode == "modal" else Zones.SLIDE_OVER
         return {
             "hx-get": url,
-            "hx-target": Zones.SLIDE_OVER.selector,
-            "hx-swap": Zones.SLIDE_OVER.swap_mode.value,
+            "hx-target": zone.selector,
+            "hx-swap": zone.swap_mode.value,
+            "hx-push-url": "false",
         }
 
     async def execute(self, record: Any, ctx: ActionContext) -> Result[Any, Any]:

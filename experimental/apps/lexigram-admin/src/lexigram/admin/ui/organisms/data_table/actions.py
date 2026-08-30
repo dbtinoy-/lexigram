@@ -150,24 +150,62 @@ def normalize_action(action: Any) -> ActionDescriptor:
     return _normalize_new_action(action)
 
 
+def _adapt_legacy_form_action(action: Any, form_display_mode: str | None) -> Any:
+    """Adapt legacy create/edit actions to the resource form mode.
+
+    Legacy actions store HTMX target state on mutable private attributes. Work
+    on a copy so a resource declaration remains safe to reuse across requests.
+    """
+    if form_display_mode not in {"page", "modal", "slider"}:
+        return action
+    if str(getattr(action, "name", "")).lower() not in {"create", "edit"}:
+        return action
+
+    from copy import copy
+    from lexigram.ui import Zones
+
+    adapted = copy(action)
+    hx_url = getattr(adapted, "_hx_get", None)
+    if form_display_mode == "page":
+        if hx_url:
+            adapted._url = hx_url
+            adapted._hx_get = None
+            adapted._hx_target = None
+            adapted._hx_swap = None
+            adapted._hx_push_url = None
+        return adapted
+
+    zone = Zones.MODAL if form_display_mode == "modal" else Zones.SLIDE_OVER
+    adapted._hx_target = zone.selector
+    adapted._hx_swap = zone.swap_mode.value
+    adapted._hx_push_url = "false"
+    return adapted
+
+
 def render_action_button(
     action: Any,
     record: dict | Any | None = None,
     user: Any = None,
     resource_name: str | None = None,
     resource_prefix: str | None = None,
+    form_display_mode: str | None = None,
 ) -> Any:
     """Render any action (old or new API) as a button element.
 
     Handles both old ui.actions and new lexigram.admin.actions.
     """
     if isinstance(action, OldActionBase):
+        action = _adapt_legacy_form_action(action, form_display_mode)
         return action.render(record=record, user=user, resource_name=resource_name)
 
+    metadata = {}
+    if form_display_mode:
+        metadata["form_display_mode"] = form_display_mode
     ctx = ActionContext(
         user=user,
         resource_name=resource_name or "",
         resource_prefix=resource_prefix or f"/{resource_name}" if resource_name else "",
+        metadata=metadata,
     )
     rendered = action.render_button(record=record, ctx=ctx)
     # New admin actions return an HTML string for compatibility. Mark it safe

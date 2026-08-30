@@ -6,7 +6,7 @@ from typing import Any, Generic, TypeVar
 
 from lexigram.admin.schema.exceptions import FieldError
 from lexigram.admin.schema.validators import FieldValidator
-from lexigram.result import Ok, Result
+from lexigram.result import Err, Ok, Result
 from lexigram.ui import Element
 
 T = TypeVar("T")
@@ -70,3 +70,16 @@ class SchemaField(ABC, Generic[T]):
     def to_form(self, value: T | None) -> str:
         """Coerce the field's Python value to a form-display string."""
         return "" if value is None else str(value)
+
+    def validate_value(self, value: T | None) -> Result[T | None, FieldError]:
+        """Run configured validators against an already-coerced value."""
+        current = value
+        for validator in self.validators:
+            try:
+                result = validator(current)
+            except Exception as exc:  # noqa: BLE001 - validator failures are field errors
+                return Err(FieldError(str(exc)))
+            if result.is_err():
+                return Err(result.unwrap_err())
+            current = result.unwrap()
+        return Ok(current)

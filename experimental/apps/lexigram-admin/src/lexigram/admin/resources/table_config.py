@@ -129,6 +129,7 @@ class TableConfigMixin:
             if cfg
             else cls.group_by
         )
+        form_display_mode = cls.get_form_display_mode()
 
         return TableConfiguration(
             columns=columns,
@@ -147,6 +148,9 @@ class TableConfigMixin:
             empty_state_message=empty_state_message,
             empty_state_icon=empty_state_icon,
             group_by=group_by,
+            form_display_mode=form_display_mode
+            if form_display_mode in ("page", "modal", "slider")
+            else "slider",
         )
 
     @classmethod

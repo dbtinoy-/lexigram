@@ -69,15 +69,18 @@ class ArchiveOperationsMixin:
         Raises:
             RuntimeError: If no data source is attached.
         """
-        if self._data_source is None:
+        from lexigram.admin.resources.data_access import get_resource_data_source
+
+        data_source = get_resource_data_source(self)
+        if data_source is None:
             raise RuntimeError("No data source attached to this resource")
 
-        original = await self._data_source.find_one(item_id)
+        original = await data_source.find_one(item_id)
         data: dict = dict(original) if isinstance(original, dict) else {}
         if not data and hasattr(original, "__dict__"):
             data = dict(original.__dict__)
         data = await self.before_clone(data)
-        new_record = await self._data_source.create(data)
+        new_record = await data_source.create(data)
         await self.after_clone(new_record)
         return new_record
 
@@ -118,15 +121,18 @@ class ArchiveOperationsMixin:
         Raises:
             RuntimeError: If no data source is attached.
         """
-        if self._data_source is None:
+        from lexigram.admin.resources.data_access import get_resource_data_source
+
+        data_source = get_resource_data_source(self)
+        if data_source is None:
             raise RuntimeError("No data source attached to this resource")
 
-        original = await self._data_source.find_one(item_id)
+        original = await data_source.find_one(item_id)
         data: dict = dict(original) if isinstance(original, dict) else {}
         if not data and hasattr(original, "__dict__"):
             data = dict(original.__dict__)
         data = await self.before_restore(data)
-        new_record = await self._data_source.update(item_id, data)
+        new_record = await data_source.update(item_id, data)
         await self.after_restore(new_record)
         return new_record
 
@@ -161,15 +167,18 @@ class ArchiveOperationsMixin:
         Raises:
             RuntimeError: If no data source is attached.
         """
-        if self._data_source is None:
+        from lexigram.admin.resources.data_access import get_resource_data_source
+
+        data_source = get_resource_data_source(self)
+        if data_source is None:
             raise RuntimeError("No data source attached to this resource")
 
-        original = await self._data_source.find_one(item_id)
+        original = await data_source.find_one(item_id)
         data: dict = dict(original) if isinstance(original, dict) else {}
         if not data and hasattr(original, "__dict__"):
             data = dict(original.__dict__)
         await self.before_purge(data)
-        await self._data_source.delete(item_id)
+        await data_source.delete(item_id)
         await self.after_purge(item_id)
 
 

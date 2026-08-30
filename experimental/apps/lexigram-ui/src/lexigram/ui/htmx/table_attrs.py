@@ -96,7 +96,7 @@ class HTMXAttrsBuilder:
 
     def _build_full_refresh(self, base_url: str, params: dict) -> dict[str, str]:
         """Full refresh: Replace entire table zone with outerHTML."""
-        query = urlencode(params) if params else ""
+        query = urlencode(params, doseq=True) if params else ""
         url = f"{base_url}/?{query}" if query else f"{base_url}/"
 
         push = self.push_url if self.push_url is not None else True
@@ -116,7 +116,7 @@ class HTMXAttrsBuilder:
 
     def _build_data_refresh(self, base_url: str, params: dict) -> dict[str, str]:
         """Data refresh: Replace data zone, extract from full response."""
-        query = urlencode(params) if params else ""
+        query = urlencode(params, doseq=True) if params else ""
         url = f"{base_url}/?{query}" if query else f"{base_url}/"
 
         push = self.push_url if self.push_url is not None else True
@@ -155,7 +155,7 @@ class HTMXAttrsBuilder:
 
     def _build_oob(self, base_url: str, params: dict) -> dict[str, str]:
         """OOB: Request that returns out-of-band fragments."""
-        query = urlencode(params) if params else ""
+        query = urlencode(params, doseq=True) if params else ""
         url = f"{base_url}/?{query}" if query else f"{base_url}/"
 
         # OOB requests typically don't need a primary target

@@ -18,10 +18,13 @@ from typing import (
     Any,
     Generic,
     TypeVar,
+    Union,
     get_args,
     get_origin,
     get_type_hints,
 )
+import types
+
 
 from lexigram.admin.forms.form import (
     Form as Form,
@@ -36,6 +39,7 @@ from lexigram.admin.schema import (
     EmailField,
     EnumField,
     IntegerField,
+    MultiSelectField,
     PasswordField,
     SchemaField,
     SelectField,
@@ -301,13 +305,15 @@ class FormBuilder(AbstractBuilder["Form[T]"], Generic[T]):
 
         # Handle Optional types
         origin = get_origin(field_type)
-        if origin is type(None) or str(origin) == "typing.Union":
+        if origin in (Union, types.UnionType):
             args = get_args(field_type)
-            # Get the non-None type
+            # Get the non-None type while retaining the builder's explicit
+            # required override when one was supplied.
             for arg in args:
                 if arg is not type(None):
                     field_type = arg
-                    config.required = False
+                    if not config.required:
+                        config.required = False
                     break
 
         common: dict[str, Any] = {
@@ -316,9 +322,15 @@ class FormBuilder(AbstractBuilder["Form[T]"], Generic[T]):
             "help_text": config.help_text,
             "required": config.required,
             "readonly": config.disabled,
+            "placeholder": config.placeholder,
+            "validators": list(config.validators),
         }
 
         # Map Python types to schema field classes
+        if get_origin(field_type) is list:
+            args = get_args(field_type)
+            options = config.props.get("options", [])
+            return MultiSelectField(**common, options=options)
         if field_type is str:
             return TextField(**common)
         if field_type is int:
@@ -346,6 +358,8 @@ class FormBuilder(AbstractBuilder["Form[T]"], Generic[T]):
             "help_text": config.help_text,
             "required": config.required,
             "readonly": config.disabled,
+            "placeholder": config.placeholder,
+            "validators": list(config.validators),
         }
         if widget == "textarea":
             return TextAreaField(**common)
@@ -358,4 +372,7 @@ class FormBuilder(AbstractBuilder["Form[T]"], Generic[T]):
         if widget == "select":
             options = config.props.get("options", [])
             return SelectField(**common, options=options)
+        if widget in {"multi_select", "multiselect"}:
+            options = config.props.get("options", [])
+            return MultiSelectField(**common, options=options)
         return TextField(**common)

@@ -22,6 +22,7 @@ class Form(Component):
         form_id: str | None = None,
         suppress_submit: bool = False,
         hx_indicator: str | None = None,
+        htmx_enabled: bool = True,
         **props: Any,
     ) -> None:
         super().__init__(
@@ -34,6 +35,7 @@ class Form(Component):
             form_id=form_id,
             suppress_submit=suppress_submit,
             hx_indicator=hx_indicator,
+            htmx_enabled=htmx_enabled,
             **props,
         )
         self.action_url = action_url
@@ -45,6 +47,7 @@ class Form(Component):
         self.form_id = form_id
         self.suppress_submit = suppress_submit
         self.hx_indicator = hx_indicator
+        self.htmx_enabled = htmx_enabled
 
     def render(self) -> Any:
         attrs = {
@@ -57,9 +60,11 @@ class Form(Component):
         submit_button_attrs: dict[str, str] = {}
         if self.action_url:
             if self.method.lower() == "get":
-                attrs["hx-get"] = self.action_url
-                attrs["hx-target"] = self.hx_target
-                attrs["hx-swap"] = self.hx_swap
+                attrs["action"] = self.action_url
+                if self.htmx_enabled:
+                    attrs["hx-get"] = self.action_url
+                    attrs["hx-target"] = self.hx_target
+                    attrs["hx-swap"] = self.hx_swap
             elif self.autosave and self.form_id:
                 # Autosave mode: the form posts to the draft endpoint on a
                 # debounced change trigger; the submit button stays native so
@@ -72,15 +77,16 @@ class Form(Component):
                 # (progressive enhancement). No onclick JS required.
                 attrs["action"] = self.action_url
                 attrs["method"] = "post"
-                attrs["hx-post"] = self.action_url
-                attrs["hx-target"] = self.hx_target
-                attrs["hx-swap"] = self.hx_swap
-                if self.hx_indicator:
-                    attrs["hx-indicator"] = self.hx_indicator
+                if self.htmx_enabled:
+                    attrs["hx-post"] = self.action_url
+                    attrs["hx-target"] = self.hx_target
+                    attrs["hx-swap"] = self.hx_swap
+                    if self.hx_indicator:
+                        attrs["hx-indicator"] = self.hx_indicator
 
         # Handle Auto-save logic
         autosave_indicator = ""
-        if self.autosave and self.form_id:
+        if self.autosave and self.form_id and self.htmx_enabled:
             pulse_url = f"/api/forms/draft/{self.form_id}"
 
             # Additional attributes for autosave
