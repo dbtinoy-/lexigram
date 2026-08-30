@@ -71,7 +71,7 @@ test = [
 ]
 dev = [
     "black>=23.0.0",
-    "ruff>=0.1.0",
+    "ruff>=0.16.4",
     "mypy>=1.0.0",
     "types-croniter>=2.0.0",
 ]
@@ -109,7 +109,7 @@ tasks = "lexigram.tasks.cli.contributor:TasksCliContributor"
 [dependency-groups]
 dev = [
     "black>=23.0.0",
-    "ruff>=0.1.0",
+    "ruff>=0.16.4",
     "mypy>=1.0.0",
     "types-croniter>=2.0.0",
 ]

@@ -40,10 +40,10 @@ Issues = "https://github.com/dbtinoy-/lexigram/issues"
 Changelog = "https://github.com/dbtinoy-/lexigram/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
-dev = ["ruff>=0.8.0", "mypy>=1.0.0"]
+dev = ["ruff>=0.16.4", "mypy>=1.0.0"]
 
 [dependency-groups]
-dev = ["ruff>=0.8.0", "mypy>=1.0.0"]
+dev = ["ruff>=0.16.4", "mypy>=1.0.0"]
 test = [
     "lexigram-testing>=0.1.4",
     "pytest>=8.0.0",

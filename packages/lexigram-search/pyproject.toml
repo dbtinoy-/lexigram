@@ -96,7 +96,7 @@ test = [
 ]
 dev = [
     "black>=23.0.0",
-    "ruff>=0.1.0",
+    "ruff>=0.16.4",
     "mypy>=1.0.0",
 ]
 all = [
@@ -132,7 +132,7 @@ search = "lexigram.search.admin.contributor:SearchAdminContributor"
 [dependency-groups]
 dev = [
     "black>=23.0.0",
-    "ruff>=0.1.0",
+    "ruff>=0.16.4",
     "mypy>=1.0.0",
 ]
 test = [

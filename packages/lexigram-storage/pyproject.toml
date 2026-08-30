@@ -70,7 +70,7 @@ test = [
 ]
 dev = [
     "black>=23.0.0",
-    "ruff>=0.1.0",
+    "ruff>=0.16.4",
     "mypy>=1.0.0",
 ]
 all = [
@@ -104,7 +104,7 @@ storage = "lexigram.storage.config:StorageConfig"
 [dependency-groups]
 dev = [
     "black>=23.0.0",
-    "ruff>=0.1.0",
+    "ruff>=0.16.4",
     "mypy>=1.0.0",
 ]
 test = [
