@@ -23,8 +23,8 @@ def test_task_generator_uses_snake_case_function_name(tmp_path: Path) -> None:
     """Generated task entrypoints should be valid snake_case identifiers."""
     content = _render(tmp_path, "SendWeeklyDigest", schedule="0 9 * * 1")
 
-    assert 'async def send_weekly_digest(' in content
-    assert 'async def SendWeeklyDigest(' not in content
+    assert "async def send_weekly_digest(" in content
+    assert "async def SendWeeklyDigest(" not in content
     assert 'name="send_weekly_digest"' in content
 
 
@@ -45,3 +45,12 @@ def test_task_generator_output_is_syntactically_clean(tmp_path: Path) -> None:
     assert content.endswith("\n")
     assert "@scheduled(\n" in content
     assert "\n\nasync def _process_cleanup(" in content
+
+
+def test_task_runner_has_self_and_uses_local_job_id_factory(tmp_path: Path) -> None:
+    """The generated enqueue helper must be a valid instance method."""
+    content = _render(tmp_path, "cleanup")
+
+    assert "async def run(\n        self," in content
+    assert "id=uuid4().hex" in content
+    assert "_uuid.uuid4" not in content

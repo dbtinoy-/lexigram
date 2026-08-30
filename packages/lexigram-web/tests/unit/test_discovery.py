@@ -14,7 +14,10 @@ from lexigram.app.discovery import (
 from lexigram.contracts.core.scopes import ServiceScope
 from lexigram.di.decorators import INJECTABLE_ATTR
 from lexigram.di.provider import Provider
-from lexigram.web.routing.discovery import discover_controllers
+from lexigram.web.routing.discovery import (
+    discover_controllers,
+    discover_websocket_handlers,
+)
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -124,6 +127,22 @@ class TestDiscoverControllers:
     def test_returns_empty_list_for_empty_package_list(self) -> None:
         result = discover_controllers([])
         assert result == []
+
+
+class TestDiscoverWebSocketHandlers:
+    def test_finds_decorated_handler_classes(self) -> None:
+        class ChatHandler:
+            _is_websocket_handler = True
+            _ws_path = "/ws/chat/{room_id}"
+
+        package = _make_pkg(
+            "test_discovery_websocket_pkg", {"ChatHandler": ChatHandler}
+        )
+
+        assert discover_websocket_handlers([package.__name__]) == [ChatHandler]
+
+    def test_returns_empty_list_for_empty_package_list(self) -> None:
+        assert discover_websocket_handlers([]) == []
 
 
 # ---------------------------------------------------------------------------
