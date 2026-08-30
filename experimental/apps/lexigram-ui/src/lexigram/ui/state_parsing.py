@@ -41,6 +41,7 @@ KNOWN_QUERY_KEYS: frozenset[str] = frozenset(
         "next",
         "page",
         "per_page",
+        "q",
         "render_fragment",
         "search",
         "select_all",
@@ -92,8 +93,10 @@ def parse_table_state(
     # which is what we want for overrides (e.g. link ?view=grid overriding hidden input view=tabular).
     q = request.query_params
 
-    # Extract Standard Fields
-    search = q.get("search") or ""
+    # Extract Standard Fields. ``q`` is the canonical search alias used by
+    # the admin header search box and the URL state parser (state/url.py);
+    # ``search`` is the DataTable toolbar parameter.
+    search = q.get("search") or q.get("q") or ""
     sort_by = q.get("sort_by") or defaults.get("sort_by")
     sort_order = q.get("sort_order") or defaults.get("sort_order", "asc")
 
@@ -283,6 +286,13 @@ def _extract_filters(q: Any) -> dict[str, Any]:
             continue
 
         filter_key = k[7:] if k.startswith("filter_") else k
+
+        # Canonical admin filter format is ``filter[field]`` (and the API
+        # adapter emits ``filter[field][op]``). Strip the brackets so the
+        # bare field name reaches the data source instead of a literal
+        # "filter[status]" column.
+        if filter_key.startswith("filter[") and filter_key.endswith("]"):
+            filter_key = filter_key[7:-1].split("][")[0]
 
         # Support both Starlette QueryParams (with getlist) and plain dicts
         if hasattr(q, "getlist"):

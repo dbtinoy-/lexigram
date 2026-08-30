@@ -26,6 +26,8 @@ from starlette.applications import Starlette
 
 pytestmark = [pytest.mark.scenario]
 
+from lexigram.admin.actions.standard.header import CreateAction
+from lexigram.admin.actions.standard.row import DeleteAction, EditAction
 from lexigram.admin.config import AdminConfig
 from lexigram.admin.data.data_source import QueryResult
 from lexigram.admin.di.bundle_provider import AdminProvider
@@ -173,6 +175,10 @@ class ProductResource(Resource):
     default_sort = "name"
     default_sort_order = "asc"
 
+    # Row-level actions rendered in each table row.
+    actions = [EditAction(), DeleteAction()]
+    # Header (top) actions rendered above the table.
+    header_actions = [CreateAction()]
     permissions = None
 
 
@@ -365,6 +371,46 @@ def _csrf_token_from(html: str) -> str:
     return m.group(1) or m.group(2)
 
 
+def _tbody_row_texts(html: str) -> list[list[str]]:
+    """Extract rendered table rows as lists of cell texts (tags stripped)."""
+    tbody = re.search(r"<tbody[^>]*>(.*?)</tbody>", html, re.S)
+    if not tbody:
+        return []
+    rows: list[list[str]] = []
+    for tr in re.findall(r"<tr[^>]*>(.*?)</tr>", tbody.group(1), re.S):
+        cells = [
+            re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", td)).strip()
+            for td in re.findall(r"<td[^>]*>(.*?)</td>", tr, re.S)
+        ]
+        rows.append(cells)
+    return rows
+
+
+def _column_values(html: str, header: str) -> list[str]:
+    """Extract one column's values by matching its header label.
+
+    The first table cell of each row is the row-select checkbox column, so
+    hardcoded indices are fragile; resolve the column position from the
+    rendered ``<thead>`` instead.
+    """
+    thead = re.search(r"<thead[^>]*>(.*?)</thead>", html, re.S)
+    if not thead:
+        return []
+    headers = [
+        re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", th)).strip()
+        for th in re.findall(r"<th[^>]*>(.*?)</th>", thead.group(1), re.S)
+    ]
+    idx = next(
+        (i for i, text in enumerate(headers) if header.lower() in text.lower()),
+        None,
+    )
+    if idx is None:
+        return []
+    values = []
+    for row in _tbody_row_texts(html):
+        if len(row) > idx:
+            values.append(row[idx])
+    return values
 # ── Setup ───────────────────────────────────────────────────────────────────
 
 
@@ -396,39 +442,99 @@ class TestTables:
     async def test_search_filters_records(self, client: httpx.AsyncClient) -> None:
         resp = await client.get("/admin/product", params={"q": "Widget 3"})
         assert resp.status_code == 200
-        assert "Widget 3" in resp.text
-        assert "Widget 1" not in resp.text
+        rows = _tbody_row_texts(resp.text)
+        assert any("Widget 3" in " ".join(row) for row in rows)
+        assert not any("Widget 1" in " ".join(row) for row in rows)
 
     async def test_search_uses_resource_search_fields(
         self, client: httpx.AsyncClient
     ) -> None:
         resp = await client.get("/admin/product", params={"search": "SKU-0007"})
         assert resp.status_code == 200
-        assert "Widget 7" in resp.text
+        rows = _tbody_row_texts(resp.text)
+        assert any("Widget 7" in " ".join(row) for row in rows)
 
-    async def test_sort_by_name_desc(self, client: httpx.AsyncClient) -> None:
+    async def test_sort_by_name_asc_orders_rows(
+        self, client: httpx.AsyncClient
+    ) -> None:
+        resp = await client.get(
+            "/admin/product", params={"sort": "name", "order": "asc"}
+        )
+        assert resp.status_code == 200
+        names = _column_values(resp.text, "Name")
+        assert names, "expected a rendered Name column"
+        # Lexicographic ascending over the first page (page_size=5).
+        assert names == sorted(names)
+
+    async def test_sort_by_name_desc_orders_rows(
+        self, client: httpx.AsyncClient
+    ) -> None:
         resp = await client.get(
             "/admin/product", params={"sort": "name", "order": "desc"}
         )
         assert resp.status_code == 200
-        # "Widget 9" sorts above "Widget 1" lexicographically
-        assert "Widget 9" in resp.text
+        names = _column_values(resp.text, "Name")
+        assert names, "expected a rendered Name column"
+        # Lexicographic descending; "Widget 9" tops "Widget 1".
+        assert names == sorted(names, reverse=True)
+        assert names[0] == "Widget 9"
+
+    async def test_sort_by_sku_uses_sort_by_param(
+        self, client: httpx.AsyncClient
+    ) -> None:
+        resp = await client.get(
+            "/admin/product",
+            params={"sort_by": "sku", "sort_order": "asc"},
+        )
+        assert resp.status_code == 200
+        skus = _column_values(resp.text, "SKU")
+        assert skus, "expected a rendered SKU column"
+        assert skus == sorted(skus)
 
     async def test_pagination_respects_page_size(
         self, client: httpx.AsyncClient
     ) -> None:
         resp = await client.get("/admin/product")
         assert resp.status_code == 200
-        # page_size=5 → 12 records → page 2 exists
-        resp2 = await client.get("/admin/product", params={"page": 2})
-        assert resp2.status_code == 200
+        assert len(_tbody_row_texts(resp.text)) == 5  # page_size=5
+        # page_size=5 → 12 records → page 3 has the last 2 records
+        resp3 = await client.get("/admin/product", params={"page": 3})
+        assert resp3.status_code == 200
+        assert 0 < len(_tbody_row_texts(resp3.text)) <= 2
 
     async def test_filter_by_status(self, client: httpx.AsyncClient) -> None:
         resp = await client.get(
             "/admin/product", params={"filter[status]": "archived"}
         )
         assert resp.status_code == 200
-        assert "archived" in resp.text.lower()
+        names = _column_values(resp.text, "Name")
+        assert names, "expected at least one row in the filtered table"
+        # Only archived records: Widget 2 is archived, Widget 1 is active.
+        # (Exact match: "Widget 1" is a substring of "Widget 10".)
+        assert "Widget 2" in names
+        assert "Widget 1" not in names
+        statuses = _column_values(resp.text, "Status")
+        assert all(status == "archived" for status in statuses)
+
+    async def test_row_actions_render_edit_and_delete(
+        self, client: httpx.AsyncClient
+    ) -> None:
+        resp = await client.get("/admin/product")
+        assert resp.status_code == 200
+        rows = _tbody_row_texts(resp.text)
+        assert any("Edit" in " ".join(row) for row in rows)
+        assert any("Delete" in " ".join(row) for row in rows)
+        # Row action URLs resolve per-record against the resource prefix.
+        assert "/admin/product/1/edit" in resp.text
+        assert "/admin/product/1/delete" in resp.text
+
+    async def test_header_action_renders_create_button(
+        self, client: httpx.AsyncClient
+    ) -> None:
+        resp = await client.get("/admin/product")
+        assert resp.status_code == 200
+        assert "Create" in resp.text
+        assert "/admin/product/create" in resp.text
 
 
 # ── Forms: create ───────────────────────────────────────────────────────────
