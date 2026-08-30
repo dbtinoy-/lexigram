@@ -209,3 +209,75 @@ def test_cache_key_isolated_by_tenant_and_table_state():
 
     assert acme_key != beta_key
     assert acme_key != other_query_key
+
+
+def test_url_hidden_columns_are_whitelisted():
+    renderer = object.__new__(ListRenderer)
+    config = TableConfiguration(
+        columns=[TextColumn("name"), TextColumn("email")],
+    )
+    state = TableState(
+        hidden_columns=["email", "__dict__", "secret"],
+        sort_by="name",
+        page=4,
+    )
+
+    safe_state = renderer._sanitize_table_state(
+        state,
+        config,
+        config.columns,
+        None,
+    )
+
+    # Known fields survive; unknown/private field names are dropped
+    assert safe_state.hidden_columns == ["email"]
+    assert safe_state.page == 1
+    assert safe_state.cursor is None
+
+
+def test_hidden_columns_preserved_when_all_known():
+    renderer = object.__new__(ListRenderer)
+    config = TableConfiguration(
+        columns=[TextColumn("name"), TextColumn("email")],
+    )
+    state = TableState(
+        hidden_columns=["email"],
+        sort_by="name",
+        page=4,
+    )
+
+    safe_state = renderer._sanitize_table_state(
+        state,
+        config,
+        config.columns,
+        None,
+    )
+
+    # No unknown names to drop -> state returned untouched (same page)
+    assert safe_state is state
+    assert safe_state.hidden_columns == ["email"]
+    assert safe_state.page == 4
+
+
+def test_unknown_hidden_columns_do_not_leak_into_cache_key():
+    class Cache:
+        def cache_key(self, resource_name: str, *parts: str) -> str:
+            return ":".join((resource_name, *parts))
+
+    fetcher = ListDataFetcher("users")
+    fetcher._cache_integration = Cache()
+    state = TableState(
+        search="x",
+        filters={"status": "active"},
+        hidden_columns=["email"],
+    )
+    request = _Request({"search": "x"}, "acme", "u1")
+
+    key_a = fetcher._build_cache_key(request, state)
+    key_b = fetcher._build_cache_key(
+        request,
+        state.model_copy(update={"hidden_columns": ["email", "other"]}),
+    )
+
+    # Column visibility is presentation-only: it must not vary the data cache
+    assert key_a == key_b

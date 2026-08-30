@@ -182,3 +182,43 @@ class TestPivotTable:
         html = table.render()
         assert "<table" in html
         assert "<tbody" in html
+
+
+class TestPivotInputEscaping:
+    """Pivot inputs are built as raw HTML strings — dynamic values must be
+    escaped before they cross into attribute/text context."""
+
+    def _render(self, value: str, field_type: str = "text") -> str:
+        field = PivotDataField(
+            name="pivot_data",
+            pivot_columns=[PivotColumn(name="role", label="Role", field_type=field_type)],
+        )
+        element = field.render_form({"role": value})
+        return str(element)
+
+    def test_quotes_escaped_in_text_input_value(self) -> None:
+        html = self._render('x" onfocus="alert(1)')
+        assert 'value="x&#34; onfocus=&#34;alert(1)' in html or 'value="x&quot;' in html
+        assert 'onfocus="alert(1)' not in html
+
+    def test_tags_escaped_in_text_input_value(self) -> None:
+        html = self._render("<script>alert(1)</script>")
+        assert "<script>" not in html
+        assert "&lt;script&gt;" in html
+
+    def test_option_text_escaped_in_select(self) -> None:
+        html = self._render("<b>admin</b>", field_type="select")
+        assert "<b>admin</b>" not in html
+        assert "&lt;b&gt;admin&lt;/b&gt;" in html
+
+    def test_field_type_escaped_in_attribute(self) -> None:
+        field = PivotDataField(
+            name="pivot_data",
+            pivot_columns=[PivotColumn(name="role", label="Role", field_type='text" autofocus onfocus="x')],
+        )
+        html = str(field.render_form({"role": "v"}))
+        # The injected quotes are escaped, so no attribute breakout is possible
+        assert 'onfocus="x"' not in html
+        assert "&quot;" in html
+        # The field type string remains inside the quoted attribute value
+        assert 'type="text&quot; autofocus onfocus=&quot;x"' in html

@@ -138,6 +138,8 @@ __all__ = (
     "TablePagination",
     "ViewSwitcher",
     "GroupBySwitcher",
+    "DensitySwitcher",
+    "ColumnVisibilitySwitcher",
     "InfolistEntry",
     "InfolistEntryType",
     "InfolistWidget",
