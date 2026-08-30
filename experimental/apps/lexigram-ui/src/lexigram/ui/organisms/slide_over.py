@@ -16,6 +16,27 @@ _SIZE_WIDTHS = {
 }
 
 
+def _first_form_id(html: str) -> str | None:
+    """Return the ``id`` of the first ``<form>`` element in *html*."""
+    match = re.search(r"<form[^>]*\bid=[\"']([^\"']+)[\"']", html, re.IGNORECASE)
+    return match.group(1) if match else None
+
+
+def _inject_form_id(html: str, form_id: str) -> str:
+    """Inject ``id=`` into the first ``<form>`` element of *html*.
+
+    Used for raw form fragments without an id so a footer SubmitButton can
+    be bound with the ``form`` attribute.
+    """
+    return re.sub(
+        r"<form(?![^>]*\bid=)",
+        f'<form id="{form_id}"',
+        html,
+        count=1,
+        flags=re.IGNORECASE,
+    )
+
+
 class SlideOver(Component):
     """
     A side-panel drawer component for auxiliary content or editing.
@@ -96,8 +117,31 @@ class SlideOver(Component):
                     form_obj = c
                     break
 
-            form_needs_actions = form_present and (
-                form_obj is None or getattr(form_obj, "suppress_submit", False)
+            form_suppresses = bool(getattr(form_obj, "suppress_submit", False))
+            form_id = getattr(form_obj, "form_id", None) or _first_form_id(
+                content_html_joined
+            )
+            has_own_submit = bool(
+                re.search(r'<button[^>]*type=["\']submit', content_html_joined)
+            )
+
+            # A footer action bar is only generated when the panel form has
+            # delegated its actions (``suppress_submit``) or is a raw form
+            # without any submit control. The footer Save is bound to the
+            # form through the ``form`` attribute — otherwise it would be a
+            # dead button sitting outside the form element. Raw forms get a
+            # stable id injected so the binding is always possible.
+            if form_present and not form_id and (form_suppresses or not has_own_submit):
+                auto_form_id = "slide-over-form"
+                rendered_children = [
+                    _inject_form_id(s, auto_form_id) if isinstance(s, str) else s
+                    for s in rendered_children
+                ]
+                content_html_joined = "".join(rendered_children)
+                form_id = auto_form_id
+
+            form_needs_actions = (
+                form_present and form_id and (form_suppresses or not has_own_submit)
             )
 
             if form_needs_actions:
@@ -111,6 +155,7 @@ class SlideOver(Component):
                 )
                 save_btn = SubmitButton(
                     label=save_label,
+                    form=form_id,
                 )
                 footer_html = [cancel_btn, save_btn]
 

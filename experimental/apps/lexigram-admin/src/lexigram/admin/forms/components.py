@@ -55,6 +55,11 @@ class FormBase(Component, metaclass=FormMeta):
         method: str = "POST",
         hx_post: str | None = None,
         hx_target: str | None = None,
+        hx_swap: str = "innerHTML",
+        hx_indicator: str | None = None,
+        form_id: str | None = None,
+        submit_label: str = "Submit",
+        suppress_submit: bool = False,
         layout: Any = None,
         **props: Any,
     ) -> None:
@@ -65,6 +70,11 @@ class FormBase(Component, metaclass=FormMeta):
         self.method = method
         self.hx_post = hx_post
         self.hx_target = hx_target
+        self.hx_swap = hx_swap
+        self.hx_indicator = hx_indicator
+        self.form_id = form_id
+        self.submit_label = submit_label
+        self.suppress_submit = suppress_submit
         # Class-level layout (list of AbstractLayoutNode) can be overridden
         # per instance via the constructor. A FormLayout schema is normalized
         # into renderable nodes here so render() always sees nodes.
@@ -164,10 +174,14 @@ class FormBase(Component, metaclass=FormMeta):
             ]
             form_body = el("div", *form_content, class_="space-y-4")
 
-        actions = el(
-            "div",
-            Button("Submit", type="submit", color="primary"),
-            class_="flex justify-end pt-4 border-t border-border mt-6",
+        actions = (
+            el(
+                "div",
+                Button(self.submit_label, type="submit", color="primary"),
+                class_="flex justify-end pt-4 border-t border-border mt-6",
+            )
+            if not self.suppress_submit
+            else ""
         )
 
         attrs = {
@@ -176,12 +190,34 @@ class FormBase(Component, metaclass=FormMeta):
         }
         if self.action:
             attrs["action"] = self.action
+        if self.form_id:
+            attrs["id"] = self.form_id
         if self.hx_post:
             attrs["hx-post"] = self.hx_post
         if self.hx_target:
             attrs["hx-target"] = self.hx_target
+        if self.hx_post:
+            attrs["hx-swap"] = self.hx_swap
+        if self.hx_indicator:
+            attrs["hx-indicator"] = self.hx_indicator
 
-        return el("form", form_body, actions, **attrs)
+        # Inject CSRF token when available in request context so native
+        # (non-HTMX) submits stay protected too.
+        csrf_input = ""
+        request = getattr(self, "_request", None)
+        if (
+            request
+            and hasattr(request, "state")
+            and hasattr(request.state, "csrf_token")
+        ):
+            csrf_input = el(
+                "input",
+                type="hidden",
+                name="csrf_token",
+                value=request.state.csrf_token,
+            )
+
+        return el("form", csrf_input, form_body, actions, **attrs)
 
 
 def build_form(**fields) -> Form[Any]:

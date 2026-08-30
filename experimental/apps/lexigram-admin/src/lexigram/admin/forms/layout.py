@@ -164,18 +164,90 @@ class Tab(AbstractLayoutNode):
 
 @dataclass
 class Tabs(AbstractLayoutNode):
-    """A container for multiple tabs."""
+    """A container for multiple tabs.
+
+    Renders accessible, keyboard-navigable tabs (WAI-ARIA tabs pattern)
+    driven by Alpine. Tab headers are ``type="button"`` so clicking a tab
+    never submits the surrounding form, and only the active pane is visible.
+    """
 
     tabs: list[Tab] = field(default_factory=list)
+    # Stable per-instance id used to namespace ARIA wiring; two Tabs
+    # containers inside one form get independent ids.
+    _uid: str = field(default_factory=lambda: f"{id(object()):x}", init=False)
 
     def render(self, form: FormBase) -> Any:
+        group_id = f"{self._uid}-tabs"
+        form_id = getattr(form, "form_id", None) or group_id
+
+        def _tab_button(index: int, tab: Tab) -> Any:
+            active_cls = (
+                "border-primary-500 text-primary-600 dark:text-primary-400"
+            )
+            inactive_cls = (
+                "border-transparent text-muted-foreground hover:text-foreground"
+                " hover:border-border"
+            )
+            return el(
+                "button",
+                tab.label,
+                type="button",
+                role="tab",
+                id=f"{form_id}-tab-{index}",
+                class_=(
+                    "px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors "
+                    "focus-visible:outline-none focus-visible:ring-2 "
+                    "focus-visible:ring-ring focus-visible:ring-offset-2 rounded-t-sm"
+                ),
+                **{
+                    ":aria-selected": f"activeTab === {index}",
+                    "aria-controls": f"{form_id}-tab-panel-{index}",
+                    ":tabindex": f"activeTab === {index} ? 0 : -1",
+                    ":class": (
+                        f"activeTab === {index}"
+                        f" ? '{active_cls}' : '{inactive_cls}'"
+                    ),
+                    "@click": f"activeTab = {index}",
+                    "@keydown.arrow-right.prevent": (
+                        f"activeTab = (activeTab + 1) % {len(self.tabs)}"
+                    ),
+                    "@keydown.arrow-left.prevent": (
+                        f"activeTab = (activeTab + {len(self.tabs)} - 1) "
+                        f"% {len(self.tabs)}"
+                    ),
+                    "@keydown.home.prevent": "activeTab = 0",
+                    "@keydown.end.prevent": f"activeTab = {len(self.tabs) - 1}",
+                },
+            )
+
         tab_headers = [
-            el("button", tab.label, class_="px-4 py-2 border-b-2") for tab in self.tabs
+            _tab_button(index, tab) for index, tab in enumerate(self.tabs)
         ]
-        tab_contents = [tab.render(form) for tab in self.tabs]
+        tab_contents = [
+            el(
+                "div",
+                tab.render(form),
+                id=f"{form_id}-tab-panel-{index}",
+                role="tabpanel",
+                **{
+                    "aria-labelledby": f"{form_id}-tab-{index}",
+                    "x-show": f"activeTab === {index}",
+                    "x-cloak": True,
+                },
+                class_="pt-4 space-y-4",
+            )
+            for index, tab in enumerate(self.tabs)
+        ]
         return el(
             "div",
-            el("div", *tab_headers, class_="flex space-x-4 border-b"),
+            {"x-data": "{ activeTab: 0 }"},
+            el(
+                "div",
+                *tab_headers,
+                role="tablist",
+                aria_label="Form sections",
+                class_="flex flex-wrap space-x-1 border-b border-border",
+            ),
             *tab_contents,
         )
 

@@ -194,9 +194,22 @@ class AdminShell(Component):
 
         dm_expr = dark_mode_expr(self.dark_mode)
 
+        skip_link = el(
+            "a",
+            "Skip to content",
+            href="#main-content",
+            class_=(
+                "sr-only focus:not-sr-only focus:absolute focus:top-3 focus:left-3 "
+                "focus:z-[200] focus:rounded-md focus:bg-card focus:px-4 focus:py-2 "
+                "focus:text-sm focus:font-medium focus:ring-2 focus:ring-ring "
+                "focus:shadow-lg"
+            ),
+        )
+
         return el(
             "div",
             build_root_data_attrs(dm_expr),
+            skip_link,
             loading_bar,
             theme_style,
             search_overlay,

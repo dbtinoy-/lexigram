@@ -69,6 +69,7 @@ class FormRenderer(WizardRendererMixin):
             mode="create",
             user=user,
             errors=errors,
+            in_slide_over=is_htmx,
         )
         form_component._request = request
 
@@ -159,6 +160,7 @@ class FormRenderer(WizardRendererMixin):
             record_id=item_id,
             user=user,
             errors=errors,
+            in_slide_over=is_htmx,
         )
         form_component._request = request
 
@@ -267,6 +269,7 @@ class FormRenderer(WizardRendererMixin):
         record_id: str | None = None,
         user=None,
         errors: dict[str, list[str]] | None = None,
+        in_slide_over: bool = False,
     ) -> Any:
         """Build a Form component from resource model or form_class.
 
@@ -296,8 +299,20 @@ class FormRenderer(WizardRendererMixin):
             form_class = resource.form_class
 
         if form_class:
-            # Use the declared form class
-            return form_class(initial=initial_data, action=action_url)
+            # Use the declared form class. Slide-over embeds suppress the
+            # in-form action bar — the panel footer owns Cancel/Save and is
+            # bound to the form via the ``form`` attribute.
+            submit_label = "Update" if mode == "edit" else "Create"
+            return form_class(
+                initial=initial_data,
+                action=action_url,
+                form_id=f"{self.resource_name}-{mode}-form",
+                submit_label=submit_label,
+                suppress_submit=in_slide_over,
+                hx_post=action_url,
+                hx_target="#slide-over-container",
+                hx_swap="innerHTML",
+            )
 
         # Generate form from Pydantic model
         if resource and resource.model:
@@ -379,6 +394,8 @@ class FormRenderer(WizardRendererMixin):
                     action_url=action_url,
                     method="post",
                     submit_label=submit_label,
+                    form_id=f"{self.resource_name}-{mode}-form",
+                    suppress_submit=in_slide_over,
                     hx_target="#slide-over-container",
                     hx_swap="innerHTML",
                 )

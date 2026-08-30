@@ -110,11 +110,17 @@ class SidebarItem(Component):
             first_letter_node,
             badge_node,
             href=self.href,
-            class_=f"group flex items-center px-3 py-2 text-sm font-medium rounded-xl transition-all duration-200 {bg_cls}",
+            class_=(
+                "group flex items-center px-3 py-2 text-sm font-medium rounded-xl "
+                "transition-all duration-200 "
+                "focus-visible:outline-none focus-visible:ring-2 "
+                "focus-visible:ring-ring focus-visible:ring-offset-1 "
+                f"{bg_cls}"
+            ),
             # Use Alpine dict syntax for directives
             **{
                 "x-bind:class": "sidebarMini ? 'justify-center' : ''",
-                "aria-current": "page" if self.active else "false",
+                **({"aria-current": "page"} if self.active else {}),
             },
             title=self.label,
         )
@@ -156,6 +162,8 @@ class SidebarSection(Component):
                 "div", class_="w-1.5 h-1.5 rounded-full bg-muted-foreground/40"
             )
 
+        section_key = self.title.lower().replace(" ", "-").replace("/", "-")
+
         # Collapsible Header
         header = el(
             "button",
@@ -185,12 +193,18 @@ class SidebarSection(Component):
                 },
             ),
             type="button",
-            class_="w-full flex items-center px-3 mt-4 mb-2 text-muted-foreground hover:text-foreground transition-colors focus:outline-none focus:ring-0 group",
+            class_=(
+                "w-full flex items-center px-3 mt-4 mb-2 text-muted-foreground "
+                "hover:text-foreground transition-colors "
+                "focus-visible:outline-none focus-visible:ring-2 "
+                "focus-visible:ring-ring focus-visible:ring-offset-1 rounded-lg group"
+            ),
             title=self.title,
             **{
                 "x-on:click": "expanded = !expanded",
                 "x-bind:class": "sidebarMini ? 'justify-center' : ''",
                 "x-bind:aria-expanded": "expanded ? 'true' : 'false'",
+                "aria-controls": f"section-{section_key}-items",
             },
         )
 
@@ -203,6 +217,7 @@ class SidebarSection(Component):
         items_container = el(
             "div",
             *self.items,
+            id=f"section-{section_key}-items",
             class_="space-y-1 relative ml-[1.375rem] pl-3 border-l border-border",
             # Hide border in mini mode
             **{
@@ -212,7 +227,6 @@ class SidebarSection(Component):
             },
         )
 
-        section_key = self.title.lower().replace(" ", "-").replace("/", "-")
         return el(
             "div",
             header,

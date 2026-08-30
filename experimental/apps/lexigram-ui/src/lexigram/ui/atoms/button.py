@@ -138,6 +138,14 @@ class SubmitButton(Component):
         if custom_cls:
             cls = f"{cls} {custom_cls}"
 
+        # Forward caller-supplied attrs (``form``, ``name``, ``hx-*``, …)
+        # except the styling/behavior keys this component controls.
+        extra_attrs = {
+            k: v
+            for k, v in self.props.items()
+            if k not in ("class_", "class", "children", "type", "disabled")
+        }
+
         return el(
             "button",
             el(
@@ -165,4 +173,12 @@ class SubmitButton(Component):
             x_data="{ loading: false }",
             x_on_click="loading = true",
             x_on_htmx_after_request="loading = false",
+            # Footer buttons bind to a sibling form via the ``form``
+            # attribute, so the request lifecycle events never bubble
+            # through the button — listen at window scope instead.
+            **{
+                "x-on:htmx:after-request.window": "loading = false",
+                "x-on:htmx:after-swap.window": "loading = false",
+            },
+            **extra_attrs,
         )
