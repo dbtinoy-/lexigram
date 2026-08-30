@@ -257,7 +257,11 @@ class FormRenderer(WizardRendererMixin):
     async def _ensure_csrf_token(self, request) -> None:
         if getattr(getattr(request, "state", None), "csrf_token", None):
             return
-        session_id = request.session.get("admin_user_id", "")
+        # Must mirror AdminCsrfMiddleware._validate_csrf exactly: tokens are
+        # bound to csrf_session_id, else admin_user_id, else "anonymous".
+        session_id = request.session.get("csrf_session_id") or request.session.get(
+            "admin_user_id", "anonymous"
+        )
         request.state.csrf_token = self._csrf_service.generate_token(session_id)
 
     async def _build_form_component(
