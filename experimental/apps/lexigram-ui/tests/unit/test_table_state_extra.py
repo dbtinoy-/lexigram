@@ -138,6 +138,12 @@ class TestFromRequest:
         )
         assert state.filters == {"status": ["a", "b"]}
 
+    def test_filters_array_notation_strips_transport_suffix(self) -> None:
+        state = TableState.from_request(
+            _Req({"filter_status[]": ["a", "b"]})
+        )
+        assert state.filters == {"status": ["a", "b"]}
+
     def test_filters_repaired_list_string(self) -> None:
         state = TableState.from_request(_Req({"filter_ids": '["1","2"]'}))
         assert state.filters == {"ids": [1, 2]}

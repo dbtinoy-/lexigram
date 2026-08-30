@@ -335,7 +335,15 @@ class Resource(
             qs = qs.with_deleted(True)
 
         for field, value in (filters or {}).items():
-            if isinstance(value, list):
+            # RangeFilter controls submit ``filter_<field>_from`` and
+            # ``filter_<field>_to``. Translate those transport keys into
+            # structured conditions instead of comparing the model field to
+            # a literal range-suffix column name.
+            if field.endswith("_from") and field[:-5]:
+                qs = qs.with_where(field[:-5], "gte", value)
+            elif field.endswith("_to") and field[:-3]:
+                qs = qs.with_where(field[:-3], "lte", value)
+            elif isinstance(value, list):
                 qs = qs.with_where_in(field, value)
             else:
                 qs = qs.with_where_eq(field, value)

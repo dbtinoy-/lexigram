@@ -103,7 +103,7 @@ class RangeFilter(Filter):
                 **common,
             ).render()
 
-        return TextInput(type=self._input_type, **common).render()
+        return TextInput(input_type=self._input_type, **common).render()
 
     def render(self, current_value: Any = None, url: str | None = None) -> str:
         from_value = ""

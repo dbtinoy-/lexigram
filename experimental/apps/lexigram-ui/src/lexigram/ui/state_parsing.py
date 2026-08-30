@@ -286,6 +286,10 @@ def _extract_filters(q: Any) -> dict[str, Any]:
             continue
 
         filter_key = k[7:] if k.startswith("filter_") else k
+        if filter_key.endswith("[]"):
+            # Multi-select checkbox controls use PHP-style array notation.
+            # The suffix is transport syntax, not part of the data field name.
+            filter_key = filter_key[:-2]
 
         # Canonical admin filter format is ``filter[field]`` (and the API
         # adapter emits ``filter[field][op]``). Strip the brackets so the

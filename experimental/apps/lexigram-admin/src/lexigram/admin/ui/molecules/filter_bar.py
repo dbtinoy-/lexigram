@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from lexigram.ui import Component, el
+from lexigram.ui import Component, Zones, el
 
 
 class FilterBar(Component):
@@ -88,10 +88,32 @@ class FilterBar(Component):
                     self.state.set_resource_prefix(self.resource_prefix)
                     f.set_state(self.state)
 
-                # Schema fields (from lexigram.admin.schema) use render_filter
+                # Schema fields (from lexigram.admin.schema) use render_filter.
+                # Their field-level renderer does not know the table URL, so
+                # attach the same live-table HTMX contract used by UI Filter
+                # objects here. Put the listener on the field wrapper: this
+                # works for schema controls whose input is nested under a
+                # labelled component (select, multi-select, etc.).
                 if hasattr(f, "render_filter"):
                     rendered = f.render_filter(current_val)
                     if rendered is not None:
+                        if self.resource_prefix and hasattr(rendered, "attrs"):
+                            base_url = self.resource_prefix.rstrip("/") + "/"
+                            rendered.attrs.update(
+                                {
+                                    "hx-get": base_url,
+                                    "hx-trigger": "change",
+                                    "hx-target": Zones.DATA.selector,
+                                    "hx-swap": Zones.DATA.swap_mode.value,
+                                    "hx-select": Zones.DATA.selector,
+                                    "hx-push-url": "true",
+                                    "hx-include": (
+                                        f"{Zones.DATA.selector} [data-state='true'], "
+                                        f"#{Zones.SEARCH.id}, #{Zones.FILTERS.id}"
+                                    ),
+                                    "hx-params": "*",
+                                }
+                            )
                         filter_controls.append(rendered)
                 # Form fields use bind/render pattern
                 elif hasattr(f, "bind"):
@@ -120,6 +142,7 @@ class FilterBar(Component):
 
         # Dict of {field_name: {"type": ..., "options": [...], ...}} format
         from lexigram.admin.ui.filters.types import SelectFilter, ToggleFilter
+        from lexigram.ui import TextInput
 
         # Set resource prefix on state once so all filters can build proper URLs
         if self.state and self.resource_prefix:
@@ -133,9 +156,48 @@ class FilterBar(Component):
                 f_type = filter_config.get("type", "select")
                 options = filter_config.get("options", [])
                 if f_type == "checkbox":
-                    f = ToggleFilter(name=field_name)
+                    f = ToggleFilter(
+                        name=field_name,
+                        label=filter_config.get("label"),
+                    )
+                elif f_type in {"text", "date", "number"}:
+                    # The dict API promises simple text/date controls as well
+                    # as selects. Use the shared input atom and preserve the
+                    # canonical filter_ transport name.
+                    filter_controls.append(
+                        TextInput(
+                            name=f"filter_{field_name}",
+                            value=str(current_val or ""),
+                            label=filter_config.get("label")
+                            or field_name.replace("_", " ").title(),
+                            placeholder=filter_config.get("placeholder"),
+                            input_type=f_type,
+                            **{
+                                "hx_get": (
+                                    self.resource_prefix.rstrip("/") + "/"
+                                    if self.resource_prefix
+                                    else "/"
+                                ),
+                                "hx_trigger": "change",
+                                "hx_target": Zones.DATA.selector,
+                                "hx_swap": Zones.DATA.swap_mode.value,
+                                "hx_select": Zones.DATA.selector,
+                                "hx_push_url": "true",
+                                "hx_include": (
+                                    f"{Zones.DATA.selector} [data-state='true'], "
+                                    f"#{Zones.SEARCH.id}, #{Zones.FILTERS.id}"
+                                ),
+                                "hx_params": "*",
+                            },
+                        ).render()
+                    )
+                    continue
                 else:  # Default to select
-                    f = SelectFilter(name=field_name, options=options)  # type: ignore[assignment]
+                    f = SelectFilter(
+                        name=field_name,
+                        options=options,
+                        label=filter_config.get("label"),
+                    )
             else:
                 continue
 

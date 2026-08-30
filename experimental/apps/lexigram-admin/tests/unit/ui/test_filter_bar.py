@@ -1,3 +1,4 @@
+from lexigram.admin.schema import SelectField
 from lexigram.admin.ui.filters.types import SelectFilter
 from lexigram.admin.ui.molecules.filter_bar import FilterBar
 from lexigram.ui.state import TableState
@@ -20,6 +21,8 @@ def test_filter_bar_renders_various_controls_and_htmx_attrs():
     assert "Status" in html or "status" in html
     assert "Is Featured" in html or "is_featured" in html
     assert "Start Date" in html or "start_date" in html
+    assert 'name="filter_start_date"' in html
+    assert 'type="date"' in html
     assert "Filter by name" in html or "name" in html
 
     # HTMX attributes should be present
@@ -46,3 +49,19 @@ def test_filter_bar_preserves_search_sort_layout():
     # hx-include dynamically picks up state from hidden inputs at request time
     assert "hx-include" in html
     assert "hx-vals" not in html  # no longer baked — hx-include replaces it
+
+
+def test_filter_bar_wires_declarative_schema_filters() -> None:
+    fb = FilterBar(
+        filters=[SelectField(name="status", options=[("active", "Active")])],
+        current_values={"status": "active"},
+        resource_prefix="/admin/items",
+        state=TableState(),
+    )
+
+    html = render_to_string(fb)
+
+    assert 'name="status"' in html
+    assert 'hx-get="/admin/items/"' in html
+    assert 'hx-target="#table-data"' in html
+    assert 'hx-trigger="change"' in html

@@ -200,6 +200,31 @@ class TestResourceFetchList:
         assert items[0]["name"] == "Beta"
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+    async def test_fetch_list_translates_range_filter_suffixes(self) -> None:
+        from lexigram.admin.data.adapters.memory_adapter import InMemoryDataSource
+        from lexigram.admin.resources.base import Resource
+
+        resource = Resource()
+        resource.set_data_source(
+            InMemoryDataSource(
+                data=[
+                    {"id": 1, "score": 5},
+                    {"id": 2, "score": 10},
+                    {"id": 3, "score": 15},
+                ]
+            )
+        )
+
+        items, total = await resource.fetch_list(
+            limit=10,
+            filters={"score_from": 10, "score_to": 15},
+        )
+
+        assert total == 2
+        assert [item["id"] for item in items] == [2, 3]
+
+    @pytest.mark.asyncio
     async def test_fetch_list_with_pagination(self) -> None:
         """fetch_list should paginate correctly."""
         from lexigram.admin.data.adapters.memory_adapter import InMemoryDataSource

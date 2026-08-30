@@ -188,7 +188,11 @@ class ListDataFetcher:
                     if state.include_deleted:
                         qs = qs.with_deleted(True)
                     for field, value in filters.items():
-                        if isinstance(value, list):
+                        if field.endswith("_from") and field[:-5]:
+                            qs = qs.with_where(field[:-5], "gte", value)
+                        elif field.endswith("_to") and field[:-3]:
+                            qs = qs.with_where(field[:-3], "lte", value)
+                        elif isinstance(value, list):
                             qs = qs.with_where_in(field, list(value))
                         else:
                             qs = qs.with_where_eq(field, value)
