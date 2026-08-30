@@ -94,6 +94,37 @@ class TestBelongsToOptions:
         assert "Grace" in html
 
     @pytest.mark.asyncio
+    async def test_dict_records_submit_ids_and_display_labels(self) -> None:
+        class _DictDataSource:
+            async def find_many(self, query: object) -> object:
+                return SimpleNamespace(
+                    items=[
+                        {"id": 7, "name": "Ada"},
+                        {"id": 8, "title": "Grace"},
+                    ]
+                )
+
+        class _DictRelatedResource(Resource):
+            name = "owners"
+            _data_source = _DictDataSource()
+
+        renderer = FormRenderer(
+            AdminConfig(prefix="/admin", title="Test"),
+            "widgets",
+            AdminRenderer(),
+            resources={"owners": _DictRelatedResource},
+        )
+        response = await renderer.render_create(_create_request(), _OwnerResource)
+        html = response.body.decode("utf-8", "replace")
+
+        assert 'value="7"' in html
+        assert 'value="8"' in html
+        assert "value=\"{'id': 7" not in html
+        assert "Ada" in html
+        assert "Grace" in html
+
+
+    @pytest.mark.asyncio
     async def test_options_load_uses_query_spec(self) -> None:
         captured: list[object] = []
 

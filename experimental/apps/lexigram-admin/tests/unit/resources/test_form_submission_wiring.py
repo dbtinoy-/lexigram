@@ -80,6 +80,18 @@ def test_builder_form_clears_previous_errors_when_reused() -> None:
     assert form.errors == {}
 
 
+def test_builder_required_boolean_accepts_unchecked_switch_as_false() -> None:
+    class Model(BaseModel):
+        enabled: bool
+
+    form = FormBuilder(Model).build()
+    result = __import__("asyncio").run(form.validate({}))
+
+    assert result.success is True
+    assert result.data is not None
+    assert result.data.enabled is False  # type: ignore[attr-defined]
+
+
 def test_builder_required_override_checks_omitted_optional_field() -> None:
     class Model(BaseModel):
         name: str | None = None

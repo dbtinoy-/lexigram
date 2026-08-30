@@ -49,7 +49,11 @@ class BooleanField(SchemaField[bool]):
 
     def from_form(self, raw: str | None) -> Result[bool | None, FieldError]:
         if raw is None:
-            return Ok(None)
+            # Unchecked HTML checkboxes are omitted from the request. A
+            # required boolean still has a valid false value; treating the
+            # missing transport value as None makes it impossible to turn a
+            # required switch off during an edit.
+            return Ok(False if self.required else None)
         stripped = raw.strip()
         if not stripped:
             if self.nullable:

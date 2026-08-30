@@ -478,6 +478,37 @@ class FormRenderer(WizardRendererMixin):
             return None
         return entry() if isinstance(entry, type) else entry
 
+    @staticmethod
+    def _relation_option(record: Any) -> tuple[str, str] | None:
+        """Convert a related record into a stable select option.
+
+        Data sources commonly return dictionaries, while tests and domain
+        adapters may return objects. ``getattr(record, "id", record)`` turns a
+        dictionary into its entire repr, so normalize both shapes explicitly
+        and choose a useful human label without changing the submitted ID.
+        """
+        if isinstance(record, dict):
+            record_id = record.get("id", record.get("pk"))
+            label = (
+                record.get("name")
+                or record.get("title")
+                or record.get("label")
+                or record.get("email")
+                or record_id
+            )
+        else:
+            record_id = getattr(record, "id", getattr(record, "pk", None))
+            label = (
+                getattr(record, "name", None)
+                or getattr(record, "title", None)
+                or getattr(record, "label", None)
+                or getattr(record, "email", None)
+                or record_id
+            )
+        if record_id is None:
+            return None
+        return str(record_id), str(label if label is not None else record_id)
+
     async def _populate_form_relation_options(self, form: Any) -> None:
         """Populate relation options on a declared FormBase instance.
 
@@ -508,7 +539,11 @@ class FormRenderer(WizardRendererMixin):
                     if isinstance(result, list)
                     else []
                 )
-                options = [(str(getattr(r, "id", r)), str(r)) for r in records]
+                options = [
+                    option
+                    for record in records
+                    if (option := self._relation_option(record)) is not None
+                ]
                 fields[name] = dc_replace(field_schema, options=options)
             except Exception:
                 logger.debug(
@@ -546,7 +581,11 @@ class FormRenderer(WizardRendererMixin):
                     records = result
                 else:
                     records = []
-                options = [(str(getattr(r, "id", r)), str(r)) for r in records]
+                options = [
+                    option
+                    for record in records
+                    if (option := self._relation_option(record)) is not None
+                ]
                 schema.fields[idx] = dc_replace(field_schema, options=options)
             except Exception:
                 logger.debug(
