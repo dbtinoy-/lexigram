@@ -22,9 +22,9 @@ if TYPE_CHECKING:
         ColumnVisibilitySwitcher,
     )
     from lexigram.ui.molecules.data_table_client_logic import DataTableScriptRenderer
-    from lexigram.ui.molecules.density_switcher import DensitySwitcher
     from lexigram.ui.molecules.date_hierarchy import DateHierarchyFilter
     from lexigram.ui.molecules.date_range_filter import DateRangeFilter
+    from lexigram.ui.molecules.density_switcher import DensitySwitcher
     from lexigram.ui.molecules.dropdown import Dropdown
     from lexigram.ui.molecules.empty_state import EmptyState
     from lexigram.ui.molecules.error_state import ErrorState

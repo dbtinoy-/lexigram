@@ -146,6 +146,30 @@ class TestFromRequest:
         state = TableState.from_request(_Req({"page": "2", "search": "x"}))
         assert state.filters == {}
 
+    def test_q_param_is_search_alias_not_filter(self) -> None:
+        """``q`` is the header-search canonical param, never a filter."""
+        state = TableState.from_request(_Req({"q": "bob"}))
+        assert state.search == "bob"
+        assert state.filters == {}
+
+    def test_q_prefers_explicit_search(self) -> None:
+        state = TableState.from_request(_Req({"q": "bob", "search": "alice"}))
+        assert state.search == "alice"
+
+    def test_filter_bracket_keys_stripped(self) -> None:
+        """Canonical ``filter[field]`` (and ``filter[field][op]``) keys
+        must reach the data source as the bare field name."""
+        state = TableState.from_request(
+            _Req({"filter[status]": "archived", "filter[price][gt]": "10"})
+        )
+        assert state.filters == {"status": "archived", "price": 10}
+
+    def test_sort_legacy_order_param_not_filter(self) -> None:
+        state = TableState.from_request(
+            _Req({"sort": "name", "order": "desc", "dir": "asc"})
+        )
+        assert state.filters == {}
+
 
 class TestQueryParams:
     def test_to_query_params_only_non_defaults(self) -> None:
