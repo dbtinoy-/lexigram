@@ -11,6 +11,7 @@ from starlette.responses import HTMLResponse, RedirectResponse, Response
 from lexigram.admin.exceptions import AdminValidationError, NotFoundError
 from lexigram.admin.resources.form_guard import PROTECTED_FORM_FIELDS
 from lexigram.admin.state.context import AdminContextManager
+from lexigram.admin.ui.molecules.toast_notification import ToastNotification
 
 if TYPE_CHECKING:
     from lexigram.admin.controllers.resource.meta import ResourceMeta
@@ -77,7 +78,13 @@ class ResourceMutationMixin:
             )
 
             # Redirect or return success
-            ctx.add_flash("Created successfully", "success")
+            (
+                ToastNotification.make("Created successfully")
+                .success()
+                .title("Saved")
+                .duration(4000)
+                .send()
+            )
             if ctx.is_htmx:
                 response = Response(status_code=200)
                 response.headers["HX-Redirect"] = f"{self.meta.prefix}/{self.meta.name}"
@@ -185,7 +192,13 @@ class ResourceMutationMixin:
                 request, str(item_id), validated, comment="update"
             )
 
-            ctx.add_flash("Updated successfully", "success")
+            (
+                ToastNotification.make("Updated successfully")
+                .success()
+                .title("Saved")
+                .duration(4000)
+                .send()
+            )
             if ctx.is_htmx:
                 response = Response(status_code=200)
                 response.headers["HX-Redirect"] = (
@@ -263,7 +276,13 @@ class ResourceMutationMixin:
                     item_id=str(item_id),
                 )
 
-            ctx.add_flash("Deleted successfully", "success")
+            (
+                ToastNotification.make("Deleted successfully")
+                .success()
+                .title("Deleted")
+                .duration(4000)
+                .send()
+            )
             if ctx.is_htmx:
                 response = Response(status_code=200)
                 response.headers["HX-Redirect"] = f"{self.meta.prefix}/{self.meta.name}"
@@ -297,7 +316,13 @@ class ResourceMutationMixin:
                 item_id=str(item_id),
             )
 
-            ctx.add_flash("Restored successfully", "success")
+            (
+                ToastNotification.make("Restored successfully")
+                .success()
+                .title("Restored")
+                .duration(4000)
+                .send()
+            )
             if ctx.is_htmx:
                 response = Response(status_code=200)
                 response.headers["HX-Trigger"] = (

@@ -42,7 +42,6 @@ class BaseLayoutContext:
     logout_url: str = "/admin/logout"
     login_url: str = "/admin/login"
 
-    # Flash messages
     flash_messages: list[tuple[str, str]] = field(default_factory=list)
 
     # CSRF
@@ -410,11 +409,24 @@ document.addEventListener('alpine:init', function() {
         if not self.context.flash_messages:
             return ""
 
-        # Convert flash messages to JS
+        # Convert flash messages to JS (structured dicts and legacy tuples)
         messages = []
-        for msg_type, message in self.context.flash_messages:
+        for entry in self.context.flash_messages:
+            if isinstance(entry, dict):
+                msg_type = str(entry.get("category", "info"))
+                message = str(entry.get("message", ""))
+                title = entry.get("title")
+            else:
+                msg_type, message = entry
+                title = None
+            payload = {
+                "type": escape(str(msg_type)),
+                "message": escape(message),
+            }
+            if title:
+                payload["title"] = escape(str(title))
             messages.append(
-                f'{{type: "{escape(msg_type)}", message: "{escape(message)}"}}',
+                "{" + ", ".join(f'{k}: "{v}"' for k, v in payload.items()) + "}",
             )
 
         return f"""

@@ -50,7 +50,7 @@ class AdminContext:
     resource: str | None = None
     action: str | None = None
     entity_id: Any = None
-    flash_messages: list[dict[str, str]] = field(default_factory=list)
+    flash_messages: list[dict[str, Any]] = field(default_factory=list)
     cache_context: Any = None
     htmx: HTMXInfo | None = None
     breadcrumbs: list[dict[str, str]] = field(default_factory=list)
@@ -74,9 +74,38 @@ class AdminContext:
             return False
         return self.permissions.has(permission)
 
-    def add_flash(self, message: str, category: str = "info") -> None:
-        """Add a flash message."""
-        self.flash_messages.append({"message": message, "category": category})
+    def add_flash(
+        self,
+        message: str,
+        category: str = "info",
+        *,
+        title: str | None = None,
+        icon: str | None = None,
+        duration_ms: int | None = None,
+        auto_dismiss: bool | None = None,
+        dismissible: bool | None = None,
+        actions: list[dict[str, str]] | None = None,
+    ) -> None:
+        """Add a flash message.
+
+        ``title``, ``icon``, ``duration_ms``, ``auto_dismiss``,
+        ``dismissible`` and ``actions`` are optional so the toast renders
+        with full fidelity (see :func:`lexigram.ui.flash_to_toast`).
+        """
+        entry: dict[str, Any] = {"message": message, "category": category}
+        if title is not None:
+            entry["title"] = title
+        if icon is not None:
+            entry["icon"] = icon
+        if duration_ms is not None:
+            entry["duration_ms"] = max(int(duration_ms), 0)
+        if auto_dismiss is not None:
+            entry["auto_dismiss"] = auto_dismiss
+        if dismissible is not None:
+            entry["dismissible"] = dismissible
+        if actions is not None:
+            entry["actions"] = list(actions)
+        self.flash_messages.append(entry)
 
     def add_breadcrumb(self, label: str, url: str | None = None) -> None:
         """Add a breadcrumb."""
@@ -266,14 +295,23 @@ def with_context(func: Callable[..., Awaitable[T]]) -> Callable[..., Awaitable[T
 
 
 # Flash message helpers
-def flash(message: str, category: str = "info") -> None:
-    """Add a flash message to current context."""
+def flash(
+    message: str,
+    category: str = "info",
+    **payload: Any,
+) -> None:
+    """Add a flash message to current context.
+
+    Extra keyword arguments (``title``, ``icon``, ``duration_ms``,
+    ``auto_dismiss``, ``dismissible``, ``actions``) are forwarded to
+    :meth:`AdminContext.add_flash` for full-fidelity toasts.
+    """
     ctx = AdminContextManager.get_context()
     if ctx:
-        ctx.add_flash(message, category)
+        ctx.add_flash(message, category, **payload)
 
 
-def get_flashes() -> list[dict[str, str]]:
+def get_flashes() -> list[dict[str, Any]]:
     """Get all flash messages from current context."""
     ctx = AdminContextManager.get_context()
     if ctx:

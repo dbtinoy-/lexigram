@@ -199,15 +199,24 @@ class ToastNotification:
     def send(self) -> None:
         """Flash the toast to the admin session for the next request.
 
-        Category is derived from the toast type; title/icon/duration are not
-        carried by the flash channel, so use :meth:`render` for full fidelity.
-        Outside a request context this is a no-op.
+        The full payload (title, icon, duration, dismissibility, actions) is
+        carried through the flash channel, so the next page render shows an
+        exact-fidelity toast. Outside a request context this is a no-op.
 
         Returns:
             None.
         """
         category = _TOAST_CATEGORY.get(ToastType(self._data.type), "info")
-        flash(self._data.title or self._data.message, category)
+        flash(
+            self._data.message,
+            category,
+            title=self._data.title,
+            icon=self._data.icon,
+            duration_ms=self._data.duration_ms,
+            auto_dismiss=self._data.auto_dismiss,
+            dismissible=self._data.dismissible,
+            actions=self._data.actions or None,
+        )
 
 
 __all__ = ["ToastNotification"]

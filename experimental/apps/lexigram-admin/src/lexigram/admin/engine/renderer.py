@@ -138,7 +138,7 @@ class AdminRenderer:
 
         # Read flash messages from request context and consume them
         ctx = AdminContextManager.get_context()
-        flash_messages: list[dict[str, str]] = []
+        flash_messages: list[dict[str, Any]] = []
         if ctx:
             flash_messages = list(ctx.flash_messages)
             ctx.flash_messages.clear()

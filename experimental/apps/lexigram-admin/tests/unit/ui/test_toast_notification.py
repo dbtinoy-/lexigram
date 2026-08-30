@@ -73,20 +73,39 @@ class TestToastNotification:
         assert "Go" in html
         assert "go()" in html
 
-    def test_send_flashes_type_category(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        calls: list[tuple[str, str]] = []
-        monkeypatch.setattr(
-            "lexigram.admin.ui.molecules.toast_notification.flash",
-            lambda message, category: calls.append((message, category)),
-        )
-        ToastNotification.make("Updated").success().send()
-        assert calls == [("Updated", "success")]
+    def test_send_flashes_full_payload(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        calls: list[tuple[object, ...]] = []
 
-    def test_send_flashes_title_when_set(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        calls: list[tuple[str, str]] = []
+        def capture(message: str, category: str, **payload: object) -> None:
+            calls.append((message, category, payload))
+
         monkeypatch.setattr(
             "lexigram.admin.ui.molecules.toast_notification.flash",
-            lambda message, category: calls.append((message, category)),
+            capture,
         )
-        ToastNotification.make("body").title("Heading").error().send()
-        assert calls == [("Heading", "error")]
+        ToastNotification.make("Updated").success().title("Saved").duration(4000).send()
+        assert len(calls) == 1
+        message, category, payload = calls[0]
+        assert message == "Updated"
+        assert category == "success"
+        assert payload["title"] == "Saved"
+        assert payload["duration_ms"] == 4000
+        assert payload["auto_dismiss"] is True
+
+    def test_send_flashes_payload_without_defaults_repeated(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        calls: list[tuple[object, ...]] = []
+
+        def capture(message: str, category: str, **payload: object) -> None:
+            calls.append((message, category, payload))
+
+        monkeypatch.setattr(
+            "lexigram.admin.ui.molecules.toast_notification.flash",
+            capture,
+        )
+        ToastNotification.make("body").error().send()
+        message, _category, payload = calls[0]
+        assert message == "body"
+        assert payload["title"] is None
+        assert payload["dismissible"] is True

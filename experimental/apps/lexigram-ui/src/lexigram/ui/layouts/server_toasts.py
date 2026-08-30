@@ -5,8 +5,10 @@ Renders toast notifications with HTMX support.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from enum import StrEnum
+from typing import Any
 
 from markupsafe import escape
 
@@ -286,12 +288,18 @@ class ServerToastChannel:
 
 
 def flash_to_toast(
-    flash_messages: list[tuple[str, str]] | None,
+    flash_messages: Sequence[dict[str, Any] | tuple[str, str]] | None,
 ) -> list[ToastData]:
-    """Convert Flask/Starlette flash messages to toasts.
+    """Convert flash messages to toasts.
+
+    Accepts structured dict entries (``message``, ``category``, plus the
+    optional ``title``, ``icon``, ``duration_ms``, ``auto_dismiss``,
+    ``dismissible`` and ``actions`` keys for full-fidelity toasts) and the
+    legacy ``(category, message)`` tuple form.
 
     Args:
-        flash_messages: List of (category, message) tuples
+        flash_messages: List of flash message dicts or (category, message)
+            tuples.
 
     Returns:
         List of ToastData objects
@@ -310,14 +318,37 @@ def flash_to_toast(
         "message": ToastType.INFO,
     }
 
-    for category, message in flash_messages:
-        toast_type = category_map.get(category.lower(), ToastType.INFO)
-        toasts.append(
-            ToastData(
-                message=message,
-                type=toast_type,
-            ),
+    def _make_toast(entry: Any) -> ToastData:
+        if isinstance(entry, dict):
+            toast = ToastData(
+                message=str(entry.get("message", "")),
+                type=category_map.get(
+                    str(entry.get("category", "info")).lower(), ToastType.INFO
+                ),
+            )
+            if entry.get("title"):
+                toast.title = str(entry["title"])
+            if entry.get("icon"):
+                toast.icon = str(entry["icon"])
+            duration = entry.get("duration_ms")
+            if duration is not None:
+                toast.duration_ms = max(int(duration), 0)
+                toast.auto_dismiss = toast.duration_ms > 0
+            if "auto_dismiss" in entry:
+                toast.auto_dismiss = bool(entry["auto_dismiss"])
+            if "dismissible" in entry:
+                toast.dismissible = bool(entry["dismissible"])
+            if entry.get("actions"):
+                toast.actions = list(entry["actions"])
+            return toast
+        category, message = entry
+        return ToastData(
+            message=message,
+            type=category_map.get(str(category).lower(), ToastType.INFO),
         )
+
+    for entry in flash_messages:
+        toasts.append(_make_toast(entry))
 
     return toasts
 
