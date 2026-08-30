@@ -40,6 +40,13 @@ class GraphQLGenerator(GeneratorBase):
     def __init__(self, output_dir: str = "src/schema") -> None:
         super().__init__(output_dir=output_dir)
 
+    def _build_environment(self) -> Any:
+        """Use whitespace trimming for the source-oriented GraphQL template."""
+        environment = super()._build_environment()
+        environment.trim_blocks = True
+        environment.lstrip_blocks = True
+        return environment
+
     def generate(
         self,
         name: str,
@@ -102,13 +109,19 @@ class GraphQLGenerator(GeneratorBase):
             {
                 "name": name,
                 "class_name": self._to_pascal_case(name),
+                "singular_name": type_name,
                 "resource_name": resource_name,
                 "doc": doc,
                 "fields": prepared_fields,
                 "required_fields": required_fields,
                 "optional_fields": optional_fields,
                 "filterable_fields": filterable_fields,
-                "has_timestamps": True,
+                "include_created_at": not any(
+                    field["name"] == "created_at" for field in prepared_fields
+                ),
+                "include_updated_at": not any(
+                    field["name"] == "updated_at" for field in prepared_fields
+                ),
             },
         )
         self.stage(file_path, content)

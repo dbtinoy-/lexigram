@@ -35,20 +35,21 @@ def discover_registered_tasks(
     """Import configured roots and return decorated task wrappers.
 
     Args:
-        task_modules: Exact module paths to import before discovery.
+        task_modules: Exact module paths to import before discovery. When
+            omitted, already-imported decorated tasks are discovered globally.
         task_packages: Package roots to import recursively before discovery.
 
     Returns:
         Deduplicated decorated task wrappers matching the configured roots.
     """
-    if not task_modules and not task_packages:
-        return []
-
     import_task_modules(task_modules)
     import_task_packages(task_packages)
 
+    # Modules imported by the application have already executed their
+    # decorators, so the registry is sufficient when no explicit roots were
+    # configured. Explicit roots still act as a filter and import boundary.
     module_filters = task_modules + task_packages
-    discovered = iter_registered_tasks(module_filters)
+    discovered = iter_registered_tasks(module_filters or None)
     deduped: list[Any] = []
     seen: set[int] = set()
     for task_wrapper in discovered:

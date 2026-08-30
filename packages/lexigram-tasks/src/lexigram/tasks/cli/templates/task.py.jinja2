@@ -1,18 +1,18 @@
-"""{{ class_name }} task module.
+"""{{ class_name }} task module.{% if doc %}
 
-{% if doc %}{{ doc }}
-{% endif %}"""
+{{ doc }}{% endif %}"""
 
 from __future__ import annotations
 
-import uuid as _uuid
 from typing import Any
+from uuid import uuid4
 
 from lexigram.di import injectable
 from lexigram.logging import get_logger
 from lexigram.tasks import JobProtocol, TaskProvider{% if schedule %}, scheduled{% else %}, task{% endif %}
 
 logger = get_logger(__name__)
+
 
 {% if schedule %}@scheduled(
     cron="{{ schedule }}",
@@ -96,6 +96,7 @@ class {{ class_name }}TaskRunner:
         return logger
 
     async def run(
+        self,
 {% for param in params %}        {{ param.name }}: Any = {{ param.default }},
 {% endfor %}    ) -> str:
         """Run the {{ task_name }} task.
@@ -113,7 +114,7 @@ class {{ class_name }}TaskRunner:
         logger.info("{{ resource_name }}_dispatch", task_kwargs=task_kwargs)
 
         job = JobProtocol(
-            id=_uuid.uuid4().hex,
+            id=uuid4().hex,
             name="{{ resource_name }}",
             args=(),
             kwargs=task_kwargs,

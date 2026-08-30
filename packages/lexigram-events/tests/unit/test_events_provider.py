@@ -197,6 +197,32 @@ class TestEventsProviderLifecycle:
         assert prov._buses.event_bus._tracer is tracer
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+    async def test_boot_resolves_framework_tracing_with_visibility_bypass(self) -> None:
+        """Cross-cutting tracing is visible to provider boot wiring."""
+        from lexigram.contracts.observability.tracing import TracerProtocol
+        from lexigram.testing.fakes import FakeTracer
+
+        prov = EventsProvider()
+        tracer = FakeTracer()
+        calls: list[tuple[type, bool]] = []
+
+        class _VisibilityAwareContainer(_RecordingContainer):
+            async def resolve(self, contract_type, *, bypass_visibility=False):
+                calls.append((contract_type, bypass_visibility))
+                if contract_type is TracerProtocol:
+                    assert bypass_visibility is True
+                    return tracer
+                return None
+
+        container = _VisibilityAwareContainer()
+        await prov.register(container)
+        await prov.boot(container)
+
+        assert (TracerProtocol, True) in calls
+        assert prov._buses.event_bus._tracer is tracer
+
+    @pytest.mark.asyncio
     async def test_boot_wires_optional_hook_registry_into_event_bus(self) -> None:
         """Boot resolves optional hooks and wires them into the event bus."""
         from lexigram.contracts.core import HookRegistryProtocol

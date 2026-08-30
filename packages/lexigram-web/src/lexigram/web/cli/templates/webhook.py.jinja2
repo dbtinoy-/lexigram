@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import hashlib
 import hmac
-import json
 import logging
 import os
 from typing import Any
@@ -15,6 +14,8 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.requests import Request
 from starlette.responses import JSONResponse
+
+from lexigram.serialization import JSONDecodeError, loads
 
 logger = logging.getLogger(__name__)
 
@@ -26,18 +27,13 @@ class {{ webhook_name }}Payload(BaseModel):
     """
 
     model_config = ConfigDict(from_attributes=True)
-{% if fields %}
-{% for field in fields %}
-    {{ field.name }}: {{ field.type }}{% if not field.required %} | None{% endif %} = Field(
-        {% if field.required %}description{% else %}default=None, description{% endif %}="{{ field.description | default(field.name) }}"
-    )
-{% endfor %}
-{% else %}
+{% if fields %}{% for field in fields %}
+    {{ field.name }}: {{ field.type }}{% if not field.required %} | None{% endif %} = Field({% if not field.required %}default=None, {% endif %}description="{{ field.description | default(field.name) }}")
+{% endfor %}{% else %}
     event_type: str = Field(description="Type of event")
     data: dict = Field(default_factory=dict, description="Event data")
     timestamp: str = Field(description="Event timestamp")
 {% endif %}
-
 
 class {{ webhook_name }}Webhook:
     """Webhook handler for {{ webhook_name }}.
@@ -94,6 +90,15 @@ class {{ webhook_name }}Webhook:
                     }
 
                 signature = headers.get("x-webhook-signature")
+                if signature is None:
+                    signature = next(
+                        (
+                            value
+                            for key, value in headers.items()
+                            if key.lower() == "x-webhook-signature"
+                        ),
+                        None,
+                    )
                 if not signature:
                     return {
                         "status": "error",
@@ -106,7 +111,7 @@ class {{ webhook_name }}Webhook:
                         "message": "Invalid signature",
                     }
 
-            data = json.loads(payload.decode("utf-8"))
+            data = loads(payload)
             webhook_payload = {{ webhook_name }}Payload(**data)
             event_type = webhook_payload.event_type
             handler = self._handlers.get(event_type)
@@ -125,7 +130,7 @@ class {{ webhook_name }}Webhook:
                 "event_type": event_type,
                 "message": "No handler registered",
             }
-        except json.JSONDecodeError as exc:
+        except JSONDecodeError as exc:
             logger.error("Invalid JSON: %s", exc)
             return {
                 "status": "error",
@@ -179,7 +184,7 @@ async def {{ webhook_name_snake }}_webhook_handler(request: Request) -> JSONResp
         JSON response.
     """
     body = await request.body()
-    headers = {key: value for key, value in request.headers.items()}
+    headers = dict(request.headers)
 
     webhook = {{ webhook_name }}Webhook(
         secret=os.getenv("WEBHOOK_{{ webhook_name_snake | upper }}_SECRET"),
