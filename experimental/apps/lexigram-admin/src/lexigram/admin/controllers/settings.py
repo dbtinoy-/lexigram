@@ -181,6 +181,39 @@ class SettingsController(AdminController):
             logger.warning("settings.csrf_token_unavailable")
         return None
 
+    @staticmethod
+    def _safe_audit_value(value: Any) -> Any:
+        """Keep audit values JSON-friendly without leaking object internals."""
+        if value is None or isinstance(value, (bool, int, float, str)):
+            return value
+        return str(value)
+
+    @classmethod
+    def _non_secret_changes(
+        cls,
+        spec: type[Any],
+        before: dict[str, Any],
+        after: dict[str, Any],
+    ) -> list[dict[str, Any]]:
+        """Build a non-secret before/after diff for settings audit records."""
+        nodes = spec.get_nodes()
+        changes: list[dict[str, Any]] = []
+        for key in sorted(after):
+            node = nodes.get(key)
+            if node is None or isinstance(node, SecretNode):
+                continue
+            previous = before.get(key)
+            current = after.get(key)
+            if previous != current:
+                changes.append(
+                    {
+                        "field": key,
+                        "before": cls._safe_audit_value(previous),
+                        "after": cls._safe_audit_value(current),
+                    }
+                )
+        return changes
+
     async def _audit(
         self,
         request: Request,
@@ -475,6 +508,7 @@ class SettingsController(AdminController):
             request,
             namespace=namespace,
             keys=sorted(validated_updates),
+            changes=self._non_secret_changes(spec, existing_values, validated_updates),
             invalid=[],
             ignored_readonly=ignored_readonly,
             preserved_secrets=sorted(preserved_secrets),

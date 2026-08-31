@@ -209,6 +209,45 @@ class TestSettingsControllerUpdate:
         audit.log_event.assert_awaited_once()
 
     @pytest.mark.asyncio
+    async def test_save_audit_contains_only_non_secret_before_after_changes(
+        self, renderer: MagicMock
+    ) -> None:
+        from lexigram.admin.settings.panel.nodes import ConfigSpec, SecretNode, StringNode
+
+        class _AuditedSpec(ConfigSpec):
+            namespace = "admin.audit_diff"
+            label = "Audit Diff"
+            name = StringNode(label="Name", default="old")
+            api_key = SecretNode(label="API Key", default="")
+
+        registry = ConfigRegistry()
+        registry._specs[_AuditedSpec.namespace] = _AuditedSpec
+        await registry.save_values(
+            _AuditedSpec.namespace,
+            {"name": "old", "api_key": "old-secret"},
+        )
+        audit = AsyncMock()
+        controller = SettingsController(
+            renderer=renderer,
+            audit_service=audit,
+            registry=registry,
+        )
+        req = _mock_request(
+            method="POST",
+            form_data={"name": "new", "api_key": "new-secret"},
+            user=_FakeUser(),
+        )
+        req.path_params = {"namespace": _AuditedSpec.namespace}
+
+        await controller.save_spec(req)
+
+        call_kwargs = audit.log_event.await_args
+        assert call_kwargs is not None
+        assert call_kwargs.kwargs["metadata"]["changes"] == [
+            {"field": "name", "before": "old", "after": "new"}
+        ]
+
+    @pytest.mark.asyncio
     async def test_save_spec_int_and_bool_fields_not_flagged_invalid(
         self, renderer: MagicMock
     ) -> None:
