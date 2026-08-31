@@ -79,10 +79,17 @@ class SettingsController(AdminController):
             namespace,
         )
 
-    def _spec_ui_data(self, spec: type[Any]) -> dict[str, Any]:
-        """Return spec metadata with the store actually selected by the registry."""
+    def _spec_ui_data(
+        self,
+        spec: type[Any],
+        *,
+        can_edit: bool | None = None,
+    ) -> dict[str, Any]:
+        """Return UI metadata with effective store and permission context."""
         data = spec.to_dict()
         data["store_name"] = self._store_name(spec)
+        if can_edit is not None:
+            data["can_edit"] = can_edit
         return data
 
     @staticmethod
@@ -102,6 +109,28 @@ class SettingsController(AdminController):
         user = getattr(getattr(request, "state", None), "user", None)
         return is_super_admin(user, role)
 
+    @staticmethod
+    def _spec_permissions(spec: type[Any], operation: str) -> frozenset[str]:
+        """Return the read/edit gate with legacy permission fallback."""
+        configured = getattr(spec, f"{operation}_permissions", None)
+        if configured is None:
+            configured = getattr(spec, "required_permissions", frozenset())
+        return frozenset(configured or ())
+
+    def _can_access_spec(
+        self,
+        request: Request,
+        spec: type[Any],
+        operation: str,
+    ) -> bool:
+        """Check a spec's read or edit permission without trusting the UI."""
+        required = self._spec_permissions(spec, operation)
+        return (
+            not required
+            or self._user_is_superadmin(request)
+            or self._user_permissions(request).issuperset(required)
+        )
+
     def _build_categories(
         self, request: Request
     ) -> tuple[list[ConfigCategory], list[Any]]:
@@ -110,10 +139,11 @@ class SettingsController(AdminController):
         is_superadmin = self._user_is_superadmin(request)
 
         def _is_visible(spec: Any) -> bool:
+            read_permissions = self._spec_permissions(spec, "read")
             return (
-                not spec.required_permissions
+                not read_permissions
                 or is_superadmin
-                or permissions.issuperset(spec.required_permissions)
+                or permissions.issuperset(read_permissions)
             )
 
         categories: list[ConfigCategory] = []
@@ -214,9 +244,10 @@ class SettingsController(AdminController):
         """Render a spec page, optionally preserving a failed submission."""
         categories, _ = self._build_categories(request)
         namespace = spec.namespace
+        can_edit = self._can_access_spec(request, spec, "edit")
         ui = ConfigDashboardUI()
         form_content = ui.render_config_form(
-            spec=self._spec_ui_data(spec),
+            spec=self._spec_ui_data(spec, can_edit=can_edit),
             values=values,
             errors=errors,
             action=self._settings_url(request, namespace),
@@ -254,12 +285,7 @@ class SettingsController(AdminController):
             self.flash(f"Configuration '{namespace}' not found.", "error")
             return RedirectResponse(url=self._settings_url(request), status_code=302)
 
-        permissions = self._user_permissions(request)
-        if (
-            spec.required_permissions
-            and not self._user_is_superadmin(request)
-            and not permissions.issuperset(spec.required_permissions)
-        ):
+        if not self._can_access_spec(request, spec, "read"):
             await self._audit(
                 request,
                 success=False,
@@ -288,12 +314,7 @@ class SettingsController(AdminController):
             self.flash(f"Configuration '{namespace}' not found.", "error")
             return RedirectResponse(url=self._settings_url(request), status_code=302)
 
-        permissions = self._user_permissions(request)
-        if (
-            spec.required_permissions
-            and not self._user_is_superadmin(request)
-            and not permissions.issuperset(spec.required_permissions)
-        ):
+        if not self._can_access_spec(request, spec, "edit"):
             await self._audit(
                 request,
                 success=False,

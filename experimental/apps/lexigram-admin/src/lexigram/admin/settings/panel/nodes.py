@@ -263,7 +263,12 @@ class ConfigSpec(metaclass=ConfigSpecMeta):
     label: str = ""
     icon: str = "cog"
     description: str = ""
+    # ``required_permissions`` remains the backwards-compatible shorthand
+    # for specs that use the same gate for reading and editing. New specs can
+    # expose a read-only view by setting separate permissions.
     required_permissions: frozenset[str] = frozenset()
+    read_permissions: frozenset[str] | None = None
+    edit_permissions: frozenset[str] | None = None
     package_source: str = "built-in"
     scope: Literal["global", "tenant"] = "global"
     store_name: str = "db"
@@ -287,6 +292,17 @@ class ConfigSpec(metaclass=ConfigSpecMeta):
             "scope": cls.scope,
             "store_name": cls.store_name,
             "runtime_status": cls.runtime_status,
+            "required_permissions": sorted(cls.required_permissions),
+            "read_permissions": sorted(
+                cls.read_permissions
+                if cls.read_permissions is not None
+                else cls.required_permissions
+            ),
+            "edit_permissions": sorted(
+                cls.edit_permissions
+                if cls.edit_permissions is not None
+                else cls.required_permissions
+            ),
             "nodes": [node.to_dict() for node in cls.get_nodes().values()],
         }
 

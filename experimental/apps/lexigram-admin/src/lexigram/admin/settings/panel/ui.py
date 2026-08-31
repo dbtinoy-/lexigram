@@ -272,8 +272,16 @@ class ConfigDashboardUI:
         errors = errors or {}
         nodes = spec.get("nodes", [])
         namespace = spec.get("namespace", "")
-        fields = [self.render_field(node, values, errors) for node in nodes]
-        editable = any(not node.get("readonly", False) for node in nodes)
+        can_edit = bool(spec.get("can_edit", True))
+        fields = [
+            self.render_field(
+                {**node, "readonly": node.get("readonly", False) or not can_edit},
+                values,
+                errors,
+            )
+            for node in nodes
+        ]
+        editable = can_edit and any(not node.get("readonly", False) for node in nodes)
 
         scope_label = "Tenant scoped" if spec.get("scope") == "tenant" else "Global"
         source_label = self._source_label(spec.get("store_name", "default"))
@@ -371,7 +379,11 @@ class ConfigDashboardUI:
                     el("div", *fields, class_="space-y-4"),
                     el(
                         "p",
-                        "These values are read-only and managed by the deployment environment.",
+                        (
+                            "You have view-only access to these settings."
+                            if not can_edit
+                            else "These values are read-only and managed by the deployment environment."
+                        ),
                         role="status",
                         class_="mt-6 rounded-lg bg-muted px-4 py-3 text-sm text-muted-foreground",
                     ),

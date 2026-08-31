@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -175,6 +176,61 @@ class TestSettingsSpecViewPermissionGate:
         req.path_params = {"namespace": "admin.gated"}
         await controller.spec_view(req)
         renderer.render_page.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_spec_view_allows_read_only_permission_without_edit_access(
+        self, renderer: MagicMock
+    ) -> None:
+        class ViewableSpec(ConfigSpec):
+            namespace = "admin.viewable"
+            label = "Viewable"
+            read_permissions = frozenset({"admin.settings.view"})
+            edit_permissions = frozenset({"admin.settings.edit"})
+            flag = BooleanNode(label="Flag", default=True)
+
+        registry = ConfigRegistry.with_defaults()
+        registry.register_spec(ViewableSpec)
+        controller = SettingsController(renderer=renderer, registry=registry)
+        user = SimpleNamespace(
+            permissions=frozenset({"admin.settings.view"}),
+            roles=[],
+            user_id="viewer",
+        )
+        req = _mock_request(user=user)
+        req.path_params = {"namespace": "admin.viewable"}
+
+        await controller.spec_view(req)
+
+        assert controller._can_access_spec(req, ViewableSpec, "read")
+        assert not controller._can_access_spec(req, ViewableSpec, "edit")
+        renderer.render_page.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_read_only_permission_cannot_save(
+        self, renderer: MagicMock
+    ) -> None:
+        class ViewableSpec(ConfigSpec):
+            namespace = "admin.viewable-save"
+            label = "Viewable"
+            read_permissions = frozenset({"admin.settings.view"})
+            edit_permissions = frozenset({"admin.settings.edit"})
+            flag = BooleanNode(label="Flag", default=True)
+
+        registry = ConfigRegistry.with_defaults()
+        registry.register_spec(ViewableSpec)
+        controller = SettingsController(renderer=renderer, registry=registry)
+        user = SimpleNamespace(
+            permissions=frozenset({"admin.settings.view"}),
+            roles=[],
+            user_id="viewer",
+        )
+        req = _mock_request(method="POST", user=user)
+        req.path_params = {"namespace": "admin.viewable-save"}
+
+        response = await controller.save_spec(req)
+
+        assert response.status_code == 302
+        assert response.headers["location"] == "/admin/settings/admin.viewable-save"
 
     @pytest.mark.asyncio
     async def test_spec_view_superadmin_bypasses_permission_gate(

@@ -144,3 +144,23 @@ def test_legacy_main_content_delegates_to_shared_settings_form_contract() -> Non
     assert 'name="csrf_token"' in html
     assert 'data-admin-form-status="true"' in html
     assert 'type="submit"' in html
+
+
+def test_view_only_settings_render_disabled_fields_without_save_actions() -> None:
+    registry = ConfigRegistry.with_defaults()
+    spec = registry.get_spec("admin.cache")
+    assert spec is not None
+    spec_data = spec.to_dict()
+    spec_data["can_edit"] = False
+
+    html = render_to_string(
+        ConfigDashboardUI().render_config_form(
+            spec_data,
+            values={"enabled": True, "default_ttl": 60},
+            action="/admin/settings/admin.cache",
+        )
+    )
+
+    assert "disabled" in html
+    assert 'type="submit"' not in html
+    assert "view-only access" in html

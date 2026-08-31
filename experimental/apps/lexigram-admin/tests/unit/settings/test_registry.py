@@ -254,6 +254,21 @@ class TestSpecMetadata:
         assert "namespace" in d
         assert "nodes" in d
 
+    def test_to_dict_exposes_legacy_and_read_edit_permissions(self) -> None:
+        class ViewableSpec(ConfigSpec):
+            """Spec with separate read and edit gates."""
+
+            namespace = "test.viewable"
+            required_permissions = frozenset({"admin.settings.edit"})
+            read_permissions = frozenset({"admin.settings.view"})
+            edit_permissions = frozenset({"admin.settings.edit"})
+
+        data = ViewableSpec.to_dict()
+
+        assert data["required_permissions"] == ["admin.settings.edit"]
+        assert data["read_permissions"] == ["admin.settings.view"]
+        assert data["edit_permissions"] == ["admin.settings.edit"]
+
 
 class TestOptionalFields:
     """Tests for optional field handling."""
