@@ -61,6 +61,12 @@ workspace packages.
 
 - `compileall` over admin and UI source: passed.
 - `git diff --check`: passed.
+- Workspace `ruff check .` and `ruff format --check .`: passed after formatting
+  the remaining baseline files touched by the delivery branch.
+- Full admin unit suite after the latest URL and quality passes: passed
+  (`4720 passed, 8 skipped, 13 warnings`).
+- Full `lexigram-ui` suite after the latest quality passes: passed
+  (`1341 passed, 78 skipped`).
 - Focused dashboard/navigation/contributor suite: passed (`74 passed, 1 warning`).
 - Focused SystemBox/Breadcrumbs/command-palette/settings suite: passed (`12 passed, 1 warning`).
 - Cluster/navigation suite: passed (`26 passed, 1 warning`).
@@ -95,10 +101,9 @@ Known environment-limited checks from the audit baseline:
 - [x] Open the requested development pull request without merging it.
 - [x] Add an explicit custom-prefix wizard regression and normalize legacy
       `/admin` wizard action URLs under the active mount.
-- [ ] Resolve the current GitHub Actions startup failure: runs for the latest
-      pushed commits fail all jobs before any workflow step executes, so the
-      quality, integration, and coverage gates have not produced actionable
-      results yet.
+- [ ] Resolve the current GitHub Actions startup failure: runs through
+      `cd9f99a` fail all jobs before any workflow step executes, so the quality,
+      integration, and coverage gates have not produced actionable results yet.
 - [ ] Run browser/live-preview QA for desktop/mobile shell behavior, dark mode,
       dashboard reorder feedback, HTMX swaps, and resource/form flows.
 - [x] Resolve the local auth-provider test dependency by provisioning
