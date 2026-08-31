@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import socket
 from typing import Any
+import pytest
 from urllib.request import urlopen
 
 from starlette.applications import Starlette
@@ -61,7 +62,9 @@ def test_server_is_torn_down() -> None:
     import threading
     import time
 
-    import uvicorn
+    uvicorn = pytest.importorskip(
+        "uvicorn", reason="uvicorn is required to serve browser tests"
+    )
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
         probe.bind(("127.0.0.1", 0))

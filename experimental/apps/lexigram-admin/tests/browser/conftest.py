@@ -115,9 +115,11 @@ def live_server() -> Iterator[Any]:
     Yields a factory taking an ASGI application and returning its base URL,
     so each test supplies the app it needs.
     """
-    import uvicorn
+    uvicorn = pytest.importorskip(
+        "uvicorn", reason="uvicorn is required to serve browser tests"
+    )
 
-    servers: list[uvicorn.Server] = []
+    servers: list[Any] = []
     threads: list[threading.Thread] = []
 
     def _start(app: Any, host: str = "127.0.0.1") -> str:
