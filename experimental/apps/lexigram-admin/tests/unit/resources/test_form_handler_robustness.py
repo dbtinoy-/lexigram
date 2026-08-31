@@ -158,6 +158,7 @@ async def test_create_hook_value_error_rerenders_as_form_level_error() -> None:
 async def test_edit_validates_against_existing_record_without_writing_readonly_data() -> None:
     class Model(BaseModel):
         name: str
+        status: str
         internal_note: str
 
     class ItemResource(Resource):
@@ -165,7 +166,9 @@ async def test_edit_validates_against_existing_record_without_writing_readonly_d
         model = Model
         readonly_fields = ("internal_note",)
 
-    source = _DataSource({"id": "1", "name": "Old", "internal_note": "server"})
+    source = _DataSource(
+        {"id": "1", "name": "Old", "status": "active", "internal_note": "server"}
+    )
     resource = ItemResource()
     resource._data_source = source
     renderer = _Renderer()

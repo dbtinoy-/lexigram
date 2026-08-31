@@ -517,8 +517,19 @@ class EditActionHandler:
                     validation_errors,
                 )
             assert validated_data is not None
+            # Validate against the complete candidate for required-field and
+            # cross-field checks, but persist only submitted changes. Passing
+            # the entire record to ``update`` would re-write stale values and
+            # could cause lost updates under concurrent edits. Hooks receive a
+            # patch and may add server-managed keys such as ``updated_at``.
+            existing_data = _record_to_mapping(record)
+            update_data = {
+                key: value
+                for key, value in validated_data.items()
+                if key in data or key not in existing_data
+            }
             try:
-                validated = await resource.before_update(item_id, validated_data)
+                validated = await resource.before_update(item_id, update_data)
                 if not isinstance(validated, Mapping):
                     raise TypeError("before_update must return a mapping")
                 updated_record = await data_source.update(item_id, dict(validated))
