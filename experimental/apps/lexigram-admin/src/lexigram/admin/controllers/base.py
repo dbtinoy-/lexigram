@@ -277,6 +277,34 @@ class AdminController(ControllerProtocol):
         except Exception:  # noqa: BLE001, S110 — non-fatal
             pass
 
+    async def _ensure_csrf_token(self, request: Request) -> None:
+        """Populate the request token used by shell and HTMX controls.
+
+        GET pages do not pass through CSRF validation, so middleware cannot
+        populate a token for dashboard actions, bulk controls, or other
+        non-form pages. Resolve the same service used by the middleware and
+        bind the token to the active session scope.
+        """
+        state = getattr(request, "state", None)
+        if state is None or getattr(state, "csrf_token", None):
+            return
+        try:
+            from lexigram.admin.auth.protocols import AdminCsrfServiceProtocol
+
+            container = getattr(state, "container", None) or getattr(
+                request.app.state, "container", None
+            )
+            if container is None:
+                return
+            csrf_service = await container.resolve(AdminCsrfServiceProtocol)
+            session = getattr(request, "scope", {}).get("session", {})
+            session_id = session.get("csrf_session_id") or session.get(
+                "admin_user_id", "anonymous"
+            )
+            state.csrf_token = csrf_service.generate_token(session_id)
+        except Exception:  # noqa: BLE001 — rendering must remain best-effort
+            return
+
     async def render_admin(
         self,
         request: Request,
@@ -297,6 +325,7 @@ class AdminController(ControllerProtocol):
         Returns:
             HTMLResponse with rendered admin page
         """
+        await self._ensure_csrf_token(request)
         # Inject runtime theme overrides (primary_color, site_name)
         await self._apply_theme_overrides(request, extra_context)
         # Inject tenant context (current tenant, switchable list, CSRF token)

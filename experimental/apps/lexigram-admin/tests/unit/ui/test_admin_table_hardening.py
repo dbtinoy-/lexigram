@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
+from typing import Any
 
 from lexigram.admin.actions.base import BulkAction
+from lexigram.admin.actions.types import ActionContext
 from lexigram.admin.actions.standard import DeleteAction, DeleteBulkAction, EditAction
 from lexigram.admin.resources.config import TableConfiguration
 from lexigram.admin.resources.list_columns import get_bulk_actions
@@ -17,6 +19,12 @@ from lexigram.admin.ui.organisms.data_table.actions import (
 )
 from lexigram.ui import TableState, render_to_string
 from lexigram.ui.columns.types import TextColumn
+
+
+class _GenericBulkAction(BulkAction):
+    async def execute(self, records: list[Any], ctx: ActionContext) -> Any:
+        del records, ctx
+        return None
 
 
 class _Permissions:
@@ -195,7 +203,7 @@ def test_canonical_bulk_action_uses_the_registered_bulk_route():
 
 def test_generic_bulk_action_posts_to_canonical_route_with_selected_ids():
     html = render_bulk_action_button(
-        BulkAction(name="archive", label="Archive"),
+        _GenericBulkAction(name="archive", label="Archive"),
         resource_name="users",
         resource_prefix="/admin/users",
     )
@@ -205,6 +213,23 @@ def test_generic_bulk_action_posts_to_canonical_route_with_selected_ids():
     assert 'hx-vals=' in rendered
     assert 'hx-include=' in rendered
     assert 'hx-params=' not in rendered
+
+
+def test_bulk_csv_action_uses_native_download_submission():
+    from lexigram.admin.actions.standard import ExportBulkAction
+
+    rendered = str(
+        render_bulk_action_button(
+            ExportBulkAction(),
+            resource_name="users",
+            resource_prefix="/admin/users",
+        )
+    )
+
+    assert 'data-bulk-download-url="/admin/users/bulk"' in rendered
+    assert 'data-bulk-action="export"' in rendered
+    assert "LexigramDownloadBulk" in rendered
+    assert "hx-post" not in rendered
 
 
 def test_cache_key_isolated_by_tenant_and_table_state():

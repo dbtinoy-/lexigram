@@ -154,7 +154,12 @@ class Modal(Component):
                 re.search(r'<button[^>]*type=["\\\']submit', content_html)
             )
 
-            if form_present and not form_id and (form_suppresses or not has_own_submit):
+            # Modal footers are owned by a form component that explicitly
+            # delegates its actions (``suppress_submit``). A raw HTML form is
+            # intentionally left untouched: callers that provide raw markup
+            # also own its submit/cancel semantics and should not receive
+            # invisible, out-of-form controls injected by the container.
+            if form_obj and form_suppresses and not form_id:
                 auto_form_id = "modal-form"
                 rendered_children = [
                     _inject_form_id(s, auto_form_id) if isinstance(s, str) else s
@@ -162,7 +167,7 @@ class Modal(Component):
                 ]
                 form_id = auto_form_id
 
-            if form_present and form_id and (form_suppresses or not has_own_submit):
+            if form_obj and form_suppresses and form_id:
                 cancel_btn = Button(
                     "Cancel",
                     variant=self.DEFAULT_CANCEL_VARIANT,

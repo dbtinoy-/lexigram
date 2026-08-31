@@ -7,6 +7,7 @@ from typing import Any
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
+from lexigram.admin.resources.urls import admin_prefix_from_request, mount_admin_url
 from lexigram.admin.services.search_service import SearchService
 from lexigram.di.decorators import inject
 from lexigram.logging import get_logger
@@ -27,7 +28,7 @@ _STATIC_COMMANDS: list[dict[str, Any]] = [
         "icon": "moon",
         "shortcut": "T D",
     },
-    {"label": "Settings", "href": "#", "icon": "settings", "shortcut": ","},
+    {"label": "Settings", "href": "/admin/settings", "icon": "settings", "shortcut": ","},
 ]
 
 _MIN_QUERY_LENGTH = 2
@@ -48,8 +49,13 @@ class CommandPaletteController:
         query = (request.query_params.get("q") or "").strip()
         commands: list[dict[str, Any]] = []
 
-        # Filter static commands by query
-        for cmd in _STATIC_COMMANDS:
+        admin_prefix = admin_prefix_from_request(request)
+
+        # Filter static commands by query without mutating the shared defaults.
+        for original in _STATIC_COMMANDS:
+            cmd = dict(original)
+            if cmd.get("href"):
+                cmd["href"] = mount_admin_url(cmd["href"], admin_prefix)
             if not query or query.lower() in cmd["label"].lower():
                 commands.append(cmd)
 
@@ -65,7 +71,7 @@ class CommandPaletteController:
                     commands.append(
                         {
                             "label": f"{r.resource_label}: {r.title}",
-                            "href": r.url,
+                            "href": mount_admin_url(r.url, admin_prefix),
                             "icon": "search",
                             "subtitle": r.subtitle,
                         }

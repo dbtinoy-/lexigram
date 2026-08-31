@@ -36,6 +36,7 @@ class HeaderConfig:
     profile_url: str = "/admin/profile"
     settings_url: str = "/admin/settings"
     logout_url: str = "/admin/logout"
+    notifications_url: str = "/admin/notifications"
 
     # Custom
     extra_items: list[dict[str, str]] = field(default_factory=list)
@@ -148,7 +149,6 @@ class HeaderRenderer:
                 </div>
                 <kbd class="search-shortcut hidden sm:block">{escape(self.config.search_hotkey)}</kbd>
             </div>
-            </div>
         </div>
         """
 
@@ -202,11 +202,14 @@ class HeaderRenderer:
         items = ""
         if notifications:
             for n in notifications[:5]:
+                url = n.get("url")
+                tag = "a" if url else "div"
+                href = f' href="{escape(url)}"' if url else ""
                 items += f"""
-                <a href="{escape(n.get("url", "#"))}" class="notification-item">
+                <{tag}{href} class="notification-item">
                     <span class="notification-title">{escape(n.get("title", ""))}</span>
                     <span class="notification-time">{escape(n.get("time", ""))}</span>
-                </a>
+                </{tag}>
                 """
         else:
             items = '<p class="notification-empty">No new notifications</p>'
@@ -222,7 +225,7 @@ class HeaderRenderer:
                 <div class="notifications-list">
                     {items}
                 </div>
-                <a href="/admin/notifications" class="notifications-footer">View all</a>
+                <a href="{escape(self.config.notifications_url)}" class="notifications-footer">View all</a>
             </div>
         </div>
         """

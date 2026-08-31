@@ -76,6 +76,8 @@ class ArchiveOperationsMixin:
             raise RuntimeError("No data source attached to this resource")
 
         original = await data_source.find_one(item_id)
+        if original is None:
+            raise LookupError(f"Record {item_id} not found")
         data: dict = dict(original) if isinstance(original, dict) else {}
         if not data and hasattr(original, "__dict__"):
             data = dict(original.__dict__)
@@ -128,11 +130,15 @@ class ArchiveOperationsMixin:
             raise RuntimeError("No data source attached to this resource")
 
         original = await data_source.find_one(item_id)
+        if original is None:
+            raise LookupError(f"Record {item_id} not found")
         data: dict = dict(original) if isinstance(original, dict) else {}
         if not data and hasattr(original, "__dict__"):
             data = dict(original.__dict__)
         data = await self.before_restore(data)
         new_record = await data_source.update(item_id, data)
+        if new_record is None:
+            raise LookupError(f"Record {item_id} not found")
         await self.after_restore(new_record)
         return new_record
 
@@ -174,11 +180,15 @@ class ArchiveOperationsMixin:
             raise RuntimeError("No data source attached to this resource")
 
         original = await data_source.find_one(item_id)
+        if original is None:
+            raise LookupError(f"Record {item_id} not found")
         data: dict = dict(original) if isinstance(original, dict) else {}
         if not data and hasattr(original, "__dict__"):
             data = dict(original.__dict__)
         await self.before_purge(data)
-        await data_source.delete(item_id)
+        deleted = await data_source.delete(item_id)
+        if not deleted:
+            raise LookupError(f"Record {item_id} not found")
         await self.after_purge(item_id)
 
 

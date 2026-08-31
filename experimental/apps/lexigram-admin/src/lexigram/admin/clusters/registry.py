@@ -116,7 +116,9 @@ class ClusterRegistry(Registry[str, Cluster]):
         """
         return self._by_group_index.get(group)
 
-    def for_path(self, path: str | None) -> Cluster | None:
+    def for_path(
+        self, path: str | None, admin_prefix: str = "/admin"
+    ) -> Cluster | None:
         """Return the cluster whose center namespace contains the path.
 
         Matches ``/admin/{slug}`` and anything below it, regardless of the
@@ -131,8 +133,9 @@ class ClusterRegistry(Registry[str, Cluster]):
         """
         if not path:
             return None
+        prefix_base = (admin_prefix or "/admin").rstrip("/") or "/admin"
         for cluster in self.all():
-            prefix = f"/admin/{cluster.slug}"
+            prefix = f"{prefix_base}/{cluster.slug}"
             if path == prefix or path.startswith(prefix + "/"):
                 return cluster
         return None

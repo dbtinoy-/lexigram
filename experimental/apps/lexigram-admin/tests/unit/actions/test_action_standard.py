@@ -142,12 +142,14 @@ class TestExportAction:
 
 
 class TestExportBulkAction:
-    def test_bulk_export_url(self) -> None:
+    def test_bulk_export_uses_native_download_metadata(self) -> None:
         action = ExportBulkAction()
         ctx = ActionContext(resource_name="users")
         result = action.render_button([{"id": "1"}, {"id": "2"}], ctx)
-        assert "/users/bulk/export" in result
-        assert "hx-get" in result
+        assert 'data-bulk-download-url="/users/bulk"' in result
+        assert 'data-bulk-action="export"' in result
+        assert "LexigramDownloadBulk" in result
+        assert "hx-post" not in result
 
     def test_bulk_export_defaults(self) -> None:
         action = ExportBulkAction()
@@ -159,8 +161,8 @@ class TestExportBulkAction:
         action = ExportBulkAction(label="Export All")
         assert action.label == "Export All"
 
-    def test_bulk_export_no_records(self) -> None:
+    def test_bulk_export_no_records_still_renders_deferred_download(self) -> None:
         action = ExportBulkAction()
         ctx = ActionContext(resource_name="users")
         result = action.render_button([], ctx)
-        assert "/users/bulk/export" in result
+        assert 'data-bulk-download-url="/users/bulk"' in result

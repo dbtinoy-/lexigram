@@ -20,7 +20,18 @@ from lexigram.primitives.registry import Registry
 from lexigram.ui import el, render_to_string
 
 
-def _render_live_widget_script() -> str:
+def _admin_endpoint(path: str, admin_prefix: str) -> str:
+    """Normalize a widget endpoint to the active admin mount."""
+    normalized = path if path.startswith("/") else f"/{path}"
+    prefix = (admin_prefix or "/admin").rstrip("/") or "/admin"
+    if normalized == prefix or normalized.startswith(f"{prefix}/"):
+        return normalized
+    if normalized == "/admin" or normalized.startswith("/admin/"):
+        return f"{prefix}{normalized[len('/admin'):]}"
+    return normalized
+
+
+def _render_live_widget_script(admin_prefix: str = "/admin") -> str:
     """Shared EventSource connection driving all live widgets on the page.
 
     One connection per page, not one per widget — browsers cap concurrent
@@ -32,12 +43,13 @@ def _render_live_widget_script() -> str:
     via the same snapshot endpoint the widget already renders from — no
     separate patch/diff wire format).
     """
+    prefix = (admin_prefix or "/admin").rstrip("/") or "/admin"
     return (
         "<script>"
         "(function(){"
         "if(window.__lexigramLiveWidgets)return;"
         "window.__lexigramLiveWidgets=true;"
-        "var es=new EventSource('/admin/_sse/widgets');"
+        f"var es=new EventSource('{prefix}/_sse/widgets');"
         "es.onmessage=function(ev){"
         "var data;"
         "try{data=JSON.parse(ev.data);}catch(e){return;}"
@@ -82,6 +94,7 @@ class WidgetRegistry(Registry[str, type[IWidget]]):
         contributor_widgets: list[DashboardWidgetDefinition],
         width: str = "100%",
         page_filters: dict[str, Any] | None = None,
+        admin_prefix: str = "/admin",
     ) -> str:
         """Render HTML for all contributor-supplied ``DashboardWidgetDefinition`` items.
 
@@ -133,11 +146,12 @@ class WidgetRegistry(Registry[str, type[IWidget]]):
                     widget_def,
                     width=width,
                     page_filters=page_filters,
+                    admin_prefix=admin_prefix,
                 )
             )
 
         if any(w.live_resource_types for w in contributor_widgets):
-            parts.append(_render_live_widget_script())
+            parts.append(_render_live_widget_script(admin_prefix))
 
         return "".join(parts)
 
@@ -148,6 +162,7 @@ def _render_contributor_card(
     widget_def: DashboardWidgetDefinition,
     width: str,
     page_filters: dict[str, Any] | None,
+    admin_prefix: str,
 ) -> str:
     """Render a single contributor widget card as HTML."""
     # Map widget size to grid column span
@@ -199,11 +214,14 @@ def _render_contributor_card(
         title_children.append(icon_html)
     title_children.append(widget_def.title)
 
+    config_endpoint = _admin_endpoint(
+        f"/admin/core/widgets/{widget_def.name}/config", admin_prefix
+    )
     cog = el(
         "button",
         "⚙",
         **{
-            "hx-get": f"/admin/core/widgets/{widget_def.name}/config",
+            "hx-get": config_endpoint,
             "hx-target": "#slide-over-container",
             "hx-swap": "innerHTML",
             "hx-push-url": "false",
@@ -249,7 +267,9 @@ def _render_contributor_card(
     body_kwargs: dict[str, Any] = {
         "class": "widget-body",
         "id": f"widget-{widget_def.name}-body",
-        "hx-get": widget_fetch_url(widget_def.render_endpoint, page_filters),
+        "hx-get": widget_fetch_url(
+            _admin_endpoint(widget_def.render_endpoint, admin_prefix), page_filters
+        ),
         "hx-trigger": load_trigger,
         "hx-swap": "innerHTML",
     }
@@ -278,6 +298,8 @@ def _render_contributor_card(
 def render_dashboard_widgets(
     definitions: list[DashboardWidgetDefinition],
     registry: WidgetRegistry,
+    *,
+    admin_prefix: str = "/admin",
 ) -> str:
     """Render all dashboard widget definitions using the provided registry.
 
@@ -292,7 +314,9 @@ def render_dashboard_widgets(
     Returns:
         Concatenated HTML string for all widget cards.
     """
-    return registry.render_contributor_widgets(definitions)
+    return registry.render_contributor_widgets(
+        definitions, admin_prefix=admin_prefix
+    )
 
 
 __all__ = ["WidgetRegistry", "render_dashboard_widgets"]

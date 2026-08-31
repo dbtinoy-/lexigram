@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import inspect
 from typing import Any
 
 from starlette.requests import Request
@@ -21,6 +22,14 @@ class ResourceBulkMixin:
     meta: ResourceMeta
 
     get_data_source: Any
+
+    async def _record_bulk_permission(self, hook: Any, item: Any) -> bool:
+        """Evaluate a sync/async record permission hook fail-closed."""
+        try:
+            result = hook(item)
+            return bool(await result) if inspect.isawaitable(result) else bool(result)
+        except Exception:  # noqa: BLE001 — authorization must fail closed
+            return False
 
     async def bulk_delete_confirm(self, request: Request) -> Response:
         """Render a bulk delete confirmation slide-over panel.
@@ -128,13 +137,14 @@ class ResourceBulkMixin:
                 return HTMLResponse("Forbidden", status_code=403)
 
             result = await self.execute_bulk_action(str(action), ids)  # type: ignore[arg-type]
+            message = str(result)
 
-            ToastNotification.make(str(result)).success().title("Bulk action").send()
+            ToastNotification.make(message).success().title("Bulk action").send()
             if ctx.is_htmx:
-                response = HTMLResponse(render_to_string(el("p", str(result))))
+                response = HTMLResponse(render_to_string(el("p", message)))
                 response.headers["HX-Trigger"] = (
                     '{"refresh-list":true,"show-toast":{"message":"'
-                    + result.replace('"', '\\"')
+                    + message.replace('"', '\\"')
                     + '","type":"success"}}'
                 )
                 return response
@@ -151,10 +161,8 @@ class ResourceBulkMixin:
         ``bulk_threshold`` (from ``TasksIntegrationConfig``), the action is
         dispatched through the tasks integration instead of running inline.
         """
-        if self._should_dispatch_via_tasks(len(ids)):
-            return await self._dispatch_via_tasks(action, ids)
-
         data_source = self.get_data_source()
+        action = {"delete_selected": "delete"}.get(action, action)
 
         if action in ("delete", "purge"):
             # Honor the resource's per-record can_delete hook, mirroring
@@ -166,21 +174,30 @@ class ResourceBulkMixin:
             if can_delete:
                 for item_id in ids:
                     item = await data_source.find_one(item_id)
-                    if item is not None and not can_delete(item):
+                    if item is not None and not await self._record_bulk_permission(
+                        can_delete, item
+                    ):
                         return f"Refused: record {item_id} is protected from deletion"
+            if self._should_dispatch_via_tasks(len(ids)):
+                return await self._dispatch_via_tasks(action, ids)
             count = await data_source.bulk_delete(ids)
             verb = "Purged" if action == "purge" else "Deleted"
             return f"{verb} {count} items"
 
         if action == "restore":
-            restored = 0
             can_update = getattr(self, "can_update", None)
             for item_id in ids:
                 item = await data_source.find_one(item_id)
                 if item is None:
                     continue
-                if can_update and not can_update(item):
+                if can_update and not await self._record_bulk_permission(
+                    can_update, item
+                ):
                     return f"Refused: record {item_id} is protected from update"
+            if self._should_dispatch_via_tasks(len(ids)):
+                return await self._dispatch_via_tasks(action, ids)
+            restored = 0
+            for item_id in ids:
                 updated = await data_source.update(item_id, {"deleted_at": None})
                 if updated is not None:
                     restored += 1

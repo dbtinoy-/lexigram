@@ -11,6 +11,7 @@ import platform
 from typing import TYPE_CHECKING, Any, cast
 
 from lexigram.admin.realtime import AdminEvent, SubjectAdminEventHub
+from lexigram.admin.resources.urls import DEFAULT_ADMIN_PREFIX, admin_url
 from lexigram.contracts.admin import (
     ChartContent,
     ChartPoint,
@@ -194,7 +195,7 @@ class CoreAdminContributor(BaseAdminContributor):
                 name="health",
                 title="Framework Health",
                 contributor="core",
-                render_endpoint="/admin/core/widgets/health",
+                render_endpoint=admin_url(DEFAULT_ADMIN_PREFIX, "core/widgets/health"),
                 size=WidgetSize.FULL,
                 category=WidgetCategory.HEALTH,
                 view_kind=WidgetKind.EMPTY,
@@ -207,7 +208,7 @@ class CoreAdminContributor(BaseAdminContributor):
                 name="activity",
                 title="Recent Activity",
                 contributor="core",
-                render_endpoint="/admin/core/widgets/activity",
+                render_endpoint=admin_url(DEFAULT_ADMIN_PREFIX, "core/widgets/activity"),
                 size=WidgetSize.LARGE,
                 category=WidgetCategory.ACTIVITY,
                 view_kind=WidgetKind.TABLE,
@@ -221,7 +222,7 @@ class CoreAdminContributor(BaseAdminContributor):
                 name="chart_metrics",
                 title="Framework Metrics",
                 contributor="core",
-                render_endpoint="/admin/core/widgets/chart_metrics",
+                render_endpoint=admin_url(DEFAULT_ADMIN_PREFIX, "core/widgets/chart_metrics"),
                 size=WidgetSize.FULL,
                 category=WidgetCategory.METRICS,
                 view_kind=WidgetKind.CHART,
@@ -237,7 +238,7 @@ class CoreAdminContributor(BaseAdminContributor):
         return [
             NavigationContribution(
                 label="Dashboard",
-                url="/admin/",
+                url=f"{DEFAULT_ADMIN_PREFIX}/",
                 icon="layout-dashboard",
                 group="",
                 order=0,
@@ -251,7 +252,7 @@ class CoreAdminContributor(BaseAdminContributor):
                 name="admin_core",
                 contributor="core",
                 component="Admin Core",
-                check_endpoint="/admin/core/health/admin_core",
+                check_endpoint=admin_url(DEFAULT_ADMIN_PREFIX, "core/health/admin_core"),
                 icon="shield-check",
                 description="Admin panel core services health.",
             ),
@@ -264,7 +265,7 @@ class CoreAdminContributor(BaseAdminContributor):
                 name="system-info",
                 title="System Info",
                 contributor=self.package_source,
-                route_path="/admin/system/info",
+                route_path=admin_url(DEFAULT_ADMIN_PREFIX, "system/info"),
                 handler=_SystemInfoPageHandler(self._health),
                 icon="info",
                 category="System",

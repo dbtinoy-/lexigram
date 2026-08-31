@@ -19,6 +19,7 @@ class UserBox(Component):
         roles: list[str] | None = None,
         user_menu_items: list[dict] | None = None,
         user: Any | None = None,
+        logout_url: str = "/admin/logout",
         **props: Any,
     ) -> None:
         super().__init__(
@@ -29,6 +30,7 @@ class UserBox(Component):
             roles=roles,
             user_menu_items=user_menu_items,
             user=user,
+            logout_url=logout_url,
             **props,
         )
         self.username = username
@@ -38,6 +40,7 @@ class UserBox(Component):
         self.roles = roles or []
         self.user_menu_items = user_menu_items or []
         self.user = user
+        self.logout_url = logout_url
 
     def render(self) -> Any:
         from lexigram.ui import Dropdown
@@ -117,15 +120,26 @@ class UserBox(Component):
                     class_name="w-4 h-4 mr-2 text-muted-foreground group-hover:text-muted-foreground dark:text-muted-foreground",
                 )
 
+            item_content = (
+                icon_node,
+                menu_item.get("label", ""),
+            )
+            item_classes = "group flex items-center px-4 py-2 text-sm text-foreground hover:bg-muted dark:hover:bg-card rounded-md"
             items.append(
                 el(
                     "a",
-                    icon_node,
-                    menu_item.get("label", ""),
+                    *item_content,
                     href=href,
-                    class_="group flex items-center px-4 py-2 text-sm text-foreground hover:bg-muted dark:hover:bg-card rounded-md",
+                    class_=item_classes,
                     **attrs,
-                ),
+                )
+                if href and href != "#"
+                else el(
+                    "span",
+                    *item_content,
+                    class_=item_classes,
+                    **attrs,
+                )
             )
 
         if items:
@@ -135,7 +149,7 @@ class UserBox(Component):
             el(
                 "a",
                 "Sign out",
-                href="/admin/logout",
+                href=self.logout_url,
                 class_="block px-4 py-2 text-sm text-destructive hover:bg-destructive/10 rounded-md",
             ),
         )

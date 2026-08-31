@@ -67,6 +67,7 @@ class ClusterCenterController(AdminController):
         from lexigram.admin.engine.renderer import resolve_admin_nav
         from lexigram.admin.navigation.clusters import cluster_items
         from lexigram.admin.ui.organisms.secondary_nav import ClusterLayout
+        from lexigram.admin.resources.urls import admin_prefix_from_request, admin_url
         from lexigram.ui import render_to_string
 
         state = getattr(request, "app", None)
@@ -76,7 +77,10 @@ class ClusterCenterController(AdminController):
             else None
         )
         cluster = self._cluster
-        content = self._render_overview(cluster_items(groups, cluster=cluster))
+        admin_prefix = admin_prefix_from_request(request)
+        content = self._render_overview(
+            cluster_items(groups, cluster=cluster), admin_prefix=admin_prefix
+        )
         _, _, secondary_nav = resolve_admin_nav(request)
         if secondary_nav:
             content = render_to_string(
@@ -90,7 +94,7 @@ class ClusterCenterController(AdminController):
             content,
             title=str(cluster.label),
             breadcrumbs=self.generate_breadcrumbs(
-                ("Home", "/admin/"),
+                ("Home", admin_url(admin_prefix, "")),
                 current=str(cluster.label),
             ),
         )
@@ -111,7 +115,7 @@ class ClusterCenterController(AdminController):
             class_="mb-2",
         )
 
-    def _render_overview(self, items: list[Any]) -> Any:
+    def _render_overview(self, items: list[Any], *, admin_prefix: str = "/admin") -> Any:
         if not items:
             return el(
                 "div",
@@ -129,7 +133,7 @@ class ClusterCenterController(AdminController):
                 class_="text-center py-16",
             )
 
-        cards = [self._render_card(item) for item in items]
+        cards = [self._render_card(item, admin_prefix=admin_prefix) for item in items]
         return el(
             "div",
             el(
@@ -140,7 +144,7 @@ class ClusterCenterController(AdminController):
             class_="p-6",
         )
 
-    def _render_card(self, item: Any) -> Any:
+    def _render_card(self, item: Any, *, admin_prefix: str = "/admin") -> Any:
         from lexigram.admin.navigation.clusters import cluster_child_href
 
         cluster = self._cluster
@@ -152,7 +156,9 @@ class ClusterCenterController(AdminController):
                     child.label,
                     class_="truncate",
                 ),
-                href=cluster_child_href(child.url, cluster=cluster),
+                href=cluster_child_href(
+                    child.url, cluster=cluster, admin_prefix=admin_prefix
+                ),
                 class_="block px-3 py-1.5 text-sm text-muted-foreground hover:text-primary-600 dark:hover:text-primary-400 transition-colors",
             )
             for child in item.children
@@ -178,7 +184,9 @@ class ClusterCenterController(AdminController):
                     ),
                     class_="text-sm text-muted-foreground mt-1",
                 ),
-                href=cluster_child_href(item.url, cluster=cluster),
+                href=cluster_child_href(
+                    item.url, cluster=cluster, admin_prefix=admin_prefix
+                ),
                 class_="block",
             ),
             (

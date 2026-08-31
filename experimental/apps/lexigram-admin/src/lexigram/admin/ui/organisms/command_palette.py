@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from typing import Any
 
 from lexigram.admin.settings import get_admin_settings
@@ -12,12 +13,18 @@ class CommandPalette(Component):
     Powered by Alpine.js for state and keyboard handling.
     """
 
-    def __init__(self, commands: list[dict[str, str]] | None = None, **props) -> None:
+    def __init__(
+        self,
+        commands: list[dict[str, str]] | None = None,
+        admin_prefix: str = "/admin",
+        **props,
+    ) -> None:
         super().__init__(commands=commands or [], **props)
+        self.admin_prefix = admin_prefix.rstrip("/") or "/admin"
         self.commands = commands or [
             {
                 "label": "Go to Dashboard",
-                "href": "/admin/",
+                "href": f"{self.admin_prefix}/",
                 "icon": "home",
                 "shortcut": "G D",
             },
@@ -33,7 +40,12 @@ class CommandPalette(Component):
                 "icon": "moon",
                 "shortcut": "T D",
             },
-            {"label": "Settings", "href": "#", "icon": "settings", "shortcut": ","},
+            {
+                "label": "Settings",
+                "href": f"{self.admin_prefix}/settings",
+                "icon": "settings",
+                "shortcut": ",",
+            },
         ]
 
     def render(self) -> Any:
@@ -50,6 +62,17 @@ class CommandPalette(Component):
             )
             c["icon_html"] = str(icon_node)
             processed_commands.append(c)
+
+        command_palette_url = f"{self.admin_prefix}/command-palette"
+        # JSON is embedded in a script element. Escape HTML-significant
+        # characters so a contributor-supplied command label cannot terminate
+        # the script block before Alpine parses the data.
+        commands_json = (
+            json.dumps(processed_commands, ensure_ascii=False)
+            .replace("<", "\\u003c")
+            .replace(">", "\\u003e")
+            .replace("&", "\\u0026")
+        )
 
         # Alpine.js state for the palette (kept for reference)
         _x_data = {
@@ -244,8 +267,8 @@ class CommandPalette(Component):
                         search: '',
                         selectedIndex: 0,
                         searchTimeout: null,
-                        commands: {processed_commands},
-                        staticCommands: {processed_commands},
+                        commands: {commands_json},
+                        staticCommands: {commands_json},
                         get filteredCommands() {{
                             return this.commands;
                         }},
@@ -264,7 +287,7 @@ class CommandPalette(Component):
                                 return;
                             }}
                             try {{
-                                const response = await fetch(`/admin/command-palette?q=${{encodeURIComponent(query)}}`);
+                                const response = await fetch(`{command_palette_url}?q=${{encodeURIComponent(query)}}`);
                                 const data = await response.json();
                                 this.commands = data;
                             }} catch (e) {{

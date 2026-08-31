@@ -15,6 +15,7 @@ from lexigram.admin.auth.types import AdminSecurityEventType
 from lexigram.admin.config import AdminRbacConfig
 from lexigram.admin.controllers.base import AdminController
 from lexigram.admin.multitenancy.adapter import resolve_tenant_id
+from lexigram.admin.resources.urls import admin_prefix_from_request, admin_url
 from lexigram.admin.rbac.super_admin import is_super_admin
 from lexigram.admin.settings.panel import BooleanNode, SecretNode
 from lexigram.admin.settings.panel.layout import ConfigLayout
@@ -67,6 +68,15 @@ class SettingsController(AdminController):
         """Use the spec's configured store when registered, else the in-memory default."""
         return (
             spec.store_name if self._registry.has_store(spec.store_name) else "default"
+        )
+
+    @staticmethod
+    def _settings_url(request: Request, namespace: str = "") -> str:
+        """Build a settings URL under the request's configured admin mount."""
+        return admin_url(
+            admin_prefix_from_request(request),
+            "settings",
+            namespace,
         )
 
     @staticmethod
@@ -165,7 +175,7 @@ class SettingsController(AdminController):
         categories, visible = self._build_categories(request)
         if visible:
             return RedirectResponse(
-                url=f"/admin/settings/{visible[0].namespace}",
+                url=self._settings_url(request, visible[0].namespace),
                 status_code=302,
             )
 
@@ -175,13 +185,14 @@ class SettingsController(AdminController):
             active_namespace=None,
             content=None,
             title="Settings",
+            admin_prefix=admin_prefix_from_request(request),
         )
         return await self.render_admin(
             request,
             layout,
             title="Settings",
             breadcrumbs=self.generate_breadcrumbs(
-                ("Home", "/admin/"),
+                ("Home", admin_url(admin_prefix_from_request(request), "")),
                 current="Settings",
             ),
         )
@@ -193,7 +204,7 @@ class SettingsController(AdminController):
         spec = self._registry.get_spec(namespace)
         if not spec or not spec.get_nodes():
             self.flash(f"Configuration '{namespace}' not found.", "error")
-            return RedirectResponse(url="/admin/settings", status_code=302)
+            return RedirectResponse(url=self._settings_url(request), status_code=302)
 
         permissions = self._user_permissions(request)
         if (
@@ -208,7 +219,7 @@ class SettingsController(AdminController):
                 reason="permission_denied",
             )
             self.flash("You do not have permission to view this setting.", "error")
-            return RedirectResponse(url="/admin/settings", status_code=302)
+            return RedirectResponse(url=self._settings_url(request), status_code=302)
 
         categories, _ = self._build_categories(request)
         tenant_id = (
@@ -224,7 +235,7 @@ class SettingsController(AdminController):
         form_content = ui.render_config_form(
             spec=spec.to_dict(),
             values=values,
-            action=f"/admin/settings/{namespace}",
+            action=self._settings_url(request, namespace),
             csrf_token=self._get_csrf_token(request),
         )
 
@@ -234,6 +245,7 @@ class SettingsController(AdminController):
             active_namespace=namespace,
             content=form_content,
             title="Settings",
+            admin_prefix=admin_prefix_from_request(request),
         )
 
         return await self.render_admin(
@@ -241,8 +253,8 @@ class SettingsController(AdminController):
             layout,
             title=f"{spec.label or namespace} - Settings",
             breadcrumbs=self.generate_breadcrumbs(
-                ("Home", "/admin/"),
-                ("Settings", "/admin/settings"),
+                ("Home", admin_url(admin_prefix_from_request(request), "")),
+                ("Settings", self._settings_url(request)),
                 current=spec.label or namespace,
             ),
         )
@@ -254,7 +266,7 @@ class SettingsController(AdminController):
         spec = self._registry.get_spec(namespace)
         if not spec or not spec.get_nodes():
             self.flash(f"Configuration '{namespace}' not found.", "error")
-            return RedirectResponse(url="/admin/settings", status_code=302)
+            return RedirectResponse(url=self._settings_url(request), status_code=302)
 
         permissions = self._user_permissions(request)
         if (
@@ -270,7 +282,7 @@ class SettingsController(AdminController):
             )
             self.flash("You do not have permission to edit this setting.", "error")
             return RedirectResponse(
-                url=f"/admin/settings/{namespace}",
+                url=self._settings_url(request, namespace),
                 status_code=302,
             )
 
@@ -349,7 +361,7 @@ class SettingsController(AdminController):
             form_content = ui.render_config_form(
                 spec=spec.to_dict(),
                 values=values,
-                action=f"/admin/settings/{namespace}",
+                action=self._settings_url(request, namespace),
                 csrf_token=self._get_csrf_token(request),
             )
             form_html = render_to_string(form_content)
@@ -364,7 +376,7 @@ class SettingsController(AdminController):
         else:
             self.flash("Settings saved successfully.", "success")
         return RedirectResponse(
-            url=f"/admin/settings/{namespace}",
+            url=self._settings_url(request, namespace),
             status_code=302,
         )
 

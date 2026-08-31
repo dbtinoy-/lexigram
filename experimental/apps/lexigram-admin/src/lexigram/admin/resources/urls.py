@@ -48,6 +48,26 @@ def admin_prefix_from_request(request: Any) -> str:
     return DEFAULT_ADMIN_PREFIX
 
 
+def mount_admin_url(url: str | None, prefix: str) -> str:
+    """Move a legacy ``/admin`` URL under a configured admin mount.
+
+    Contributor and search integrations historically return absolute admin
+    paths. Keep external URLs untouched while making those internal paths
+    work when the panel is mounted at a custom prefix.
+    """
+    if not url:
+        return ""
+    normalized = url if url.startswith("/") else f"/{url}"
+    mount = (prefix or DEFAULT_ADMIN_PREFIX).rstrip("/") or DEFAULT_ADMIN_PREFIX
+    if normalized == mount or normalized.startswith(f"{mount}/"):
+        return normalized
+    if normalized == DEFAULT_ADMIN_PREFIX or normalized.startswith(
+        f"{DEFAULT_ADMIN_PREFIX}/"
+    ):
+        return f"{mount}{normalized[len(DEFAULT_ADMIN_PREFIX):]}"
+    return normalized
+
+
 def admin_url(
     prefix: str,
     resource_name: str,
@@ -77,4 +97,9 @@ def admin_url(
     return path
 
 
-__all__ = ["DEFAULT_ADMIN_PREFIX", "admin_prefix_from_request", "admin_url"]
+__all__ = [
+    "DEFAULT_ADMIN_PREFIX",
+    "admin_prefix_from_request",
+    "admin_url",
+    "mount_admin_url",
+]

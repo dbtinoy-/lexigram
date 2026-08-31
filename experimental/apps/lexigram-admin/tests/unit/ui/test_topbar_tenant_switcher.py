@@ -39,6 +39,13 @@ class TestTopBarTenantSwitcher:
         bell_idx = html.index("notifications")
         assert switcher_idx < bell_idx
 
+    def test_custom_prefix_threads_notification_endpoints(self) -> None:
+        html = render_to_string(TopBar(title="Admin", admin_prefix="/backoffice"))
+
+        assert 'data-inbox-url="/backoffice/notifications"' in html
+        assert 'data-inbox-api-url="/backoffice/notifications/inbox"' in html
+        assert 'data-sse-url="/backoffice/_sse/widgets"' in html
+
     def test_explicit_right_node_suppresses_default_switcher_and_bell(self) -> None:
         html = render_to_string(
             TopBar(

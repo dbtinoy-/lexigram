@@ -158,6 +158,31 @@ class ExportBulkAction(BulkAction):
         self._data_source = data_source
         self._file_format = file_format
 
+    def render_button(self, records: list[Any], ctx: ActionContext) -> str:
+        """Render an export as a native download action.
+
+        CSV responses carry ``Content-Disposition`` and must not be fetched by
+        HTMX, whose XHR path would swap the CSV into the page instead of
+        starting a browser download. The shared table script reads these
+        data attributes and submits the selected IDs with the current CSRF
+        field.
+        """
+        from lexigram.ui import ActionButton
+
+        prefix = (ctx.resource_prefix or f"/{ctx.resource_name}").rstrip("/")
+        button = ActionButton(
+            label=self.label or self.name,
+            variant=self._color_to_variant(),
+            icon=self.icon,
+            size="sm",
+            type="button",
+            data_bulk_download_url=f"{prefix}/bulk",
+            data_bulk_action=self.name,
+            onclick="return window.LexigramDownloadBulk(this);",
+        )
+        rendered = button.render()
+        return str(rendered) if rendered else ""
+
     async def execute(self, records: list[Any], ctx: ActionContext) -> Result[Any, Any]:
         record_ids = [
             record_id

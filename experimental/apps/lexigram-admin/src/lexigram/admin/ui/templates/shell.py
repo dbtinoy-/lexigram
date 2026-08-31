@@ -127,6 +127,7 @@ class AdminShell(Component):
                 system_menu_items=self.system_menu_items,
                 raw_user=self.user,
                 logo_url=self.logo_url,
+                admin_prefix=self.admin_prefix,
             )
 
         # 2. Prepare TopBar
@@ -141,6 +142,8 @@ class AdminShell(Component):
                 current_tenant_name=self.current_tenant_name,
                 tenant_list=self.tenant_list,
                 tenant_csrf_token=self.tenant_csrf_token,
+                csrf_token=self.csrf_token,
+                admin_prefix=self.admin_prefix,
             )
 
         # 3. Theme styles (injected as inline style for runtime primary color)
@@ -225,5 +228,5 @@ class AdminShell(Component):
                 id=Zones.SLIDE_OVER.id,
                 class_="fixed inset-0 z-[100] pointer-events-none",
             ),
-            CommandPalette(commands=self.commands),
+            CommandPalette(commands=self.commands, admin_prefix=self.admin_prefix),
         )

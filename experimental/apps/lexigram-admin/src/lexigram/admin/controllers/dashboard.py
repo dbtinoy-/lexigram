@@ -75,6 +75,8 @@ class DashboardController(AdminController):
     @get("/")
     async def index(self, request: Request) -> HTMLResponse:
         """Render the main dashboard overview."""
+        from html import escape
+
         from lexigram.admin.ui.organisms.dashboard.widgets import (
             ActivityFeed,
             ActivityItem,
@@ -85,7 +87,13 @@ class DashboardController(AdminController):
         )
         from lexigram.ui.core.base import raw
 
+        await self._ensure_csrf_token(request)
         dashboard_id = request.query_params.get("id", "default")
+        from lexigram.admin.resources.urls import admin_prefix_from_request
+
+        admin_prefix = admin_prefix_from_request(request)
+        state_csrf_token = getattr(getattr(request, "state", None), "csrf_token", "")
+        csrf_token = state_csrf_token if isinstance(state_csrf_token, str) else ""
 
         # Page-level filter state: schema defaults → session → query params
         filter_state: dict[str, Any] = {}
@@ -95,7 +103,7 @@ class DashboardController(AdminController):
                 save_page_filters(request, "dashboard", filter_state)
 
         breadcrumbs = self.generate_breadcrumbs(
-            ("Home", "/admin/"),
+            ("Home", f"{admin_prefix}/"),
             current="Dashboard",
         )
 
@@ -128,6 +136,7 @@ class DashboardController(AdminController):
             rendered_html = self.widget_registry.render_contributor_widgets(
                 contributor_widgets,
                 page_filters=filter_state,
+                admin_prefix=admin_prefix,
             )
             widgets_section = el(
                 "div",
@@ -189,7 +198,6 @@ class DashboardController(AdminController):
             ]
 
             from lexigram.admin.dashboard.chart_widget import ChartWidget
-            from lexigram.admin.resources.urls import admin_prefix_from_request
             from lexigram.ui import ChartType
 
             resources_chart = ChartWidget(
@@ -237,8 +245,9 @@ class DashboardController(AdminController):
             )
 
         # SortableJS drag-and-drop controls + widget config helpers
-        dnd_html = raw("""
-<div id="dashboard-dnd-controls" class="mt-4 text-center">
+        dnd_html = raw(
+            """
+<div id="dashboard-dnd-controls" class="mt-4 text-center" data-csrf-token="__LEXIGRAM_CSRF_TOKEN__">
   <button id="save-layout-btn"
           class="hidden bg-primary text-primary-foreground px-4 py-2 rounded hover:bg-primary/90 text-sm">
     💾 Save Layout
@@ -279,9 +288,10 @@ class DashboardController(AdminController):
         return card.dataset.widgetName;
       });
       try {
+        var csrf = document.getElementById('dashboard-dnd-controls').dataset.csrfToken || '';
         var resp = await fetch('/admin/core/widgets/reorder', {
           method: 'POST',
-          headers: {'Content-Type': 'application/json'},
+          headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrf},
           body: JSON.stringify({order: order})
         });
         if (resp.ok) {
@@ -294,13 +304,18 @@ class DashboardController(AdminController):
   }
 })();
 </script>
-""")
+""".replace(
+                "/admin/core/widgets/reorder",
+                f"{admin_prefix}/core/widgets/reorder",
+            )
+            .replace("__LEXIGRAM_CSRF_TOKEN__", escape(csrf_token))
+        )
 
         customize_btn = el(
             "button",
             "⚙ Customize Dashboard",
             **{
-                "hx-get": "/admin/core/widgets/customize",
+                "hx-get": f"{admin_prefix}/core/widgets/customize",
                 "hx-target": "#slide-over-container",
                 "hx-swap": "innerHTML",
                 "hx-push-url": "false",
@@ -309,7 +324,7 @@ class DashboardController(AdminController):
         )
 
         filter_form = (
-            render_page_filter_form(self.page_filters, filter_state, "/admin/")
+            render_page_filter_form(self.page_filters, filter_state, f"{admin_prefix}/")
             if self.page_filters
             else None
         )

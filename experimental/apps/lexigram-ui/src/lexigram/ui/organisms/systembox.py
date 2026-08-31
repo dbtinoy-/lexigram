@@ -126,9 +126,16 @@ class SystemBox(Component):
                         x_show="sidebarMini",
                     )
 
+                block_link_attrs = {
+                    "x-bind:class": "sidebarMini ? 'justify-center' : ''",
+                    # Merge other attrs
+                    **attrs,
+                }
+                if href and href != "#":
+                    block_link_attrs["href"] = href
                 block_items.append(
                     el(
-                        "a",
+                        "a" if href and href != "#" else "span",
                         icon_node,
                         # Full Label
                         el(
@@ -139,28 +146,27 @@ class SystemBox(Component):
                         ),
                         # Mini Label (First Letter)
                         first_letter_node,
-                        href=href,
                         class_=(
                             "group flex items-center px-3 py-2 rounded-xl text-sm font-medium transition-colors duration-200 text-muted-foreground dark:text-muted-foreground hover:bg-muted dark:hover:bg-card/50 hover:text-primary-600 dark:hover:text-primary-400"
                         ),
-                        **{
-                            "x-bind:class": "sidebarMini ? 'justify-center' : ''",
-                            # Merge other attrs
-                            **attrs,
-                        },
+                        **block_link_attrs,
                     ),
                 )
             else:
+                compact_link_attrs = {
+                    "title": label,
+                    "class_": (
+                        "inline-flex items-center justify-center p-2 rounded-md text-muted-foreground hover:bg-muted dark:text-foreground dark:hover:bg-card"
+                    ),
+                    **attrs,
+                }
+                if href and href != "#":
+                    compact_link_attrs["href"] = href
                 compact_nodes.append(
                     el(
-                        "a",
+                        "a" if href and href != "#" else "span",
                         content,
-                        href=href,
-                        title=label,
-                        class_=(
-                            "inline-flex items-center justify-center p-2 rounded-md text-muted-foreground hover:bg-muted dark:text-foreground dark:hover:bg-card"
-                        ),
-                        **attrs,
+                        **compact_link_attrs,
                     ),
                 )
 

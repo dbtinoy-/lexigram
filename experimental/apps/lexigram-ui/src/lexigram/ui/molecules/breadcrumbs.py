@@ -56,19 +56,18 @@ class Breadcrumbs(Component):
                                 aria_hidden="true",
                             ),
                             el(
-                                "a",
+                                "a" if item.get("url") else "span",
                                 item["label"],
-                                href=item.get("url", "#"),
                                 class_=f"ml-4 text-sm font-medium transition-colors {'text-muted-foreground hover:text-foreground' if i < len(self.items) - 1 else 'text-foreground cursor-default'}",
-                                # Only add hx attributes if it's a link and not the last item
                                 **(
                                     {
-                                        "hx_get": item.get("url"),
+                                        "href": item["url"],
+                                        "hx_get": item["url"],
                                         "hx_target": "#main-content",
                                         "hx_swap": "innerHTML",
                                         "hx_push_url": "true",
                                     }
-                                    if i < len(self.items) - 1 and item.get("url")
+                                    if item.get("url")
                                     else {}
                                 ),
                             ),

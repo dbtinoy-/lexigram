@@ -128,9 +128,15 @@ class StandaloneLayout(LayoutBase):
                 f'<meta name="description" content="{escape(ctx.page_description)}">',
             )
 
-        # Tailwind CSS via static build (utility classes for layout)
-        parts.append('<link rel="stylesheet" href="/admin/static/css/tailwind.css">')
-        parts.append('<link rel="stylesheet" href="/admin/static/css/admin.css">')
+        # Tailwind CSS via static build. Standalone pages use the same
+        # configured base URL as the authenticated shell.
+        asset_prefix = ctx.base_url.rstrip("/") or "/admin"
+        parts.append(
+            f'<link rel="stylesheet" href="{escape(asset_prefix)}/static/css/tailwind.css">'
+        )
+        parts.append(
+            f'<link rel="stylesheet" href="{escape(asset_prefix)}/static/css/admin.css">'
+        )
         parts.append(DARK_BOOTSTRAP_SCRIPT)
         parts.append(THEME_BRIDGE_SCRIPT)
 

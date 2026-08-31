@@ -31,6 +31,11 @@ class TestDateField:
         output = str(element)
         assert "2026-05-25" in output
 
+    def test_render_form_strips_datetime_suffix(self) -> None:
+        field = DateField(name="published_at")
+        output = str(field.render_form("2026-05-25T15:30:00Z"))
+        assert 'value="2026-05-25"' in output
+
     def test_render_form_with_none_has_empty_value(self) -> None:
         field = DateField(name="published_at")
         element = field.render_form(None)
@@ -112,6 +117,12 @@ class TestDateTimeField:
         field = DateTimeField(name="created_at")
         element = field.render_form(datetime(2026, 5, 25, 15, 30, 0))
         assert isinstance(element, Element)
+
+    def test_render_form_uses_datetime_local_without_timezone(self) -> None:
+        field = DateTimeField(name="created_at")
+        output = str(field.render_form("2026-05-25T15:30:45+00:00"))
+        assert 'type="datetime-local"' in output
+        assert 'value="2026-05-25T15:30"' in output
 
     def test_render_form_with_none_has_empty_value(self) -> None:
         field = DateTimeField(name="created_at")

@@ -52,7 +52,10 @@ class SearchController:
         results = await self._search_service.search(
             query, rule=rule, allowed_resources=allowed
         )
-        fragment = self._render_results(results)
+        from lexigram.admin.resources.urls import admin_prefix_from_request
+
+        admin_prefix = admin_prefix_from_request(request)
+        fragment = self._render_results(results, admin_prefix=admin_prefix)
 
         if request.headers.get("hx-request") == "true":
             return HTMLResponse(render_to_string(fragment))
@@ -74,7 +77,10 @@ class SearchController:
         keep swapping into ``#search-results``.
         """
         from lexigram.admin.engine.renderer import AdminRenderer
+        from lexigram.admin.resources.urls import admin_prefix_from_request
         from lexigram.ui.organisms.query_builder import QueryBuilder
+
+        admin_prefix = admin_prefix_from_request(request)
 
         catalog = self._search_service.get_search_field_catalog()
         builder = QueryBuilder(
@@ -104,7 +110,7 @@ class SearchController:
                             value=query or None,
                             placeholder="Search across resources…",
                             autocomplete="off",
-                            hx_get="/admin/search",
+                            hx_get=f"{admin_prefix}/search",
                             hx_trigger="keyup changed delay:300ms",
                             hx_target="#search-results",
                             hx_include="#search-form",
@@ -117,7 +123,7 @@ class SearchController:
                 builder.render(),
                 id="search-form",
                 method="get",
-                action="/admin/search",
+                action=f"{admin_prefix}/search",
                 class_="mb-4",
             ),
             el(
@@ -132,16 +138,22 @@ class SearchController:
             content,
             request=request,
             title="Global Search",
-            breadcrumbs=[{"label": "Search", "url": "/admin/search"}],
+            breadcrumbs=[{"label": "Search", "url": f"{admin_prefix}/search"}],
         )
 
-    def _render_results(self, results: SearchResults) -> Element:
+    def _render_results(
+        self,
+        results: SearchResults,
+        admin_prefix: str = "/admin",
+    ) -> Element:
         """Render search results as an HTML fragment.
 
         When results are present the output is grouped by resource with
         a header per group.  When no results match a simple "no results"
         placeholder is returned.
         """
+        from lexigram.admin.resources.urls import mount_admin_url
+
         if not results.has_results:
             return Element(
                 "div",
@@ -189,8 +201,8 @@ class SearchController:
                     el(
                         "a",
                         *children,
-                        href=r.url,
-                        hx_get=r.url,
+                        href=mount_admin_url(r.url, admin_prefix),
+                        hx_get=mount_admin_url(r.url, admin_prefix),
                         hx_target="body",
                         hx_push_url="true",
                         class_="search-result-item block px-4 py-3 hover:bg-muted dark:hover:bg-muted/50 focus:bg-muted focus:outline-none transition-colors",

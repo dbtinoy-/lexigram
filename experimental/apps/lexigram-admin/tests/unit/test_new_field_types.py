@@ -35,6 +35,11 @@ class TestLanguageSwitcher:
         html = str(sw.render())
         assert "/set-lang" in html
 
+    def test_csrf_token_in_plain_form(self) -> None:
+        html = str(LanguageSwitcher(csrf_token="locale-token").render())
+        assert 'name="csrf_token"' in html
+        assert 'value="locale-token"' in html
+
     def test_default_action_url(self) -> None:
         sw = LanguageSwitcher()
         html = str(sw.render())

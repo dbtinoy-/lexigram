@@ -24,6 +24,7 @@ async def render_customize_panel(
 ) -> object:
     """Render full dashboard customization panel with all widgets."""
     from lexigram.admin.controllers.widget_handler_support import ensure_edit_allowed
+    from lexigram.admin.resources.urls import admin_prefix_from_request
 
     denied = await ensure_edit_allowed(
         user_has_edit_permission, audit, request, "customize_all_widgets"
@@ -106,13 +107,17 @@ async def render_customize_panel(
         render_slide_over_fragment,
     )
 
+    customize_save_url = (
+        (admin_prefix_from_request(request).rstrip("/") or "/admin")
+        + "/core/widgets/customize/save"
+    )
     form = el(
         "form",
         el("input", type_="hidden", name="csrf_token", value=csrf_token or ""),
         *sections,
         id="widget-customize-form",
         **{
-            "hx-post": "/admin/core/widgets/customize/save",
+            "hx-post": customize_save_url,
             "hx-swap": "none",
             "hx-on:htmx:after-request": "if(event.detail.successful){window.location.reload();}",
         },

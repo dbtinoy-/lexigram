@@ -222,6 +222,7 @@ class AdminRenderer:
                 "favicon_url": favicon_url,
                 "dark_mode": dark_mode,
                 "csrf_token": csrf_token,
+                "static_prefix": admin_prefix,
             },
         )
 

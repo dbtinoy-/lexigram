@@ -17,6 +17,7 @@ class LanguageSwitcher(Component):
             e.g. ``[("en", "English"), ("fr", "Français")]``.
         current_locale: The currently active locale code.
         action_url: URL that accepts a ``POST`` with ``locale=<code>``.
+        csrf_token: Optional token for the plain-form POST.
         **props: Extra HTML attributes forwarded to the wrapper element.
     """
 
@@ -25,12 +26,14 @@ class LanguageSwitcher(Component):
         locales: list[tuple[str, str]] | None = None,
         current_locale: str = "en",
         action_url: str = "/admin/set-locale",
+        csrf_token: str | None = None,
         **props: Any,
     ) -> None:
         super().__init__(**props)
         self.locales = locales or [("en", "English")]
         self.current_locale = current_locale
         self.action_url = action_url
+        self.csrf_token = csrf_token
 
     def render(self) -> Any:
         options = [
@@ -53,9 +56,19 @@ class LanguageSwitcher(Component):
             ),
             **{"x-on:change": "$el.form.submit()"},
         )
+        children: list[Any] = [select]
+        if self.csrf_token:
+            children.append(
+                el(
+                    "input",
+                    type_="hidden",
+                    name="csrf_token",
+                    value=self.csrf_token,
+                )
+            )
         return el(
             "form",
-            select,
+            *children,
             method="POST",
             action=self.action_url,
             class_="inline-block",
@@ -179,6 +192,8 @@ class TopBar(Component):
         current_tenant_name: str = "",
         tenant_list: list[tuple[str, str]] | None = None,
         tenant_csrf_token: str | None = None,
+        csrf_token: str | None = None,
+        admin_prefix: str = "/admin",
         **props: Any,
     ) -> None:
         super().__init__(**props)
@@ -193,6 +208,8 @@ class TopBar(Component):
         self.current_tenant_name = current_tenant_name
         self.tenant_list = tenant_list or []
         self.tenant_csrf_token = tenant_csrf_token
+        self.csrf_token = csrf_token
+        self.admin_prefix = admin_prefix.rstrip("/") or "/admin"
 
     def render(self) -> Any:
         # Default Left: Mobile toggle + Title
@@ -247,10 +264,18 @@ class TopBar(Component):
                         tenants=self.tenant_list,
                         current_tenant_id=self.current_tenant_id,
                         csrf_token=self.tenant_csrf_token,
+                        action_url=f"{self.admin_prefix}/set-tenant",
                     )
                 )
             right_elements.append(
-                NotificationBell(inbox_url="/admin/notifications").render()
+                NotificationBell(
+                    inbox_url=f"{self.admin_prefix}/notifications",
+                    inbox_api_url=f"{self.admin_prefix}/notifications/inbox",
+                    mark_read_url=f"{self.admin_prefix}/notifications/read/{{message_id}}",
+                    mark_all_read_url=f"{self.admin_prefix}/notifications/read-all",
+                    sse_url=f"{self.admin_prefix}/_sse/widgets",
+                    csrf_token=self.csrf_token,
+                ).render()
             )
             right_elements.append(ThemeToggle())
             right_node = el(

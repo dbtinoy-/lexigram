@@ -12,9 +12,12 @@ from unittest.mock import MagicMock
 import pytest
 from starlette.requests import Request
 
+from lexigram.admin.actions.base import BulkAction
+from lexigram.admin.actions.types import ActionContext
 from lexigram.admin.config import AdminConfig
 from lexigram.admin.core.routing import AdminRouter
 from lexigram.admin.resources.base import Resource
+from lexigram.result import Ok
 from lexigram.admin.resources.action_handlers import (
     PurgeActionHandler,
     RestoreActionHandler,
@@ -145,6 +148,24 @@ class _FakeDataSource:
 class _BulkResource(Resource):
     """Concrete Resource for bulk handler tests."""
 
+    name = "items"
+
+
+class _ArchiveAction(BulkAction):
+    """Server-backed custom action used to verify generic bulk dispatch."""
+
+    def __init__(self) -> None:
+        super().__init__(name="archive", label="Archive")
+
+    async def authorize(self, records: list[Any], user: Any = None) -> Any:
+        del records, user
+        return Ok(None)
+
+    async def execute(self, records: list[Any], ctx: ActionContext) -> Any:
+        for record in records:
+            await ctx.data_source.update(record["id"], {"archived": True})
+        return Ok({"message": f"Archived {len(records)} record(s)"})
+
 
 class TestBulkActionHandlerPurgeRestore:
     """Tests for BulkActionHandler purge and restore dispatch."""
@@ -154,6 +175,51 @@ class TestBulkActionHandlerPurgeRestore:
         self.ds = _FakeDataSource()
         self.resource = _BulkResource()
         self.resource._data_source = self.ds
+
+    @pytest.mark.asyncio
+    async def test_custom_declared_bulk_action_executes_server_hook(self) -> None:
+        action = _ArchiveAction()
+        self.resource.bulk_actions = [action]
+        scope = self._make_scope(
+            "POST",
+            scope_extra={"admin_resource_prefix": "items"},
+        )
+        request = Request(scope)
+        form = MagicMock()
+        form.get = lambda key, default=None: {"action": "archive"}.get(key, default)
+        form.getlist = lambda key: {"ids": ["1", "2"]}.get(key, [])
+        request.scope["admin_form_data"] = form
+
+        response = await self.handler.handle(request, self.resource)
+
+        assert response.status_code == 302
+        assert self.ds._store["1"]["archived"] is True
+        assert self.ds._store["2"]["archived"] is True
+
+    @pytest.mark.asyncio
+    async def test_string_bulk_action_uses_explicit_resource_callback(self) -> None:
+        self.resource.bulk_actions = ["archive"]
+
+        async def bulk_archive(records: list[dict[str, Any]]) -> dict[str, str]:
+            for record in records:
+                await self.ds.update(record["id"], {"archived": True})
+            return {"message": "Archived records"}
+
+        self.resource.bulk_archive = bulk_archive  # type: ignore[attr-defined]
+        scope = self._make_scope(
+            "POST",
+            scope_extra={"admin_resource_prefix": "items"},
+        )
+        request = Request(scope)
+        form = MagicMock()
+        form.get = lambda key, default=None: {"action": "archive"}.get(key, default)
+        form.getlist = lambda key: {"ids": ["1"]}.get(key, [])
+        request.scope["admin_form_data"] = form
+
+        response = await self.handler.handle(request, self.resource)
+
+        assert response.status_code == 302
+        assert self.ds._store["1"]["archived"] is True
 
     def _make_scope(
         self,

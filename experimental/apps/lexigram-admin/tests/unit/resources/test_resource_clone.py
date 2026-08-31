@@ -143,6 +143,19 @@ class TestResourceDuplicate:
             await res.duplicate(1)
 
     @pytest.mark.asyncio
+    async def test_duplicate_missing_record_does_not_create_empty_copy(self) -> None:
+        """Missing clone sources fail before before_clone/create run."""
+        res = _ClonableResource()
+        source = _FakeDataSource()
+        source.find_one = AsyncMock(return_value=None)
+        res.set_data_source(source)
+
+        with pytest.raises(LookupError, match="not found"):
+            await res.duplicate(999)
+
+        source.create.assert_not_awaited()
+
+    @pytest.mark.asyncio
     async def test_duplicate_appends_copy_suffix(self) -> None:
         """Default before_clone strips 'id' and appends ' (Copy)' to name."""
         res = _ClonableResource()

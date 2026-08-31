@@ -24,17 +24,19 @@ class NotificationBell(Component):
             literal ``{message_id}`` placeholder is replaced with the
             message ID.
         mark_all_read_url: POST endpoint marking every message read.
+        csrf_token: Token sent with notification mutation requests.
         max_display: Maximum number of notifications shown in the dropdown.
         **props: Extra HTML attributes forwarded to the root element.
     """
 
     def __init__(
         self,
-        sse_url: str = "/admin/_sse/events",
+        sse_url: str = "/admin/_sse/widgets",
         inbox_url: str | None = None,
         inbox_api_url: str = "/admin/notifications/inbox",
         mark_read_url: str = "/admin/notifications/read/{message_id}",
         mark_all_read_url: str = "/admin/notifications/read-all",
+        csrf_token: str | None = None,
         max_display: int = 10,
         **props: Any,
     ) -> None:
@@ -44,6 +46,7 @@ class NotificationBell(Component):
         self.inbox_api_url = inbox_api_url
         self.mark_read_url = mark_read_url
         self.mark_all_read_url = mark_all_read_url
+        self.csrf_token = csrf_token or ""
         self.max_display = max_display
 
     def render(self) -> Any:
@@ -55,6 +58,10 @@ class NotificationBell(Component):
                 "x-data": "notificationBell",
                 "x-init": "init()",
                 "x-on:beforeunload.window": "destroy()",
+                "data-inbox-url": self.inbox_url or "",
+                "data-inbox-api-url": self.inbox_api_url,
+                "data-sse-url": self.sse_url,
+                "data-csrf-token": self.csrf_token,
                 "class": "relative",
             },
             # Bell button
@@ -198,10 +205,16 @@ document.addEventListener('alpine:init', () => {{
             this.loadInbox();
             if (this.eventSource) return;
             this.eventSource = new EventSource('{self.sse_url}');
-            this.eventSource.addEventListener('notification', (e) => {{
-                const data = JSON.parse(e.data);
+            const handleNotification = (e) => {{
+                const envelope = JSON.parse(e.data);
+                // The widget SSE bridge sends AdminEvent.to_dict() as the
+                // default message payload, while direct SSE implementations
+                // may set the event field to `notification` and send the
+                // inner data object. Support both wire shapes.
+                if (envelope.event && envelope.event !== 'notification') return;
+                const data = envelope.data || envelope;
                 this.notifications.unshift({{
-                    id: data.id || Date.now() + Math.random(),
+                    id: envelope.id || data.id || Date.now() + Math.random(),
                     title: data.title || 'Notification',
                     message: data.message || '',
                     level: data.level || 'info',
@@ -212,7 +225,9 @@ document.addEventListener('alpine:init', () => {{
                 if (this.notifications.length > {self.max_display}) {{
                     this.notifications.pop();
                 }}
-            }});
+            }};
+            this.eventSource.addEventListener('message', handleNotification);
+            this.eventSource.addEventListener('notification', handleNotification);
             this.eventSource.addEventListener('toast', (e) => {{
                 const data = JSON.parse(e.data);
                 if (typeof window.showToast === 'function') {{
@@ -264,7 +279,10 @@ document.addEventListener('alpine:init', () => {{
             try {{
                 await fetch('{self.mark_read_url}'.replace('{{message_id}}', id), {{
                     method: 'POST',
-                    headers: {{'X-Requested-With': 'fetch'}}
+                    headers: {{
+                        'X-Requested-With': 'fetch',
+                        'X-CSRF-Token': this.$el.dataset.csrfToken || ''
+                    }}
                 }});
             }} catch (e) {{}}
         }},
@@ -274,7 +292,10 @@ document.addEventListener('alpine:init', () => {{
             try {{
                 await fetch('{self.mark_all_read_url}', {{
                     method: 'POST',
-                    headers: {{'X-Requested-With': 'fetch'}}
+                    headers: {{
+                        'X-Requested-With': 'fetch',
+                        'X-CSRF-Token': this.$el.dataset.csrfToken || ''
+                    }}
                 }});
             }} catch (e) {{}}
         }}

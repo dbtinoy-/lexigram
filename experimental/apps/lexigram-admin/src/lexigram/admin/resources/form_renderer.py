@@ -714,9 +714,10 @@ class FormRenderer(WizardRendererMixin):
         }
         # Searchable relation selects load options over HTMX from the related
         # resource's registered relation-options endpoint.
-        if getattr(field_schema, "searchable", False) and field_schema.resource:
+        related_resource = getattr(field_schema, "resource", None)
+        if getattr(field_schema, "searchable", False) and related_resource:
             common_args["relation_options_url"] = (
-                f"{self._config.prefix.rstrip('/')}/{field_schema.resource}"
+                f"{self._config.prefix.rstrip('/')}/{related_resource}"
                 "/relation-options"
             )
 

@@ -62,6 +62,24 @@ class TestResolveNav:
         assert system == []
         assert cluster_nav is None
 
+    def test_mounts_contributor_links_and_badges(self) -> None:
+        request = _request(path="/backoffice/notifications")
+        request.scope = {"admin_prefix": "/backoffice"}
+        request.app.state.assembler_nav_items = [
+            {
+                "label": "Notifications",
+                "href": "/admin/notifications",
+                "badge": "/admin/notifications/inbox",
+            }
+        ]
+
+        nav, _system, _cluster_nav = NavigationManager(request).resolve_nav()
+
+        notification = next(item for item in nav if item["label"] == "Notifications")
+        assert notification["href"] == "/backoffice/notifications"
+        assert notification["badge"] == "/backoffice/notifications/inbox"
+        assert notification["active"] is True
+
 
 class TestClusters:
     def test_clusters_returns_registry_entries(self) -> None:

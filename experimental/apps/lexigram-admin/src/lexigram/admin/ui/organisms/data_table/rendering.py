@@ -381,7 +381,11 @@ class DataTableRenderer:
                 for name in self.config.filters:
                     exclude_keys.extend((name, f"filter_{name}"))
 
-        return self.state.render_hidden_inputs(exclude=exclude_keys)
+        inputs = self.state.render_hidden_inputs(exclude=exclude_keys)
+        csrf_token = self.props.get("csrf_token")
+        if csrf_token:
+            inputs.append(el("input", type="hidden", name="csrf_token", value=csrf_token))
+        return inputs
 
     def _render_htmx_wrapper(self, table_content: Any) -> Any:
         """Render HTMX wrapper with appropriate attributes."""

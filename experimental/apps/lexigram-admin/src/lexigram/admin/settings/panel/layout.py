@@ -43,6 +43,7 @@ class ConfigLayout(Component):
         active_namespace: str | None = None,
         content: Any = None,
         title: str = "Configuration",
+        admin_prefix: str = "/admin",
         **props,
     ) -> None:
         super().__init__(**props)
@@ -51,6 +52,7 @@ class ConfigLayout(Component):
         self.active_namespace = active_namespace
         self.content = content
         self.title = title
+        self.admin_prefix = admin_prefix.rstrip("/") or "/admin"
 
     def render(self) -> Any:
         """Render the full two-column configuration layout."""
@@ -106,8 +108,8 @@ class ConfigLayout(Component):
                     el(
                         "a",
                         el("span", spec.label or spec.namespace, class_="truncate"),
-                        href=f"/admin/settings/{spec.namespace}",
-                        hx_get=f"/admin/settings/{spec.namespace}",
+                        href=f"{self.admin_prefix}/settings/{spec.namespace}",
+                        hx_get=f"{self.admin_prefix}/settings/{spec.namespace}",
                         hx_target="#main-content",
                         hx_swap="innerHTML",
                         hx_push_url="true",

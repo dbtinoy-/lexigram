@@ -183,6 +183,20 @@ class TestPivotTable:
         assert "<table" in html
         assert "<tbody" in html
 
+    def test_render_uses_custom_admin_prefix_and_csrf(self) -> None:
+        table = PivotTable(
+            pivot_columns=[PivotColumn(name="role", label="Role")],
+            rows=[{"id": "1", "label": "Admin", "pivot": {"role": "owner"}}],
+        )
+        html = table.render(
+            resource_name="users",
+            parent_id="p1",
+            admin_prefix="/backoffice",
+            csrf_token="csrf-123",
+        )
+        assert "/backoffice/users/p1/relations/pivot/1" in html
+        assert "csrf-123" in html
+
 
 class TestPivotInputEscaping:
     """Pivot inputs are built as raw HTML strings — dynamic values must be

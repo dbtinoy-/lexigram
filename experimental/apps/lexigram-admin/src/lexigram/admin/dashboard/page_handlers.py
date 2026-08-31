@@ -158,7 +158,13 @@ class AdminPageHandler:
             if state and hasattr(state, "state")
             else None
         )
-        if not is_cluster_path(request.url.path, cluster_items(groups)):
+        from lexigram.admin.resources.urls import admin_prefix_from_request
+
+        if not is_cluster_path(
+            request.url.path,
+            cluster_items(groups),
+            admin_prefix=admin_prefix_from_request(request),
+        ):
             return response
 
         content = (
@@ -178,6 +184,7 @@ class AdminPageHandler:
         from starlette.templating import Jinja2Templates
 
         from lexigram.admin.engine.renderer import resolve_admin_nav
+        from lexigram.admin.navigation.manager import NavigationManager
         from lexigram.admin.ui.templates.shell import AdminShell
         from lexigram.ui import raw, render_to_string
 
@@ -199,7 +206,21 @@ class AdminPageHandler:
             if state and hasattr(state, "state")
             else None
         )
-        is_cluster = is_cluster_path(request.url.path, cluster_items(groups))
+        from lexigram.admin.resources.urls import admin_prefix_from_request, admin_url
+
+        admin_prefix = admin_prefix_from_request(request)
+        is_cluster = is_cluster_path(
+            request.url.path,
+            cluster_items(groups),
+            admin_prefix=admin_prefix,
+        )
+        active_cluster = NavigationManager(request).active_cluster()
+        cluster_label = getattr(active_cluster, "label", CLUSTER_LABEL)
+        cluster_url = admin_url(
+            admin_prefix,
+            getattr(active_cluster, "slug", None)
+            or CLUSTER_URL.rstrip("/").rsplit("/", 1)[-1],
+        )
         if secondary_nav:
             from lexigram.admin.ui.organisms.secondary_nav import ClusterLayout
 
@@ -212,8 +233,8 @@ class AdminPageHandler:
         breadcrumbs: list[dict[str, str]] | None = None
         if secondary_nav and is_cluster:
             breadcrumbs = [
-                {"label": "Home", "url": "/admin/"},
-                {"label": CLUSTER_LABEL, "url": CLUSTER_URL},
+                {"label": "Home", "url": admin_url(admin_prefix, "")},
+                {"label": cluster_label, "url": cluster_url},
             ]
             path = request.url.path
             for item in secondary_nav:

@@ -12,6 +12,12 @@ from lexigram.logging import get_logger
 
 logger = get_logger(__name__)
 
+
+async def _maybe_await(value: Any) -> Any:
+    """Resolve sync and async action hooks uniformly."""
+    return await value if inspect.isawaitable(value) else value
+
+
 from lexigram.admin.resources.action_handlers import (
     CloneActionHandler,
     CreateActionHandler,
@@ -19,6 +25,7 @@ from lexigram.admin.resources.action_handlers import (
     DetailActionHandler,
     EditActionHandler,
     ImportActionHandler,
+    InlineMutationActionHandler,
     ListActionHandler,
     PurgeActionHandler,
     RelationOptionsActionHandler,
@@ -30,6 +37,7 @@ from lexigram.admin.resources.urls import (
     admin_prefix_from_request,
     admin_url,
 )
+from lexigram.ui import el, render_to_string
 
 
 class UserPermissionsActionHandler:
@@ -121,7 +129,46 @@ class UserPermissionsActionHandler:
                 ),
                 status_code=302,
             )
-        await data_source.update(item_id, {"permissions": permissions})
+
+        # Only inventory-backed permissions may be introduced by this form.
+        # Existing custom permissions are preserved when the renderer emitted
+        # them as hidden fields, but an attacker cannot add an arbitrary new
+        # capability by posting a made-up string.
+        inventory = self._permission_inventory(resource)
+        known_permissions = {
+            permission
+            for values in (inventory.options() or {}).values()
+            for permission in values
+        }
+        existing_permissions = set(getattr(user, "permissions", None) or [])
+        permissions = sorted(
+            permission
+            for permission in permissions
+            if permission in known_permissions or permission in existing_permissions
+        )
+
+        can_update = getattr(resource, "can_update", None)
+        if callable(can_update):
+            try:
+                allowed = await _maybe_await(can_update(user))
+            except Exception:  # noqa: BLE001 — authorization fails closed
+                logger.exception("admin.user_permissions_authorization_failed")
+                allowed = False
+            if not allowed:
+                return HTMLResponse("Forbidden", status_code=403)
+
+        changed = await _maybe_await(resource.before_update(item_id, {"permissions": permissions}))
+        if not isinstance(changed, dict):
+            changed = {"permissions": permissions}
+        # The permissions page may only update its own field, even if a
+        # resource hook returns additional keys.
+        updated = await data_source.update(
+            item_id,
+            {"permissions": changed.get("permissions", permissions)},
+        )
+        if updated is None:
+            return HTMLResponse("User not found", status_code=404)
+        await _maybe_await(resource.after_update(updated))
         return RedirectResponse(
             url=admin_url(
                 admin_prefix_from_request(request),
@@ -182,6 +229,128 @@ class BulkActionHandler:
             "bulk-restore-confirm",
         )
 
+    @staticmethod
+    def _declared_bulk_action(resource: Any, action_name: str) -> Any | None:
+        """Find a server-backed bulk action declared by the resource.
+
+        String declarations are UI-only compatibility shorthands; executable
+        custom behavior must be represented by an action object (or a resource
+        callback) so an arbitrary client-submitted action can never invoke an
+        unregistered callable.
+        """
+        for declared in getattr(resource, "bulk_actions", None) or []:
+            declared_name = (
+                declared if isinstance(declared, str) else getattr(declared, "name", None)
+            )
+            if str(declared_name or "") == action_name:
+                return declared
+        return None
+
+    @staticmethod
+    async def _action_result_message(result: Any) -> tuple[bool, str]:
+        """Normalize a Result-like action outcome to success/message."""
+        if hasattr(result, "is_err") and result.is_err():
+            error = result.unwrap_err()
+            return False, str(getattr(error, "message", None) or error)
+        if hasattr(result, "is_ok") and result.is_ok():
+            result = result.unwrap()
+        if isinstance(result, dict):
+            return True, str(result.get("message") or "Bulk action completed")
+        return True, str(result or "Bulk action completed")
+
+    async def _execute_declared_action(
+        self,
+        request: StarletteRequest,
+        resource: Any,
+        data_source: Any,
+        action_name: str,
+        ids: list[str],
+        form: Any,
+    ) -> tuple[bool, str] | None:
+        """Execute a declared custom bulk action, if it has a server hook."""
+        declared = self._declared_bulk_action(resource, action_name)
+
+        records = []
+        for item_id in ids:
+            item = await data_source.find_one(item_id)
+            if item is not None:
+                records.append(item)
+
+        # A string declaration can opt into server behavior through the
+        # explicit ``bulk_<action>`` resource callback. This keeps legacy
+        # string configuration useful without treating an arbitrary request
+        # value as a callable name.
+        callback = None
+        if isinstance(declared, str):
+            callback = getattr(resource, f"bulk_{action_name}", None)
+        elif declared is None:
+            callback = getattr(resource, f"bulk_{action_name}", None)
+
+        if callable(callback):
+            try:
+                result = await _maybe_await(callback(records))
+            except Exception as exc:  # noqa: BLE001 — surface action failures safely
+                logger.exception("admin.resource_bulk_callback_failed")
+                return False, str(exc)
+            return await self._action_result_message(result)
+
+        # The canonical admin action API owns authorization and execution.
+        # Evaluate it against the complete selected-record set, and support
+        # async overrides even though the base API is synchronous.
+        executor = getattr(declared, "execute", None) if declared is not None else None
+        if callable(executor):
+            authorize = getattr(declared, "authorize", None)
+            if callable(authorize):
+                try:
+                    allowed = await _maybe_await(
+                        authorize(
+                            records,
+                            getattr(getattr(request, "state", None), "user", None),
+                        )
+                    )
+                except Exception:  # noqa: BLE001 — authorization fails closed
+                    logger.exception("admin.bulk_action_authorization_failed")
+                    return False, "Forbidden"
+                if hasattr(allowed, "is_err") and allowed.is_err():
+                    error = allowed.unwrap_err()
+                    return False, str(getattr(error, "message", None) or error)
+                if allowed is False:
+                    return False, "Forbidden"
+
+            from lexigram.admin.actions.types import ActionContext
+
+            context = ActionContext(
+                request=request,
+                user=getattr(getattr(request, "state", None), "user", None),
+                resource_name=resource.name or "",
+                resource_prefix=admin_url(
+                    admin_prefix_from_request(request), resource.name or ""
+                ),
+                data_source=data_source,
+                metadata={"form": form},
+            )
+            try:
+                result = await _maybe_await(executor(records, context))
+            except Exception as exc:  # noqa: BLE001 — surface action failures safely
+                logger.exception("admin.bulk_action_execution_failed")
+                return False, str(exc)
+            return await self._action_result_message(result)
+
+        if declared is None:
+            return None
+
+        # Deprecated ui.actions bulk declarations can still carry a callback.
+        callback = getattr(declared, "_action", None)
+        if callable(callback):
+            try:
+                result = await _maybe_await(callback(records))
+            except Exception as exc:  # noqa: BLE001 — surface action failures safely
+                logger.exception("admin.legacy_bulk_action_execution_failed")
+                return False, str(exc)
+            return await self._action_result_message(result)
+
+        return False, f"Bulk action '{action_name}' is not executable"
+
     async def handle(
         self, request: StarletteRequest, resource: Any, **kwargs: Any
     ) -> Any:
@@ -225,6 +394,10 @@ class BulkActionHandler:
             form = await request.form()
         action_name = str(form.get("action", "") or "")
         form_ids = form.getlist("ids") if hasattr(form, "getlist") else []
+        # ``delete_selected`` is the legacy Resource string declaration. Keep
+        # its public action name for rendering, but dispatch it through the
+        # canonical delete implementation.
+        execution_action = {"delete_selected": "delete"}.get(action_name, action_name)
 
         # Authorization for the generic endpoint is view-level so safe bulk
         # actions (such as export) remain available. Enforce the submitted
@@ -233,7 +406,7 @@ class BulkActionHandler:
             "delete": "can_delete",
             "purge": "can_delete",
             "restore": "can_update",
-        }.get(action_name)
+        }.get(execution_action)
         if required_capability:
             capabilities = getattr(getattr(request, "state", None), "permissions", None)
             if isinstance(capabilities, dict) and not capabilities.get(required_capability, False):
@@ -245,9 +418,13 @@ class BulkActionHandler:
             )
             hook = getattr(resource, hook_name, None)
             if callable(hook):
-                allowed = hook(getattr(getattr(request, "state", None), "user", None))
-                if inspect.isawaitable(allowed):
-                    allowed = await allowed
+                try:
+                    allowed = await _maybe_await(
+                        hook(getattr(getattr(request, "state", None), "user", None))
+                    )
+                except Exception:  # noqa: BLE001 — authorization fails closed
+                    logger.exception("admin.bulk_resource_permission_failed")
+                    return HTMLResponse("Forbidden", status_code=403)
                 if not allowed:
                     return HTMLResponse("Forbidden", status_code=403)
 
@@ -259,12 +436,12 @@ class BulkActionHandler:
         # Bulk UI visibility is not authorization. Mirror the single-record
         # delete guard for every selected record before performing any write,
         # so a protected row cannot be deleted through the bulk endpoint.
-        if action_name in {"delete", "purge"}:
+        if execution_action in {"delete", "purge"}:
             can_delete = getattr(resource, "can_delete", None)
             if can_delete:
                 for item_id in form_ids:
                     item = await data_source.find_one(item_id)
-                    if item is not None and not can_delete(item):
+                    if item is not None and not await _maybe_await(can_delete(item)):
                         message = "One or more selected records cannot be deleted"
                         if is_htmx:
                             response = HTMLResponse("", status_code=409)
@@ -276,13 +453,46 @@ class BulkActionHandler:
                             return response
                         return HTMLResponse(message, status_code=409)
 
-        if action_name == "delete":
+        # A declared action object owns custom execution. String declarations
+        # without a server hook intentionally remain non-executable, except
+        # for the legacy delete_selected alias handled below.
+        if execution_action not in {"delete", "purge", "restore", "export", "export_csv"}:
+            custom = await self._execute_declared_action(
+                request,
+                resource,
+                data_source,
+                action_name,
+                form_ids,
+                form,
+            )
+            if custom is None:
+                return HTMLResponse(f"Unknown action: {action_name}", status_code=400)
+            ok, message = custom
+            if not ok:
+                return HTMLResponse(message, status_code=403 if message == "Forbidden" else 400)
+            if is_htmx:
+                response = HTMLResponse(render_to_string(el("p", message)))
+                response.headers["HX-Trigger"] = (
+                    '{"refresh-list":true,"show-toast":{"message":"'
+                    + message.replace('"', '\\"')
+                    + '","type":"success"}}'
+                )
+                return response
+            return RedirectResponse(
+                url=admin_url(
+                    admin_prefix_from_request(request),
+                    resource.name or "",
+                ),
+                status_code=302,
+            )
+
+        if execution_action == "delete":
             count = await data_source.bulk_delete(form_ids)
             message = f"Deleted {count} item(s)"
-        elif action_name == "purge":
+        elif execution_action == "purge":
             count = await data_source.bulk_delete(form_ids)
             message = f"Purged {count} item(s)"
-        elif action_name in {"export", "export_csv"}:
+        elif execution_action in {"export", "export_csv"}:
             import csv
             from io import StringIO
 
@@ -305,6 +515,17 @@ class BulkActionHandler:
                 for key in record:
                     if key not in fieldnames:
                         fieldnames.append(str(key))
+            # Bulk CSV is an immediate download path and must retain the same
+            # spreadsheet-formula protection as the background export service.
+            from lexigram.admin.services.export.sanitize import sanitize_cell_value
+
+            records = [
+                {
+                    key: sanitize_cell_value(value)
+                    for key, value in record.items()
+                }
+                for record in records
+            ]
             output = StringIO()
             if fieldnames:
                 writer = csv.DictWriter(output, fieldnames=fieldnames, extrasaction="ignore")
@@ -319,12 +540,12 @@ class BulkActionHandler:
                 # can consume the response as a download in their event hook.
                 response.headers["HX-Reswap"] = "none"
             return response
-        elif action_name == "restore":
+        elif execution_action == "restore":
             can_update = getattr(resource, "can_update", None)
             if can_update:
                 for item_id in form_ids:
                     item = await data_source.find_one(item_id)
-                    if item is not None and not can_update(item):
+                    if item is not None and not await _maybe_await(can_update(item)):
                         message = "One or more selected records cannot be restored"
                         if is_htmx:
                             response = HTMLResponse("", status_code=409)
@@ -412,6 +633,7 @@ class ActionHandlerRegistry:
             PurgeActionHandler(),
             DeleteActionHandler(),
             ImportActionHandler(),
+            InlineMutationActionHandler(self._config, self.name),
             RelationOptionsActionHandler(self._resources),
             UserPermissionsActionHandler(self._config),
             BulkActionHandler(),
@@ -455,6 +677,9 @@ class ResourceHandler:
                 "list": "has_view_permission",
                 "detail": "has_view_permission",
                 "relation-options": "has_view_permission",
+                "field": "has_change_permission",
+                "inline": "has_change_permission",
+                "inline-edit": "has_change_permission",
                 "create": "has_add_permission",
                 "import-example": "has_add_permission",
                 "import-report": "has_view_permission",
@@ -476,9 +701,13 @@ class ResourceHandler:
             checker = getattr(resource, permission_method, None) if permission_method else None
             if callable(checker):
                 user = getattr(request.state, "user", None)
-                allowed = checker(user)
-                if inspect.isawaitable(allowed):
-                    allowed = await allowed
+                try:
+                    allowed = checker(user)
+                    if inspect.isawaitable(allowed):
+                        allowed = await allowed
+                except Exception:  # noqa: BLE001 — permission failures fail closed
+                    logger.exception("admin.resource_permission_check_failed")
+                    allowed = False
                 if not allowed:
                     response = HTMLResponse("Forbidden", status_code=403)
                     await response(scope, receive, send)

@@ -108,6 +108,7 @@ class AdminLayoutContext(BaseLayoutContext):
     logout_url: str = "/admin/logout"
     profile_url: str = "/admin/profile"
     settings_url: str = "/admin/settings"
+    notifications_url: str = "/admin/notifications"
 
     # Notifications
     notifications: list[dict[str, Any]] = field(default_factory=list)
@@ -154,7 +155,14 @@ class AdminLayout(LayoutBase):
         ctx = self.admin_context
         cfg = self.admin_config
 
-        # Header
+        # Header. Context URL fields retain precedence when callers provide
+        # custom destinations; default values follow a custom base mount.
+        base_url = ctx.base_url.rstrip("/") or "/admin"
+
+        def _context_url(value: str, default_suffix: str) -> str:
+            default = f"/admin/{default_suffix}"
+            return f"{base_url}/{default_suffix}" if value == default else value
+
         self.header_renderer = HeaderRenderer(
             config=HeaderConfig(
                 site_name=cfg.app_name,
@@ -163,10 +171,12 @@ class AdminLayout(LayoutBase):
                 show_search=cfg.show_search,
                 show_notifications=cfg.show_notifications,
                 show_user_menu=cfg.show_user_menu,
-                home_url=ctx.base_url,
-                profile_url=ctx.profile_url,
-                settings_url=ctx.settings_url,
-                logout_url=ctx.logout_url,
+                home_url=base_url,
+                search_url=f"{base_url}/search",
+                profile_url=_context_url(ctx.profile_url, "profile"),
+                settings_url=_context_url(ctx.settings_url, "settings"),
+                logout_url=_context_url(ctx.logout_url, "logout"),
+                notifications_url=_context_url(ctx.notifications_url, "notifications"),
             ),
             user=UserInfo(
                 name=ctx.user_name or "User",
@@ -267,9 +277,15 @@ class AdminLayout(LayoutBase):
         </style>
         """)
 
-        # Tailwind CSS (static build)
-        parts.append('<link rel="stylesheet" href="/admin/static/css/tailwind.css">')
-        parts.append('<link rel="stylesheet" href="/admin/static/css/admin.css">')
+        # Tailwind CSS (static build). Derive asset URLs from the configured
+        # mount so a deployment using /backoffice does not load /admin assets.
+        asset_prefix = ctx.base_url.rstrip("/") or "/admin"
+        parts.append(
+            f'<link rel="stylesheet" href="{escape(asset_prefix)}/static/css/tailwind.css">'
+        )
+        parts.append(
+            f'<link rel="stylesheet" href="{escape(asset_prefix)}/static/css/admin.css">'
+        )
         parts.append(DARK_BOOTSTRAP_SCRIPT)
         parts.append(THEME_BRIDGE_SCRIPT)
 
@@ -283,11 +299,11 @@ class AdminLayout(LayoutBase):
 
         # Alpine.js plugins (loaded before Alpine core)
         parts.append(
-            '<script defer src="/admin/static/js/alpine-focus.min.js"></script>',
+            f'<script defer src="{escape(asset_prefix)}/static/js/alpine-focus.min.js"></script>',
         )
         # Alpine.js for dropdowns, modals, slide-overs
         parts.append(
-            '<script defer src="/admin/static/js/alpine.min.js"></script>',
+            f'<script defer src="{escape(asset_prefix)}/static/js/alpine.min.js"></script>',
         )
         # Patch Alpine's transition handler to catch isFromCancelledTransition
         parts.append(
@@ -382,7 +398,9 @@ class AdminLayout(LayoutBase):
             """)
 
         # Core admin JS (served from admin router's static mount)
-        parts.append('<script src="/admin/static/js/admin.js"></script>')
+        parts.append(
+            f'<script src="{escape(asset_prefix)}/static/js/admin.js"></script>'
+        )
 
         return "\n".join(parts)
 

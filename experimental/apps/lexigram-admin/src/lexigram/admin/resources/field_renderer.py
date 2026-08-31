@@ -65,6 +65,7 @@ from lexigram.admin.resources.field_renderers_text import (
 from lexigram.admin.schema import SchemaField
 from lexigram.di.decorators import inject
 from lexigram.logging import get_logger
+from lexigram.serialization import dumps_str
 from lexigram.primitives.registry import Registry
 from lexigram.ui import el, render_to_string
 
@@ -199,6 +200,10 @@ class FieldRenderer:
                                 item.model_dump()
                                 if hasattr(item, "model_dump")
                                 else dict(item)
+                                if isinstance(item, dict)
+                                else dict(vars(item))
+                                if hasattr(item, "__dict__")
+                                else {}
                             )
             except (AttributeError, TypeError, ValueError, RuntimeError) as e:
                 logger.debug(
@@ -217,6 +222,7 @@ class FieldRenderer:
             field_name,
             field_value,
             item_id,
+            csrf_token=getattr(getattr(request, "state", None), "csrf_token", None),
         )
 
         if not field_component:
@@ -234,6 +240,7 @@ class FieldRenderer:
         field_name: str,
         value,
         item_id: str | None = None,
+        csrf_token: str | None = None,
     ) -> Any:
         """Build a field component for inline editing.
 
@@ -246,24 +253,33 @@ class FieldRenderer:
         Returns:
             Field component ready for rendering
         """
-        # Try to get field schema from resource model
-        if not resource or not resource.model:
+        # Resolve the same schema used by generated forms. Declarative
+        # resources may intentionally omit a model and provide SchemaField
+        # instances directly.
+        if not resource:
             return None
 
         try:
-            from lexigram.admin.forms.components import FormSchemaGenerator
-
-            generator = FormSchemaGenerator()
-            schema = generator.from_pydantic(resource.model)
-
-            # Find the field schema
             field_schema = None
-            for fs in schema.fields:
-                if fs.name == field_name:
-                    field_schema = fs
-                    break
+            model = getattr(resource, "model", None)
+            if model is not None:
+                from lexigram.admin.forms.components import FormSchemaGenerator
 
-            if not field_schema:
+                schema = FormSchemaGenerator().from_pydantic(model)
+                field_schema = next(
+                    (fs for fs in schema.fields if fs.name == field_name),
+                    None,
+                )
+            if field_schema is None:
+                field_schema = next(
+                    (
+                        fs
+                        for fs in getattr(resource, "fields", ()) or ()
+                        if getattr(fs, "name", None) == field_name
+                    ),
+                    None,
+                )
+            if field_schema is None:
                 return None
 
             # Skip auto-generated fields
@@ -271,7 +287,12 @@ class FieldRenderer:
                 return None
 
             # Create the appropriate field component based on type
-            return self._create_field_component(field_schema, value, item_id)
+            return self._create_field_component(
+                field_schema,
+                value,
+                item_id,
+                csrf_token=csrf_token,
+            )
 
         except (ImportError, AttributeError, TypeError, ValueError) as e:
             logger.debug(
@@ -283,7 +304,11 @@ class FieldRenderer:
             return None
 
     def _create_field_component(
-        self, field_schema, value, item_id: str | None = None
+        self,
+        field_schema,
+        value,
+        item_id: str | None = None,
+        csrf_token: str | None = None,
     ) -> Any:
         """Create a field component from a FieldSchema for inline editing.
 
@@ -311,6 +336,8 @@ class FieldRenderer:
             "hx_swap": "outerHTML",
             "hx_trigger": "change",  # Submit on change
         }
+        if csrf_token:
+            common_args["hx_headers"] = dumps_str({"X-CSRF-Token": csrf_token})
 
         # Use registry to get the appropriate renderer
         renderer = _field_renderer_registry.get_renderer(field_schema)

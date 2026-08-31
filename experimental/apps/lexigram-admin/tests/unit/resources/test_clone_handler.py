@@ -76,3 +76,20 @@ class TestCloneRouteRegistration:
         for route in clone_routes:
             if hasattr(route, "methods") and route.methods is not None:
                 assert "GET" in route.methods
+
+    def test_inline_mutation_routes_are_registered(self) -> None:
+        config = AdminConfig(prefix="/admin")
+        mock_resource = MagicMock()
+        mock_resource.relations = []
+        router = AdminRouter(config=config, resources={"users": mock_resource})
+        routes = router._build_resource_routes("users", mock_resource)
+
+        field_route = next(r for r in routes if "/field/" in (r.path or ""))
+        inline_route = next(r for r in routes if r.path == "/users/{id}/inline")
+        inline_page_route = next(
+            r for r in routes if r.path == "/users/{id}/inline-edit"
+        )
+
+        assert {"GET", "POST"}.issubset(field_route.methods or set())
+        assert {"GET", "PATCH"}.issubset(inline_route.methods or set())
+        assert {"GET"}.issubset(inline_page_route.methods or set())

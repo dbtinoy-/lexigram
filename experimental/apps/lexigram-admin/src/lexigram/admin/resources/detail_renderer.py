@@ -13,6 +13,7 @@ from lexigram.admin.observability.admin_metrics import AdminMetrics, OperationTi
 from lexigram.admin.state.context import wants_fragment
 from lexigram.di.decorators import inject
 from lexigram.logging import get_logger
+from lexigram.serialization import dumps_str
 from lexigram.ui import InfolistWidget, el, render_to_string
 
 logger = get_logger(__name__)
@@ -148,10 +149,18 @@ class DetailRenderer:
                 ) from None
 
         patch_base = f"{self._config.prefix}/{self.resource_name}/{item_id}/inline"
+        csrf_token = getattr(getattr(request, "state", None), "csrf_token", None)
+        csrf_attrs = (
+            {"hx_headers": dumps_str({"X-CSRF-Token": csrf_token})}
+            if csrf_token
+            else {}
+        )
+        protected_fields = {"id", "tenant_id", "created_at", "updated_at"}
 
         field_rows: list[Any] = []
         for field_name, field_value in item_dict.items():
             alpine_key = f"editing_{field_name}"
+            editable = field_name not in protected_fields
             row = el(
                 "tr",
                 el(
@@ -169,69 +178,78 @@ class DetailRenderer:
                             str(field_value),
                             class_="inline-edit-value",
                         ),
-                        el(
-                            "button",
-                            "✎",
-                            type="button",
-                            title=f"Edit {field_name}",
-                            class_=(
-                                "inline-edit-pencil ml-2 text-primary-500 opacity-0 "
-                                "group-hover:opacity-100 transition-opacity text-xs"
-                            ),
-                            **{"@click": f"{alpine_key} = true"},
+                        (
+                            el(
+                                "button",
+                                "✎",
+                                type="button",
+                                title=f"Edit {field_name}",
+                                class_=(
+                                    "inline-edit-pencil ml-2 text-primary-500 opacity-0 "
+                                    "group-hover:opacity-100 transition-opacity text-xs"
+                                ),
+                                **{"@click": f"{alpine_key} = true"},
+                            )
+                            if editable
+                            else ""
                         ),
                         class_="group flex items-center",
                         **{"x-show": f"!{alpine_key}"},
                     ),
                     # Edit mode
-                    el(
-                        "div",
+                    (
                         el(
-                            "input",
-                            type="text",
-                            name=field_name,
-                            value=str(field_value),
-                            class_=(
-                                "inline-edit-input border border-border "
-                                "rounded px-2 py-1 text-sm w-full "
-                                "bg-muted text-foreground "
-                                "focus:outline-none focus:ring-2 focus:ring-primary-500"
+                            "div",
+                            el(
+                                "input",
+                                type="text",
+                                name=field_name,
+                                value=str(field_value),
+                                class_=(
+                                    "inline-edit-input border border-border "
+                                    "rounded px-2 py-1 text-sm w-full "
+                                    "bg-muted text-foreground "
+                                    "focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                ),
+                                **{
+                                    ":name": f"'{field_name}'",
+                                    "x-ref": f"input_{field_name}",
+                                },
                             ),
-                            **{
-                                ":name": f"'{field_name}'",
-                                "x-ref": f"input_{field_name}",
-                            },
-                        ),
-                        el(
-                            "button",
-                            "Save",
-                            type="button",
-                            class_=(
-                                "ml-2 px-2 py-1 text-xs font-medium text-white "
-                                "bg-primary-600 hover:bg-primary-700 rounded "
-                                "focus:outline-none focus:ring-2 focus:ring-primary-500"
+                            el(
+                                "button",
+                                "Save",
+                                type="button",
+                                class_=(
+                                    "ml-2 px-2 py-1 text-xs font-medium text-white "
+                                    "bg-primary-600 hover:bg-primary-700 rounded "
+                                    "focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                ),
+                                **{
+                                    "hx-patch": patch_base,
+                                    "hx-include": f"[name='{field_name}']",
+                                    "hx-target": "closest tr",
+                                    "hx-swap": "outerHTML",
+                                    "@click": f"{alpine_key} = false",
+                                    **csrf_attrs,
+                                },
                             ),
-                            **{
-                                "hx-patch": patch_base,
-                                "hx-include": f"[name='{field_name}']",
-                                "hx-target": "closest tr",
-                                "hx-swap": "outerHTML",
-                                "@click": f"{alpine_key} = false",
-                            },
-                        ),
-                        el(
-                            "button",
-                            "Cancel",
-                            type="button",
-                            class_=(
-                                "ml-1 px-2 py-1 text-xs font-medium text-muted-foreground "
-                                "dark:text-muted-foreground hover:text-foreground rounded border "
-                                "border-border"
+                            el(
+                                "button",
+                                "Cancel",
+                                type="button",
+                                class_=(
+                                    "ml-1 px-2 py-1 text-xs font-medium text-muted-foreground "
+                                    "dark:text-muted-foreground hover:text-foreground rounded border "
+                                    "border-border"
+                                ),
+                                **{"@click": f"{alpine_key} = false"},
                             ),
-                            **{"@click": f"{alpine_key} = false"},
-                        ),
-                        class_="flex items-center gap-1",
-                        **{"x-show": alpine_key},
+                            class_="flex items-center gap-1",
+                            **{"x-show": alpine_key},
+                        )
+                        if editable
+                        else ""
                     ),
                     class_="py-2 text-sm text-foreground",
                 ),

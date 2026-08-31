@@ -65,6 +65,28 @@ class TestExecuteBulkAction:
         assert result == "Deleted 1 items"
         assert ds.bulk_delete_calls == [["1"]]
 
+    async def test_async_delete_hook_is_awaited(self) -> None:
+        ds = _FakeDataSource({"1": {"id": 1}, "2": {"id": 2}})
+        ctl = _BulkController(ds)
+
+        async def can_delete(item: dict[str, Any]) -> bool:
+            return item["id"] == 1
+
+        ctl.can_delete = can_delete  # type: ignore[attr-defined]
+        result = await ctl.execute_bulk_action("delete", ["1", "2"])
+
+        assert result == "Refused: record 2 is protected from deletion"
+        assert ds.bulk_delete_calls == []
+
+    async def test_delete_selected_alias_uses_delete(self) -> None:
+        ds = _FakeDataSource({"1": {"id": 1}})
+        ctl = _BulkController(ds)
+
+        result = await ctl.execute_bulk_action("delete_selected", ["1"])
+
+        assert result == "Deleted 1 items"
+        assert ds.bulk_delete_calls == [["1"]]
+
     async def test_purge_uses_purged_label(self) -> None:
         ds = _FakeDataSource({"1": {"id": 1}})
         ctl = _BulkController(ds)

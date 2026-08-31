@@ -124,21 +124,27 @@ def get_row_actions(table_config: Any, resource: Any, resource_prefix: str) -> A
     # ActionContext at render time and need no injection.
     from copy import copy
 
-    from lexigram.ui.actions.standard import EditAction, ViewAction
+    from lexigram.ui.actions.standard import DeleteAction, EditAction, ViewAction
 
     resolved_actions = []
     for action in row_actions:
         resolved = action
         if (
-            isinstance(action, (EditAction, ViewAction))
+            isinstance(action, (DeleteAction, EditAction, ViewAction))
             and not action.get_url()
             and not action.get_hx_get()
         ):
             resolved = copy(action)
-            # Default logic: {prefix}/{id}/edit or {prefix}/{id}
-            postfix = "/edit" if isinstance(action, EditAction) else ""
+            # Default logic: {prefix}/{id}/delete-confirm, /edit, or detail.
+            if isinstance(action, DeleteAction):
+                postfix = "/delete-confirm"
+            elif isinstance(action, EditAction):
+                postfix = "/edit"
+            else:
+                postfix = ""
 
-            # Use hx_get for partial updates (SlideOver/Modal)
+            # Use hx_get for partial updates (SlideOver/Modal), including the
+            # confirmation panel for legacy delete actions.
             resolved.hx(get=f"{resource_prefix.rstrip('/')}/{{id}}{postfix}")
         resolved_actions.append(resolved)
 

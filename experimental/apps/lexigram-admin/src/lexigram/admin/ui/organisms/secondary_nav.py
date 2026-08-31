@@ -69,41 +69,68 @@ class SecondaryNav(Component):
     def _render_group(self, item: dict[str, Any]) -> Any:
         """Render one group: header link plus indented child links."""
         active = bool(item.get("active"))
-        header = el(
-            "a",
+        header_content = (
             self._render_header_icon(item.get("icon")),
             el("span", item.get("label", ""), class_="font-medium"),
-            href=item.get("href", "#"),
-            class_=(
-                "flex items-center gap-2 px-3 py-2 text-sm "
-                + (
-                    "text-primary-700 dark:text-primary-400"
-                    if active
-                    else "text-muted-foreground dark:text-muted-foreground"
-                )
-            ),
-            title=item.get("label", ""),
         )
-
-        children = [
+        header_classes = (
+            "flex items-center gap-2 px-3 py-2 text-sm "
+            + (
+                "text-primary-700 dark:text-primary-400"
+                if active
+                else "text-muted-foreground dark:text-muted-foreground"
+            )
+        )
+        header_href = item.get("href")
+        header = (
             el(
                 "a",
-                el("span", child.get("label", ""), class_="truncate"),
-                href=child.get("href", "#"),
-                class_=(
-                    "block px-3 py-2 pl-9 text-sm rounded-lg transition-colors "
-                    + (
-                        "bg-primary-50 text-primary-700 dark:bg-primary-900/30 "
-                        "dark:text-primary-400 font-medium"
-                        if child.get("active")
-                        else "text-muted-foreground hover:bg-muted "
-                        "dark:text-muted-foreground dark:hover:bg-card"
-                    )
-                ),
-                title=child.get("label", ""),
+                *header_content,
+                href=header_href,
+                class_=header_classes,
+                title=item.get("label", ""),
             )
-            for child in item.get("children", [])
-        ]
+            if header_href
+            else el(
+                "div",
+                *header_content,
+                class_=header_classes,
+                role="heading",
+                title=item.get("label", ""),
+            )
+        )
+
+        children = []
+        for child in item.get("children", []):
+            child_content = el("span", child.get("label", ""), class_="truncate")
+            child_classes = (
+                "block px-3 py-2 pl-9 text-sm rounded-lg transition-colors "
+                + (
+                    "bg-primary-50 text-primary-700 dark:bg-primary-900/30 "
+                    "dark:text-primary-400 font-medium"
+                    if child.get("active")
+                    else "text-muted-foreground hover:bg-muted "
+                    "dark:text-muted-foreground dark:hover:bg-card"
+                )
+            )
+            child_href = child.get("href")
+            children.append(
+                el(
+                    "a",
+                    child_content,
+                    href=child_href,
+                    class_=child_classes,
+                    title=child.get("label", ""),
+                )
+                if child_href
+                else el(
+                    "span",
+                    child_content,
+                    class_=child_classes,
+                    role="link",
+                    title=child.get("label", ""),
+                )
+            )
 
         nodes: list[Any] = [header]
         if children:

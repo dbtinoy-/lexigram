@@ -224,6 +224,35 @@ def render_bulk_action_button(
 
     Handles the deprecated private-field access pattern for bulk actions.
     """
+    action_name = str(getattr(action, "name", ""))
+    if action_name in {"export", "export_csv"}:
+        export_url = f"{(resource_prefix or '').rstrip('/')}/bulk"
+        from lexigram.ui import ActionButton
+
+        label = getattr(action, "label", None) or action_name
+        icon = getattr(action, "icon", None)
+        if not isinstance(icon, str):
+            icon = getattr(action, "_icon", None)
+        if hasattr(action, "_color_to_variant"):
+            variant = action._color_to_variant()
+        else:
+            raw_color = getattr(action, "_color", "secondary")
+            variant = (
+                raw_color
+                if raw_color in ("primary", "secondary", "danger", "ghost")
+                else "secondary"
+            )
+        return ActionButton(
+            label=label,
+            color=variant,
+            icon=icon,
+            size="md",
+            type="button",
+            data_bulk_download_url=export_url,
+            data_bulk_action=action_name,
+            onclick="return window.LexigramDownloadBulk(this);",
+        ).render()
+
     if not isinstance(action, OLD_ACTION_TYPES):
         # New admin bulk actions use the canonical ActionContext/HTMX
         # protocol. Keep this helper compatible with the toolbar path so
@@ -336,8 +365,10 @@ class ActionManager:
             return "can_create"
         if name in {"edit", "update"}:
             return "can_update"
-        if name in {"delete", "destroy", "purge", "restore"}:
+        if name in {"delete", "destroy", "purge"}:
             return "can_delete"
+        if name == "restore":
+            return "can_update"
         return None
 
     def _is_allowed(self, action: Any) -> bool:

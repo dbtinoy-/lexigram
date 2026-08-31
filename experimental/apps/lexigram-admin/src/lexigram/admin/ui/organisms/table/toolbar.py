@@ -124,6 +124,44 @@ class TableToolbar(Component):
                 if not action.is_visible(self.user):
                     continue
 
+                # CSV is a browser download, not an HTMX fragment. XHR-based
+                # ``hx-post`` responses do not honor Content-Disposition as a
+                # download, so use the shared native-submit helper while still
+                # carrying the checked row IDs and CSRF field.
+                action_name = str(getattr(action, "name", ""))
+                if action_name in {"export", "export_csv"}:
+                    export_url = f"{(self.config.resource_prefix or '').rstrip('/')}/bulk"
+                    _label = getattr(action, "label", None) or action_name
+                    _icon_value = getattr(action, "icon", None)
+                    _icon = (
+                        _icon_value
+                        if isinstance(_icon_value, str)
+                        else getattr(action, "_icon", None)
+                    )
+                    if hasattr(action, "_color_to_variant"):
+                        _color = action._color_to_variant()
+                    else:
+                        _raw_color = getattr(action, "_color", "secondary")
+                        _color = (
+                            "secondary"
+                            if _raw_color == "primary"
+                            else _raw_color
+                            if _raw_color in ("secondary", "danger", "ghost")
+                            else "secondary"
+                        )
+                    btn = ActionButton(
+                        label=_label,
+                        icon=_icon,
+                        color=_color,
+                        size="sm",
+                        type="button",
+                        data_bulk_download_url=export_url,
+                        data_bulk_action=action_name,
+                        onclick="return window.LexigramDownloadBulk(this);",
+                    )
+                    bulk_action_items.append(btn.render())
+                    continue
+
                 from lexigram.admin.actions.types import ActionContext as _ActionContext
                 from lexigram.ui import HTMXAttrs
 
@@ -186,10 +224,16 @@ class TableToolbar(Component):
                         # Legacy declarations without an explicit HTMX
                         # endpoint still use the mounted generic bulk route;
                         # the action name is carried in the form payload.
+                        _confirmation_message = getattr(
+                            action, "_confirmation_message", None
+                        ) or getattr(action, "_confirmation_title", None)
                         htmx_attrs = HTMXAttrs.for_bulk_action(
                             url=url,
                             method="POST",
                             action_name=action.name,
+                            confirm_message=_confirmation_message
+                            if getattr(action, "_requires_confirmation", False)
+                            else None,
                         )
                     _label = getattr(action, "label", None) or action.name
                     _icon_value = getattr(action, "icon", None)

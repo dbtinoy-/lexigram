@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import html as _html
+import json
 from typing import Any
 
 from lexigram.admin.schema.base import SchemaField
@@ -127,37 +128,68 @@ class PivotTable:
         self.pivot_columns = pivot_columns
         self.rows = rows or []
 
-    def render(self, resource_name: str = "", parent_id: str = "") -> str:
+    def render(
+        self,
+        resource_name: str = "",
+        parent_id: str = "",
+        admin_prefix: str = "/admin",
+        csrf_token: str | None = None,
+    ) -> str:
+        """Render pivot controls using the configured admin mount prefix."""
         rel_name = "pivot"
+        prefix = (admin_prefix.rstrip("/") or "/admin")
+        safe_resource = _html.escape(str(resource_name), quote=True)
+        safe_parent = _html.escape(str(parent_id), quote=True)
+        csrf_attr = ""
+        if csrf_token:
+            csrf_attr = (
+                ' hx-headers="'
+                + _html.escape(
+                    json.dumps({"X-CSRF-Token": str(csrf_token)}),
+                    quote=True,
+                )
+                + '"'
+            )
 
         header_cols = "".join(
-            f'<th class="px-4 py-2 text-left text-xs font-medium text-muted-foreground uppercase">{c.label}</th>'
+            f'<th class="px-4 py-2 text-left text-xs font-medium text-muted-foreground uppercase">'
+            f"{_html.escape(str(c.label))}</th>"
             for c in self.pivot_columns
         )
 
         rows_html = ""
         for row in self.rows:
-            related_id = row.get("id", "")
-            label = row.get("label", related_id)
+            related_id = _html.escape(str(row.get("id", "")), quote=True)
+            label = _html.escape(str(row.get("label", row.get("id", ""))))
 
             pivot_cells = ""
+            pivot_values = row.get("pivot") or {}
             for col in self.pivot_columns:
-                value = row.get("pivot", {}).get(col.name, col.default)
+                value = pivot_values.get(col.name, col.default)
+                safe_name = _html.escape(str(col.name), quote=True)
+                safe_value = _html.escape(str(value), quote=True)
+                pivot_url = (
+                    f"{prefix}/{safe_resource}/{safe_parent}/relations/{rel_name}/"
+                    f"pivot/{related_id}"
+                )
                 pivot_cells += f"""<td class="px-4 py-2">
                     <input type="text" class="px-2 py-1 text-sm border rounded w-full"
-                           value="{value}" name="pivot_{col.name}"
-                           hx-post="/admin/{resource_name}/{parent_id}/relations/{rel_name}/pivot/{related_id}"
-                           hx-trigger="change" hx-swap="none" />
+                           value="{safe_value}" name="pivot_{safe_name}"
+                           hx-post="{pivot_url}"
+                           hx-trigger="change" hx-swap="none"{csrf_attr} />
                 </td>"""
 
+            detach_url = (
+                f"{prefix}/{safe_resource}/{safe_parent}/relations/{rel_name}/{related_id}"
+            )
             rows_html += f"""<tr>
                 <td class="px-4 py-2 text-sm font-medium text-foreground">{label}</td>
                 {pivot_cells}
                 <td class="px-4 py-2 text-sm">
-                    <button class="text-destructive hover:text-destructive/90 text-sm"
-                            hx-delete="/admin/{resource_name}/{parent_id}/relations/{rel_name}/{related_id}"
+                    <button type="button" class="text-destructive hover:text-destructive/90 text-sm"
+                            hx-delete="{detach_url}"
                             hx-confirm="Detach this record?"
-                            hx-target="closest tr" hx-swap="outerHTML">Detach</button>
+                            hx-target="closest tr" hx-swap="outerHTML"{csrf_attr}>Detach</button>
                 </td>
             </tr>"""
 

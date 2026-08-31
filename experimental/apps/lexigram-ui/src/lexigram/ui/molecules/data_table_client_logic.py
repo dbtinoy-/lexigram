@@ -14,6 +14,42 @@ class DataTableScriptRenderer:
         # We assume all_ids is already a list of strings
         script_js = f"""
         (function() {{
+            // Keep downloads as native form submissions. HTMX receives CSV
+            // bytes through XHR and cannot turn Content-Disposition into a
+            // browser download, while a temporary form preserves cookies,
+            // CSRF fields, and the selected IDs.
+            window.LexigramDownloadBulk = window.LexigramDownloadBulk || function(button) {{
+                const table = document.querySelector('{Zones.TABLE.selector}');
+                const checked = table ? table.querySelectorAll('input[name="ids"]:checked') : [];
+                if (!checked.length) {{
+                    if (window.alert) window.alert('Select at least one record.');
+                    return false;
+                }}
+
+                const form = document.createElement('form');
+                form.method = 'post';
+                form.action = button.dataset.bulkDownloadUrl || '';
+                form.target = '_blank';
+                form.style.display = 'none';
+
+                const add = (name, value) => {{
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = name;
+                    input.value = value;
+                    form.appendChild(input);
+                }};
+                add('action', button.dataset.bulkAction || 'export');
+                checked.forEach((checkbox) => add('ids', checkbox.value));
+                const csrf = table && table.querySelector('input[name="csrf_token"]');
+                if (csrf) add('csrf_token', csrf.value);
+
+                document.body.appendChild(form);
+                form.submit();
+                form.remove();
+                return false;
+            }};
+
             if (window.LexigramTableInitialized) return;
             window.LexigramTableInitialized = true;
 

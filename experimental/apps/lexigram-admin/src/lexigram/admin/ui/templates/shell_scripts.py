@@ -55,7 +55,7 @@ def search_overlay_markup() -> Any:
             document.addEventListener('click', function(e) {
                 var results = document.getElementById('search-results');
                 if (!results) return;
-                var searchInput = document.querySelector('[hx-get*="/admin/search"]');
+                var searchInput = document.querySelector('[hx-get$="/search"]');
                 if (results.children.length > 0 &&
                     !results.contains(e.target) &&
                     (!searchInput || !searchInput.contains(e.target))) {
@@ -97,7 +97,7 @@ def search_overlay_markup() -> Any:
 
             // Loading indicator via HTMX events
             document.addEventListener('htmx:beforeRequest', function(e) {
-                var searchInput = e.detail?.elt?.closest('[hx-get*="/admin/search"]');
+                var searchInput = e.detail?.elt?.closest('[hx-get*="/search"]');
                 if (!searchInput) return;
                 var results = document.getElementById('search-results');
                 if (!results) return;
@@ -106,7 +106,7 @@ def search_overlay_markup() -> Any:
             });
 
             document.addEventListener('htmx:afterRequest', function(e) {
-                var searchInput = e.detail?.elt?.closest('[hx-get*="/admin/search"]');
+                var searchInput = e.detail?.elt?.closest('[hx-get*="/search"]');
                 if (!searchInput) return;
                 var results = document.getElementById('search-results');
                 if (!results) return;
@@ -116,7 +116,7 @@ def search_overlay_markup() -> Any:
             });
 
             document.addEventListener('htmx:beforeSwap', function(e) {
-                var searchInput = e.detail?.elt?.closest('[hx-get*="/admin/search"]');
+                var searchInput = e.detail?.elt?.closest('[hx-get*="/search"]');
                 if (searchInput) {
                     searchFocusedIndex = -1;
                 }

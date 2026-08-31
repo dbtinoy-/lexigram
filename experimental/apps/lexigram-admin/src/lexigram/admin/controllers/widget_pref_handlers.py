@@ -25,6 +25,7 @@ async def render_config_popup(
     """Render config popup for a widget."""
     from lexigram.admin.controllers.widget_handler_support import ensure_edit_allowed
     from lexigram.admin.dashboard.widgets import render_widget_config_popup
+    from lexigram.admin.resources.urls import admin_prefix_from_request
 
     tenant_id = await resolve_tenant(request, default="default")
     user_id = "default"
@@ -61,7 +62,14 @@ async def render_config_popup(
     enabled = "enabled" not in prefs or name in prefs.get("enabled", [])
     cfg = prefs.get("configs", {}).get(name, {})
 
-    html = render_widget_config_popup(name, widget_def.title, schema, cfg, enabled)
+    html = render_widget_config_popup(
+        name,
+        widget_def.title,
+        schema,
+        cfg,
+        enabled,
+        admin_prefix=admin_prefix_from_request(request),
+    )
     return HTMLResponse(html)
 
 

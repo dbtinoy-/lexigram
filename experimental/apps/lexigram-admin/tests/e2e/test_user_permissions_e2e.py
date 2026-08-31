@@ -34,6 +34,8 @@ class _User:
         self.name = name
         self.email = email
         self.permissions = permissions or []
+        self.is_admin = True
+        self.role = "admin"
 
 
 class _MemoryDataSource:
@@ -89,8 +91,21 @@ def _app(user: _User | None = None) -> Starlette:
     _LAST_APP["users"] = resource
     resources = {"users": resource}
 
-    def handler(action: str) -> ResourceHandler:
-        return ResourceHandler(AdminConfig(), "users", action, resources=resources)
+    authenticated_user = user or _User("u1")
+
+    def handler(action: str):
+        resource_handler = ResourceHandler(
+            AdminConfig(), "users", action, resources=resources
+        )
+
+        class AuthenticatedResourceApp:
+            async def __call__(self, scope, receive, send):
+                # This standalone ASGI fixture must model the authenticated
+                # request state that production middleware supplies.
+                scope.setdefault("state", {})["user"] = authenticated_user
+                return await resource_handler(scope, receive, send)
+
+        return AuthenticatedResourceApp()
 
     routes = [
         Route(

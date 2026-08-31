@@ -50,6 +50,7 @@ def test_bell_connects_to_sse_endpoint() -> None:
     html = str(bell)
 
     assert "new EventSource('/custom/events')" in html
+    assert "addEventListener('message'" in html
     assert "addEventListener('notification'" in html
     assert "addEventListener('toast'" in html
 
@@ -80,6 +81,17 @@ def test_bell_posts_mark_read_to_inbox_endpoints() -> None:
     assert "fetch('/custom/read/{message_id}'.replace('{message_id}', id)" in html
     assert "method: 'POST'" in html
     assert "fetch('/custom/read-all'" in html
+
+
+def test_bell_sends_csrf_for_mutating_requests() -> None:
+    """Mark-read requests must carry the page token through the bell root."""
+    from lexigram.ui import NotificationBell
+
+    html = str(NotificationBell(csrf_token="csrf-123"))
+
+    assert 'data-csrf-token="csrf-123"' in html
+    assert "X-CSRF-Token" in html
+    assert "this.$el.dataset.csrfToken" in html
 
 
 def test_bell_inbox_footer_only_with_inbox_url() -> None:

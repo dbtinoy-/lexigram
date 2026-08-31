@@ -10,6 +10,32 @@ from lexigram.result import Err, Ok, Result
 from lexigram.ui import DateInput, Element, TimePicker
 
 
+def _date_form_value(value: Any) -> str:
+    """Normalize date-like values for a browser ``date`` input."""
+    if isinstance(value, datetime):
+        return value.date().isoformat()
+    if isinstance(value, date):
+        return value.isoformat()
+    text = str(value or "").strip()
+    return text.split("T", 1)[0].split(" ", 1)[0]
+
+
+def _datetime_form_value(value: Any) -> str:
+    """Normalize datetime-like values for ``datetime-local``."""
+    if isinstance(value, datetime):
+        return value.replace(tzinfo=None).isoformat(timespec="minutes")
+    if isinstance(value, date):
+        return f"{value.isoformat()}T00:00"
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    try:
+        parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError:
+        return text
+    return parsed.replace(tzinfo=None).isoformat(timespec="minutes")
+
+
 @dataclass(frozen=True, kw_only=True)
 class DateField(SchemaField[date]):
     """A date input field."""
@@ -29,7 +55,7 @@ class DateField(SchemaField[date]):
     ) -> Element:
         kwargs: dict[str, Any] = {
             "name": self.name,
-            "value": value.isoformat() if value is not None else "",
+            "value": _date_form_value(value),
         }
         if self.label is not None:
             kwargs["label"] = self.label
@@ -83,7 +109,7 @@ class DateTimeField(SchemaField[datetime]):
     ) -> Element:
         kwargs: dict[str, Any] = {
             "name": self.name,
-            "value": value.isoformat() if value is not None else "",
+            "value": _datetime_form_value(value),
         }
         if self.label is not None:
             kwargs["label"] = self.label

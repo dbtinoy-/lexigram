@@ -22,6 +22,24 @@ if TYPE_CHECKING:
 logger = get_logger(__name__)
 
 
+def _internal_path(path: str, mount_prefix: str) -> str:
+    """Normalize a contributor URL to the mounted admin app's namespace.
+
+    Contributors historically publish URLs under ``/admin``. The router can
+    be mounted elsewhere, so custom-prefix deployments must strip both their
+    configured prefix and that legacy canonical prefix.
+    """
+    normalized = path if path.startswith("/") else f"/{path}"
+    prefix = (mount_prefix or "").rstrip("/")
+    if prefix and (normalized == prefix or normalized.startswith(f"{prefix}/")):
+        normalized = normalized[len(prefix) :]
+    elif prefix and prefix != "/admin" and (
+        normalized == "/admin" or normalized.startswith("/admin/")
+    ):
+        normalized = normalized[len("/admin") :]
+    return normalized or "/"
+
+
 from lexigram.admin.dashboard.page_handlers import (
     AdminPageHandler,
     StructuredPageHandler,
@@ -55,9 +73,7 @@ def _register_pages(
             handler = AdminPageHandler(handler, container)
         else:
             handler = StructuredPageHandler(handler)
-        path = page.route_path
-        if not path.startswith("/"):
-            path = f"/{path}"
+        path = _internal_path(page.route_path, prefix)
         ns_name = naming_policy.namespaced(page.contributor, page.name)
         naming_policy.register("page", ns_name)
         router.add_route(path=path, method="GET", handler=handler, name=ns_name)
@@ -83,9 +99,7 @@ def _register_settings(
             handler = AdminPageHandler(handler, container)
         else:
             handler = StructuredPageHandler(handler)
-        path = panel.route_path
-        if not path.startswith("/"):
-            path = f"/{path}"
+        path = _internal_path(panel.route_path, prefix)
         ns_name = naming_policy.namespaced(panel.contributor, panel.name)
         naming_policy.register("panel", ns_name)
         router.add_route(path=path, method="GET", handler=handler, name=ns_name)
@@ -121,14 +135,9 @@ class RouteIntegrator:
             for spec in c.get_routes():
                 ns_name = self._naming.namespaced(c.package_source, spec.name)
                 self._naming.register("route", ns_name)
-                path = spec.path
+                path = _internal_path(spec.path, self._prefix)
                 # Contributor specs carry the full URL (e.g. "/admin/...")
-                # but routes live inside the mounted admin app, so strip
-                # the mount prefix like _ensure_nav_route does.
-                if self._prefix and path.startswith(self._prefix):
-                    path = path[len(self._prefix) :]
-                    if not path:
-                        path = "/"
+                # but routes live inside the mounted admin app.
                 registered_internal_paths.add(path)
                 self._router.add_route(
                     path=path,
@@ -141,9 +150,7 @@ class RouteIntegrator:
             pages = c.get_management_pages()
             if pages:
                 for page in pages:
-                    internal = page.route_path
-                    if not internal.startswith("/"):
-                        internal = f"/{internal}"
+                    internal = _internal_path(page.route_path, self._prefix)
                     registered_internal_paths.add(internal)
                 _register_pages(
                     self._router,
@@ -157,9 +164,7 @@ class RouteIntegrator:
             panels = c.get_settings_panels()
             if panels:
                 for panel in panels:
-                    internal = panel.route_path
-                    if not internal.startswith("/"):
-                        internal = f"/{internal}"
+                    internal = _internal_path(panel.route_path, self._prefix)
                     registered_internal_paths.add(internal)
                 _register_settings(
                     self._router,
@@ -196,11 +201,7 @@ class RouteIntegrator:
         if not url or url.startswith("http"):
             return
 
-        internal = url
-        if self._prefix and internal.startswith(self._prefix):
-            internal = internal[len(self._prefix) :]
-        if not internal:
-            internal = "/"
+        internal = _internal_path(url, self._prefix)
 
         if internal in registered_paths or url in registered_paths:
             return
@@ -231,12 +232,8 @@ class RouteIntegrator:
         if not namespaced or namespaced == url:
             return
 
-        internal = url
-        internal_ns = namespaced
-        if self._prefix and internal.startswith(self._prefix):
-            internal = internal[len(self._prefix) :]
-        if self._prefix and internal_ns.startswith(self._prefix):
-            internal_ns = internal_ns[len(self._prefix) :]
+        internal = _internal_path(url, self._prefix)
+        internal_ns = _internal_path(namespaced, self._prefix)
         if internal_ns == internal:
             return
 

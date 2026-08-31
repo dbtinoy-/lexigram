@@ -257,6 +257,7 @@ class Sidebar(Component):
         user_menu_items: list[dict] | None = None,
         system_menu_items: list[dict] | None = None,
         raw_user: Any | None = None,
+        admin_prefix: str = "/admin",
         **props,
     ) -> None:
         # Standardize user as a dict for easier access
@@ -292,6 +293,7 @@ class Sidebar(Component):
         self.user_menu_items = user_menu_items or []
         self.system_menu_items = system_menu_items or []
         self.raw_user = raw_user
+        self.admin_prefix = admin_prefix.rstrip("/") or "/admin"
 
     def render(self) -> Any:
         from lexigram.ui import SystemBox, UserBox
@@ -307,14 +309,14 @@ class Sidebar(Component):
                     class_="w-10 h-10 rounded-xl object-contain flex-shrink-0",
                 ),
                 class_="block flex-shrink-0",
-                href="/admin",
+                href=self.admin_prefix,
             )
         else:
             logo_icon = el(
                 "a",
                 el("span", self.logo_text[0].upper(), class_="text-white"),
                 class_="w-10 h-10 bg-primary-600 rounded-xl flex items-center justify-center shadow-lg shadow-primary-500/20 flex-shrink-0 cursor-pointer hover:bg-primary-700 transition-colors",
-                href="/admin",
+                href=self.admin_prefix,
             )
 
         # Toggle Button - chevron to collapse/expand sidebar
@@ -378,6 +380,7 @@ class Sidebar(Component):
             roles=_get_user_val("roles", []),
             user_menu_items=self.user_menu_items,
             user=self.raw_user,
+            logout_url=f"{self.admin_prefix}/logout",
         )
         footer = el(
             "div",

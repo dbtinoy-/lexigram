@@ -19,6 +19,7 @@ from lexigram.admin.navigation.types import MenuItem
 from lexigram.admin.resources.urls import (
     DEFAULT_ADMIN_PREFIX,
     admin_prefix_from_request,
+    mount_admin_url,
 )
 
 __all__ = ["NavigationManager"]
@@ -56,6 +57,7 @@ class NavigationManager:
                 state: nav builder, assembler groups, cluster registry).
         """
         self._request = request
+        self._admin_prefix = admin_prefix_from_request(request)
         state = getattr(request, "app", None) if request else None
         self._state = getattr(state, "state", None) if state else None
         self._nav_builder = (
@@ -95,7 +97,7 @@ class NavigationManager:
             The matching cluster, or ``None`` outside every cluster center.
         """
         path = self._current_path()
-        return self._cluster_registry.for_path(path)
+        return self._cluster_registry.for_path(path, self._admin_prefix)
 
     def _current_path(self) -> str | None:
         if not self._request or not hasattr(self._request, "url"):
@@ -128,7 +130,21 @@ class NavigationManager:
         )
 
         current_path = self._current_path()
-        assembler_nav_items = list(self._assembler_nav_items)
+        assembler_nav_items = []
+        for raw_item in self._assembler_nav_items:
+            if not isinstance(raw_item, dict):
+                assembler_nav_items.append(raw_item)
+                continue
+            item = dict(raw_item)
+            if item.get("href"):
+                item["href"] = mount_admin_url(
+                    str(item["href"]), self._admin_prefix
+                )
+            if item.get("badge"):
+                item["badge"] = mount_admin_url(
+                    str(item["badge"]), self._admin_prefix
+                )
+            assembler_nav_items.append(item)
 
         cluster_nav: list | None = None
         items_by_cluster: dict[Any, list] = {}
@@ -138,9 +154,17 @@ class NavigationManager:
                 continue
             items_by_cluster[cluster] = items
             if cluster_nav is None and is_cluster_path(
-                current_path, items, cluster=cluster
+                current_path,
+                items,
+                cluster=cluster,
+                admin_prefix=self._admin_prefix,
             ):
-                cluster_nav = build_secondary_nav(items, current_path, cluster=cluster)
+                cluster_nav = build_secondary_nav(
+                    items,
+                    current_path,
+                    cluster=cluster,
+                    admin_prefix=self._admin_prefix,
+                )
         for cluster, items in items_by_cluster.items():
             assembler_nav_items = collapse_cluster_in_primary(
                 assembler_nav_items,

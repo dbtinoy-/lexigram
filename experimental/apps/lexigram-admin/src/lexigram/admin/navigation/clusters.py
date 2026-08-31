@@ -43,6 +43,7 @@ def cluster_child_href(
     url: str | None,
     *,
     cluster: Cluster = INFRASTRUCTURE_CLUSTER,
+    admin_prefix: str = "/admin",
 ) -> str:
     """Namespace a cluster child URL under the cluster center prefix.
 
@@ -58,13 +59,22 @@ def cluster_child_href(
     Returns:
         Namespaced URL, or the input unchanged.
     """
-    if not url or not url.startswith("/admin/"):
-        return url or ""
+    if not url:
+        return ""
+    prefix = (admin_prefix or "/admin").rstrip("/") or "/admin"
     cleaned = url.rstrip("/")
-    cluster_url = f"/admin/{cluster.slug}"
+    source_prefix = "/admin"
+    if cleaned == prefix or cleaned.startswith(prefix + "/"):
+        source_prefix = prefix
+    elif not (cleaned == "/admin" or cleaned.startswith("/admin/")):
+        return url
+    cluster_url = f"{prefix}/{cluster.slug}"
     if cleaned == cluster_url or cleaned.startswith(cluster_url + "/"):
         return url
-    relative = cleaned.removeprefix("/admin/")
+    legacy_cluster_url = f"/admin/{cluster.slug}"
+    if cleaned == legacy_cluster_url or cleaned.startswith(legacy_cluster_url + "/"):
+        return f"{prefix}{cleaned[len('/admin'):]}"
+    relative = cleaned.removeprefix(source_prefix).lstrip("/")
     return f"{cluster_url}/{relative}"
 
 
@@ -92,6 +102,7 @@ def is_cluster_path(
     items: list[Any],
     *,
     cluster: Cluster = INFRASTRUCTURE_CLUSTER,
+    admin_prefix: str = "/admin",
 ) -> bool:
     """Return True when the path belongs to the cluster center.
 
@@ -108,13 +119,30 @@ def is_cluster_path(
     """
     if not current_path:
         return False
-    cluster_url = f"/admin/{cluster.slug}"
+    prefix = (admin_prefix or "/admin").rstrip("/") or "/admin"
+    cluster_url = f"{prefix}/{cluster.slug}"
     if current_path == cluster_url or current_path.startswith(cluster_url + "/"):
         return True
-    current = current_path
     return any(
-        current == item.url or current.startswith(item.url + "/") for item in items
+        _is_active(
+            current_path,
+            cluster_child_href(item.url, cluster=cluster, admin_prefix=prefix),
+        )
+        or _is_active(current_path, _mounted_source_url(item.url, prefix))
+        for item in items
     )
+
+
+def _mounted_source_url(url: str, admin_prefix: str) -> str:
+    """Map a legacy contributor URL to the active mount without namespacing."""
+    if not url:
+        return url
+    prefix = (admin_prefix or "/admin").rstrip("/") or "/admin"
+    if prefix != "/admin" and (
+        url == "/admin" or url.startswith("/admin/")
+    ):
+        return f"{prefix}{url[len('/admin'):]}"
+    return url
 
 
 def _is_active(current_path: str | None, url: str) -> bool:
@@ -128,6 +156,7 @@ def build_secondary_nav(
     current_path: str | None,
     *,
     cluster: Cluster = INFRASTRUCTURE_CLUSTER,
+    admin_prefix: str = "/admin",
 ) -> list[dict[str, Any]]:
     """Build secondary sidebar entries for the cluster center.
 
@@ -148,18 +177,38 @@ def build_secondary_nav(
         children = [
             {
                 "label": child.label,
-                "href": cluster_child_href(child.url, cluster=cluster),
+                "href": cluster_child_href(
+                    child.url, cluster=cluster, admin_prefix=admin_prefix
+                ),
                 "icon": child.icon,
-                "active": _is_active(current_path, child.url),
+                "active": _is_active(
+                    current_path,
+                    cluster_child_href(
+                        child.url, cluster=cluster, admin_prefix=admin_prefix
+                    ),
+                ) or _is_active(current_path, _mounted_source_url(child.url, admin_prefix)),
             }
             for child in item.children
         ]
         entry: dict[str, Any] = {
             "label": item.label,
-            "href": cluster_child_href(item.url, cluster=cluster),
+            "href": cluster_child_href(
+                item.url, cluster=cluster, admin_prefix=admin_prefix
+            ),
             "icon": item.icon,
-            "active": _is_active(current_path, item.url)
-            or any(child["active"] for child in children),
+            "active": (
+                _is_active(
+                    current_path,
+                    cluster_child_href(
+                        item.url, cluster=cluster, admin_prefix=admin_prefix
+                    ),
+                )
+                or _is_active(
+                    current_path,
+                    _mounted_source_url(item.url, admin_prefix),
+                )
+                or any(child["active"] for child in children)
+            ),
         }
         if children:
             entry["children"] = children

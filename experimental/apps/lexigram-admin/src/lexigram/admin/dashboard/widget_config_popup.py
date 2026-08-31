@@ -14,6 +14,7 @@ def render_widget_config_popup(
     fields: list[ConfigField],
     current_values: dict[str, Any],
     enabled: bool = True,
+    admin_prefix: str = "/admin",
 ) -> str:
     """Render HTML for a widget config dialog."""
     rows: list[Any] = [
@@ -47,13 +48,16 @@ def render_widget_config_popup(
         render_slide_over_fragment,
     )
 
+    config_endpoint = (
+        (admin_prefix or "/admin").rstrip("/") or "/admin"
+    ) + "/core/widgets/config"
     form = el(
         "form",
         *rows,
         el("input", type_="hidden", name="widget_name", value=widget_name),
         id=f"widget-config-form-{widget_name}",
         **{
-            "hx-post": "/admin/core/widgets/config",
+            "hx-post": config_endpoint,
             "hx-swap": "none",
             "hx-on:htmx:after-request": "if(event.detail.successful){window.location.reload();}",
         },

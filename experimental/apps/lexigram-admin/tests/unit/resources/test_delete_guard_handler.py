@@ -26,6 +26,17 @@ class _ProtectedResource(Resource):
         return not (isinstance(item, dict) and item.get("protected"))
 
 
+class _AsyncProtectedResource(_ProtectedResource):
+    """Resource whose record guard is asynchronous."""
+
+    async def can_delete(self, item: Any) -> bool:
+        return await _AsyncProtectedResource._allow(item)
+
+    @staticmethod
+    async def _allow(item: Any) -> bool:
+        return not (isinstance(item, dict) and item.get("protected"))
+
+
 class TestDeleteActionHandlerGuard:
     """HTTP-surface tests for the can_delete guard in delete."""
 
@@ -71,6 +82,16 @@ class TestDeleteActionHandlerGuard:
         assert "cannot be deleted" in response.headers["HX-Trigger"]
         assert "HX-Redirect" not in response.headers
         assert self.resource._data_source.deleted == []
+
+    async def test_async_delete_guard_is_awaited(self) -> None:
+        resource = _AsyncProtectedResource()
+        resource._data_source = _FakeDataSource()
+        request = self._make_request(item_id="1")
+
+        response = await self.handler.handle(request, resource)
+
+        assert response.status_code == 409
+        assert resource._data_source.deleted == []
 
     async def test_delete_missing_record_is_not_found(self) -> None:
         """Unknown ids return 404 without touching the store."""

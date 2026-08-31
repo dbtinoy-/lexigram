@@ -190,6 +190,26 @@ class ListRenderer:
             }
         )
 
+    async def _ensure_csrf_token(self, request: Any) -> None:
+        """Ensure list pages expose the token used by bulk form controls."""
+        state = getattr(request, "state", None)
+        if state is None or getattr(state, "csrf_token", None):
+            return
+        try:
+            from lexigram.admin.auth.services.csrf_service import AdminCsrfService
+
+            session = getattr(request, "scope", {}).get("session", {})
+            session_id = session.get("csrf_session_id") or session.get(
+                "admin_user_id", "anonymous"
+            )
+            state.csrf_token = AdminCsrfService(
+                secret=self._config.auth.session_secret.get_secret_value()
+            ).generate_token(session_id)
+        except (AttributeError, TypeError, ValueError):
+            # Minimal component/unit requests may not have session support;
+            # the list remains renderable and middleware still fails closed.
+            return
+
     async def render(
         self,
         request,
@@ -197,6 +217,7 @@ class ListRenderer:
         user=None,
     ) -> HTMLResponse:
         """Render list view with DataTable component."""
+        await self._ensure_csrf_token(request)
         # Get resource configuration
         table_config = (
             resource.get_table_config()
@@ -340,6 +361,7 @@ class ListRenderer:
             permissions=table_permissions,
             loading=False,
             error=self._fetcher.error,
+            csrf_token=getattr(getattr(request, "state", None), "csrf_token", None),
         )
 
         is_htmx = wants_fragment(request)

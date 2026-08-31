@@ -85,6 +85,22 @@ class TestRouteIntegrator:
             name="fake_pkg.stats",
         )
 
+    def test_custom_mount_strips_legacy_admin_prefix(self) -> None:
+        router = MagicMock()
+        naming = NamingPolicy(mode="warn")
+        integrator = RouteIntegrator(
+            router=router, naming_policy=naming, route_prefix="/backoffice"
+        )
+
+        integrator.register([FakeContributor()])
+
+        router.add_route.assert_any_call(
+            path="/fake/hello",
+            method="GET",
+            handler=ANY,
+            name="fake_pkg.hello",
+        )
+
     def test_namespaces_route_names(self) -> None:
         router = MagicMock()
         naming = NamingPolicy(mode="warn")

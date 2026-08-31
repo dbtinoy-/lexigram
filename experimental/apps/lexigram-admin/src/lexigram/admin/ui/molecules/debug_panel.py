@@ -15,9 +15,17 @@ if TYPE_CHECKING:
 class DebugPanel(Component):
     """A slide-over or collapsible panel for performance debugging."""
 
-    def __init__(self, monitor: HTMXPerformanceMonitor, **props: Any) -> None:
+    def __init__(
+        self,
+        monitor: HTMXPerformanceMonitor,
+        admin_prefix: str = "/admin",
+        csrf_token: str | None = None,
+        **props: Any,
+    ) -> None:
         super().__init__(**props)
         self.monitor = monitor
+        self.admin_prefix = admin_prefix.rstrip("/") or "/admin"
+        self.csrf_token = csrf_token
 
     def render(self) -> Any:
         stats = self.monitor.get_stats()
@@ -70,6 +78,14 @@ class DebugPanel(Component):
                     ),
                 )
 
+        csrf_attrs = {}
+        if self.csrf_token:
+            from lexigram.serialization import dumps_str
+
+            csrf_attrs["hx_headers"] = dumps_str(
+                {"X-CSRF-Token": self.csrf_token}
+            )
+
         return el(
             "div",
             el(
@@ -80,8 +96,9 @@ class DebugPanel(Component):
                 el(
                     "button",
                     "Clear Stats",
-                    hx_post="/admin/debug/clear",
+                    hx_post=f"{self.admin_prefix}/debug/clear",
                     class_="mt-6 w-full py-2 bg-muted hover:bg-muted rounded text-sm transition-colors text-foreground",
+                    **csrf_attrs,
                 ),
                 class_="p-6 h-full overflow-y-auto",
             ),

@@ -28,3 +28,10 @@ def test_userbox_renders_menu_items():
     assert 'href="/admin/settings"' in html
     # Data-test attr should come from menu attrs
     assert 'data-test="system-settings"' in html
+
+
+def test_userbox_uses_configured_logout_url() -> None:
+    html = render_to_string(UserBox("Bob", logout_url="/backoffice/logout"))
+
+    assert 'href="/backoffice/logout"' in html
+    assert 'href="/admin/logout"' not in html

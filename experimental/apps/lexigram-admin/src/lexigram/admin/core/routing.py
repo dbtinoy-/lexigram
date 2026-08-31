@@ -321,6 +321,24 @@ class AdminRouter:
                 methods=["GET"],
             ),
             Route(
+                f"{prefix}/{{id}}/field/{{field}}",
+                ResourceHandler(self._config, name, "field", resources=resources_dict),
+                name=f"admin_{name}_field",
+                methods=["GET", "POST"],
+            ),
+            Route(
+                f"{prefix}/{{id}}/inline",
+                ResourceHandler(self._config, name, "inline", resources=resources_dict),
+                name=f"admin_{name}_inline",
+                methods=["PATCH", "GET"],
+            ),
+            Route(
+                f"{prefix}/{{id}}/inline-edit",
+                ResourceHandler(self._config, name, "inline-edit", resources=resources_dict),
+                name=f"admin_{name}_inline_edit",
+                methods=["GET"],
+            ),
+            Route(
                 f"{prefix}/{{id}}",
                 ResourceHandler(self._config, name, "detail", resources=resources_dict),
                 name=f"admin_{name}_detail",

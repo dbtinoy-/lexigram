@@ -476,6 +476,25 @@ class TestWidgetRegistry:
         )
         assert 'hx-get="/admin/test/alpha?period=90d&amp;active=True"' in html
 
+    def test_render_contributor_widgets_uses_configured_admin_prefix(self) -> None:
+        """Legacy contributor endpoints are mounted under custom prefixes."""
+        registry = WidgetRegistry()
+        widget = DashboardWidgetDefinition(
+            name="custom-prefix-widget",
+            title="Custom Prefix",
+            contributor="test",
+            category=WidgetCategory.METRICS,
+            size=WidgetSize.SMALL,
+            render_endpoint="/admin/test/widget",
+            view_kind=WidgetKind.STAT,
+        )
+        result = registry.render_contributor_widgets(
+            [widget], admin_prefix="/backoffice"
+        )
+        assert 'hx-get="/backoffice/test/widget"' in result
+        assert "/admin/test/widget" not in result
+        assert "/backoffice/core/widgets/custom-prefix-widget/config" in result
+
     def test_render_contributor_widgets_plain_url_without_filters(self) -> None:
         """Test fetch URLs stay unchanged when no page filters are given."""
         registry = WidgetRegistry()
