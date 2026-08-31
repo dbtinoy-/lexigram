@@ -227,13 +227,16 @@ class TestOpacityUtilities:
     any of them, and ~100 call sites across the admin -- error states,
     overlays, hover affordances -- rendered with no colour at all.
 
-    dev/generate_opacity_utilities.py emits the missing rules as color-mix
+    dev/generators/admin_opacity_utilities.py emits the missing rules as color-mix
     declarations. These tests keep the generated block honest.
     """
 
+    # Lives in the repo-wide dev/ tooling tree, which .gitignore allowlists.
+    # An app-local dev/ directory is swallowed by the deny-all rule at the
+    # top of .gitignore, so the script would not have been committed.
     _GENERATOR = (
-        Path(__file__).resolve().parents[3]
-        / "dev/generate_opacity_utilities.py"
+        Path(__file__).resolve().parents[6]
+        / "dev/generators/admin_opacity_utilities.py"
     )
 
     def test_generator_is_present(self) -> None:
