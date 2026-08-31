@@ -89,7 +89,11 @@ class UserPermissionsActionHandler:
         item_id: str,
     ) -> Any:
         """Render the permission checkboxes for one user."""
-        user = await data_source.find_one(item_id)
+        try:
+            user = await data_source.find_one(item_id)
+        except Exception as exc:  # noqa: BLE001 — storage details stay private
+            logger.exception("admin.user_permissions_lookup_failed", error=str(exc))
+            return HTMLResponse("Unable to load user", status_code=503)
         if user is None:
             return HTMLResponse("<h1>User not found</h1>", status_code=404)
 
@@ -115,19 +119,36 @@ class UserPermissionsActionHandler:
         item_id: str,
     ) -> Any:
         """Persist the submitted direct permissions for one user."""
-        form = request.scope.get("admin_form_data") or await request.form()
-        permissions = sorted(
-            {str(v).strip() for v in form.getlist("permissions") if str(v).strip()}
-        )
+        try:
+            form = request.scope.get("admin_form_data") or await request.form()
+            getlist = getattr(form, "getlist", None)
+            if callable(getlist):
+                raw_permissions = getlist("permissions")
+            else:
+                raw_value = form.get("permissions", [])
+                raw_permissions = (
+                    raw_value if isinstance(raw_value, (list, tuple, set)) else [raw_value]
+                )
+            permissions = sorted(
+                {str(v).strip() for v in raw_permissions if str(v).strip()}
+            )
+        except (RuntimeError, ValueError, OSError, TypeError):
+            return HTMLResponse("Invalid form submission", status_code=400)
 
-        user = await data_source.find_one(item_id)
+        try:
+            user = await data_source.find_one(item_id)
+        except Exception as exc:  # noqa: BLE001 — storage details stay private
+            logger.exception("admin.user_permissions_lookup_failed", error=str(exc))
+            return HTMLResponse("Unable to load user", status_code=503)
         if user is None:
+            from urllib.parse import quote
+
             return RedirectResponse(
                 url=admin_url(
                     admin_prefix_from_request(request),
                     resource.name or "",
                     suffix="",
-                    query="error=User not found.",
+                    query=f"error={quote('User not found.')}",
                 ),
                 status_code=302,
             )
@@ -136,13 +157,24 @@ class UserPermissionsActionHandler:
         # Existing custom permissions are preserved when the renderer emitted
         # them as hidden fields, but an attacker cannot add an arbitrary new
         # capability by posting a made-up string.
-        inventory = self._permission_inventory(resource)
-        known_permissions = {
-            permission
-            for values in (inventory.options() or {}).values()
-            for permission in values
+        try:
+            inventory = self._permission_inventory(resource)
+            known_permissions = {
+                str(permission)
+                for values in (inventory.options() or {}).values()
+                for permission in values
+            }
+        except Exception as exc:  # noqa: BLE001 — malformed inventory is unavailable
+            logger.exception("admin.user_permissions_inventory_failed", error=str(exc))
+            return HTMLResponse("Permissions are unavailable", status_code=503)
+        existing_permissions = {
+            str(permission)
+            for permission in (
+                user.get("permissions", [])
+                if isinstance(user, dict)
+                else getattr(user, "permissions", None) or []
+            )
         }
-        existing_permissions = set(getattr(user, "permissions", None) or [])
         permissions = sorted(
             permission
             for permission in permissions
@@ -159,18 +191,58 @@ class UserPermissionsActionHandler:
             if not allowed:
                 return HTMLResponse("Forbidden", status_code=403)
 
-        changed = await _maybe_await(resource.before_update(item_id, {"permissions": permissions}))
+        try:
+            changed = await _maybe_await(
+                resource.before_update(item_id, {"permissions": permissions})
+            )
+        except (PermissionError, PermissionDeniedError):
+            return HTMLResponse("Forbidden", status_code=403)
+        except (TypeError, ValueError):
+            return HTMLResponse("Invalid permissions", status_code=422)
+        except Exception:  # noqa: BLE001 — hook/storage details stay private
+            logger.exception("admin.user_permissions_before_update_failed")
+            return HTMLResponse("Unable to update permissions", status_code=503)
         if not isinstance(changed, dict):
             changed = {"permissions": permissions}
         # The permissions page may only update its own field, even if a
-        # resource hook returns additional keys.
-        updated = await data_source.update(
-            item_id,
-            {"permissions": changed.get("permissions", permissions)},
+        # resource hook returns additional keys. Reapply the inventory boundary
+        # after the hook so a custom hook cannot turn this scoped form into a
+        # general permission write surface.
+        changed_permissions = changed.get("permissions", permissions)
+        if isinstance(changed_permissions, str):
+            changed_permissions = [changed_permissions]
+        if not isinstance(changed_permissions, (list, tuple, set)):
+            changed_permissions = permissions
+        persisted_permissions = sorted(
+            {
+                str(permission).strip()
+                for permission in changed_permissions
+                if str(permission).strip()
+                and (
+                    str(permission).strip() in known_permissions
+                    or str(permission).strip() in existing_permissions
+                )
+            }
         )
+        try:
+            updated = await data_source.update(
+                item_id,
+                {"permissions": persisted_permissions},
+            )
+        except NotImplementedError:
+            return HTMLResponse("Permissions are unavailable", status_code=503)
+        except Exception as exc:  # noqa: BLE001 — storage details stay private
+            logger.exception("admin.user_permissions_update_failed", error=str(exc))
+            return HTMLResponse("Unable to update permissions", status_code=503)
         if updated is None:
             return HTMLResponse("User not found", status_code=404)
-        await _maybe_await(resource.after_update(updated))
+        try:
+            await _maybe_await(resource.after_update(updated))
+        except Exception:  # noqa: BLE001 — permission update is already persisted
+            logger.exception("admin.user_permissions_after_update_failed")
+            return HTMLResponse(
+                "Permissions updated, but finalization failed", status_code=500
+            )
         return RedirectResponse(
             url=admin_url(
                 admin_prefix_from_request(request),

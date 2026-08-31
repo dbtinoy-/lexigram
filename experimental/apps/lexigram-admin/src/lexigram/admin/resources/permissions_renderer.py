@@ -98,8 +98,15 @@ class UserPermissionsRenderer:
                 prefix,
             )
         options = inventory.options() or {}
-        selected = set(getattr(user, "permissions", None) or [])
-        all_options = {p for perms in options.values() for p in perms}
+        selected_value = (
+            user.get("permissions", [])
+            if isinstance(user, dict)
+            else getattr(user, "permissions", None) or []
+        )
+        if isinstance(selected_value, str):
+            selected_value = [selected_value]
+        selected = {str(permission) for permission in (selected_value or [])}
+        all_options = {str(p) for perms in options.values() for p in perms}
         preserved = [
             el("input", type="hidden", name="permissions", value=perm)
             for perm in sorted(selected - all_options)
@@ -115,10 +122,14 @@ class UserPermissionsRenderer:
             for perm_name, perms in options.items()
         ]
 
+        if isinstance(user, dict):
+            user_name = user.get("name", "")
+            user_email = user.get("email", "")
+        else:
+            user_name = getattr(user, "name", "")
+            user_email = getattr(user, "email", "")
         user_label = (
-            f"{getattr(user, 'name', '')} <{getattr(user, 'email', '')}>"
-            if user is not None
-            else "unknown user"
+            f"{user_name} <{user_email}>" if user is not None else "unknown user"
         )
 
         form = el(
