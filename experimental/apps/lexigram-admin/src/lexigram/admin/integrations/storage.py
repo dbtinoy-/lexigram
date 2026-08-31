@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import timedelta
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -12,18 +13,31 @@ if TYPE_CHECKING:
 
 
 class _NoOpStorage:
-    async def put(
-        self, path: str, data: bytes, content_type: str = "application/octet-stream"
-    ) -> dict[str, Any]:
-        return {"path": path, "size": len(data)}
+    """Storage-shaped fallback with the canonical blob-store method names."""
 
-    async def get(self, path: str) -> bytes:
+    async def upload(
+        self,
+        path: str,
+        data: bytes,
+        content_type: str = "application/octet-stream",
+    ) -> dict[str, Any]:
+        return {"path": path, "size": len(data), "content_type": content_type}
+
+    async def download(self, path: str) -> bytes:  # noqa: ARG002
         return b""
 
-    async def delete(self, path: str) -> bool:
+    async def delete(self, path: str) -> bool:  # noqa: ARG002
         return True
 
-    async def presigned_url(self, path: str, expires_in: int = 3600) -> str:
+    async def get_url(self, path: str) -> str:  # noqa: ARG002
+        return ""
+
+    async def get_presigned_url(
+        self,
+        path: str,  # noqa: ARG002
+        expires_in: timedelta = timedelta(hours=1),  # noqa: ARG002
+        method: str = "GET",  # noqa: ARG002
+    ) -> str:
         return ""
 
 
@@ -36,7 +50,7 @@ class StorageIntegration:
 
     def __init__(self, config: Any) -> None:
         self._config = config
-        self._store: Any = None
+        self._store: Any = _NoOpStorage()
         self._enabled = False
 
     def register(self, container: ContainerRegistrarProtocol) -> None:
@@ -81,11 +95,17 @@ class StorageIntegration:
         return await self._store.download(path)
 
     async def delete(self, path: str) -> bool:
-        return await self._store.delete(path)
+        await self._store.delete(path)
+        return True
 
     async def presigned_url(self, path: str, expires_in: int | None = None) -> str:
+        """Return a temporary GET URL using the blob-store contract's timedelta API."""
         ttl = expires_in or getattr(self._config, "presigned_url_expiry", 3600)
-        return await self._store.get_presigned_url(path, expires_in=ttl, method="get")
+        return await self._store.get_presigned_url(
+            path,
+            expires_in=timedelta(seconds=ttl),
+            method="GET",
+        )
 
 
 __all__ = ["StorageIntegration"]

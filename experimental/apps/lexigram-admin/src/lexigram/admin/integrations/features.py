@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import inspect
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -25,7 +26,7 @@ class FeaturesIntegration:
 
     def __init__(self, config: Any) -> None:
         self._config = config
-        self._flags: Any = None
+        self._flags: Any = _NoOpFeatures()
         self._enabled = False
 
     def register(self, container: ContainerRegistrarProtocol) -> None:
@@ -64,18 +65,34 @@ class FeaturesIntegration:
         }
 
     def is_enabled(self, flag: str, context: Any = None) -> bool:
-        return (
-            self._flags.is_enabled(flag, context)
-            if hasattr(self._flags, "is_enabled")
-            else True
-        )
+        """Evaluate a synchronous flag provider.
+
+        The canonical feature-flag contract is asynchronous. Callers with a
+        real async manager should use :meth:`is_enabled_async`; returning its
+        coroutine from this synchronous convenience method would leak an
+        unawaited coroutine and make every flag appear truthy.
+        """
+        if not hasattr(self._flags, "is_enabled"):
+            return True
+        result = self._flags.is_enabled(flag, context)
+        if inspect.isawaitable(result):
+            # There is no safe way to block the current event loop here. Keep
+            # the documented no-op behavior for sync-only callers and close a
+            # coroutine object so Python does not emit a resource warning.
+            close = getattr(result, "close", None)
+            if close is not None:
+                close()
+            return True
+        return bool(result)
 
     async def is_enabled_async(self, flag: str, context: Any = None) -> bool:
-        return (
-            self._flags.is_enabled(flag, context)
-            if hasattr(self._flags, "is_enabled")
-            else True
-        )
+        """Evaluate either the canonical async provider or a sync provider."""
+        if not hasattr(self._flags, "is_enabled"):
+            return True
+        result = self._flags.is_enabled(flag, context)
+        if inspect.isawaitable(result):
+            result = await result
+        return bool(result)
 
 
 __all__ = ["FeaturesIntegration"]

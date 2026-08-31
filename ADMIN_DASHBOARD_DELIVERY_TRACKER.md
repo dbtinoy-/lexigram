@@ -4,8 +4,9 @@
 contributor-contract compatibility fixes where an integrated dashboard surface
 requires them.
 
-**Status:** Implementation complete for this delivery pass. This file is the
-working plan and durable audit record for the `lexigram-admin` dashboard.
+**Status:** Core implementation complete; a follow-up gap-hardening pass has
+also been applied to optional extension integrations. This file is the working
+plan and durable audit record for the `lexigram-admin` dashboard.
 
 ## Delivery principles
 
@@ -36,7 +37,8 @@ working plan and durable audit record for the `lexigram-admin` dashboard.
 | Search and command palette | Search forms/results, command URLs, settings destination, safe embedded command data | Search forms, breadcrumbs, result links, static commands, and dynamic commands honor custom mounts; Settings points to a real destination; embedded command data cannot terminate its script element. |
 | Shell and UI primitives | Breadcrumbs, system/user boxes, modal, topbar, sidebar, theme, responsive/accessibility behavior | Missing destinations render as non-links, shell URLs use the active mount, topbar notification/tenant controls are wired, and notification mutations carry the page CSRF token. |
 | Notifications and observability | Inbox endpoints, SSE endpoint, notification navigation/spec compatibility, health/system pages | Notification navigation and mounted contributor routes remain compatible with custom mounts; the bell uses the active widget stream endpoint, inbox URLs are exposed for integration, and mark-read/mark-all requests include CSRF. Core System Info and health surfaces are available. |
-| Regression coverage | Focused tests, custom-prefix seams, handler safety, rendering contracts | Added or updated tests cover inline mutation, relation/form/table behavior, cluster/navigation prefixes, command-palette safety, shell wiring, restore/purge flows, and contributor/dashboard rendering. |
+| Optional extension integrations | Cache, tasks, search, resilience, storage, feature flags, and monitoring contract seams | Hardened the cache adapter around primitive `get`/`set` results, materialized the resilience factory into an executable pipeline, fixed async feature-flag evaluation, aligned storage URL expiry with the blob-store contract, and adapted first-party task queues to canonical jobs. Missing optional services remain non-fatal. |
+| Regression coverage | Focused tests, custom-prefix seams, handler safety, rendering contracts | Added or updated tests cover inline mutation, relation/form/table behavior, cluster/navigation prefixes, command-palette safety, shell wiring, restore/purge flows, contributor/dashboard rendering, and optional integration contracts. |
 
 ## Routing and mount contract
 
@@ -69,6 +71,9 @@ workspace packages.
 - Reactive SSE bridge DI regression suite: passed (`11 passed, 1 warning`); the
   bridge now resolves to the callable factory instead of an eagerly-created
   response.
+- Optional adapter and dependent resource suites: passed (`44 passed, 1 warning`);
+  cache, storage, resilience, feature-flag, and task-queue contract seams are
+  covered.
 - Local preview smoke test: `/admin/`, `/admin/search`, and
   `/admin/infrastructure` return `200`; `/admin/_sse/widgets` returns a live
   `text/event-stream` response.

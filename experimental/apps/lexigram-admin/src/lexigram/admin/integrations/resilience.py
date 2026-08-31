@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import inspect
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -32,6 +33,15 @@ class _NoOpResilience:
         return await func(*args, **kwargs)
 
 
+def _positive_int(value: Any, default: int) -> int:
+    """Coerce integration config values without allowing invalid pipeline settings."""
+    try:
+        coerced = int(value)
+    except (TypeError, ValueError):
+        return default
+    return coerced if coerced > 0 else default
+
+
 class ResilienceIntegration:
     """Adapter that decorates data-source calls with retry and circuit-breaker.
 
@@ -41,7 +51,7 @@ class ResilienceIntegration:
 
     def __init__(self, config: Any) -> None:
         self._config = config
-        self._pipeline: Any = None
+        self._pipeline: Any = _NoOpResilience()
         self._enabled = False
 
     def register(self, container: ContainerRegistrarProtocol) -> None:
@@ -64,10 +74,38 @@ class ResilienceIntegration:
             return
         try:
             from lexigram.contracts.infra.resilience import (
+                CircuitBreakerConfig,
                 ResiliencePipelineFactoryProtocol,
+                RetryConfig,
+                TimeoutConfig,
             )
 
-            self._pipeline = await container.resolve(ResiliencePipelineFactoryProtocol)
+            factory_or_pipeline = await container.resolve(
+                ResiliencePipelineFactoryProtocol
+            )
+            # The contract resolves a factory, not an executable pipeline.
+            # Materialize it once with the admin integration settings so the
+            # list-query path actually gets retries, circuit breaking, and
+            # timeouts when the optional package is enabled.
+            if hasattr(factory_or_pipeline, "execute"):
+                self._pipeline = factory_or_pipeline
+            elif callable(factory_or_pipeline):
+                retry_attempts = _positive_int(
+                    getattr(self._config, "retry_max_attempts", 3), 3
+                )
+                failure_threshold = _positive_int(
+                    getattr(self._config, "circuit_failure_threshold", 5), 5
+                )
+                pipeline = factory_or_pipeline(
+                    RetryConfig(max_attempts=retry_attempts),
+                    CircuitBreakerConfig(failure_threshold=failure_threshold),
+                    TimeoutConfig(),
+                )
+                self._pipeline = (
+                    await pipeline if inspect.isawaitable(pipeline) else pipeline
+                )
+            else:
+                self._pipeline = _NoOpResilience()
         except Exception:  # noqa: BLE001
             self._pipeline = _NoOpResilience()
 

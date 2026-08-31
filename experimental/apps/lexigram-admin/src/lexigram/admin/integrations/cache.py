@@ -21,19 +21,18 @@ class CacheableSpec:
 
 
 class _NoOpCache:
-    async def get(self, key: str) -> None:
+    """Small cache-shaped fallback used when the optional package is absent."""
+
+    async def get(self, key: str) -> None:  # noqa: ARG002
         return None
 
-    async def set(self, key: str, value: Any, ttl: int | None = None) -> None:
+    async def set(
+        self, key: str, value: Any, ttl: int | None = None  # noqa: ARG002
+    ) -> None:
         return None
 
-    async def delete(self, key: str) -> None:
+    async def delete(self, key: str) -> None:  # noqa: ARG002
         return None
-
-    async def get_or_set(
-        self, key: str, factory: Callable[[], Awaitable[Any]], ttl: int | None = None
-    ) -> Any:
-        return await factory()
 
 
 class CacheIntegration:
@@ -45,7 +44,9 @@ class CacheIntegration:
 
     def __init__(self, config: Any) -> None:
         self._config = config
-        self._cache: Any = None
+        # Keep the adapter callable before DI boot as well as after it. This
+        # makes optional integrations safe for tests and early lifecycle hooks.
+        self._cache: Any = _NoOpCache()
         self._enabled = False
 
     def register(self, container: ContainerRegistrarProtocol) -> None:
@@ -92,8 +93,47 @@ class CacheIntegration:
         factory: Callable[[], Awaitable[Any]],
         ttl: int | None = None,
     ) -> Any:
-        effective_ttl = ttl or getattr(self._config, "default_ttl_seconds", 60)
-        return await self._cache.get_or_set(key, factory, effective_ttl)
+        """Read through the contract cache.
+
+        Populates misses atomically enough for callers.
+
+        ``CacheBackendProtocol`` intentionally exposes primitive get/set
+        operations, not a convenience ``get_or_set`` method.  The previous
+        adapter called that non-contract method, so enabling the real cache
+        package made every cached list query fail.  Keep the orchestration in
+        the admin adapter and accept both plain values and ``Result`` returns
+        from backend implementations.
+        """
+        try:
+            cached = await self._cache.get(key)
+            cached, cache_read_ok = self._unwrap_result(cached)
+        except Exception:  # noqa: BLE001 — cache is an optional optimization
+            cached, cache_read_ok = None, False
+        if cache_read_ok and cached is not None:
+            return cached
+
+        value = await factory()
+        try:
+            stored = await self._cache.set(
+                key,
+                value,
+                ttl or getattr(self._config, "default_ttl_seconds", 60),
+            )
+            # A failed cache write must not turn a successful resource query
+            # into an admin error. The computed value is still valid here.
+            self._unwrap_result(stored)
+        except Exception:  # noqa: BLE001 — cache is an optional optimization
+            pass
+        return value
+
+    @staticmethod
+    def _unwrap_result(value: Any) -> tuple[Any, bool]:
+        """Return ``(payload, succeeded)`` for plain values or Result objects."""
+        if hasattr(value, "is_ok") and callable(value.is_ok):
+            if not value.is_ok():
+                return None, False
+            return value.unwrap(), True
+        return value, True
 
     async def invalidate(self, resource_name: str) -> None:
         if hasattr(self._cache, "delete_pattern"):

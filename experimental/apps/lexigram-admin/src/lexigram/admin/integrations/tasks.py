@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import inspect
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -27,7 +28,7 @@ class TasksIntegration:
 
     def __init__(self, config: Any) -> None:
         self._config = config
-        self._tasks: Any = None
+        self._tasks: Any = _NoOpTasks()
         self._enabled = False
 
     def register(self, container: ContainerRegistrarProtocol) -> None:
@@ -70,7 +71,49 @@ class TasksIntegration:
         record_ids: list[str],
         ctx_summary: str,
     ) -> dict[str, Any]:
-        return await self._tasks.dispatch(runner, action_name, record_ids, ctx_summary)
+        """Dispatch through a native dispatcher or enqueue a canonical job.
+
+        ``TaskQueueProtocol`` exposes ``enqueue(JobProtocol)``; it does not
+        expose the ad-hoc ``dispatch`` method the first adapter used. Support
+        both shapes so custom task integrations keep working while the
+        first-party queue receives a valid job object.
+        """
+        dispatcher = getattr(self._tasks, "dispatch", None)
+        if callable(dispatcher):
+            result = dispatcher(runner, action_name, record_ids, ctx_summary)
+            result = await result if inspect.isawaitable(result) else result
+            if isinstance(result, dict):
+                return result
+            if hasattr(result, "is_ok") and callable(result.is_ok):
+                if not result.is_ok():
+                    return {"status": "error", "error": str(result.unwrap_err())}
+                result = result.unwrap()
+            return {"status": "queued", "task_id": str(result)}
+
+        enqueue = getattr(self._tasks, "enqueue", None)
+        if not callable(enqueue):
+            return {"status": "unavailable"}
+
+        from lexigram.tasks.models.job import JobProtocol
+
+        job = JobProtocol(
+            id="",
+            name=runner,
+            kwargs={
+                "action_name": action_name,
+                "record_ids": list(record_ids),
+                "context": ctx_summary,
+            },
+        )
+        result = await enqueue(job)
+        if hasattr(result, "is_ok") and callable(result.is_ok):
+            if not result.is_ok():
+                error = result.unwrap_err()
+                return {"status": "error", "error": str(error)}
+            task_id = result.unwrap()
+        else:
+            task_id = result
+        return {"status": "queued", "task_id": str(task_id or job.id)}
 
     @property
     def threshold(self) -> int:
