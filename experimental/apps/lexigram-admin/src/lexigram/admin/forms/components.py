@@ -61,6 +61,7 @@ class FormBase(Component, metaclass=FormMeta):
         submit_label: str = "Submit",
         suppress_submit: bool = False,
         layout: Any = None,
+        form_attrs: dict[str, Any] | None = None,
         **props: Any,
     ) -> None:
         super().__init__(**props)
@@ -74,6 +75,7 @@ class FormBase(Component, metaclass=FormMeta):
         self.hx_indicator = hx_indicator
         self.form_id = form_id
         self.submit_label = submit_label
+        self.form_attrs = {"data-admin-form": "true", **(form_attrs or {})}
         self.suppress_submit = suppress_submit
         # Class-level layout (list of AbstractLayoutNode) can be overridden
         # per instance via the constructor. A FormLayout schema is normalized
@@ -212,6 +214,7 @@ class FormBase(Component, metaclass=FormMeta):
                 "div",
                 Button(self.submit_label, type="submit", color="primary"),
                 class_="flex justify-end pt-4 border-t border-border mt-6",
+                data_admin_form_actions=True,
             )
             if not self.suppress_submit
             else ""
@@ -220,6 +223,7 @@ class FormBase(Component, metaclass=FormMeta):
         attrs = {
             "method": self.method,
             "class": "bg-card p-6 rounded-lg shadow",
+            **self.form_attrs,
         }
         if self.action:
             attrs["action"] = self.action
@@ -250,7 +254,14 @@ class FormBase(Component, metaclass=FormMeta):
                 value=request.state.csrf_token,
             )
 
-        return el("form", csrf_input, form_body, actions, **attrs)
+        status = el(
+            "p",
+            "",
+            data_admin_form_status=True,
+            aria_live="polite",
+            class_="sr-only",
+        )
+        return el("form", csrf_input, status, form_body, actions, **attrs)
 
 
 def build_form(**fields) -> Form[Any]:

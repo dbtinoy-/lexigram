@@ -315,6 +315,7 @@ class ConfigDashboardUI:
                     class_="inline-flex items-center rounded-md border border-border bg-card px-4 py-2 text-sm font-medium text-foreground shadow-sm hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                 ),
                 FormActions(primary_text="Save changes", secondary_text=None),
+                data_admin_form_actions=True,
                 class_="sticky bottom-3 z-10 mt-6 flex items-center justify-between gap-3 rounded-lg border border-border bg-card/95 p-2 shadow-lg backdrop-blur",
             )
             body.append(
@@ -324,6 +325,9 @@ class ConfigDashboardUI:
                     submit_label="",
                     form_id=form_id,
                     form_attrs={
+                        "data-admin-form": "true",
+                        # Keep the settings marker for consumers that still
+                        # target settings-specific forms during migration.
                         "data-settings-form": "true",
                         "data-settings-namespace": namespace,
                     },
@@ -336,6 +340,7 @@ class ConfigDashboardUI:
                             "p",
                             "",
                             id=f"{form_id}-status",
+                            data_admin_form_status=True,
                             data_settings_status=True,
                             aria_live="polite",
                             class_="sr-only",

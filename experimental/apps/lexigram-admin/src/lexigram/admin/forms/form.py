@@ -287,16 +287,33 @@ class Form(Generic[T]):
             btns.append(
                 el("a", "Cancel", href=self.cancel_url, class_="btn btn-secondary")
             )
+        status = el(
+            "p",
+            "",
+            data_admin_form_status=True,
+            aria_live="polite",
+            class_="sr-only",
+        )
+        actions = el(
+            "div",
+            *btns,
+            class_="form-actions",
+            style="margin-top:1.5rem",
+            data_admin_form_actions=True,
+        )
         return render_to_string(
             el(
                 "form",
                 self._csrf_input(),
+                status,
                 self._global_errors(),
                 self._fields_container_el(field_els),
-                el("div", *btns, class_="form-actions", style="margin-top:1.5rem"),
+                actions,
                 action=action,
                 method=method,
                 class_=f"admin-form layout-{self.layout}",
+                data_admin_form="true",
+                aria_busy="false",
             )
         )
 
@@ -316,20 +333,37 @@ class Form(Generic[T]):
                 el("a", "Cancel", href=self.cancel_url, class_="btn btn-secondary")
             )
         spinner_id = target.lstrip("#") + "-spinner"
+        status = el(
+            "p",
+            "",
+            data_admin_form_status=True,
+            aria_live="polite",
+            class_="sr-only",
+        )
+        actions = el(
+            "div",
+            *btns,
+            class_="form-actions",
+            style="margin-top:1.5rem",
+            data_admin_form_actions=True,
+        )
         return render_to_string(
             el(
                 "form",
                 self._csrf_input(),
+                status,
                 self._global_errors(),
                 el("div", "Saving...", id=spinner_id, class_="htmx-indicator"),
                 self._fields_container_el(field_els),
-                el("div", *btns, class_="form-actions", style="margin-top:1.5rem"),
+                actions,
                 **{
                     "hx-post": action,
                     "hx-target": target,
                     "hx-swap": swap,
                     "hx-indicator": f"#{spinner_id}",
                     "class": f"admin-form layout-{self.layout}",
+                    "data-admin-form": "true",
+                    "aria-busy": "false",
                 },
             )
         )

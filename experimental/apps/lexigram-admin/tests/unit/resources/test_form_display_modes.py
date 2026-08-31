@@ -64,6 +64,7 @@ async def test_modal_mode_renders_bound_modal_footer() -> None:
     assert 'hx-target="#modal-container"' in html
     assert 'form="modal_widgets-create-form"' in html
     assert html.count('type="submit"') == 1
+    assert 'data-admin-form="true"' in html
 
 
 async def test_page_mode_does_not_emit_overlay_htmx_submission() -> None:
@@ -136,4 +137,72 @@ async def test_wizard_urls_follow_the_request_prefix() -> None:
     assert 'action="/backoffice/page_widgets/create"' in html
     assert 'hx-post="/backoffice/page_widgets/create"' in html
     assert 'href="/backoffice/page_widgets"' in html
+    assert 'name="csrf_token"' in html
+    assert 'data-admin-form="true"' in html
+    assert "data-admin-form-status" in html
+    assert "data-admin-form-actions" in html
+    assert 'role="progressbar"' in html
     assert "/admin/page_widgets" not in html
+
+
+class _NoFieldView:
+    async def can_view_field(self, user, resource, field):
+        return False
+
+    async def can_edit_field(self, user, resource, field):
+        return False
+
+
+async def test_wizard_preserves_values_errors_and_field_permissions() -> None:
+    request = _request("#main-content")
+    renderer = FormRenderer(
+        AdminConfig(prefix="/admin", title="Test"),
+        "page_widgets",
+        AdminRenderer(),
+    )
+
+    response = await renderer.render_wizard(
+        request,
+        _PageResource,
+        [{"title": "Details", "fields": ["name"]}],
+        action_url="/admin/page_widgets/create",
+        data={"name": "Draft"},
+        errors={"name": ["Name is required."]},
+    )
+    html = response.body.decode("utf-8", "replace")
+    assert 'name="name"' in html
+    assert 'value="Draft"' in html
+    assert "Name is required." in html
+
+    denied_renderer = FormRenderer(
+        AdminConfig(prefix="/admin", title="Test"),
+        "page_widgets",
+        AdminRenderer(),
+        permission_service=_NoFieldView(),
+    )
+    denied = await denied_renderer.render_wizard(
+        request,
+        _PageResource,
+        [{"title": "Details", "fields": ["name"]}],
+        action_url="/admin/page_widgets/create",
+        user=object(),
+    )
+    assert 'name="name"' not in denied.body.decode("utf-8", "replace")
+
+
+async def test_empty_wizard_definition_returns_accessible_error() -> None:
+    request = _request("#main-content")
+    renderer = FormRenderer(
+        AdminConfig(prefix="/admin", title="Test"),
+        "page_widgets",
+        AdminRenderer(),
+    )
+
+    response = await renderer.render_wizard(
+        request, _PageResource, [], action_url="/admin/page_widgets/create"
+    )
+
+    assert response.status_code == 422
+    html = response.body.decode("utf-8", "replace")
+    assert 'role="alert"' in html
+    assert "no configured steps" in html

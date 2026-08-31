@@ -25,3 +25,11 @@ class TestAdminShellTenantContext:
         assert "Acme Corp" in html
         assert "Globex Inc" in html
         assert 'value="tok123"' in html
+
+
+def test_admin_shell_includes_shared_form_ux_script() -> None:
+    html = render_to_string(AdminShell(content="hello"))
+
+    assert "__lexigramAdminFormUXInit" in html
+    assert "data-admin-form" in html
+    assert "unsaved form changes" in html

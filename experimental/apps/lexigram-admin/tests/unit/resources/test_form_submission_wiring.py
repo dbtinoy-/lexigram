@@ -84,8 +84,15 @@ def test_builder_form_includes_csrf_for_native_and_htmx_rendering() -> None:
     form = FormBuilder(Model).build()
     form.csrf_token = "csrf-value"
 
-    assert 'name="csrf_token"' in form.render_html("/submit")
-    assert 'name="csrf_token"' in form.render_htmx("/submit")
+    native_html = form.render_html("/submit")
+    htmx_html = form.render_htmx("/submit")
+
+    assert 'name="csrf_token"' in native_html
+    assert 'name="csrf_token"' in htmx_html
+    for html in (native_html, htmx_html):
+        assert 'data-admin-form="true"' in html
+        assert "data-admin-form-status" in html
+        assert "data-admin-form-actions" in html
 
 
 def test_builder_form_renders_form_level_errors_for_both_clients() -> None:

@@ -126,6 +126,7 @@ class Form(Component):
                     class_="flex items-center justify-between w-full",
                 ),
                 class_="pt-4 border-t border-border mt-6",
+                data_admin_form_actions=True,
             )
             if self.submit_label and not getattr(self, "suppress_submit", False)
             else ""
@@ -156,4 +157,11 @@ class Form(Component):
                 exc_info=True,
             )
 
-        return el("form", csrf_input, *self.children, footer, **attrs)
+        status = el(
+            "p",
+            "",
+            data_admin_form_status=True,
+            aria_live="polite",
+            class_="sr-only",
+        )
+        return el("form", csrf_input, status, *self.children, footer, **attrs)

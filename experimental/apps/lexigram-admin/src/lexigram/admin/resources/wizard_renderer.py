@@ -37,6 +37,10 @@ class WizardRendererMixin:
         steps: list[dict],
         action_url: str,
         submit_label: str = "Submit",
+        user: Any = None,
+        permission_service: Any | None = None,
+        data: dict[str, Any] | None = None,
+        errors: dict[str, list[str]] | None = None,
     ) -> HTMLResponse:
         """Render a multi-step wizard form driven by Alpine.js.
 
@@ -60,9 +64,30 @@ class WizardRendererMixin:
         """
         label = self.resource_name.replace("_", " ").title()
         admin_prefix = admin_prefix_from_request(request)
+        # Resource wizards are also mutation forms. Reuse the same session-
+        # bound CSRF token path as ordinary resource forms.
+        ensure_csrf = getattr(self, "_ensure_csrf_token", None)
+        if callable(ensure_csrf):
+            await ensure_csrf(request)
         resource_prefix = f"{admin_prefix}/{self.resource_name}"
         action_url = mount_admin_url(action_url, admin_prefix)
+        if user is None:
+            user = getattr(getattr(request, "state", None), "user", None)
+        if permission_service is None:
+            permission_service = getattr(self, "_permission_service", None)
+        if permission_service is None:
+            get_permission_service = getattr(self, "_request_permission_service", None)
+            if callable(get_permission_service):
+                permission_service = get_permission_service(request)
         total_steps = len(steps)
+        if total_steps == 0:
+            message = el(
+                "p",
+                "This wizard has no configured steps.",
+                role="alert",
+                class_="text-sm text-destructive",
+            )
+            return HTMLResponse(render_to_string(message), status_code=422)
 
         # Build Alpine.js data initialiser - currentStep is 0-indexed.
         alpine_data = "{ currentStep: 0 }"
@@ -80,6 +105,13 @@ class WizardRendererMixin:
 
                     generator = FormSchemaGenerator()
                     schema = generator.from_pydantic(resource.model)
+                    populate_options = getattr(self, "_populate_relation_options", None)
+                    if callable(populate_options):
+                        await populate_options(
+                            schema,
+                            user=user,
+                            permission_service=permission_service,
+                        )
                     schema_map = {f.name: f for f in schema.fields}
 
                     for fname in step_fields_names:
@@ -93,9 +125,35 @@ class WizardRendererMixin:
                                 )
                             )
                             continue
+                        if user is not None and permission_service is not None:
+                            is_masked = getattr(self, "_field_masked", None)
+                            field_allowed = getattr(self, "_field_permission", None)
+                            if callable(is_masked) and await is_masked(
+                                permission_service,
+                                user,
+                                fname,
+                            ):
+                                continue
+                            if callable(field_allowed) and not await field_allowed(
+                                permission_service,
+                                "can_view_field",
+                                user,
+                                fname,
+                            ):
+                                continue
+                            if callable(field_allowed) and not await field_allowed(
+                                permission_service,
+                                "can_edit_field",
+                                user,
+                                fname,
+                            ):
+                                from dataclasses import replace as dc_replace
+
+                                field_schema = dc_replace(field_schema, readonly=True)
                         field_component = self._create_field_component(
                             field_schema,
-                            field_schema.default,
+                            (data or {}).get(fname, field_schema.default),
+                            errors=(errors or {}).get(fname),
                             admin_prefix=admin_prefix,
                         )
                         if field_component:
@@ -202,6 +260,7 @@ class WizardRendererMixin:
                         "div",
                         *nav_buttons,
                         class_="flex items-center justify-between mt-6 gap-3",
+                        data_admin_form_actions=True,
                     ),
                     class_="wizard-step",
                     **{"x-show": f"currentStep === {idx}"},
@@ -234,15 +293,37 @@ class WizardRendererMixin:
             "div",
             *step_dots,
             class_="wizard-progress flex items-center gap-2 mb-6",
+            role="progressbar",
+            aria_label=f"Form progress: step 1 of {total_steps}",
+            aria_valuemin=1,
+            aria_valuemax=total_steps,
+            **{":aria-valuenow": "currentStep + 1"},
         )
 
+        csrf_input = el(
+            "input",
+            type="hidden",
+            name="csrf_token",
+            value=getattr(getattr(request, "state", None), "csrf_token", ""),
+        )
+        status = el(
+            "p",
+            "",
+            data_admin_form_status=True,
+            aria_live="polite",
+            class_="sr-only",
+        )
         form_el = el(
             "form",
+            csrf_input,
+            status,
             progress_bar,
             *step_els,
             action=action_url,
             method="post",
             class_="wizard-form",
+            data_admin_form="true",
+            aria_busy="false",
             **{
                 "x-data": alpine_data,
                 "hx-post": action_url,

@@ -332,6 +332,163 @@ def loading_bar_script(flash_zone_id: str) -> Any:
     )
 
 
+def admin_form_ux_script() -> Any:
+    """Build the shared delegated behavior for every admin form.
+
+    The script intentionally uses data attributes rather than component
+    classes so it works for settings, generated resource forms, declarative
+    FormBase forms, and forms inserted later by HTMX overlays.
+    """
+    return raw(
+        """
+        <style>
+            form[data-admin-form] [data-admin-form-actions] {
+                position: sticky;
+                bottom: 0.75rem;
+                z-index: 10;
+                background: color-mix(in srgb, var(--card) 94%, transparent);
+                backdrop-filter: blur(8px);
+            }
+        </style>
+        <script>
+        (function () {
+            if (window.__lexigramAdminFormUXInit) return;
+            window.__lexigramAdminFormUXInit = true;
+
+            var formSelector = 'form[data-admin-form], form[data-settings-form]';
+
+            function formFor(target) {
+                if (!target) return null;
+                if (target.matches && target.matches(formSelector)) return target;
+                if (target.closest) {
+                    var ancestor = target.closest(formSelector);
+                    if (ancestor) return ancestor;
+                }
+                var formId = target.getAttribute && target.getAttribute('form');
+                var associated = formId ? document.getElementById(formId) : null;
+                return associated && associated.matches(formSelector) ? associated : null;
+            }
+
+            function dirtyForms() {
+                return Array.prototype.filter.call(
+                    document.querySelectorAll(formSelector),
+                    function (form) { return form.dataset.dirty === 'true'; }
+                );
+            }
+
+            function setStatus(form, message) {
+                var status = form.querySelector('[data-admin-form-status], [data-settings-status]');
+                if (status) status.textContent = message;
+            }
+
+            function submitButton(form) {
+                var inside = form.querySelector('button[type="submit"]');
+                if (inside) return inside;
+                if (!form.id) return null;
+                var buttons = document.querySelectorAll('button[type="submit"]');
+                for (var index = 0; index < buttons.length; index += 1) {
+                    if (buttons[index].getAttribute('form') === form.id) return buttons[index];
+                }
+                return null;
+            }
+
+            function restoreSubmit(form) {
+                form.dataset.submitting = 'false';
+                form.setAttribute('aria-busy', 'false');
+                var button = submitButton(form);
+                if (!button) return;
+                button.disabled = false;
+                button.removeAttribute('aria-disabled');
+                button.textContent = button.dataset.adminOriginalText || 'Save';
+            }
+
+            document.addEventListener('input', function (event) {
+                var form = formFor(event.target);
+                if (form) form.dataset.dirty = 'true';
+            });
+
+            document.addEventListener('change', function (event) {
+                var form = formFor(event.target);
+                if (form) form.dataset.dirty = 'true';
+            });
+
+            document.addEventListener('reset', function (event) {
+                var form = formFor(event.target);
+                if (!form) return;
+                window.setTimeout(function () {
+                    form.dataset.dirty = 'false';
+                    setStatus(form, 'Changes discarded.');
+                }, 0);
+            }, true);
+
+            document.addEventListener('submit', function (event) {
+                var form = formFor(event.target);
+                if (!form) return;
+                if (form.dataset.submitting === 'true') {
+                    event.preventDefault();
+                    return;
+                }
+                form.dataset.submitting = 'true';
+                form.dataset.dirty = 'false';
+                form.setAttribute('aria-busy', 'true');
+                var button = submitButton(form);
+                if (button) {
+                    button.dataset.adminOriginalText = button.textContent;
+                    button.disabled = true;
+                    button.setAttribute('aria-disabled', 'true');
+                    button.textContent = 'Saving…';
+                }
+                setStatus(form, 'Saving form.');
+            }, true);
+
+            document.addEventListener('click', function (event) {
+                var link = event.target instanceof Element
+                    ? event.target.closest('a[href]')
+                    : null;
+                if (!link || link.hasAttribute('data-no-dirty-warning')) return;
+                var dirty = dirtyForms();
+                if (!dirty.length) return;
+                var href = link.getAttribute('href');
+                if (!href || href.charAt(0) === '#') return;
+                var url;
+                try { url = new URL(link.href, window.location.href); } catch (error) { return; }
+                if (url.origin !== window.location.origin) return;
+                if (!window.confirm('You have unsaved form changes. Leave without saving?')) {
+                    event.preventDefault();
+                    event.stopImmediatePropagation();
+                }
+            }, true);
+
+            document.addEventListener('htmx:afterRequest', function (event) {
+                var detail = event.detail || {};
+                var form = formFor(detail.elt);
+                if (!form || detail.successful) return;
+                restoreSubmit(form);
+                form.dataset.dirty = 'true';
+                setStatus(form, 'The form was not saved. Review the errors and try again.');
+            });
+
+            document.addEventListener('htmx:afterSwap', function (event) {
+                var target = event.detail && event.detail.target;
+                if (!target) return;
+                target.querySelectorAll(formSelector).forEach(function (form) {
+                    form.dataset.dirty = 'false';
+                    form.dataset.submitting = 'false';
+                    form.setAttribute('aria-busy', 'false');
+                });
+            });
+
+            window.addEventListener('beforeunload', function (event) {
+                if (!dirtyForms().length) return;
+                event.preventDefault();
+                event.returnValue = '';
+            });
+        }());
+        </script>
+        """,
+    )
+
+
 def dark_mode_expr(dark_mode: str) -> str:
     """Build the Alpine expression resolving the initial dark-mode state."""
     if dark_mode == "dark":

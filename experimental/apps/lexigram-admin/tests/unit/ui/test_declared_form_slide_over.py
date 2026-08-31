@@ -88,6 +88,8 @@ class TestDeclaredFormSlideOver:
         assert len(submits) == 1
         assert 'form="widgets-create-form"' in submits[0]
         assert 'id="widgets-create-form"' in html
+        assert 'data-admin-form="true"' in html
+        assert "data-admin-form-status" in html
         # Declared forms now carry HTMX submission attributes for the panel.
         assert 'hx-post="/admin/widgets/create"' in html
         assert 'hx-target="#slide-over-container"' in html

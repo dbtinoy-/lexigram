@@ -669,6 +669,7 @@ class FormRenderer(WizardRendererMixin):
                     method="post",
                     submit_label=submit_label,
                     form_id=f"{self.resource_name}-{mode}-form",
+                    form_attrs={"data-admin-form": "true"},
                     suppress_submit=in_slide_over,
                     htmx_enabled=htmx_enabled,
                     hx_target=overlay_target,

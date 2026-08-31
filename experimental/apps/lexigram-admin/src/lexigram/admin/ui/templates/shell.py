@@ -6,6 +6,7 @@ from lexigram.admin.ui.organisms.command_palette import CommandPalette
 from lexigram.admin.ui.organisms.sidebar import Sidebar
 from lexigram.admin.ui.organisms.topbar import TopBar
 from lexigram.admin.ui.templates.shell_scripts import (
+    admin_form_ux_script,
     dark_mode_expr,
     loading_bar_script,
     search_overlay_markup,
@@ -193,6 +194,7 @@ class AdminShell(Component):
 
         # Global HTMX loading indicator and error handling
         loading_bar = loading_bar_script(Zones.FLASH.id)
+        form_ux = admin_form_ux_script()
 
         dm_expr = dark_mode_expr(self.dark_mode)
 
@@ -213,6 +215,7 @@ class AdminShell(Component):
             build_root_data_attrs(dm_expr),
             skip_link,
             loading_bar,
+            form_ux,
             theme_style,
             search_overlay,
             sidebar_container,
