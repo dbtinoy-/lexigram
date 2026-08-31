@@ -448,3 +448,21 @@ class TestWidgetControllerHealthPermissionGate:
         assert response.status_code == 200
         assert b"health-check-badge" in response.body
         contributor.render_health_check.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_render_health_resolves_contributor_local_check_name(
+        self, health_def: AdminHealthDefinition
+    ) -> None:
+        """Health URLs use the suffix while handlers receive the canonical name."""
+        controller, contributor = self._make_controller(health_def)
+
+        response = await controller.render_health_check(
+            request=_request_for(
+                _user_with_permissions("governance.read")
+            ),
+            contributor_id="governance",
+            check_name="billing",
+        )
+
+        assert response.status_code == 200
+        contributor.render_health_check.assert_awaited_once_with(self.CHECK_NAME)

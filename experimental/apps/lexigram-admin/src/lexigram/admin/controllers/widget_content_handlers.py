@@ -122,13 +122,22 @@ async def render_health_check_fragment(
         )
 
     health_def = next(
-        (h for h in contributor.get_health_definitions() if h.name == check_name),
+        (
+            h
+            for h in contributor.get_health_definitions()
+            if h.name == check_name or h.name == f"{contributor_id}.{check_name}"
+        ),
         None,
     )
     if health_def is not None and not has_permission(request, health_def.permission):
         return Response(content="Permission denied", status_code=403)
 
-    result = await contributor.render_health_check(check_name)
+    # Health URLs use the contributor-local suffix (for example,
+    # /auth/health/token_store), while definitions and contributor handlers
+    # conventionally use the canonical name (auth.token_store). Resolve the
+    # canonical name before dispatch so the declared check actually runs.
+    resolved_check_name = health_def.name if health_def is not None else check_name
+    result = await contributor.render_health_check(resolved_check_name)
 
     if result.is_ok():
         return HTMLResponse(render_content(result.unwrap()))
