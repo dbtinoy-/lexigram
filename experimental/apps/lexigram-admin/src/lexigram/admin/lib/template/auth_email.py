@@ -19,6 +19,9 @@ def render_verify_email_page(
     notice: str = "",
     csrf_token: str = "",
     next_url: str = "/admin/",
+    resend_url: str = "/admin/verify-email/resend",
+    login_url: str = "/admin/login",
+    base_url: str = "/admin",
 ) -> str:
     """Render a standalone email verification landing page.
 
@@ -33,6 +36,9 @@ def render_verify_email_page(
         notice: Success notice to display (e.g. after a resend).
         csrf_token: CSRF token to embed as a hidden form field.
         next_url: Destination to redirect to after login.
+        resend_url: Mounted form action for verification-link resends.
+        login_url: Mounted route used by the sign-in link.
+        base_url: Mounted admin base URL used for shared assets.
 
     Returns:
         HTML string for the verification landing page.
@@ -50,7 +56,7 @@ def render_verify_email_page(
         class_="text-sm text-muted-foreground mb-4",
     )
     form = _auth_form(
-        "/admin/verify-email/resend",
+        resend_url,
         csrf_token,
         [],
         "Resend Verification Link",
@@ -64,9 +70,10 @@ def render_verify_email_page(
         [
             hint,
             form,
-            _auth_footer(Link("Back to login", "/admin/login", variant="primary")),
+            _auth_footer(Link("Back to login", login_url, variant="primary")),
         ],
         site_name=site_name,
+        base_url=base_url,
         flash_messages=flash_messages,
     )
 
@@ -75,6 +82,8 @@ def render_email_verified_page(
     site_name: str = "Lexigram Admin",
     error: str = "",
     next_url: str = "/admin/",
+    login_url: str = "/admin/login",
+    base_url: str = "/admin",
 ) -> str:
     """Render a standalone "email verified" confirmation page.
 
@@ -85,6 +94,8 @@ def render_email_verified_page(
         site_name: Site name for branding.
         error: Error message to display (e.g. expired or invalid token).
         next_url: Destination to redirect to after login.
+        login_url: Mounted route used by the sign-in action.
+        base_url: Mounted admin base URL used for shared assets.
 
     Returns:
         HTML string for the confirmation page.
@@ -94,12 +105,12 @@ def render_email_verified_page(
     if error:
         heading = "Verification Failed"
         copy = error
-        action_url = "/admin/login"
+        action_url = login_url
         action_label = "Back to login"
     else:
         heading = "Email Verified"
         copy = "Your email address has been verified — you can now sign in."
-        action_url = f"/admin/login?next={next_url}"
+        action_url = f"{login_url}?next={next_url}"
         action_label = "Sign in"
 
     action = el(
@@ -114,6 +125,7 @@ def render_email_verified_page(
         copy,
         [action],
         site_name=site_name,
+        base_url=base_url,
         flash_messages=flash_messages,
     )
 

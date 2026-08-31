@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from lexigram.admin.settings import get_admin_settings
 from lexigram.serialization import dumps_str
 from lexigram.ui import Component, el, raw
 
@@ -30,7 +29,7 @@ class CommandPalette(Component):
             },
             {
                 "label": "Manage Users",
-                "href": f"{get_admin_settings().build_htmx_path('UserResource')}/",
+                "href": f"{self.admin_prefix}/users/",
                 "icon": "users",
                 "shortcut": "G U",
             },

@@ -54,7 +54,7 @@ class AuthRegistrationMixin(AuthCoreMixin):
         """
         if not self._registration_enabled or self._user_store is None:
             return RedirectResponse(
-                url="/admin/login?error="
+                url=f"{self._admin_path(request, '/admin/login')}?error="
                 + quote_plus("Registration is not available."),
                 status_code=302,
             )
@@ -63,7 +63,9 @@ class AuthRegistrationMixin(AuthCoreMixin):
         user = getattr(request.state, "user", None)
         if user and user.user_id != "guest" and not error and not notice:
             return RedirectResponse(
-                url="/admin/", status_code=302, headers=_CACHE_CONTROL_NO_STORE
+                url=self._admin_path(request),
+                status_code=302,
+                headers=_CACHE_CONTROL_NO_STORE,
             )
 
         name = request.query_params.get("name", "")
@@ -80,6 +82,9 @@ class AuthRegistrationMixin(AuthCoreMixin):
             email_err=request.query_params.get("email_err", ""),
             password_err=request.query_params.get("password_err", ""),
             confirmation_err=request.query_params.get("confirmation_err", ""),
+            register_url=self._admin_path(request, "/admin/register"),
+            login_url=self._admin_path(request, "/admin/login"),
+            base_url=self._admin_path(request).rstrip("/"),
         )
         return HTMLResponse(content=html, headers=_CACHE_CONTROL_NO_STORE)
 
@@ -100,7 +105,7 @@ class AuthRegistrationMixin(AuthCoreMixin):
         """
         if not self._registration_enabled or self._user_store is None:
             return RedirectResponse(
-                url="/admin/login?error="
+                url=f"{self._admin_path(request, '/admin/login')}?error="
                 + quote_plus("Registration is not available."),
                 status_code=302,
             )
@@ -120,7 +125,7 @@ class AuthRegistrationMixin(AuthCoreMixin):
                 "auth.csrf_validation_failed", ip=self._get_client_ip(request)
             )
             return RedirectResponse(
-                url=f"/admin/register?error={quote_plus('Invalid or expired security token. Please try again.')}",
+                url=f"{self._admin_path(request, '/admin/register')}?error={quote_plus('Invalid or expired security token. Please try again.')}",
                 status_code=302,
             )
 
@@ -136,19 +141,19 @@ class AuthRegistrationMixin(AuthCoreMixin):
             if password_err:
                 params.append(f"password_err={quote_plus(password_err)}")
             return RedirectResponse(
-                url=f"/admin/register?{'&'.join(params)}",
+                url=f"{self._admin_path(request, '/admin/register')}?{'&'.join(params)}",
                 status_code=302,
             )
 
         if len(password) < 8:
             return RedirectResponse(
-                url=f"/admin/register?error={quote_plus('Password must be at least 8 characters.')}&name={quote_plus(name)}&email={quote_plus(email)}&password_err={quote_plus('Password must be at least 8 characters.')}",
+                url=f"{self._admin_path(request, '/admin/register')}?error={quote_plus('Password must be at least 8 characters.')}&name={quote_plus(name)}&email={quote_plus(email)}&password_err={quote_plus('Password must be at least 8 characters.')}",
                 status_code=302,
             )
 
         if password != password_confirmation:
             return RedirectResponse(
-                url=f"/admin/register?error={quote_plus('Passwords do not match.')}&name={quote_plus(name)}&email={quote_plus(email)}&confirmation_err={quote_plus('Passwords do not match.')}",
+                url=f"{self._admin_path(request, '/admin/register')}?error={quote_plus('Passwords do not match.')}&name={quote_plus(name)}&email={quote_plus(email)}&confirmation_err={quote_plus('Passwords do not match.')}",
                 status_code=302,
             )
 
@@ -156,7 +161,7 @@ class AuthRegistrationMixin(AuthCoreMixin):
             domain = email.rsplit("@", 1)[1]
             if domain not in self._registration_domains:
                 return RedirectResponse(
-                    url=f"/admin/register?error={quote_plus('Registration is restricted to allowed email domains.')}&name={quote_plus(name)}&email={quote_plus(email)}",
+                    url=f"{self._admin_path(request, '/admin/register')}?error={quote_plus('Registration is restricted to allowed email domains.')}&name={quote_plus(name)}&email={quote_plus(email)}",
                     status_code=302,
                 )
 
@@ -168,7 +173,7 @@ class AuthRegistrationMixin(AuthCoreMixin):
                 ip=self._get_client_ip(request),
             )
             return RedirectResponse(
-                url=f"/admin/register?error={quote_plus('An account with this email already exists. Please log in instead.')}&name={quote_plus(name)}&email={quote_plus(email)}",
+                url=f"{self._admin_path(request, '/admin/register')}?error={quote_plus('An account with this email already exists. Please log in instead.')}&name={quote_plus(name)}&email={quote_plus(email)}",
                 status_code=302,
             )
 
@@ -197,7 +202,7 @@ class AuthRegistrationMixin(AuthCoreMixin):
                 error=str(exc),
             )
             return RedirectResponse(
-                url=f"/admin/register?error={quote_plus('Could not create the account: email may already be in use.')}&name={quote_plus(name)}&email={quote_plus(email)}",
+                url=f"{self._admin_path(request, '/admin/register')}?error={quote_plus('Could not create the account: email may already be in use.')}&name={quote_plus(name)}&email={quote_plus(email)}",
                 status_code=302,
             )
 
@@ -237,7 +242,8 @@ class AuthRegistrationMixin(AuthCoreMixin):
                     "before signing in."
                 )
         return RedirectResponse(
-            url="/admin/login?notice=" + quote_plus(notice),
+            url=f"{self._admin_path(request, '/admin/login')}?notice="
+            + quote_plus(notice),
             status_code=302,
         )
 
@@ -294,10 +300,10 @@ class AuthRegistrationMixin(AuthCoreMixin):
         """
         user = getattr(request.state, "user", None)
         if user and user.user_id != "guest":
-            return RedirectResponse(url="/admin/", status_code=302)
+            return RedirectResponse(url=self._admin_path(request), status_code=302)
 
         email = request.session.get("verify_pending_email", "")
-        next_url = request.session.get("verify_pending_next", "/admin/")
+        next_url = request.session.get("verify_pending_next", self._admin_path(request))
         error = _humanize_error(request.query_params.get("error", ""))
         notice = request.query_params.get("notice", "")
         csrf_token = self._fresh_csrf(request)
@@ -308,6 +314,9 @@ class AuthRegistrationMixin(AuthCoreMixin):
             notice=notice,
             csrf_token=csrf_token,
             next_url=next_url,
+            resend_url=self._admin_path(request, "/admin/verify-email/resend"),
+            login_url=self._admin_path(request, "/admin/login"),
+            base_url=self._admin_path(request).rstrip("/"),
         )
         return HTMLResponse(content=html, headers=_CACHE_CONTROL_NO_STORE)
 
@@ -334,19 +343,19 @@ class AuthRegistrationMixin(AuthCoreMixin):
                 "auth.csrf_validation_failed", ip=self._get_client_ip(request)
             )
             return RedirectResponse(
-                url=f"/admin/verify-email?error={quote_plus('Invalid or expired security token. Please try again.')}",
+                url=f"{self._admin_path(request, '/admin/verify-email')}?error={quote_plus('Invalid or expired security token. Please try again.')}",
                 status_code=302,
             )
 
         user_id = request.session.get("verify_pending_user_id", "")
         if not user_id:
             return RedirectResponse(
-                url=f"/admin/login?error={quote_plus('Please sign in to request a new link.')}",
+                url=f"{self._admin_path(request, '/admin/login')}?error={quote_plus('Please sign in to request a new link.')}",
                 status_code=302,
             )
         if self._email_verification_service is None:
             return RedirectResponse(
-                url=f"/admin/verify-email?error={quote_plus('Email verification is not available.')}",
+                url=f"{self._admin_path(request, '/admin/verify-email')}?error={quote_plus('Email verification is not available.')}",
                 status_code=302,
             )
 
@@ -362,11 +371,11 @@ class AuthRegistrationMixin(AuthCoreMixin):
         )
         if result.is_err():
             return RedirectResponse(
-                url=f"/admin/verify-email?error={quote_plus(_humanize_error(str(result.unwrap_err())))}",
+                url=f"{self._admin_path(request, '/admin/verify-email')}?error={quote_plus(_humanize_error(str(result.unwrap_err())))}",
                 status_code=302,
             )
         return RedirectResponse(
-            url="/admin/verify-email?notice="
+            url=f"{self._admin_path(request, '/admin/verify-email')}?notice="
             + quote_plus("A new verification link has been sent."),
             status_code=302,
         )
@@ -385,10 +394,14 @@ class AuthRegistrationMixin(AuthCoreMixin):
             HTMLResponse with the confirmation or failure page.
         """
         token = request.path_params.get("token", "")
+        next_url = request.session.get("verify_pending_next", self._admin_path(request))
         if self._email_verification_service is None:
             return HTMLResponse(
                 content=render_email_verified_page(
-                    error="Email verification is not available."
+                    error="Email verification is not available.",
+                    next_url=next_url,
+                    login_url=self._admin_path(request, "/admin/login"),
+                    base_url=self._admin_path(request).rstrip("/"),
                 )
             )
 
@@ -401,7 +414,10 @@ class AuthRegistrationMixin(AuthCoreMixin):
             )
             return HTMLResponse(
                 content=render_email_verified_page(
-                    error=_humanize_error(str(result.unwrap_err()))
+                    error=_humanize_error(str(result.unwrap_err())),
+                    next_url=next_url,
+                    login_url=self._admin_path(request, "/admin/login"),
+                    base_url=self._admin_path(request).rstrip("/"),
                 )
             )
 
@@ -412,4 +428,10 @@ class AuthRegistrationMixin(AuthCoreMixin):
         ):
             request.session.pop(key, None)
         logger.info("auth.verify_email_success", token_prefix=token[:8])
-        return HTMLResponse(content=render_email_verified_page())
+        return HTMLResponse(
+            content=render_email_verified_page(
+                next_url=next_url,
+                login_url=self._admin_path(request, "/admin/login"),
+                base_url=self._admin_path(request).rstrip("/"),
+            )
+        )

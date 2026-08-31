@@ -16,7 +16,7 @@ _UNSET = object()
 def _controller(
     *,
     enabled: bool = True,
-    user_store: AsyncMock | None | object = _UNSET,
+    user_store: AsyncMock | object | None = _UNSET,
     domains: list[str] | None = None,
 ) -> AuthController:
     controller = AuthController(
@@ -46,9 +46,12 @@ def _request(
     session: dict | None = None,
     user: object | None = None,
     query: dict | None = None,
+    scope_prefix: str | None = None,
 ) -> MagicMock:
     request = MagicMock()
     request.scope = {"admin_form_data": form} if form is not None else {}
+    if scope_prefix is not None:
+        request.scope["admin_prefix"] = scope_prefix
     request.form = AsyncMock(return_value=form or {})
     request.session = session or _session()
     state = MagicMock()
@@ -104,6 +107,15 @@ class TestRegisterForm:
         assert "Create Account" in html
         assert 'action="/admin/register"' in html
         assert 'name="password_confirmation"' in html
+
+    @pytest.mark.asyncio
+    async def test_renders_all_auth_links_under_custom_prefix(self) -> None:
+        controller = _controller()
+        resp = await controller.register_form(_request(scope_prefix="/console"))
+        assert resp.status_code == 200
+        html = resp.body.decode()
+        assert 'action="/console/register"' in html
+        assert 'href="/console/login"' in html
 
 
 class TestRegisterSubmit:

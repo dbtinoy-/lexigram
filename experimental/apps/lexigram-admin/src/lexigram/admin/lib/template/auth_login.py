@@ -28,6 +28,10 @@ def render_login_page(
     registration_enabled: bool = False,
     email_err: str = "",
     password_err: str = "",
+    login_url: str = "/admin/login",
+    password_reset_url: str = "/admin/password-reset",  # noqa: S107
+    register_url: str = "/admin/register",
+    base_url: str = "/admin",
 ) -> str:
     """Render a standalone login page.
 
@@ -41,6 +45,10 @@ def render_login_page(
             ``/admin/register`` is shown next to the password-reset link.
         email_err: Optional per-field error under the email input.
         password_err: Optional per-field error under the password input.
+        login_url: Mounted form action for the login route.
+        password_reset_url: Mounted password reset route.
+        register_url: Mounted registration route.
+        base_url: Mounted admin base URL used for shared assets.
 
     Returns:
         HTML string for login page.
@@ -48,16 +56,14 @@ def render_login_page(
     flash_messages = _flash_messages(error, notice)
 
     footer_links: list[Any] = [
-        Link("Forgot password?", "/admin/password-reset", variant="primary"),
+        Link("Forgot password?", password_reset_url, variant="primary"),
     ]
     if registration_enabled:
         footer_links.append(el("span", "|", class_="mx-2 text-muted-foreground"))
-        footer_links.append(
-            Link("Create account", "/admin/register", variant="primary")
-        )
+        footer_links.append(Link("Create account", register_url, variant="primary"))
 
     form = _auth_form(
-        "/admin/login",
+        login_url,
         csrf_token,
         [
             EmailInput(
@@ -85,6 +91,7 @@ def render_login_page(
         "Please sign in to continue",
         [form, _auth_footer(*footer_links)],
         site_name=site_name,
+        base_url=base_url,
         flash_messages=flash_messages,
     )
 
@@ -100,6 +107,9 @@ def render_register_page(
     email_err: str = "",
     password_err: str = "",
     confirmation_err: str = "",
+    register_url: str = "/admin/register",
+    login_url: str = "/admin/login",
+    base_url: str = "/admin",
 ) -> str:
     """Render a standalone self-service registration page.
 
@@ -114,6 +124,9 @@ def render_register_page(
         email_err: Optional per-field error under the email input.
         password_err: Optional per-field error under the password input.
         confirmation_err: Optional per-field error under the confirm input.
+        register_url: Mounted form action for registration.
+        login_url: Mounted route used by the sign-in link.
+        base_url: Mounted admin base URL used for shared assets.
 
     Returns:
         HTML string for the registration page.
@@ -121,7 +134,7 @@ def render_register_page(
     flash_messages = _flash_messages(error, notice)
 
     form = _auth_form(
-        "/admin/register",
+        register_url,
         csrf_token,
         [
             TextInput(
@@ -166,10 +179,11 @@ def render_register_page(
             form,
             _auth_footer(
                 "Already have an account? ",
-                Link("Sign in", "/admin/login", variant="primary"),
+                Link("Sign in", login_url, variant="primary"),
             ),
         ],
         site_name=site_name,
+        base_url=base_url,
         flash_messages=flash_messages,
     )
 

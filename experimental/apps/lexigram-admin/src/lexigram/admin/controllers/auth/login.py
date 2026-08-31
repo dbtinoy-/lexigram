@@ -52,7 +52,11 @@ class AuthLoginMixin(AuthCoreMixin):
             HTMLResponse with the rendered login page, or a RedirectResponse
             when the user is already authenticated.
         """
-        next_url = self._safe_next_url(request.query_params.get("next", "/admin/"))
+        admin_home = self._admin_path(request)
+        next_url = self._safe_next_url(
+            request.query_params.get("next", admin_home),
+            default=admin_home,
+        )
 
         error = _humanize_error(request.query_params.get("error", ""))
         notice = request.query_params.get("notice", "")
@@ -79,6 +83,10 @@ class AuthLoginMixin(AuthCoreMixin):
             registration_enabled=self._registration_enabled,
             email_err=email_err,
             password_err=password_err,
+            login_url=self._admin_path(request, "/admin/login"),
+            password_reset_url=self._admin_path(request, "/admin/password-reset"),
+            register_url=self._admin_path(request, "/admin/register"),
+            base_url=admin_home.rstrip("/"),
         )
         return HTMLResponse(content=html, headers=_CACHE_CONTROL_NO_STORE)
 
@@ -100,9 +108,13 @@ class AuthLoginMixin(AuthCoreMixin):
             page with an error query parameter on failure.
         """
         form_data = request.scope.get("admin_form_data") or await request.form()
+        admin_home = self._admin_path(request)
         email = str(form_data.get("email", ""))
         password = str(form_data.get("password", ""))
-        next_url = self._safe_next_url(str(form_data.get("next", "/admin/")))
+        next_url = self._safe_next_url(
+            str(form_data.get("next", admin_home)),
+            default=admin_home,
+        )
         csrf_token = str(form_data.get("csrf_token", ""))
 
         # ── CSRF validation ────────────────────────────────────────────
@@ -114,7 +126,7 @@ class AuthLoginMixin(AuthCoreMixin):
                 "auth.csrf_validation_failed", ip=self._get_client_ip(request)
             )
             return RedirectResponse(
-                url=f"/admin/login?error={quote_plus('Invalid or expired security token. Please try again.')}&next={quote_plus(next_url)}",
+                url=f"{self._admin_path(request, '/admin/login')}?error={quote_plus('Invalid or expired security token. Please try again.')}&next={quote_plus(next_url)}",
                 status_code=302,
             )
 
@@ -128,7 +140,7 @@ class AuthLoginMixin(AuthCoreMixin):
             if password_err:
                 params.append(f"password_err={quote_plus(password_err)}")
             return RedirectResponse(
-                url=f"/admin/login?{'&'.join(params)}",
+                url=f"{self._admin_path(request, '/admin/login')}?{'&'.join(params)}",
                 status_code=302,
             )
 
@@ -172,7 +184,9 @@ class AuthLoginMixin(AuthCoreMixin):
                     email=auth_result.email,
                     factor=factor,
                 )
-                return RedirectResponse(url="/admin/login/2fa", status_code=302)
+                return RedirectResponse(
+                    url=self._admin_path(request, "/admin/login/2fa"), status_code=302
+                )
 
             if auth_result.email_verification_required:
                 # Verification gate — park the identity so the /verify-email
@@ -203,7 +217,7 @@ class AuthLoginMixin(AuthCoreMixin):
                     user_id=auth_result.user_id,
                     email=auth_result.email,
                 )
-                target = "/admin/verify-email"
+                target = self._admin_path(request, "/admin/verify-email")
                 if error_msg:
                     target += f"?error={quote_plus(error_msg)}"
                 return RedirectResponse(url=target, status_code=302)
@@ -233,7 +247,7 @@ class AuthLoginMixin(AuthCoreMixin):
         self._metrics.record_login(status="failure")
         logger.warning("auth.login_failed", email=email, ip=ip, reason=error_msg)
         return RedirectResponse(
-            url=f"/admin/login?error={quote_plus(error_msg)}&next={quote_plus(next_url)}",
+            url=f"{self._admin_path(request, '/admin/login')}?error={quote_plus(error_msg)}&next={quote_plus(next_url)}",
             status_code=302,
         )
 
@@ -258,6 +272,7 @@ class AuthLoginMixin(AuthCoreMixin):
 
         request.session.clear()
         return RedirectResponse(
-            url="/admin/login?notice=" + quote_plus("You have been signed out."),
+            url=f"{self._admin_path(request, '/admin/login')}?notice="
+            + quote_plus("You have been signed out."),
             status_code=302,
         )

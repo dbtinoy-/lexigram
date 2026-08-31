@@ -17,6 +17,7 @@ from lexigram.admin.auth.models import AdminUser
 from lexigram.admin.controllers.route_collection import collect_instance_routes
 from lexigram.admin.engine.renderer import AdminRenderer
 from lexigram.admin.middleware.auth import current_user
+from lexigram.admin.resources.urls import admin_prefix_from_request, mount_admin_url
 from lexigram.concurrency import Parallel
 from lexigram.contracts.core import TaskManagerProtocol
 from lexigram.contracts.web.controller import ControllerProtocol
@@ -107,6 +108,14 @@ class AdminController(ControllerProtocol):
                     seen_handlers.add(attr_name)
 
         return routes
+
+    @staticmethod
+    def _admin_path(request: Request, canonical_path: str = "/admin/") -> str:
+        """Mount a canonical internal admin path under this request prefix."""
+        return mount_admin_url(
+            canonical_path,
+            admin_prefix_from_request(request),
+        )
 
     def current_user(self, request: Request) -> AdminUser:
         """Get the current authenticated user.

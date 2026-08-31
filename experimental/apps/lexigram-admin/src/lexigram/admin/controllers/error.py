@@ -5,6 +5,8 @@ Provides user-friendly error pages for common HTTP errors.
 
 from __future__ import annotations
 
+from urllib.parse import quote_plus
+
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, RedirectResponse
 
@@ -39,6 +41,7 @@ class ErrorController(AdminController):
         icon: str,
         action_text: str = "Go to Dashboard",
         action_url: str = "/admin/",
+        base_url: str = "/admin",
     ) -> HTMLResponse:
         """Render a styled error page using templates.
 
@@ -60,15 +63,28 @@ class ErrorController(AdminController):
             icon=icon,
             action_text=action_text,
             action_url=action_url,
+            base_url=base_url,
         )
         return HTMLResponse(content=html, status_code=status_code)
 
     @get("/401")
     async def error_401(self, request: Request) -> RedirectResponse:
         """Handle 401 Unauthorized - redirect to login."""
-        # Get the original URL for redirect after login
-        next_url = request.query_params.get("next", "/admin/")
-        return RedirectResponse(url=f"/admin/login?next={next_url}", status_code=302)
+        # Get the original URL for redirect after login.  Error pages are
+        # also mounted under custom admin prefixes, so both links must use
+        # the request's configured mount.
+        admin_home = self._admin_path(request)
+        next_url = request.query_params.get("next", admin_home)
+        if not (
+            next_url.startswith("/")
+            and not next_url.startswith("//")
+            and not next_url.startswith("/\\")
+        ):
+            next_url = admin_home
+        return RedirectResponse(
+            url=f"{self._admin_path(request, '/admin/login')}?next={quote_plus(next_url)}",
+            status_code=302,
+        )
 
     @get("/403")
     async def error_403(self, request: Request) -> HTMLResponse:
@@ -78,6 +94,8 @@ class ErrorController(AdminController):
             title="Access Denied",
             message="You don't have permission to access this resource. Please contact your administrator if you believe this is an error.",
             icon="🔒",
+            action_url=self._admin_path(request),
+            base_url=self._admin_path(request).rstrip("/"),
         )
 
     @get("/404")
@@ -88,6 +106,8 @@ class ErrorController(AdminController):
             title="Page Not Found",
             message="The page you're looking for doesn't exist. It may have been moved or deleted.",
             icon="🔍",
+            action_url=self._admin_path(request),
+            base_url=self._admin_path(request).rstrip("/"),
         )
 
     @get("/500")
@@ -98,4 +118,6 @@ class ErrorController(AdminController):
             title="Internal Server Error",
             message="Something went wrong on our end. Our team has been notified and we're working to fix it.",
             icon="⚠️",
+            action_url=self._admin_path(request),
+            base_url=self._admin_path(request).rstrip("/"),
         )

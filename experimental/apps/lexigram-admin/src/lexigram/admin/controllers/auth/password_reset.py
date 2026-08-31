@@ -50,7 +50,7 @@ class AuthPasswordResetMixin(AuthCoreMixin):
         """
         user = getattr(request.state, "user", None)
         if user and user.user_id != "guest":
-            return RedirectResponse(url="/admin/", status_code=302)
+            return RedirectResponse(url=self._admin_path(request), status_code=302)
 
         error = request.query_params.get("error", "")
         sent = request.query_params.get("sent", "") == "1"
@@ -60,7 +60,12 @@ class AuthPasswordResetMixin(AuthCoreMixin):
         csrf_token = self._csrf_service.generate_token(csrf_session_id)
 
         html = render_password_reset_request_page(
-            error=error, csrf_token=csrf_token, sent=sent
+            error=error,
+            csrf_token=csrf_token,
+            sent=sent,
+            request_url=self._admin_path(request, "/admin/password-reset"),
+            login_url=self._admin_path(request, "/admin/login"),
+            base_url=self._admin_path(request).rstrip("/"),
         )
         return HTMLResponse(content=html, headers=_CACHE_CONTROL_NO_STORE)
 
@@ -86,13 +91,13 @@ class AuthPasswordResetMixin(AuthCoreMixin):
             csrf_session_id, csrf_token
         ):
             return RedirectResponse(
-                url=f"/admin/password-reset?error={quote_plus('Invalid or expired security token. Please try again.')}",
+                url=f"{self._admin_path(request, '/admin/password-reset')}?error={quote_plus('Invalid or expired security token. Please try again.')}",
                 status_code=302,
             )
 
         if not email:
             return RedirectResponse(
-                url=f"/admin/password-reset?error={quote_plus('Email is required.')}",
+                url=f"{self._admin_path(request, '/admin/password-reset')}?error={quote_plus('Email is required.')}",
                 status_code=302,
             )
 
@@ -105,10 +110,13 @@ class AuthPasswordResetMixin(AuthCoreMixin):
             )
             if result.is_err():
                 return RedirectResponse(
-                    url=f"/admin/password-reset?error={quote_plus(_humanize_error(str(result.unwrap_err())))}",
+                    url=f"{self._admin_path(request, '/admin/password-reset')}?error={quote_plus(_humanize_error(str(result.unwrap_err())))}",
                     status_code=302,
                 )
-        return RedirectResponse(url="/admin/password-reset?sent=1", status_code=302)
+        return RedirectResponse(
+            url=f"{self._admin_path(request, '/admin/password-reset')}?sent=1",
+            status_code=302,
+        )
 
     @get("/password-reset/{token}")
     async def password_reset_confirm_form(
@@ -125,7 +133,7 @@ class AuthPasswordResetMixin(AuthCoreMixin):
         """
         user = getattr(request.state, "user", None)
         if user and user.user_id != "guest":
-            return RedirectResponse(url="/admin/", status_code=302)
+            return RedirectResponse(url=self._admin_path(request), status_code=302)
 
         token = request.path_params.get("token", "")
         error = request.query_params.get("error", "")
@@ -140,6 +148,9 @@ class AuthPasswordResetMixin(AuthCoreMixin):
             csrf_token=csrf_token,
             password_err=request.query_params.get("password_err", ""),
             confirmation_err=request.query_params.get("confirmation_err", ""),
+            confirm_url=self._admin_path(request, f"/admin/password-reset/{token}"),
+            login_url=self._admin_path(request, "/admin/login"),
+            base_url=self._admin_path(request).rstrip("/"),
         )
         return HTMLResponse(content=html, headers=_CACHE_CONTROL_NO_STORE)
 
@@ -169,7 +180,7 @@ class AuthPasswordResetMixin(AuthCoreMixin):
             csrf_session_id, csrf_token
         ):
             return RedirectResponse(
-                url=f"/admin/password-reset/{token}?error={quote_plus('Invalid or expired security token. Please try again.')}",
+                url=f"{self._admin_path(request, f'/admin/password-reset/{token}')}?error={quote_plus('Invalid or expired security token. Please try again.')}",
                 status_code=302,
             )
 
@@ -179,19 +190,19 @@ class AuthPasswordResetMixin(AuthCoreMixin):
                 "Please confirm your password." if not password_confirmation else ""
             )
             return RedirectResponse(
-                url=f"/admin/password-reset/{token}?password_err={quote_plus(password_err)}&confirmation_err={quote_plus(confirmation_err)}",
+                url=f"{self._admin_path(request, f'/admin/password-reset/{token}')}?password_err={quote_plus(password_err)}&confirmation_err={quote_plus(confirmation_err)}",
                 status_code=302,
             )
 
         if password != password_confirmation:
             return RedirectResponse(
-                url=f"/admin/password-reset/{token}?confirmation_err={quote_plus('Passwords do not match.')}",
+                url=f"{self._admin_path(request, f'/admin/password-reset/{token}')}?confirmation_err={quote_plus('Passwords do not match.')}",
                 status_code=302,
             )
 
         if self._password_reset_service is None:
             return RedirectResponse(
-                url=f"/admin/password-reset/{token}?error={quote_plus('Password reset is not available.')}",
+                url=f"{self._admin_path(request, f'/admin/password-reset/{token}')}?error={quote_plus('Password reset is not available.')}",
                 status_code=302,
             )
 
@@ -204,7 +215,7 @@ class AuthPasswordResetMixin(AuthCoreMixin):
         if result.is_ok():
             logger.info("admin.password_reset_confirm_success", token_prefix=token[:8])
             return RedirectResponse(
-                url=f"/admin/login?notice={quote_plus('Password reset successful. Please sign in.')}",
+                url=f"{self._admin_path(request, '/admin/login')}?notice={quote_plus('Password reset successful. Please sign in.')}",
                 status_code=302,
             )
 
@@ -212,6 +223,6 @@ class AuthPasswordResetMixin(AuthCoreMixin):
             "admin.password_reset_confirm_failed", error=str(result.unwrap_err())
         )
         return RedirectResponse(
-            url=f"/admin/password-reset/{token}?error={quote_plus(_humanize_error(str(result.unwrap_err())))}",
+            url=f"{self._admin_path(request, f'/admin/password-reset/{token}')}?error={quote_plus(_humanize_error(str(result.unwrap_err())))}",
             status_code=302,
         )

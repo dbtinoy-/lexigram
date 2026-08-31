@@ -197,7 +197,16 @@ class ImpersonateAction(RowAction):
         record_id = self._get_record_id(record)
         if not record_id:
             return None
-        return f"/admin/impersonate/{record_id}"
+        from lexigram.admin.resources.urls import (
+            admin_prefix_from_request,
+            mount_admin_url,
+        )
+
+        request = getattr(ctx, "request", None)
+        return mount_admin_url(
+            f"/admin/impersonate/{record_id}",
+            admin_prefix_from_request(request) if request is not None else "/admin",
+        )
 
     def _get_htmx_attrs(
         self, url: str, record: Any, ctx: ActionContext

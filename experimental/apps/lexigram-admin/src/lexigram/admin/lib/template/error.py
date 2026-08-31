@@ -22,6 +22,7 @@ def render_error_page(
     icon: str = "",
     action_text: str = "Return to Admin",
     action_url: str = "/admin/",
+    base_url: str = "/admin",
 ) -> str:
     """Render a standalone error page.
 
@@ -34,6 +35,7 @@ def render_error_page(
         icon: Emoji icon to display
         action_text: Call-to-action button text
         action_url: Call-to-action button URL
+        base_url: Mounted admin base URL used for shared assets.
 
     Returns:
         HTML string for error page
@@ -45,6 +47,7 @@ def render_error_page(
     )
     context = StandaloneLayoutContext(
         page_title=title,
+        base_url=base_url,
     )
 
     details_html = ""

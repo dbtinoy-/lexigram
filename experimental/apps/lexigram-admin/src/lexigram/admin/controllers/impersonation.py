@@ -9,6 +9,7 @@ from starlette.responses import RedirectResponse, Response
 from starlette.routing import Route
 
 from lexigram.admin.auth.store import AdminUserStoreProtocol
+from lexigram.admin.resources.urls import admin_prefix_from_request, mount_admin_url
 from lexigram.admin.services.impersonation import ImpersonationService
 from lexigram.di.decorators import inject
 from lexigram.logging import get_logger
@@ -87,7 +88,9 @@ class ImpersonationController:
             return self._toast_error(error.message, status_code=403)
 
         response = Response(status_code=200)
-        response.headers["HX-Redirect"] = "/admin/users"
+        response.headers["HX-Redirect"] = mount_admin_url(
+            "/admin/users", admin_prefix_from_request(request)
+        )
         return response
 
     async def stop_impersonation(self, request: Request) -> Response:
@@ -100,7 +103,10 @@ class ImpersonationController:
 
                 async with AdminContextManager(request) as ctx:
                     ctx.add_flash("No active impersonation session to stop.", "warning")
-        return RedirectResponse(url="/admin/", status_code=302)
+        return RedirectResponse(
+            url=mount_admin_url("/admin/", admin_prefix_from_request(request)),
+            status_code=302,
+        )
 
     @staticmethod
     def _toast_error(message: str, *, status_code: int) -> Response:

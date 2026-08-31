@@ -18,6 +18,8 @@ def render_profile_page(
     current_password_err: str = "",
     new_password_err: str = "",
     confirmation_err: str = "",
+    mfa_url: str = "/admin/profile/mfa",
+    password_url: str = "/admin/profile/password",  # noqa: S107
 ) -> str:
     """Render the user profile page content for the admin shell.
 
@@ -35,6 +37,8 @@ def render_profile_page(
         current_password_err: Optional per-field error under the current-password input.
         new_password_err: Optional per-field error under the new-password input.
         confirmation_err: Optional per-field error under the confirm input.
+        mfa_url: Mounted route for managing two-factor authentication.
+        password_url: Mounted form action for changing the password.
 
     Returns:
         HTML string fragment for the profile page body.
@@ -87,12 +91,12 @@ def render_profile_page(
             </div>
             <div class="flex items-center gap-3">
               {mfa_badge}
-              <a href="/admin/profile/mfa"
+              <a href="{escape(mfa_url)}"
                  class="inline-flex items-center rounded-md border border-input bg-background px-3 py-1.5 text-sm font-medium text-foreground shadow-sm hover:bg-accent">Manage</a>
             </div>
           </div>
           <hr class="border-border" />
-          <form method="post" action="/admin/profile/password" class="space-y-4">
+          <form method="post" action="{escape(password_url)}" class="space-y-4">
             <input type="hidden" name="csrf_token" value="{escape(csrf_token)}" />
             <div>
               <label for="current_password" class="block text-sm font-medium text-foreground">Current password</label>

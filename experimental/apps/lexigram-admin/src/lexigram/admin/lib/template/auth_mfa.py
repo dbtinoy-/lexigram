@@ -21,6 +21,9 @@ def render_mfa_challenge_page(
     next_url: str = "/admin/",
     factor: str = "totp",
     resend_notice: str = "",
+    challenge_url: str = "/admin/login/2fa",
+    resend_url: str = "/admin/login/2fa/resend",
+    base_url: str = "/admin",
 ) -> str:
     """Render a standalone second-factor challenge page.
 
@@ -37,6 +40,9 @@ def render_mfa_challenge_page(
         next_url: Destination to redirect to after successful verification.
         factor: Second factor in use — ``"totp"`` (default) or ``"email"``.
         resend_notice: Success notice to display (e.g. after a resend).
+        challenge_url: Mounted form action for the challenge.
+        resend_url: Mounted form action for email-code resends.
+        base_url: Mounted admin base URL used for shared assets.
 
     Returns:
         HTML string for the challenge page.
@@ -55,7 +61,7 @@ def render_mfa_challenge_page(
                 class_="text-sm text-muted-foreground mb-2",
             ),
             _auth_form(
-                "/admin/login/2fa/resend",
+                resend_url,
                 csrf_token,
                 [],
                 "Resend code",
@@ -73,7 +79,7 @@ def render_mfa_challenge_page(
 
     children: list[Any] = [
         _auth_form(
-            "/admin/login/2fa",
+            challenge_url,
             csrf_token,
             [_code_input("Code")],
             "Verify & Sign In",
@@ -88,6 +94,7 @@ def render_mfa_challenge_page(
         "Verification Code",
         guidance,
         children,
+        base_url=base_url,
         flash_messages=flash_messages,
     )
 
@@ -98,6 +105,8 @@ def render_mfa_setup_page(
     secret: str = "",
     csrf_token: str = "",
     email_verified: bool | None = None,
+    setup_url: str = "/admin/profile/mfa/setup",
+    disable_url: str = "/admin/profile/mfa/disable",
 ) -> str:
     """Render the profile 2FA setup fragment for the admin shell.
 
@@ -123,7 +132,7 @@ def render_mfa_setup_page(
     if enabled:
         children: list[Any] = [
             _auth_form(
-                "/admin/profile/mfa/disable",
+                disable_url,
                 csrf_token,
                 [_code_input("Current Code")],
                 "Disable 2FA",
@@ -149,7 +158,7 @@ def render_mfa_setup_page(
             ),
         )
         form = _auth_form(
-            "/admin/profile/mfa/setup",
+            setup_url,
             csrf_token,
             [_code_input("Verification Code")],
             "Enable 2FA",

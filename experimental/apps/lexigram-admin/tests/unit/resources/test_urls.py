@@ -8,6 +8,7 @@ from lexigram.admin.resources.urls import (
     DEFAULT_ADMIN_PREFIX,
     admin_prefix_from_request,
     admin_url,
+    mount_admin_url,
 )
 
 
@@ -52,6 +53,14 @@ def test_prefix_ignores_non_string_scope_values() -> None:
 
     request = MagicMock()
     assert admin_prefix_from_request(request) == DEFAULT_ADMIN_PREFIX
+
+
+def test_mount_admin_url_custom_prefix() -> None:
+    assert mount_admin_url("/admin/login", "/console") == "/console/login"
+
+
+def test_mount_admin_url_leaves_external_paths_untouched() -> None:
+    assert mount_admin_url("/assets/admin.css", "/console") == "/assets/admin.css"
 
 
 def test_admin_url_joins_part_and_suffix() -> None:

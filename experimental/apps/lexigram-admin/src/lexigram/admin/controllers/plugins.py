@@ -99,7 +99,7 @@ class PluginsController(AdminController):
                 self._render_empty("No plugin toolbox available."),
                 title="Plugins",
                 breadcrumbs=self.generate_breadcrumbs(
-                    ("Home", "/admin/"),
+                    ("Home", self._admin_path(request)),
                     current="Plugins",
                 ),
             )
@@ -113,7 +113,7 @@ class PluginsController(AdminController):
                 self._render_empty("No plugins discovered."),
                 title="Plugins",
                 breadcrumbs=self.generate_breadcrumbs(
-                    ("Home", "/admin/"),
+                    ("Home", self._admin_path(request)),
                     current="Plugins",
                 ),
             )
@@ -124,7 +124,7 @@ class PluginsController(AdminController):
             content,
             title="Plugins",
             breadcrumbs=self.generate_breadcrumbs(
-                ("Home", "/admin/"),
+                ("Home", self._admin_path(request)),
                 current="Plugins",
             ),
         )
@@ -136,16 +136,22 @@ class PluginsController(AdminController):
         csrf_token = str(form.get("csrf_token", ""))
         if not self._user_can_manage(request):
             await self._audit(request, success=False, reason="permission_denied")
-            return self._error_redirect("/admin/plugins", "Permission denied.")
+            return self._error_redirect(
+                self._admin_path(request, "/admin/plugins"), "Permission denied."
+            )
         if not self._csrf_ok(request, csrf_token):
             await self._audit(request, success=False, reason="csrf_failed")
-            return self._error_redirect("/admin/plugins", "Invalid CSRF token.")
+            return self._error_redirect(
+                self._admin_path(request, "/admin/plugins"), "Invalid CSRF token."
+            )
 
         plugin_name = str(form.get("plugin", "")).strip()
         toolbox = _load_toolbox()
         if toolbox is None:
             await self._audit(request, success=False, reason="toolbox_missing")
-            return self._error_redirect("/admin/plugins", "Toolbox not available.")
+            return self._error_redirect(
+                self._admin_path(request, "/admin/plugins"), "Toolbox not available."
+            )
         discovery, state = toolbox
 
         descriptors = discovery.discover_plugins()
@@ -156,7 +162,9 @@ class PluginsController(AdminController):
         }
         if not entry_points:
             await self._audit(request, success=False, reason="plugin_unknown")
-            return self._error_redirect("/admin/plugins", "Unknown plugin.")
+            return self._error_redirect(
+                self._admin_path(request, "/admin/plugins"), "Unknown plugin."
+            )
 
         disabled = state.load_disabled()
         action = "enabled" if entry_points <= disabled else "disabled"
@@ -176,11 +184,12 @@ class PluginsController(AdminController):
         except PluginStateError:
             await self._audit(request, success=False, reason="state_write_failed")
             return self._error_redirect(
-                "/admin/plugins", "Could not save plugin state."
+                self._admin_path(request, "/admin/plugins"),
+                "Could not save plugin state.",
             )
         await self._audit(request, success=True, plugin=plugin_name, action=action)
         return RedirectResponse(
-            url=f"/admin/plugins?notice={quote_plus(f'Plugin {action}.')}",
+            url=f"{self._admin_path(request, '/admin/plugins')}?notice={quote_plus(f'Plugin {action}.')}",
             status_code=302,
         )
 
@@ -285,7 +294,7 @@ class PluginsController(AdminController):
                     class_="px-3 py-1.5 rounded text-sm bg-primary-600 text-white hover:bg-primary-700",
                 ),
                 method="post",
-                action="/admin/plugins/toggle",
+                action=self._admin_path(request, "/admin/plugins/toggle"),
                 class_="ml-4",
             ),
             class_="flex items-center gap-4 p-4",

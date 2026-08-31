@@ -44,6 +44,7 @@ def _standalone_card(
     children: list[Any],
     *,
     site_name: str = "Lexigram Admin",
+    base_url: str = "/admin",
     flash_messages: list[tuple[str, str]] | None = None,
 ) -> str:
     """Render a centred standalone auth card inside the standalone layout.
@@ -54,6 +55,7 @@ def _standalone_card(
         copy: Subtitle text rendered under the heading.
         children: Body elements rendered inside the card.
         site_name: Site name for branding.
+        base_url: Mounted admin base URL used for shared assets.
         flash_messages: Error/success flashes rendered above the card.
 
     Returns:
@@ -78,6 +80,7 @@ def _standalone_card(
         ),
         context=StandaloneLayoutContext(
             page_title=page_title,
+            base_url=base_url,
             flash_messages=flash_messages or [],
         ),
     )

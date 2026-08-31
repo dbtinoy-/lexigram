@@ -11,11 +11,18 @@ class Breadcrumbs(Component):
 
     Args:
         items: List of dicts with 'label' and 'url'
+        home_url: URL for the home icon link.
     """
 
-    def __init__(self, items: list[dict[str, str]], **props: Any) -> None:
+    def __init__(
+        self,
+        items: list[dict[str, str]],
+        home_url: str = "/admin",
+        **props: Any,
+    ) -> None:
         super().__init__(**props)
         self.items = items
+        self.home_url = home_url
 
     def render(self) -> Any:
         from lexigram.ui.atoms.icons import get_icon
@@ -38,7 +45,7 @@ class Breadcrumbs(Component):
                                 class_name="h-5 w-5 flex-shrink-0",
                                 aria_hidden="true",
                             ),
-                            href="/admin",
+                            href=self.home_url,
                             class_="text-muted-foreground hover:text-foreground transition-colors",
                         ),
                     ),

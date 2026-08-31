@@ -16,6 +16,9 @@ def render_password_reset_request_page(
     csrf_token: str = "",
     error: str = "",
     sent: bool = False,
+    request_url: str = "/admin/password-reset",
+    login_url: str = "/admin/login",
+    base_url: str = "/admin",
 ) -> str:
     """Render a standalone password reset request page.
 
@@ -25,6 +28,9 @@ def render_password_reset_request_page(
         error: Error message to display.
         sent: When True, shows the generic "check your email" notice
             (anti-enumeration; identical for known and unknown emails).
+        request_url: Mounted form action for reset requests.
+        login_url: Mounted route used by the sign-in link.
+        base_url: Mounted admin base URL used for shared assets.
 
     Returns:
         HTML string for the request page.
@@ -39,7 +45,7 @@ def render_password_reset_request_page(
         )
 
     form = _auth_form(
-        "/admin/password-reset",
+        request_url,
         csrf_token,
         [
             EmailInput(
@@ -59,9 +65,10 @@ def render_password_reset_request_page(
         "Enter your email and we'll send you a reset link",
         [
             form,
-            _auth_footer(Link("Back to sign in", "/admin/login", variant="primary")),
+            _auth_footer(Link("Back to sign in", login_url, variant="primary")),
         ],
         site_name=site_name,
+        base_url=base_url,
         flash_messages=flash_messages,
     )
 
@@ -73,6 +80,9 @@ def render_password_reset_confirm_page(
     error: str = "",
     password_err: str = "",
     confirmation_err: str = "",
+    confirm_url: str = "",
+    login_url: str = "/admin/login",
+    base_url: str = "/admin",
 ) -> str:
     """Render a standalone password reset confirm page.
 
@@ -83,14 +93,18 @@ def render_password_reset_confirm_page(
         error: Error message to display.
         password_err: Optional per-field error under the password input.
         confirmation_err: Optional per-field error under the confirm input.
+        confirm_url: Mounted form action for the token.
+        login_url: Mounted route used by the sign-in link.
+        base_url: Mounted admin base URL used for shared assets.
 
     Returns:
         HTML string for the confirm page.
     """
     flash_messages = _flash_messages(error)
+    confirm_url = confirm_url or f"/admin/password-reset/{token}"
 
     form = _auth_form(
-        f"/admin/password-reset/{token}",
+        confirm_url,
         csrf_token,
         [
             PasswordInput(
@@ -118,9 +132,10 @@ def render_password_reset_confirm_page(
         "Choose a strong new password",
         [
             form,
-            _auth_footer(Link("Back to sign in", "/admin/login", variant="primary")),
+            _auth_footer(Link("Back to sign in", login_url, variant="primary")),
         ],
         site_name=site_name,
+        base_url=base_url,
         flash_messages=flash_messages,
     )
 

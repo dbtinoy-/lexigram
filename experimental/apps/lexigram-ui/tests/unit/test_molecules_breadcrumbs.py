@@ -16,6 +16,11 @@ class TestBreadcrumbs:
         assert "Dashboard" in result
         assert "/admin" in result
 
+    def test_uses_custom_home_url(self) -> None:
+        result = str(Breadcrumbs(items=[], home_url="/console"))
+        assert 'href="/console"' in result
+        assert 'href="/admin"' not in result
+
     def test_renders_multiple_items(self) -> None:
         b = Breadcrumbs(
             items=[

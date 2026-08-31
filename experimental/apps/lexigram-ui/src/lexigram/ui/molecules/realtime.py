@@ -14,7 +14,7 @@ class RealTimeFeed(Component):
     Example:
         ```python
         feed = RealTimeFeed(
-            url="/admin//updates",
+            url="/admin/updates",
             interval="5s",
             content=el("p", "Waiting for updates...")
         )

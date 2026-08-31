@@ -55,14 +55,16 @@ class AuthMfaMixin(AuthCoreMixin):
         """
         user = getattr(request.state, "user", None)
         if user and user.user_id != "guest":
-            return RedirectResponse(url="/admin/", status_code=302)
+            return RedirectResponse(url=self._admin_path(request), status_code=302)
 
         pending_user_id = request.session.get("mfa_pending_user_id", "")
         if not pending_user_id:
-            return RedirectResponse(url="/admin/login", status_code=302)
+            return RedirectResponse(
+                url=self._admin_path(request, "/admin/login"), status_code=302
+            )
 
         email = request.session.get("mfa_pending_email", "")
-        next_url = request.session.get("mfa_pending_next", "/admin/")
+        next_url = request.session.get("mfa_pending_next", self._admin_path(request))
         factor = request.session.get("mfa_pending_factor", "totp")
         error = _humanize_error(request.query_params.get("error", ""))
         notice = request.query_params.get("notice", "")
@@ -75,6 +77,9 @@ class AuthMfaMixin(AuthCoreMixin):
             next_url=next_url,
             factor=factor,
             resend_notice=notice,
+            challenge_url=self._admin_path(request, "/admin/login/2fa"),
+            resend_url=self._admin_path(request, "/admin/login/2fa/resend"),
+            base_url=self._admin_path(request).rstrip("/"),
         )
         return HTMLResponse(content=html, headers=_CACHE_CONTROL_NO_STORE)
 
@@ -100,7 +105,9 @@ class AuthMfaMixin(AuthCoreMixin):
 
         pending_user_id = request.session.get("mfa_pending_user_id", "")
         if not pending_user_id:
-            return RedirectResponse(url="/admin/login", status_code=302)
+            return RedirectResponse(
+                url=self._admin_path(request, "/admin/login"), status_code=302
+            )
 
         csrf_session_id = request.session.get("csrf_session_id", "")
         if not csrf_session_id or not self._csrf_service.validate_token(
@@ -110,13 +117,13 @@ class AuthMfaMixin(AuthCoreMixin):
                 "auth.csrf_validation_failed", ip=self._get_client_ip(request)
             )
             return RedirectResponse(
-                url=f"/admin/login/2fa?error={quote_plus('Invalid or expired security token. Please try again.')}",
+                url=f"{self._admin_path(request, '/admin/login/2fa')}?error={quote_plus('Invalid or expired security token. Please try again.')}",
                 status_code=302,
             )
 
         if not code:
             return RedirectResponse(
-                url=f"/admin/login/2fa?error={quote_plus('Verification code is required.')}",
+                url=f"{self._admin_path(request, '/admin/login/2fa')}?error={quote_plus('Verification code is required.')}",
                 status_code=302,
             )
 
@@ -139,12 +146,12 @@ class AuthMfaMixin(AuthCoreMixin):
                 "auth.mfa_code_failed", user_id=pending_user_id, reason=error_msg
             )
             return RedirectResponse(
-                url=f"/admin/login/2fa?error={quote_plus(error_msg)}",
+                url=f"{self._admin_path(request, '/admin/login/2fa')}?error={quote_plus(error_msg)}",
                 status_code=302,
             )
 
         auth_result = result.unwrap()
-        next_url = request.session.get("mfa_pending_next", "/admin/")
+        next_url = request.session.get("mfa_pending_next", self._admin_path(request))
         request.session["admin_user_id"] = auth_result.user_id
         request.session["admin_user_email"] = auth_result.email
         request.session["admin_session_expires_at"] = auth_result.expires_at.isoformat()
@@ -184,7 +191,9 @@ class AuthMfaMixin(AuthCoreMixin):
         """
         pending_user_id = request.session.get("mfa_pending_user_id", "")
         if not pending_user_id:
-            return RedirectResponse(url="/admin/login", status_code=302)
+            return RedirectResponse(
+                url=self._admin_path(request, "/admin/login"), status_code=302
+            )
 
         form_data = request.scope.get("admin_form_data") or await request.form()
         csrf_token = str(form_data.get("csrf_token", ""))
@@ -196,14 +205,14 @@ class AuthMfaMixin(AuthCoreMixin):
                 "auth.csrf_validation_failed", ip=self._get_client_ip(request)
             )
             return RedirectResponse(
-                url=f"/admin/login/2fa?error={quote_plus('Invalid or expired security token. Please try again.')}",
+                url=f"{self._admin_path(request, '/admin/login/2fa')}?error={quote_plus('Invalid or expired security token. Please try again.')}",
                 status_code=302,
             )
 
         factor = request.session.get("mfa_pending_factor", "totp")
         if factor != "email" or self._email_otp_service is None:
             return RedirectResponse(
-                url=f"/admin/login/2fa?error={quote_plus('Resending codes is not available for this factor.')}",
+                url=f"{self._admin_path(request, '/admin/login/2fa')}?error={quote_plus('Resending codes is not available for this factor.')}",
                 status_code=302,
             )
 
@@ -222,11 +231,12 @@ class AuthMfaMixin(AuthCoreMixin):
                 reason=str(result.unwrap_err()),
             )
             return RedirectResponse(
-                url=f"/admin/login/2fa?error={quote_plus(_humanize_error(str(result.unwrap_err())))}",
+                url=f"{self._admin_path(request, '/admin/login/2fa')}?error={quote_plus(_humanize_error(str(result.unwrap_err())))}",
                 status_code=302,
             )
         return RedirectResponse(
-            url="/admin/login/2fa?notice=" + quote_plus("A new code has been sent."),
+            url=f"{self._admin_path(request, '/admin/login/2fa')}?notice="
+            + quote_plus("A new code has been sent."),
             status_code=302,
         )
 
@@ -250,10 +260,11 @@ class AuthMfaMixin(AuthCoreMixin):
         user = getattr(request.state, "user", None)
         if not user or user.user_id == "guest":
             return RedirectResponse(
-                url="/admin/login?next=/admin/profile/mfa", status_code=302
+                url=f"{self._admin_path(request, '/admin/login')}?next={quote_plus(self._admin_path(request, '/admin/profile/mfa'))}",
+                status_code=302,
             )
         if self._mfa_service is None:
-            return RedirectResponse(url="/admin/", status_code=302)
+            return RedirectResponse(url=self._admin_path(request), status_code=302)
 
         error = _humanize_error(request.query_params.get("error", ""))
         notice = request.query_params.get("notice", "")
@@ -269,6 +280,8 @@ class AuthMfaMixin(AuthCoreMixin):
                 enabled=True,
                 csrf_token=csrf_token,
                 email_verified=email_verified,
+                setup_url=self._admin_path(request, "/admin/profile/mfa/setup"),
+                disable_url=self._admin_path(request, "/admin/profile/mfa/disable"),
             )
         else:
             result = await self._mfa_service.start_setup(user_id, str(user.email))
@@ -278,6 +291,8 @@ class AuthMfaMixin(AuthCoreMixin):
                     enabled=False,
                     csrf_token=csrf_token,
                     email_verified=email_verified,
+                    setup_url=self._admin_path(request, "/admin/profile/mfa/setup"),
+                    disable_url=self._admin_path(request, "/admin/profile/mfa/disable"),
                 )
             else:
                 secret, _, svg = result.unwrap()
@@ -288,6 +303,8 @@ class AuthMfaMixin(AuthCoreMixin):
                     secret=secret,
                     csrf_token=csrf_token,
                     email_verified=email_verified,
+                    setup_url=self._admin_path(request, "/admin/profile/mfa/setup"),
+                    disable_url=self._admin_path(request, "/admin/profile/mfa/disable"),
                 )
 
         from lexigram.admin.state.context import AdminContextManager
@@ -302,8 +319,8 @@ class AuthMfaMixin(AuthCoreMixin):
                 html,
                 title="Two-Factor Authentication",
                 breadcrumbs=self.generate_breadcrumbs(
-                    ("Home", "/admin/"),
-                    ("Profile", "/admin/profile"),
+                    ("Home", self._admin_path(request)),
+                    ("Profile", self._admin_path(request, "/admin/profile")),
                     current="Two-Factor Authentication",
                 ),
             )
@@ -327,10 +344,11 @@ class AuthMfaMixin(AuthCoreMixin):
         user = getattr(request.state, "user", None)
         if not user or user.user_id == "guest":
             return RedirectResponse(
-                url="/admin/login?next=/admin/profile/mfa", status_code=302
+                url=f"{self._admin_path(request, '/admin/login')}?next={quote_plus(self._admin_path(request, '/admin/profile/mfa'))}",
+                status_code=302,
             )
         if self._mfa_service is None:
-            return RedirectResponse(url="/admin/", status_code=302)
+            return RedirectResponse(url=self._admin_path(request), status_code=302)
 
         form_data = request.scope.get("admin_form_data") or await request.form()
         csrf_token = str(form_data.get("csrf_token", ""))
@@ -344,7 +362,7 @@ class AuthMfaMixin(AuthCoreMixin):
                 "auth.csrf_validation_failed", ip=self._get_client_ip(request)
             )
             return RedirectResponse(
-                url=f"/admin/profile/mfa?error={quote_plus('Invalid or expired security token. Please try again.')}",
+                url=f"{self._admin_path(request, '/admin/profile/mfa')}?error={quote_plus('Invalid or expired security token. Please try again.')}",
                 status_code=302,
             )
 
@@ -352,18 +370,18 @@ class AuthMfaMixin(AuthCoreMixin):
         secret = request.session.pop("mfa_pending_secret", "")
         if not code or not secret:
             return RedirectResponse(
-                url=f"/admin/profile/mfa?error={quote_plus('Verification code is required.')}",
+                url=f"{self._admin_path(request, '/admin/profile/mfa')}?error={quote_plus('Verification code is required.')}",
                 status_code=302,
             )
 
         result = await self._mfa_service.confirm_setup(str(user.user_id), secret, code)
         if result.is_err():
             return RedirectResponse(
-                url=f"/admin/profile/mfa?error={quote_plus(_humanize_error(str(result.unwrap_err())))}",
+                url=f"{self._admin_path(request, '/admin/profile/mfa')}?error={quote_plus(_humanize_error(str(result.unwrap_err())))}",
                 status_code=302,
             )
         return RedirectResponse(
-            url="/admin/profile/mfa?notice="
+            url=f"{self._admin_path(request, '/admin/profile/mfa')}?notice="
             + quote_plus("Two-factor authentication enabled."),
             status_code=302,
         )
@@ -385,10 +403,11 @@ class AuthMfaMixin(AuthCoreMixin):
         user = getattr(request.state, "user", None)
         if not user or user.user_id == "guest":
             return RedirectResponse(
-                url="/admin/login?next=/admin/profile/mfa", status_code=302
+                url=f"{self._admin_path(request, '/admin/login')}?next={quote_plus(self._admin_path(request, '/admin/profile/mfa'))}",
+                status_code=302,
             )
         if self._mfa_service is None:
-            return RedirectResponse(url="/admin/", status_code=302)
+            return RedirectResponse(url=self._admin_path(request), status_code=302)
 
         form_data = request.scope.get("admin_form_data") or await request.form()
         csrf_token = str(form_data.get("csrf_token", ""))
@@ -402,26 +421,26 @@ class AuthMfaMixin(AuthCoreMixin):
                 "auth.csrf_validation_failed", ip=self._get_client_ip(request)
             )
             return RedirectResponse(
-                url=f"/admin/profile/mfa?error={quote_plus('Invalid or expired security token. Please try again.')}",
+                url=f"{self._admin_path(request, '/admin/profile/mfa')}?error={quote_plus('Invalid or expired security token. Please try again.')}",
                 status_code=302,
             )
 
         code = str(form_data.get("code", ""))
         if not code:
             return RedirectResponse(
-                url=f"/admin/profile/mfa?error={quote_plus('Verification code is required.')}",
+                url=f"{self._admin_path(request, '/admin/profile/mfa')}?error={quote_plus('Verification code is required.')}",
                 status_code=302,
             )
 
         result = await self._mfa_service.disable(str(user.user_id), code)
         if result.is_err():
             return RedirectResponse(
-                url=f"/admin/profile/mfa?error={quote_plus(_humanize_error(str(result.unwrap_err())))}",
+                url=f"{self._admin_path(request, '/admin/profile/mfa')}?error={quote_plus(_humanize_error(str(result.unwrap_err())))}",
                 status_code=302,
             )
         request.session.pop("mfa_pending_secret", None)
         return RedirectResponse(
-            url="/admin/profile/mfa?notice="
+            url=f"{self._admin_path(request, '/admin/profile/mfa')}?notice="
             + quote_plus("Two-factor authentication disabled."),
             status_code=302,
         )

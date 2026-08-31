@@ -143,7 +143,8 @@ class ProfileController(AdminController):
         user: AdminUser = self.current_user(request)
         if not user or user.user_id == "guest":
             return RedirectResponse(
-                url="/admin/login?next=/admin/profile", status_code=302
+                url=f"{self._admin_path(request, '/admin/login')}?next={quote_plus(self._admin_path(request, '/admin/profile'))}",
+                status_code=302,
             )
 
         mfa_enabled = False
@@ -165,6 +166,8 @@ class ProfileController(AdminController):
             ),
             new_password_err=str(request.query_params.get("new_password_err", "")),
             confirmation_err=str(request.query_params.get("confirmation_err", "")),
+            mfa_url=self._admin_path(request, "/admin/profile/mfa"),
+            password_url=self._admin_path(request, "/admin/profile/password"),
         )
         from lexigram.admin.state.context import AdminContextManager
 
@@ -180,7 +183,7 @@ class ProfileController(AdminController):
                 html,
                 title="Profile",
                 breadcrumbs=self.generate_breadcrumbs(
-                    ("Home", "/admin/"),
+                    ("Home", self._admin_path(request)),
                     current="Profile",
                 ),
             )
@@ -202,11 +205,14 @@ class ProfileController(AdminController):
         user: AdminUser = self.current_user(request)
         if not user or user.user_id == "guest":
             return RedirectResponse(
-                url="/admin/login?next=/admin/profile", status_code=302
+                url=f"{self._admin_path(request, '/admin/login')}?next={quote_plus(self._admin_path(request, '/admin/profile'))}",
+                status_code=302,
             )
         if self._user_store is None:
             return self._redirect(
-                "/admin/profile", "Password change is unavailable.", True
+                self._admin_path(request, "/admin/profile"),
+                "Password change is unavailable.",
+                True,
             )
 
         form = request.scope.get("admin_form_data") or await request.form()
@@ -217,7 +223,7 @@ class ProfileController(AdminController):
 
         if not self._csrf_ok(request, csrf_token):
             return self._redirect(
-                "/admin/profile",
+                self._admin_path(request, "/admin/profile"),
                 "Invalid or expired security token. Please try again.",
                 True,
             )
@@ -238,18 +244,18 @@ class ProfileController(AdminController):
                 if p
             ]
             return RedirectResponse(
-                url=f"/admin/profile?{'&'.join(params)}",
+                url=f"{self._admin_path(request, '/admin/profile')}?{'&'.join(params)}",
                 status_code=302,
             )
         if len(new_password) < 8:
             return RedirectResponse(
-                url="/admin/profile?new_password_err="
+                url=f"{self._admin_path(request, '/admin/profile')}?new_password_err="
                 + quote_plus("New password must be at least 8 characters."),
                 status_code=302,
             )
         if new_password != confirmation:
             return RedirectResponse(
-                url="/admin/profile?confirmation_err="
+                url=f"{self._admin_path(request, '/admin/profile')}?confirmation_err="
                 + quote_plus("New passwords do not match."),
                 status_code=302,
             )
@@ -258,7 +264,9 @@ class ProfileController(AdminController):
         if authenticated is None:
             logger.warning("profile.password_verify_failed", email=user.email)
             return self._redirect(
-                "/admin/profile", "Current password is incorrect.", True
+                self._admin_path(request, "/admin/profile"),
+                "Current password is incorrect.",
+                True,
             )
 
         from lexigram.admin.lib.password import hash_password
@@ -266,7 +274,9 @@ class ProfileController(AdminController):
         record = await self._user_store.get_user_by_email(user.email)
         if record is None:
             return self._redirect(
-                "/admin/profile", "Account not found. Please sign in again.", True
+                self._admin_path(request, "/admin/profile"),
+                "Account not found. Please sign in again.",
+                True,
             )
         record.hashed_password = hash_password(new_password)
         await self._user_store.update_user(record)
@@ -278,4 +288,7 @@ class ProfileController(AdminController):
             email=user.email,
         )
         logger.info("profile.password_changed", email=user.email)
-        return self._redirect("/admin/profile", "Password updated successfully.")
+        return self._redirect(
+            self._admin_path(request, "/admin/profile"),
+            "Password updated successfully.",
+        )

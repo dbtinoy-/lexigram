@@ -17,6 +17,7 @@ from lexigram.admin.auth.store import AdminUserStoreProtocol
 from lexigram.admin.controllers.base import AdminController
 from lexigram.admin.engine.renderer import AdminRenderer
 from lexigram.admin.observability.admin_metrics import AdminMetrics
+from lexigram.admin.resources.urls import admin_prefix_from_request, mount_admin_url
 from lexigram.contracts.core import TaskManagerProtocol
 from lexigram.logging import get_logger
 
@@ -103,7 +104,15 @@ class AuthCoreMixin(AdminController):
         return self._csrf_service.generate_token(csrf_session_id)
 
     @staticmethod
-    def _safe_next_url(candidate: str) -> str:
+    def _admin_path(request: Request, canonical_path: str = "/admin/") -> str:
+        """Mount a canonical internal admin path under this request prefix."""
+        return mount_admin_url(
+            canonical_path,
+            admin_prefix_from_request(request),
+        )
+
+    @staticmethod
+    def _safe_next_url(candidate: str, default: str = _DEFAULT_NEXT) -> str:
         """Return ``candidate`` if it is a safe same-origin relative path, else the default.
 
         Rejects absolute URLs (any scheme), scheme-relative URLs (leading
@@ -117,7 +126,7 @@ class AuthCoreMixin(AdminController):
 
         Returns:
             ``candidate`` when it starts with a single ``/`` (and not
-            ``//`` or ``/\\``), otherwise ``_DEFAULT_NEXT``.
+            ``//`` or ``/\\``), otherwise ``default``.
         """
         if (
             candidate
@@ -126,7 +135,7 @@ class AuthCoreMixin(AdminController):
             and not candidate.startswith("/\\")
         ):
             return candidate
-        return _DEFAULT_NEXT
+        return default
 
     def _get_client_ip(self, request: Request) -> str:
         """Extract the real client IP from the request.
