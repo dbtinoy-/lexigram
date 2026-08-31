@@ -167,7 +167,8 @@ class TestResourceControllerRoutes:
 
     def test_get_routes_returns_all_routes(self) -> None:
         routes = self.controller.get_routes()
-        assert len(routes) == 14
+        # 14 CRUD/bulk/import routes plus revision history, diff, and revert.
+        assert len(routes) == 17
 
     def test_list_route_registered(self) -> None:
         routes = self.controller.get_routes()
