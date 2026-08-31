@@ -65,12 +65,35 @@ class ResourceHooksMixin:
         protected_fields.update(getattr(self, "form_exclude_fields", ()) or ())
         protected_fields.update(getattr(self, "readonly_fields", ()) or ())
         allow_extra_fields = bool(getattr(self, "form_allow_extra_fields", False))
+        declared_fields = {
+            str(getattr(field, "name", ""))
+            for field in (getattr(self, "fields", ()) or ())
+            if getattr(field, "name", None)
+        }
+        protected_fields.update(
+            str(getattr(field, "name", ""))
+            for field in (getattr(self, "fields", ()) or ())
+            if getattr(field, "name", None)
+            and (
+                not getattr(field, "visible_in_form", True)
+                or getattr(field, "readonly", False)
+            )
+        )
         coerced = sanitize_form_data(
             data,
             model=self.model,
             protected_fields=protected_fields,
             allow_extra_fields=allow_extra_fields,
         )
+        # Untyped resources do not have a model-derived allowlist. When they
+        # declare SchemaFields, those declarations become the write contract;
+        # otherwise a crafted key could reach the data source unchanged.
+        if self.model is None and declared_fields and not allow_extra_fields:
+            coerced = {
+                key: value
+                for key, value in coerced.items()
+                if key in declared_fields and key not in protected_fields
+            }
 
         # A declared FormBase is not only a renderer: it may make optional
         # model fields required, normalize relation/multi-select values, and

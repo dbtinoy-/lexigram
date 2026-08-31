@@ -106,6 +106,27 @@ async def test_create_missing_required_model_field_rerenders_with_422() -> None:
     assert source.created == []
 
 
+async def test_untyped_declared_resource_rejects_unknown_form_fields() -> None:
+    from lexigram.admin.schema import TextField
+
+    class ItemResource(Resource):
+        name = "items"
+        model = None
+        fields = [TextField(name="name")]
+
+    source = _DataSource()
+    resource = ItemResource()
+    resource._data_source = source
+    renderer = _Renderer()
+
+    response = await CreateActionHandler(renderer)._handle_create(
+        _request("POST", {"name": "Ada", "secret": "forged"}), resource
+    )
+
+    assert response.status_code == 302
+    assert source.created == [{"name": "Ada"}]
+
+
 async def test_create_hook_value_error_rerenders_as_form_level_error() -> None:
     class Model(BaseModel):
         name: str
