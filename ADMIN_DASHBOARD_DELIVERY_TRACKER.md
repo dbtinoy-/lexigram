@@ -65,8 +65,8 @@ workspace packages.
 - Focused SystemBox/Breadcrumbs/command-palette/settings suite: passed (`12 passed, 1 warning`).
 - Cluster/navigation suite: passed (`26 passed, 1 warning`).
 - UI notification bell suite: passed (`9 passed`).
-- Full available admin unit suite: `4692 passed, 8 skipped, 1 failed, 13 warnings`; the single failure is the known `argon2-cffi`-missing auth-provider adapter test.
-- Complete resource suite after the latest hardening: passed (`255 passed, 2 warnings`), including submission-boundary, relation-option, and field-authorization coverage.
+- Full available admin unit suite: passed (`4720 passed, 8 skipped, 13 warnings`) after provisioning `argon2-cffi`; the prior auth-provider failure is resolved in the current test environment.
+- Complete resource suite after the latest hardening: passed (`255 passed, 2 warnings`), including submission-boundary, relation-option, custom-prefix, wizard, and field-authorization coverage.
 - Focused form/HTMX and accessibility UI checks: passed (`115 passed`).
 - Earlier complete focused admin regression: passed (`160 passed, 2 warnings`).
 - Permissions E2E: passed (`7 passed, 2 warnings`).
@@ -101,5 +101,7 @@ Known environment-limited checks from the audit baseline:
       results yet.
 - [ ] Run browser/live-preview QA for desktop/mobile shell behavior, dark mode,
       dashboard reorder feedback, HTMX swaps, and resource/form flows.
-- [ ] Resolve optional-environment failures in CI when the missing auth/AI
-      dependencies are available.
+- [x] Resolve the local auth-provider test dependency by provisioning
+      `argon2-cffi`; the complete admin unit suite now passes locally.
+- [ ] Resolve remaining CI/integration environment gaps when the missing AI
+      dependencies and PostgreSQL/Redis services are available.
