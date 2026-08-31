@@ -129,7 +129,7 @@ async def test_wizard_urls_follow_the_request_prefix() -> None:
         request,
         _PageResource,
         [{"title": "Details", "fields": ["name"]}],
-        action_url="/backoffice/page_widgets/create",
+        action_url="/admin/page_widgets/create",
     )
     html = response.body.decode("utf-8", "replace")
 

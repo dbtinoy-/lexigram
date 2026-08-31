@@ -47,12 +47,19 @@ class ResourceRenderMixin:
         request = ctx.request
         scope = getattr(request, "scope", None)
         scope_prefix = scope.get("admin_prefix") if isinstance(scope, Mapping) else None
+        app_prefix = getattr(
+            getattr(getattr(request, "app", None), "state", None),
+            "admin_prefix",
+            None,
+        )
         configured_prefix = getattr(self.meta, "prefix", "")
         prefix = (
             scope_prefix.rstrip("/")
             if isinstance(scope_prefix, str) and scope_prefix
             else (
-                (configured_prefix or "").rstrip("/")
+                admin_prefix_from_request(request)
+                if isinstance(app_prefix, str) and app_prefix
+                else (configured_prefix or "").rstrip("/")
                 or admin_prefix_from_request(request)
             )
         )

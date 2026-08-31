@@ -7,7 +7,10 @@ from typing import TYPE_CHECKING, Any
 from starlette.responses import HTMLResponse
 
 from lexigram.admin.exceptions import AdminValidationError
-from lexigram.admin.resources.urls import admin_prefix_from_request
+from lexigram.admin.resources.urls import (
+    admin_prefix_from_request,
+    mount_admin_url,
+)
 from lexigram.admin.state.context import wants_fragment
 from lexigram.logging import get_logger
 from lexigram.ui import el, render_to_string
@@ -58,6 +61,7 @@ class WizardRendererMixin:
         label = self.resource_name.replace("_", " ").title()
         admin_prefix = admin_prefix_from_request(request)
         resource_prefix = f"{admin_prefix}/{self.resource_name}"
+        action_url = mount_admin_url(action_url, admin_prefix)
         total_steps = len(steps)
 
         # Build Alpine.js data initialiser - currentStep is 0-indexed.

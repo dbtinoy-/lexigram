@@ -53,11 +53,16 @@ class ResourceMutationMixin:
         explicit_prefix = (
             scope.get("admin_prefix") if isinstance(scope, Mapping) else None
         )
+        app_prefix = getattr(
+            getattr(getattr(request, "app", None), "state", None),
+            "admin_prefix",
+            None,
+        )
+        configured_prefix = getattr(self.meta, "prefix", None)
         prefix = (
             admin_prefix_from_request(request)
-            if explicit_prefix
-            else getattr(self.meta, "prefix", None)
-            or admin_prefix_from_request(request)
+            if explicit_prefix or (isinstance(app_prefix, str) and app_prefix)
+            else (configured_prefix or admin_prefix_from_request(request))
         )
         return admin_url(prefix, getattr(self.meta, "name", ""), suffix)
 
