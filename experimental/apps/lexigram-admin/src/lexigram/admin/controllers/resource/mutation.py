@@ -66,9 +66,13 @@ class ResourceMutationMixin:
             form_data = request.scope.get("admin_form_data")
             if form_data is None:
                 form_data = await request.form()
-            from lexigram.admin.resources.action_handlers import _form_data_dict
+            from lexigram.admin.resources.action_handlers import (
+                _form_data_dict,
+                _validation_errors_to_dict,
+            )
 
             data = _form_data_dict(form_data)
+            data.pop("csrf_token", None)
 
             # Validate
             try:
@@ -77,11 +81,11 @@ class ResourceMutationMixin:
                 # Return form with errors
                 if ctx.is_htmx:
                     return HTMLResponse(
-                        self.render_form_partial(ctx, None, data, e.details or {}),
+                        self.render_form_partial(ctx, None, data, _validation_errors_to_dict(e)),
                         status_code=422,
                     )
                 return HTMLResponse(
-                    self.render_form(ctx, None, data, e.details or {}),
+                    self.render_form(ctx, None, data, _validation_errors_to_dict(e)),
                     status_code=422,
                 )
 
@@ -90,7 +94,20 @@ class ResourceMutationMixin:
             try:
                 created = await data_source.create(validated)
             except ValueError as e:
-                return HTMLResponse(str(e), status_code=400)
+                errors = {"__all__": [str(e)]}
+                if ctx.is_htmx:
+                    return HTMLResponse(
+                        self.render_form_partial(ctx, None, data, errors),
+                        status_code=422,
+                    )
+                return HTMLResponse(
+                    self.render_form(ctx, None, data, errors),
+                    status_code=422,
+                )
+            except NotImplementedError:
+                return HTMLResponse("Resource does not support create", status_code=503)
+            if created is None:
+                return HTMLResponse("Unable to create record", status_code=503)
             created_id = str(getattr(created, "id", "") if created else "")
             await self._emit_audit(
                 request,
@@ -209,6 +226,22 @@ class ResourceMutationMixin:
                 return HTMLResponse(self.render_form_partial(ctx, item))
             return HTMLResponse(self.render_form(ctx, item))
 
+    @staticmethod
+    def _record_mapping(item: Any) -> dict[str, Any]:
+        """Normalize persisted records before validating a partial edit."""
+        if isinstance(item, dict):
+            return dict(item)
+        model_dump = getattr(item, "model_dump", None)
+        if callable(model_dump):
+            dumped = model_dump()
+            if isinstance(dumped, dict):
+                return dumped
+        try:
+            values = vars(item)
+        except TypeError:
+            return {}
+        return dict(values) if isinstance(values, dict) else {}
+
     async def update(self, request: Request) -> Response:
         """Update existing resource."""
         async with AdminContextManager(request) as ctx:
@@ -216,37 +249,57 @@ class ResourceMutationMixin:
             form_data = request.scope.get("admin_form_data")
             if form_data is None:
                 form_data = await request.form()
-            from lexigram.admin.resources.action_handlers import _form_data_dict
+            from lexigram.admin.resources.action_handlers import (
+                _form_data_dict,
+                _validation_errors_to_dict,
+            )
 
             data = _form_data_dict(form_data)
+            data.pop("csrf_token", None)
 
-            # Validate
-            try:
-                validated = self.validate_update(item_id, data)
-            except AdminValidationError as e:
-                # Get current item for form
-                item = await self.get_data_source().find_one(item_id)
-                if ctx.is_htmx:
-                    return HTMLResponse(
-                        self.render_form_partial(ctx, item, data, e.details or {}),
-                        status_code=422,
-                    )
-                return HTMLResponse(
-                    self.render_form(ctx, item, data, e.details or {}),
-                    status_code=422,
-                )
-
-            # Update
+            # Fetch before validation so a partial edit can be validated
+            # against the persisted record. Disabled/readonly controls are
+            # intentionally absent from browser submissions.
             data_source = self.get_data_source()
             item = await data_source.find_one(item_id)
             if item is None:
                 raise NotFoundError(message=f"{self.meta.label} not found")
             if not await self._record_permission(request, "can_update", item):
                 return HTMLResponse("This record cannot be updated", status_code=403)
+
+            # Validate
+            try:
+                validated = self.validate_update(
+                    item_id, {**self._record_mapping(item), **data}
+                )
+            except AdminValidationError as e:
+                errors = _validation_errors_to_dict(e)
+                if ctx.is_htmx:
+                    return HTMLResponse(
+                        self.render_form_partial(ctx, item, data, errors),
+                        status_code=422,
+                    )
+                return HTMLResponse(
+                    self.render_form(ctx, item, data, errors),
+                    status_code=422,
+                )
+
+            # Update
             try:
                 item = await data_source.update(item_id, validated)
             except ValueError as e:
-                return HTMLResponse(str(e), status_code=400)
+                errors = {"__all__": [str(e)]}
+                if ctx.is_htmx:
+                    return HTMLResponse(
+                        self.render_form_partial(ctx, item, data, errors),
+                        status_code=422,
+                    )
+                return HTMLResponse(
+                    self.render_form(ctx, item, data, errors),
+                    status_code=422,
+                )
+            except NotImplementedError:
+                return HTMLResponse("Resource does not support update", status_code=503)
             await self._emit_audit(
                 request,
                 f"{getattr(self.meta, 'name', 'resource')}.update",

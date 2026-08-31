@@ -60,9 +60,9 @@ class BooleanField(SchemaField[bool]):
                 return Ok(None)
             return Err(FieldError("Must be true or false"))
         lower = stripped.lower()
-        if lower in ("true", "1", "yes"):
+        if lower in ("true", "1", "yes", "on"):
             return Ok(True)
-        if lower in ("false", "0", "no"):
+        if lower in ("false", "0", "no", "off"):
             return Ok(False)
         return Err(FieldError("Must be true or false"))
 

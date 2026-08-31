@@ -189,6 +189,25 @@ class FormBase(Component, metaclass=FormMeta):
             ]
             form_body = el("div", *form_content, class_="space-y-4")
 
+        global_errors = [
+            message
+            for name, messages in self.errors.items()
+            if name in {"__all__", "__root__"}
+            for message in messages
+        ]
+        if global_errors:
+            form_body = el(
+                "div",
+                el(
+                    "div",
+                    *[el("p", message) for message in global_errors],
+                    role="alert",
+                    class_="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive",
+                ),
+                form_body,
+                class_="space-y-4",
+            )
+
         actions = (
             el(
                 "div",

@@ -9,6 +9,7 @@ attribute (a footer submit without a binding is a dead button).
 from __future__ import annotations
 
 import re
+from typing import Any
 import pytest
 from pydantic import BaseModel
 from starlette.requests import Request as StarletteRequest
@@ -55,6 +56,18 @@ class _DeclaredForm(FormBase):
 class _WidgetResource(Resource):
     name = "widgets"
     form_class = _DeclaredForm
+
+
+class _FieldPermissions:
+    def __init__(self, *, view: bool = True, edit: bool = True) -> None:
+        self.view = view
+        self.edit = edit
+
+    async def can_view_field(self, user: Any, resource: str, field: str) -> bool:
+        return self.view
+
+    async def can_edit_field(self, user: Any, resource: str, field: str) -> bool:
+        return self.edit
 
 
 class TestDeclaredFormSlideOver:
@@ -118,3 +131,45 @@ class TestDeclaredFormSlideOver:
         html = render_to_string(form)
         assert 'name="csrf_token"' in html
         assert 'value="csrf-abc"' in html
+
+    def test_form_base_renders_form_level_errors(self) -> None:
+        form = _DeclaredForm(action="/admin/widgets/create")
+        form.errors = {"__all__": ["The record could not be saved."]}
+
+        html = render_to_string(form)
+
+        assert 'role="alert"' in html
+        assert "The record could not be saved." in html
+
+    @pytest.mark.asyncio
+    async def test_declared_form_applies_field_view_permission(self) -> None:
+        request = _create_request()
+        request.state.user = object()
+        renderer = FormRenderer(
+            AdminConfig(prefix="/admin", title="Test"),
+            "widgets",
+            AdminRenderer(),
+            permission_service=_FieldPermissions(view=False),
+        )
+
+        response = await renderer.render_create(request, _WidgetResource)
+        html = response.body.decode("utf-8", "replace")
+
+        assert 'name="name"' not in html
+
+    @pytest.mark.asyncio
+    async def test_declared_form_marks_non_editable_field_readonly(self) -> None:
+        request = _create_request()
+        request.state.user = object()
+        renderer = FormRenderer(
+            AdminConfig(prefix="/admin", title="Test"),
+            "widgets",
+            AdminRenderer(),
+            permission_service=_FieldPermissions(edit=False),
+        )
+
+        response = await renderer.render_create(request, _WidgetResource)
+        html = response.body.decode("utf-8", "replace")
+
+        assert 'name="name"' in html
+        assert "disabled" in html

@@ -64,7 +64,16 @@ def _coerce_form_data(data: dict, model: type | None) -> dict:
             continue
 
         if expected is bool:
-            data[key] = value == "on"
+            normalized = value.strip().lower()
+            if normalized in {"true", "1", "yes", "on"}:
+                data[key] = True
+            elif normalized in {"false", "0", "no", "off"}:
+                data[key] = False
+            elif normalized == "":
+                # Keep an empty optional value nullable. A non-optional model
+                # will report the missing/invalid value instead of silently
+                # turning an arbitrary empty input into False.
+                data[key] = None
         elif expected is int:
             try:
                 data[key] = int(value)

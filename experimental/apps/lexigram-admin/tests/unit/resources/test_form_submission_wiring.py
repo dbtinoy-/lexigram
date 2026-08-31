@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pydantic import BaseModel
+import pytest
 
 from lexigram.ui import render_to_string
 
@@ -34,6 +35,21 @@ async def test_declarative_form_class_is_validated_by_resource_hook() -> None:
 
     assert result.is_err()
     assert result.unwrap_err().errors[0].field == "name"
+
+
+async def test_model_required_field_error_is_not_dropped_when_omitted() -> None:
+    class Model(BaseModel):
+        name: str
+        active: bool = False
+
+    class ModelResource(Resource):
+        name = "required_model_fields"
+        model = Model
+
+    result = await ModelResource().before_validate({})
+
+    assert result.is_err()
+    assert {error.field for error in result.unwrap_err().errors} == {"name"}
 
 
 def test_builder_field_validators_run_during_submission() -> None:
@@ -167,6 +183,28 @@ def test_repeated_list_values_are_coerced_for_model_submission() -> None:
         tags: list[int]
 
     assert _coerce_form_data({"tags": ["1", "2"]}, Model) == {"tags": [1, 2]}
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("true", True),
+        ("yes", True),
+        ("1", True),
+        ("on", True),
+        ("false", False),
+        ("no", False),
+        ("0", False),
+        ("off", False),
+    ],
+)
+def test_model_boolean_coercion_accepts_common_html_representations(
+    raw: str, expected: bool
+) -> None:
+    class Model(BaseModel):
+        active: bool
+
+    assert _coerce_form_data({"active": raw}, Model) == {"active": expected}
 
 
 def test_form_base_normalizes_repeated_multi_select_values() -> None:

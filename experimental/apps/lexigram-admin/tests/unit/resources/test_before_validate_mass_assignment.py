@@ -62,3 +62,22 @@ async def test_before_validate_allow_extra_fields_keeps_unknowns() -> None:
 
     assert isinstance(result, Ok)
     assert result.unwrap() == {"name": "Ada", "custom_note": "keep"}
+
+
+async def test_before_validate_treats_form_exclusions_as_write_protected() -> None:
+    @dataclass
+    class _WithSecret:
+        name: str = ""
+        secret: str = ""
+
+    class _SecretResource(Resource):
+        model = _WithSecret
+        name = "secrets"
+        form_exclude_fields = ("secret",)
+
+    result = await _SecretResource().before_validate(
+        {"name": "Ada", "secret": "forged"}
+    )
+
+    assert isinstance(result, Ok)
+    assert result.unwrap() == {"name": "Ada"}

@@ -51,12 +51,14 @@ class AdminRouter:
         controllers: list[Any] | None = None,
         middleware_stack: list[tuple[type, dict]] | None = None,
         authorizer: AuthorizerProtocol | None = None,
+        permission_service: Any | None = None,
     ):
         self._config = config
         self._resources = resources or {}
         self._controllers = controllers or []
         self._middleware_stack = middleware_stack or []
         self._authorizer = authorizer
+        self._permission_service = permission_service
         self._extra_routes: list[Route] = []
         self._is_mounted = False
 
@@ -128,6 +130,11 @@ class AdminRouter:
         # handlers, renderers, shell) can resolve it per request without
         # hard-coding "/admin".
         admin_app.state.admin_prefix = self._config.prefix.rstrip("/")
+        # FormRenderer resolves field-level permissions from the mounted app
+        # state. Keep this separate from request.state.permissions, which is
+        # a CRUD capability mapping populated by AdminAuthorizationMiddleware.
+        if self._permission_service is not None:
+            admin_app.state.permission_service = self._permission_service
 
         # Sign the admin session cookie from the validated auth config. The
         # helper also derives https_only / same_site / max_age from env.

@@ -75,3 +75,41 @@ async def test_page_mode_does_not_emit_overlay_htmx_submission() -> None:
     assert "hx-post=\"/admin/page_widgets/create\"" not in html
     assert 'id="modal-title-' not in html
     assert 'aria-labelledby="slide-over-title"' not in html
+
+
+async def test_form_urls_follow_the_request_prefix() -> None:
+    request = _request("#slide-over-container")
+    request.scope["headers"] = []
+    request.scope["admin_prefix"] = "/backoffice"
+    renderer = FormRenderer(
+        AdminConfig(prefix="/admin", title="Test"),
+        "page_widgets",
+        AdminRenderer(),
+    )
+
+    response = await renderer.render_create(request, _PageResource)
+    html = response.body.decode("utf-8", "replace")
+
+    assert 'action="/backoffice/page_widgets/create"' in html
+    assert 'href="/backoffice/page_widgets"' in html
+    assert "/admin/page_widgets/create" not in html
+
+
+async def test_form_level_errors_are_rendered_for_generated_forms() -> None:
+    request = _request("#slide-over-container")
+    renderer = FormRenderer(
+        AdminConfig(prefix="/admin", title="Test"),
+        "page_widgets",
+        AdminRenderer(),
+    )
+
+    response = await renderer.render_create(
+        request,
+        _PageResource,
+        errors={"__all__": ["The record could not be saved."]},
+        data={"name": "Draft"},
+    )
+    html = response.body.decode("utf-8", "replace")
+
+    assert 'role="alert"' in html
+    assert "The record could not be saved." in html

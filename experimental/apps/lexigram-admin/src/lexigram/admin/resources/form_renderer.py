@@ -2,6 +2,7 @@ from __future__ import annotations
 
 """Form rendering for admin resources."""
 
+import inspect
 from typing import Any
 
 from starlette.responses import HTMLResponse
@@ -12,6 +13,7 @@ from lexigram.admin.engine.renderer import AdminRenderer
 from lexigram.admin.exceptions import AdminValidationError
 from lexigram.admin.rbac.service import PermissionService
 from lexigram.admin.resources.data_access import get_resource_data_source
+from lexigram.admin.resources.urls import admin_prefix_from_request
 from lexigram.admin.resources.wizard_renderer import WizardRendererMixin
 from lexigram.admin.state.context import wants_fragment
 from lexigram.di.decorators import inject
@@ -27,10 +29,13 @@ def _form_display_mode(resource: Any) -> str:
     """Resolve a resource's form display mode with a safe fallback."""
     mode = None
     getter = getattr(resource, "get_form_display_mode", None)
-    if callable(getter):
-        mode = getter()
-    else:
-        mode = getattr(resource, "form_display_mode", None)
+    try:
+        if callable(getter):
+            mode = getter()
+        else:
+            mode = getattr(resource, "form_display_mode", None)
+    except Exception:  # noqa: BLE001 — malformed presentation config is non-fatal
+        logger.exception("admin.form_display_mode_resolution_failed")
     return mode if mode in _VALID_FORM_DISPLAY_MODES else "slider"
 
 
@@ -65,9 +70,15 @@ class FormRenderer(WizardRendererMixin):
     ) -> HTMLResponse:
         """Render create form using Modal/SlideOver components based on form_display_mode."""
         label = self.resource_name.replace("_", " ").title()
+        if user is None:
+            try:
+                user = getattr(request.state, "user", None)
+            except (AttributeError, KeyError):
+                user = None
 
         # Check if HTMX request (for modal/slider loading)
         is_htmx = wants_fragment(request)
+        admin_prefix = admin_prefix_from_request(request)
 
         # Get form display mode from resource configuration. A page form is
         # always rendered as a normal page, even if a stale client sends an
@@ -80,8 +91,15 @@ class FormRenderer(WizardRendererMixin):
             else Zones.SLIDE_OVER.selector
         )
 
-        # Build form component
+        # Build form component. Resolve the mounted PermissionService lazily
+        # from app state as well as accepting an explicit service. The mounted
+        # authorization middleware stores a CRUD capability dictionary in
+        # request.state.permissions, which is deliberately not treated as a
+        # field-permission service.
         await self._ensure_csrf_token(request)
+        permission_service = self._permission_service or self._request_permission_service(
+            request
+        )
         form_component = await self._build_form_component(
             resource,
             label,
@@ -90,6 +108,8 @@ class FormRenderer(WizardRendererMixin):
             data=data,
             user=user,
             errors=errors,
+            permission_service=permission_service,
+            admin_prefix=admin_prefix,
             in_slide_over=overlay_mode,
             overlay_target=overlay_target,
             htmx_enabled=display_mode != "page",
@@ -125,7 +145,7 @@ class FormRenderer(WizardRendererMixin):
                 el(
                     "a",
                     f"← Back to {label}",
-                    href=f"{self._config.prefix}/{self.resource_name}",
+                    href=f"{admin_prefix}/{self.resource_name}",
                     class_="text-primary-600 hover:text-primary-900",
                 ),
                 el(
@@ -148,11 +168,11 @@ class FormRenderer(WizardRendererMixin):
             request=request,
             title=f"Create {label}",
             breadcrumbs=[
-                {"label": "Dashboard", "url": self._config.prefix},
-                {"label": label, "url": f"{self._config.prefix}/{self.resource_name}"},
+                {"label": "Dashboard", "url": admin_prefix},
+                {"label": label, "url": f"{admin_prefix}/{self.resource_name}"},
                 {
                     "label": "Create",
-                    "url": f"{self._config.prefix}/{self.resource_name}/create",
+                    "url": f"{admin_prefix}/{self.resource_name}/create",
                 },
             ],
         )
@@ -168,9 +188,15 @@ class FormRenderer(WizardRendererMixin):
     ) -> HTMLResponse:
         """Render edit form using Modal/SlideOver components based on form_display_mode."""
         label = self.resource_name.replace("_", " ").title()
+        if user is None:
+            try:
+                user = getattr(request.state, "user", None)
+            except (AttributeError, KeyError):
+                user = None
 
         # Check if HTMX request (for modal/slide-over loading)
         is_htmx = wants_fragment(request)
+        admin_prefix = admin_prefix_from_request(request)
 
         # Get form display mode from resource configuration.
         display_mode = _form_display_mode(resource)
@@ -186,11 +212,15 @@ class FormRenderer(WizardRendererMixin):
 
         # On a failed submission, submitted values must win over the
         # persisted record so validation does not reset the user's inputs.
-        if data:
+        if data is not None:
             initial_data = {**initial_data, **data}
 
-        # Build form component with initial data
+        # Build form component with initial data. See render_create for why
+        # permissions are resolved from app state instead of request.state.
         await self._ensure_csrf_token(request)
+        permission_service = self._permission_service or self._request_permission_service(
+            request
+        )
         form_component = await self._build_form_component(
             resource,
             label,
@@ -200,6 +230,8 @@ class FormRenderer(WizardRendererMixin):
             record_id=item_id,
             user=user,
             errors=errors,
+            permission_service=permission_service,
+            admin_prefix=admin_prefix,
             in_slide_over=overlay_mode,
             overlay_target=overlay_target,
             htmx_enabled=display_mode != "page",
@@ -235,7 +267,7 @@ class FormRenderer(WizardRendererMixin):
                 el(
                     "a",
                     f"← Back to {label} #{item_id}",
-                    href=f"{self._config.prefix}/{self.resource_name}/{item_id}",
+                    href=f"{admin_prefix}/{self.resource_name}/{item_id}",
                     class_="text-primary-600 hover:text-primary-900",
                 ),
                 el(
@@ -258,18 +290,38 @@ class FormRenderer(WizardRendererMixin):
             request=request,
             title=f"Edit {label} #{item_id}",
             breadcrumbs=[
-                {"label": "Dashboard", "url": self._config.prefix},
-                {"label": label, "url": f"{self._config.prefix}/{self.resource_name}"},
+                {"label": "Dashboard", "url": admin_prefix},
+                {"label": label, "url": f"{admin_prefix}/{self.resource_name}"},
                 {
                     "label": f"#{item_id}",
-                    "url": f"{self._config.prefix}/{self.resource_name}/{item_id}",
+                    "url": f"{admin_prefix}/{self.resource_name}/{item_id}",
                 },
                 {
                     "label": "Edit",
-                    "url": f"{self._config.prefix}/{self.resource_name}/{item_id}/edit",
+                    "url": f"{admin_prefix}/{self.resource_name}/{item_id}/edit",
                 },
             ],
         )
+
+    @staticmethod
+    def _record_to_mapping(record: Any) -> dict[str, Any]:
+        """Normalize common data-source record shapes for form defaults."""
+        if isinstance(record, dict):
+            return dict(record)
+        model_dump = getattr(record, "model_dump", None)
+        if callable(model_dump):
+            dumped = model_dump()
+            if isinstance(dumped, dict):
+                return dumped
+        try:
+            values = vars(record)
+        except TypeError:
+            values = {
+                name: getattr(record, name)
+                for name in dir(record)
+                if not name.startswith("_") and not callable(getattr(record, name, None))
+            }
+        return dict(values) if isinstance(values, dict) else {}
 
     async def _fetch_item_data(self, resource, item_id: str) -> dict:
         """Fetch existing item data for edit mode."""
@@ -282,14 +334,9 @@ class FormRenderer(WizardRendererMixin):
             if data_source is None or not hasattr(data_source, "find_one"):
                 return initial_data
             item = await data_source.find_one(item_id)
-            if item:
-                if isinstance(item, dict):
-                    initial_data = dict(item)
-                elif hasattr(item, "model_dump"):
-                    initial_data = item.model_dump()
-                else:
-                    initial_data = dict(vars(item))
-        except (AttributeError, TypeError, ValueError, RuntimeError) as e:
+            if item is not None:
+                initial_data = self._record_to_mapping(item)
+        except Exception as e:  # noqa: BLE001 — edit rendering degrades to an empty form
             logger.debug(
                 "Failed to get item %s/%s for edit: %s",
                 self.resource_name,
@@ -297,6 +344,86 @@ class FormRenderer(WizardRendererMixin):
                 e,
             )
         return initial_data
+
+    @staticmethod
+    def _request_permission_service(request: Any) -> Any | None:
+        """Return a real field-permission service exposed by the mount.
+
+        ``request.state.permissions`` is intentionally ignored: the normal
+        mounted authorization middleware puts a CRUD capability mapping
+        there, and accepting it here would turn a dictionary into a service
+        only after an AttributeError at render time. The bundle exposes the
+        singleton on the inner admin app state instead.
+        """
+        try:
+            app = request.app
+        except (AttributeError, KeyError):
+            app = None
+        service = getattr(getattr(app, "state", None), "permission_service", None)
+        if service is not None and callable(getattr(service, "can_view_field", None)):
+            return service
+        try:
+            request_state = request.state
+        except (AttributeError, KeyError):
+            request_state = None
+        state_service = getattr(request_state, "permission_service", None)
+        if state_service is not None and callable(
+            getattr(state_service, "can_view_field", None)
+        ):
+            return state_service
+        return None
+
+    async def _field_permission(
+        self,
+        permission_service: Any,
+        method_name: str,
+        user: Any,
+        field_name: str,
+    ) -> bool:
+        """Evaluate a field permission and fail closed on service errors."""
+        try:
+            result = getattr(permission_service, method_name)(
+                user, self.resource_name, field_name
+            )
+            if inspect.isawaitable(result):
+                result = await result
+            return bool(result)
+        except Exception:  # noqa: BLE001 — a broken authorization check must not leak fields
+            logger.exception(
+                "admin.resource_field_permission_check_failed",
+                resource=self.resource_name,
+                field=field_name,
+                check=method_name,
+            )
+            return False
+
+    async def _apply_declared_field_permissions(
+        self,
+        form: Any,
+        user: Any,
+        permission_service: Any | None,
+    ) -> None:
+        """Apply view/edit authorization to an instance-local declared form."""
+        if user is None or permission_service is None:
+            return
+        fields = getattr(form, "fields", None)
+        if not isinstance(fields, dict):
+            return
+        from dataclasses import replace as dc_replace
+
+        for name, field_schema in list(fields.items()):
+            if not await self._field_permission(
+                permission_service, "can_view_field", user, name
+            ):
+                # Keep the node in place but mark it invisible: declared
+                # layouts can still reference it without rendering a false
+                # "field not found" diagnostic.
+                fields[name] = dc_replace(field_schema, visible_in_form=False)
+                continue
+            if not await self._field_permission(
+                permission_service, "can_edit_field", user, name
+            ):
+                fields[name] = dc_replace(field_schema, readonly=True)
 
     async def _ensure_csrf_token(self, request) -> None:
         if getattr(getattr(request, "state", None), "csrf_token", None):
@@ -318,6 +445,8 @@ class FormRenderer(WizardRendererMixin):
         record_id: str | None = None,
         user=None,
         errors: dict[str, list[str]] | None = None,
+        permission_service: Any | None = None,
+        admin_prefix: str | None = None,
         in_slide_over: bool = False,
         overlay_target: str = Zones.SLIDE_OVER.selector,
         htmx_enabled: bool = True,
@@ -335,12 +464,13 @@ class FormRenderer(WizardRendererMixin):
             Form component ready for rendering
         """
         initial_data = initial_data or {}
+        prefix = (admin_prefix or self._config.prefix).rstrip("/")
 
         # Determine form action URL
         if mode == "edit" and record_id:
-            action_url = f"{self._config.prefix}/{self.resource_name}/{record_id}/edit"
+            action_url = f"{prefix}/{self.resource_name}/{record_id}/edit"
         else:
-            action_url = f"{self._config.prefix}/{self.resource_name}/create"
+            action_url = f"{prefix}/{self.resource_name}/create"
 
         # Try to use resource's form_class first
         form_class = None
@@ -364,6 +494,9 @@ class FormRenderer(WizardRendererMixin):
                 hx_post=action_url if htmx_enabled else None,
                 hx_target=overlay_target if htmx_enabled else None,
                 hx_swap="innerHTML",
+            )
+            await self._apply_declared_field_permissions(
+                form, user, permission_service
             )
             await self._populate_form_relation_options(form)
             if errors:
@@ -398,17 +531,24 @@ class FormRenderer(WizardRendererMixin):
                         continue
 
                     # --- Field-level RBAC enforcement ---
-                    if user:
-                        if self._permission_service is not None:
-                            _perm_svc = self._permission_service
-                            # Hide field if user lacks view permission
-                            if not await _perm_svc.can_view_field(
-                                user, self.resource_name, field_schema.name
+                    if user is not None:
+                        if permission_service is not None:
+                            _perm_svc = permission_service
+                            # Hide field if user lacks view permission.
+                            if not await self._field_permission(
+                                _perm_svc,
+                                "can_view_field",
+                                user,
+                                field_schema.name,
                             ):
                                 continue
-                            # Mark field non-editable if user lacks edit permission
-                            if mode == "edit" and not await _perm_svc.can_edit_field(
-                                user, self.resource_name, field_schema.name
+                            # A create form also writes field values; it must
+                            # not expose a control that the caller cannot set.
+                            if mode in {"create", "edit"} and not await self._field_permission(
+                                _perm_svc,
+                                "can_edit_field",
+                                user,
+                                field_schema.name,
                             ):
                                 field_schema = dc_replace(field_schema, readonly=True)
                     # --- end RBAC ---
@@ -423,6 +563,7 @@ class FormRenderer(WizardRendererMixin):
                         field_schema,
                         field_value,
                         errors=errors.get(field_schema.name) if errors else None,
+                        admin_prefix=prefix,
                     )
                     if field_component:
                         if errors and field_schema.name in errors:
@@ -443,6 +584,23 @@ class FormRenderer(WizardRendererMixin):
                     )
                 else:
                     body_fields = [rendered_fields[n] for n in ordered_names]
+
+                global_errors = [
+                    message
+                    for name, messages in (errors or {}).items()
+                    if name in {"__all__", "__root__"}
+                    for message in messages
+                ]
+                if global_errors:
+                    body_fields.insert(
+                        0,
+                        el(
+                            "div",
+                            *[el("p", message) for message in global_errors],
+                            role="alert",
+                            class_="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive",
+                        ),
+                    )
 
                 # Create Form component with fields.  HTMX submits swap the
                 # validation-error response back into the slide-over zone so
@@ -486,7 +644,17 @@ class FormRenderer(WizardRendererMixin):
         entry = self._resources.get(resource_name)
         if entry is None:
             return None
-        return entry() if isinstance(entry, type) else entry
+        if not isinstance(entry, type):
+            return entry
+        try:
+            return entry()
+        except Exception:  # noqa: BLE001 — an unconstructable sibling is not fatal to this form
+            logger.debug(
+                "Failed to construct related resource %s for %s",
+                resource_name,
+                self.resource_name,
+            )
+            return entry
 
     @staticmethod
     def _relation_option(record: Any) -> tuple[str, str] | None:
@@ -608,11 +776,15 @@ class FormRenderer(WizardRendererMixin):
     def _resolve_form_sections(resource: Any) -> list[Any]:
         """Resolve declared form layout sections for a resource."""
         getter = getattr(resource, "get_form_sections", None)
-        if callable(getter):
-            sections = getter()
-            if isinstance(sections, list):
-                return sections
-        return list(getattr(resource, "form_sections", ()) or ())
+        try:
+            if callable(getter):
+                sections = getter()
+                if sections is not None:
+                    return list(sections)
+            return list(getattr(resource, "form_sections", ()) or ())
+        except Exception:  # noqa: BLE001 — malformed layout falls back to flat fields
+            logger.exception("admin.form_sections_resolution_failed")
+            return []
 
     @staticmethod
     def _render_layout_fields(
@@ -690,6 +862,7 @@ class FormRenderer(WizardRendererMixin):
         field_schema,
         value,
         errors: list[str] | None = None,
+        admin_prefix: str | None = None,
     ) -> Any:
         """Create a field component from a SchemaField.
 
@@ -716,9 +889,9 @@ class FormRenderer(WizardRendererMixin):
         # resource's registered relation-options endpoint.
         related_resource = getattr(field_schema, "resource", None)
         if getattr(field_schema, "searchable", False) and related_resource:
+            prefix = (admin_prefix or self._config.prefix).rstrip("/")
             common_args["relation_options_url"] = (
-                f"{self._config.prefix.rstrip('/')}/{related_resource}"
-                "/relation-options"
+                f"{prefix}/{related_resource}/relation-options"
             )
 
         # Use registry to get the appropriate renderer and field instance

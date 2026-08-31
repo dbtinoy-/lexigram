@@ -55,9 +55,15 @@ class ResourceHooksMixin:
 
         # Mass-assignment protection: strip framework-managed columns (and
         # unknown keys when a model is bound) before coercion + validation.
-        protected_fields = getattr(
-            self, "protected_form_fields", PROTECTED_FORM_FIELDS
+        protected_fields = set(
+            getattr(self, "protected_form_fields", PROTECTED_FORM_FIELDS)
         )
+        # Form exclusions and readonly controls are presentation declarations,
+        # but they are also server-side write boundaries. A client can submit
+        # a disabled/hidden input by hand, so never pass those values to CRUD
+        # hooks even when they are valid model fields.
+        protected_fields.update(getattr(self, "form_exclude_fields", ()) or ())
+        protected_fields.update(getattr(self, "readonly_fields", ()) or ())
         allow_extra_fields = bool(getattr(self, "form_allow_extra_fields", False))
         coerced = sanitize_form_data(
             data,
@@ -75,6 +81,14 @@ class ResourceHooksMixin:
         if form_class is not None:
             try:
                 form_instance = form_class(data=coerced)
+                declared_fields = getattr(form_instance, "fields", {})
+                if isinstance(declared_fields, dict):
+                    protected_fields.update(
+                        name
+                        for name, field in declared_fields.items()
+                        if not getattr(field, "visible_in_form", True)
+                        or getattr(field, "readonly", False)
+                    )
                 form_result = await form_instance.validate()
             except (TypeError, ValueError, AttributeError) as exc:
                 return Err(
@@ -136,9 +150,16 @@ class ResourceHooksMixin:
                 and "pydantic" in type(exc).__module__
             )
             if is_pydantic:
+                protected = set(protected_fields)
                 for err in exc.errors():  # type: ignore[union-attr]
-                    field = str(err["loc"][0]) if err.get("loc") else None
-                    if field and field in coerced:
+                    field = str(err["loc"][0]) if err.get("loc") else "__all__"
+                    # Missing required fields are absent from ``coerced``. They
+                    # still need to reach the form, otherwise a generated
+                    # resource form can create an invalid record with an empty
+                    # payload. Framework-managed fields are the exception:
+                    # IDs, tenant keys, and timestamps are populated by the
+                    # data layer and intentionally remain outside the form.
+                    if field not in protected:
                         errors.append(FieldError(field=field, message=err["msg"]))
             else:
                 field = None

@@ -59,6 +59,176 @@ async def _call_permission_hook(
         return False
 
 
+def _request_permission_service(request: StarletteRequest) -> Any | None:
+    """Resolve the mounted field-permission service without using capabilities."""
+    try:
+        app = request.app
+    except (AttributeError, KeyError):
+        app = None
+    service = getattr(getattr(app, "state", None), "permission_service", None)
+    if service is not None and callable(getattr(service, "can_edit_field", None)):
+        return service
+    try:
+        request_state = request.state
+    except (AttributeError, KeyError):
+        request_state = None
+    state_service = getattr(request_state, "permission_service", None)
+    if state_service is not None and callable(
+        getattr(state_service, "can_edit_field", None)
+    ):
+        return state_service
+    return None
+
+
+async def _field_edit_allowed(
+    request: StarletteRequest,
+    resource: Any,
+    field_name: str,
+) -> bool:
+    """Return whether the mounted permission service allows a field write."""
+    service = _request_permission_service(request)
+    if service is None:
+        return True
+    try:
+        user = getattr(request.state, "user", None)
+    except (AttributeError, KeyError):
+        user = None
+    try:
+        allowed = await _maybe_await(
+            service.can_edit_field(user, resource.name or "", field_name)
+        )
+    except Exception:  # noqa: BLE001 — authorization must fail closed
+        logger.exception(
+            "admin.resource_field_permission_check_failed",
+            resource=getattr(resource, "name", None),
+            field=field_name,
+        )
+        return False
+    return bool(allowed)
+
+
+async def _authorize_form_fields(
+    request: StarletteRequest,
+    resource: Any,
+    data: dict[str, Any],
+) -> HTMLResponse | None:
+    """Reject submitted values for fields the caller cannot edit.
+
+    Rendering a field as readonly is only a UX measure. This check is the
+    server-side boundary that prevents a crafted POST from writing a hidden or
+    readonly field. It deliberately ignores ``request.state.permissions``;
+    that value is a CRUD capability mapping in the mounted middleware.
+    """
+    for field_name in data:
+        if not await _field_edit_allowed(request, resource, field_name):
+            return HTMLResponse("Forbidden", status_code=403)
+    return None
+
+
+def _normalize_validation_result(
+    validation: Any,
+) -> tuple[dict[str, Any] | None, dict[str, list[str]] | None]:
+    """Normalize Resource hook results while keeping legacy overrides usable."""
+    if isinstance(validation, dict):
+        return validation, None
+    if not callable(getattr(validation, "is_err", None)):
+        return None, {"__all__": ["before_validate must return a validation result"]}
+    try:
+        if validation.is_err():
+            return None, _validation_errors_to_dict(validation.unwrap_err())
+        data = validation.unwrap()
+        if not isinstance(data, dict):
+            return None, {"__all__": ["before_validate must return a mapping"]}
+        return data, None
+    except Exception as exc:  # noqa: BLE001 — malformed custom hooks re-render safely
+        errors = _validation_errors_from_exception(exc)
+        return None, errors or {"__all__": ["Form validation failed"]}
+
+
+def _record_to_mapping(record: Any) -> dict[str, Any]:
+    """Normalize a data-source record before validating an edit patch."""
+    if isinstance(record, dict):
+        return dict(record)
+    model_dump = getattr(record, "model_dump", None)
+    if callable(model_dump):
+        dumped = model_dump()
+        if isinstance(dumped, dict):
+            return dumped
+    try:
+        values = vars(record)
+    except TypeError:
+        return {}
+    return dict(values) if isinstance(values, dict) else {}
+
+
+def _validation_errors_from_exception(exc: Exception) -> dict[str, list[str]] | None:
+    """Map expected hook/data validation failures back to form fields."""
+    from lexigram.admin.exceptions import AdminValidationError, ConflictError
+
+    if isinstance(exc, AdminValidationError):
+        return _validation_errors_to_dict(exc)
+    if isinstance(exc, ConflictError):
+        return {"__all__": [str(getattr(exc, "message", None) or exc)]}
+
+    # Pydantic ValidationError and compatible adapters expose ``errors()``.
+    errors_method = getattr(exc, "errors", None)
+    if callable(errors_method):
+        try:
+            result: dict[str, list[str]] = {}
+            for error in errors_method():
+                location = error.get("loc") or ("__all__",)
+                field = str(location[0])
+                result.setdefault(field, []).append(str(error.get("msg", exc)))
+            if result:
+                return result
+        except (AttributeError, TypeError, ValueError):
+            pass
+
+    if isinstance(exc, (TypeError, ValueError)):
+        return {"__all__": [str(exc) or "Form validation failed"]}
+    return None
+
+
+async def _render_create_validation_error(
+    form_renderer: Any,
+    request: StarletteRequest,
+    resource: Any,
+    data: dict[str, Any],
+    errors: dict[str, list[str]],
+) -> Any:
+    """Render a create form error with the HTTP status expected by clients."""
+    response = await form_renderer.render_create(
+        request,
+        resource,
+        user=getattr(getattr(request, "state", None), "user", None),
+        errors=errors,
+        data=data,
+    )
+    response.status_code = 422
+    return response
+
+
+async def _render_edit_validation_error(
+    form_renderer: Any,
+    request: StarletteRequest,
+    resource: Any,
+    item_id: str,
+    data: dict[str, Any],
+    errors: dict[str, list[str]],
+) -> Any:
+    """Render an edit form error with the HTTP status expected by clients."""
+    response = await form_renderer.render_edit(
+        request,
+        resource,
+        item_id,
+        user=getattr(getattr(request, "state", None), "user", None),
+        errors=errors,
+        data=data,
+    )
+    response.status_code = 422
+    return response
+
+
 def _form_data_dict(form: Any) -> dict[str, Any]:
     """Convert form data while preserving repeated controls.
 
@@ -157,26 +327,52 @@ class CreateActionHandler:
     async def _handle_create(self, request: StarletteRequest, resource: Any) -> Any:
         from lexigram.admin.resources.base import Resource
 
-        form = request.scope.get("admin_form_data") or await request.form()
+        form = (
+            request.scope["admin_form_data"]
+            if "admin_form_data" in request.scope
+            else await request.form()
+        )
         data = _form_data_dict(form)
         data.pop("csrf_token", None)
 
         data_source = get_resource_data_source(resource)
         if isinstance(resource, Resource) and data_source is not None:
-            validation = await resource.before_validate(data)
-            if validation.is_err():
-                error = validation.unwrap_err()
-                return await self.form_renderer.render_create(
+            field_error = await _authorize_form_fields(request, resource, data)
+            if field_error is not None:
+                return field_error
+            try:
+                validation = await resource.before_validate(data)
+            except Exception as exc:  # noqa: BLE001 — expected validation errors re-render
+                errors = _validation_errors_from_exception(exc)
+                if errors is None:
+                    raise
+                return await _render_create_validation_error(
+                    self.form_renderer, request, resource, data, errors
+                )
+            validated_data, validation_errors = _normalize_validation_result(validation)
+            if validation_errors is not None:
+                return await _render_create_validation_error(
+                    self.form_renderer,
                     request,
                     resource,
-                    user=getattr(getattr(request, "state", None), "user", None),
-                    errors=_validation_errors_to_dict(error),
-                    data=data,
+                    data,
+                    validation_errors,
                 )
-
-            validated_data = validation.unwrap()
-            validated = await resource.before_create(validated_data)
-            record = await data_source.create(validated)
+            assert validated_data is not None
+            try:
+                validated = await resource.before_create(validated_data)
+                if not isinstance(validated, dict):
+                    raise TypeError("before_create must return a mapping")
+                record = await data_source.create(validated)
+            except NotImplementedError:
+                return HTMLResponse("Resource does not support create", status_code=503)
+            except Exception as exc:  # noqa: BLE001 — validation/conflict errors re-render
+                errors = _validation_errors_from_exception(exc)
+                if errors is None:
+                    raise
+                return await _render_create_validation_error(
+                    self.form_renderer, request, resource, data, errors
+                )
             if record is None:
                 return HTMLResponse("Unable to create record", status_code=503)
             await resource.after_create(record)
@@ -196,6 +392,8 @@ class CreateActionHandler:
                 return response
             return RedirectResponse(url=url, status_code=302)
 
+        if request.method == "POST":
+            return HTMLResponse("Resource data source unavailable", status_code=503)
         return await self.form_renderer.render_create(
             request,
             resource,
@@ -237,33 +435,71 @@ class EditActionHandler:
     ) -> Any:
         from lexigram.admin.resources.base import Resource
 
-        form = request.scope.get("admin_form_data") or await request.form()
+        form = (
+            request.scope["admin_form_data"]
+            if "admin_form_data" in request.scope
+            else await request.form()
+        )
         data = _form_data_dict(form)
         data.pop("csrf_token", None)
 
         data_source = get_resource_data_source(resource)
         if isinstance(resource, Resource) and data_source is not None:
-            validation = await resource.before_validate(data)
-            if validation.is_err():
-                error = validation.unwrap_err()
-                return await self.form_renderer.render_edit(
-                    request,
-                    resource,
-                    item_id,
-                    user=getattr(getattr(request, "state", None), "user", None),
-                    errors=_validation_errors_to_dict(error),
-                    data=data,
-                )
-
-            record = await data_source.find_one(item_id)
+            try:
+                record = await data_source.find_one(item_id)
+            except Exception as exc:  # noqa: BLE001 — storage failures are not form errors
+                logger.exception("admin.edit_lookup_failed", error=str(exc))
+                return HTMLResponse("Unable to load record", status_code=503)
             if record is None:
                 return HTMLResponse("Not found", status_code=404)
             can_update = getattr(resource, "can_update", None)
             if can_update and not await _call_permission_hook(can_update, record):
                 return HTMLResponse("This record cannot be updated", status_code=403)
-            validated_data = validation.unwrap()
-            validated = await resource.before_update(item_id, validated_data)
-            updated_record = await data_source.update(item_id, validated)
+
+            field_error = await _authorize_form_fields(request, resource, data)
+            if field_error is not None:
+                return field_error
+
+            # Validate the complete candidate record. Edit forms can omit
+            # disabled/hidden fields, so validating the raw patch would report
+            # false "field required" errors and would make readonly fields
+            # impossible to edit around. The guard still strips protected
+            # values before the update hook/data source sees them.
+            candidate = {**_record_to_mapping(record), **data}
+            try:
+                validation = await resource.before_validate(candidate)
+            except Exception as exc:  # noqa: BLE001 — expected validation errors re-render
+                errors = _validation_errors_from_exception(exc)
+                if errors is None:
+                    raise
+                return await _render_edit_validation_error(
+                    self.form_renderer, request, resource, item_id, data, errors
+                )
+            validated_data, validation_errors = _normalize_validation_result(validation)
+            if validation_errors is not None:
+                return await _render_edit_validation_error(
+                    self.form_renderer,
+                    request,
+                    resource,
+                    item_id,
+                    data,
+                    validation_errors,
+                )
+            assert validated_data is not None
+            try:
+                validated = await resource.before_update(item_id, validated_data)
+                if not isinstance(validated, dict):
+                    raise TypeError("before_update must return a mapping")
+                updated_record = await data_source.update(item_id, validated)
+            except NotImplementedError:
+                return HTMLResponse("Resource does not support update", status_code=503)
+            except Exception as exc:  # noqa: BLE001 — validation/conflict errors re-render
+                errors = _validation_errors_from_exception(exc)
+                if errors is None:
+                    raise
+                return await _render_edit_validation_error(
+                    self.form_renderer, request, resource, item_id, data, errors
+                )
             if updated_record is None:
                 return HTMLResponse("Not found", status_code=404)
             await resource.after_update(updated_record)
@@ -284,6 +520,8 @@ class EditActionHandler:
                 return response
             return RedirectResponse(url=url, status_code=302)
 
+        if request.method == "POST":
+            return HTMLResponse("Resource data source unavailable", status_code=503)
         return await self.form_renderer.render_edit(
             request,
             resource,
@@ -376,7 +614,11 @@ class InlineMutationActionHandler:
         field_schema = self._field_schema(resource, field_name)
         if field_schema is None:
             return None, "Field not found"
-        if getattr(field_schema, "readonly", False):
+        if (
+            getattr(field_schema, "readonly", False)
+            or field_name in (getattr(resource, "readonly_fields", ()) or ())
+            or field_name in (getattr(resource, "form_exclude_fields", ()) or ())
+        ):
             return None, "This field is read-only"
 
         # A checkbox has no successful control when it is switched off.
@@ -441,6 +683,8 @@ class InlineMutationActionHandler:
             return None, "Not found"
         if not await self._authorize_update(resource, record):
             return None, "This record cannot be updated"
+        if not await _field_edit_allowed(request, resource, field_name):
+            return None, "Forbidden"
 
         value, error = await self._coerce_field_value(resource, field_name, form)
         if error:

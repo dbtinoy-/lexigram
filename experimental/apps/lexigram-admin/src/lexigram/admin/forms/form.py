@@ -97,6 +97,14 @@ class Form(Generic[T]):
         # out so the model can apply its own default; missing required fields
         # are passed as None so the schema's required contract is enforced.
         for name, field in self.fields.items():
+            # Disabled and intentionally hidden controls are not writable
+            # form inputs. Their values are supplied by the persisted record
+            # or server-side defaults, so validating them as user input can
+            # incorrectly reject an edit when a required field is omitted.
+            if not getattr(field, "visible_in_form", True) or getattr(
+                field, "readonly", False
+            ):
+                continue
             raw = self._raw_value(data.get(name))
             result = field.from_form(raw)
             if result.is_err():

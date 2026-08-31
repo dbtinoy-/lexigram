@@ -59,14 +59,14 @@ class TestBooleanField:
 
     def test_from_form_true_values(self) -> None:
         field = BooleanField(name="active")
-        for raw in ("true", "1", "yes"):
+        for raw in ("true", "1", "yes", "on"):
             result = field.from_form(raw)
             assert isinstance(result, Ok), f"Expected Ok for {raw!r}"
             assert result.unwrap() is True
 
     def test_from_form_false_values(self) -> None:
         field = BooleanField(name="active")
-        for raw in ("false", "0", "no"):
+        for raw in ("false", "0", "no", "off"):
             result = field.from_form(raw)
             assert isinstance(result, Ok), f"Expected Ok for {raw!r}"
             assert result.unwrap() is False

@@ -173,6 +173,16 @@ class AdminMountContributorsMixin:
         from lexigram.admin.core.routing import AdminRouter
         from lexigram.admin.dashboard.naming_policy import NamingPolicy
         from lexigram.admin.dashboard.route_integrator import RouteIntegrator
+        from lexigram.admin.rbac.service import PermissionService
+
+        permission_service = None
+        try:
+            permission_service = await container.resolve(
+                PermissionService,
+                bypass_visibility=True,
+            )
+        except Exception:  # noqa: BLE001 — field checks remain opt-in for custom mounts
+            _log.warning("admin.permission_service_unavailable_for_forms")
 
         router = AdminRouter(
             config=self._config,
@@ -180,6 +190,7 @@ class AdminMountContributorsMixin:
             controllers=ctx.controllers,
             middleware_stack=ctx.middlewares,
             authorizer=self._authorizer_service,
+            permission_service=permission_service,
         )
         ctx.router = router
 
