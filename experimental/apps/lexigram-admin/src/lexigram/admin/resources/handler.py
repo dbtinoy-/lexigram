@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import inspect
+import json
 from typing import Any
 
 from starlette.requests import Request as StarletteRequest
 from starlette.responses import HTMLResponse, RedirectResponse
 
 from lexigram.admin.config import AdminConfig
+from lexigram.admin.exceptions import PermissionDeniedError
 from lexigram.di.decorators import inject
 from lexigram.logging import get_logger
 
@@ -215,6 +217,7 @@ class UserPermissionsActionHandler:
 class BulkActionHandler:
     """Handler for the ``bulk`` action — processes bulk operations."""
 
+    _MAX_SELECTED_IDS = 1000
     _CONFIRM_LABELS = {
         "bulk-delete-confirm": ("delete", "Delete", "DELETE"),
         "bulk-purge-confirm": ("purge", "Purge", "PURGE"),
@@ -228,6 +231,74 @@ class BulkActionHandler:
             "bulk-purge-confirm",
             "bulk-restore-confirm",
         )
+
+    @staticmethod
+    async def _bulk_delete(
+        resource: Any,
+        data_source: Any,
+        item_ids: list[str],
+        *,
+        purge: bool,
+    ) -> int:
+        """Delete selected records while preserving resource lifecycle hooks."""
+        count = 0
+        for item_id in item_ids:
+            if purge:
+                operation = getattr(resource, "purge", None)
+                if callable(operation):
+                    try:
+                        await _maybe_await(operation(item_id))
+                    except LookupError:
+                        continue
+                    count += 1
+                    continue
+
+            item = await data_source.find_one(item_id)
+            if item is None:
+                continue
+            if not purge:
+                before_delete = getattr(resource, "before_delete", None)
+                if callable(before_delete):
+                    await _maybe_await(before_delete(item_id))
+                if bool(getattr(resource, "soft_delete_enabled", False)):
+                    from datetime import UTC, datetime
+
+                    deleted = await data_source.update(
+                        item_id, {"deleted_at": datetime.now(UTC).isoformat()}
+                    )
+                    success = deleted is not None
+                else:
+                    success = bool(await data_source.delete(item_id))
+                if not success:
+                    continue
+                after_delete = getattr(resource, "after_delete", None)
+                if callable(after_delete):
+                    await _maybe_await(after_delete(item_id))
+                count += 1
+        return count
+
+    @staticmethod
+    async def _bulk_restore(
+        resource: Any,
+        data_source: Any,
+        item_ids: list[str],
+    ) -> int:
+        """Restore selected records through the resource lifecycle contract."""
+        operation = getattr(resource, "restore", None)
+        count = 0
+        for item_id in item_ids:
+            if callable(operation):
+                try:
+                    restored = await _maybe_await(operation(item_id))
+                except LookupError:
+                    continue
+                if restored is not None:
+                    count += 1
+                continue
+            updated = await data_source.update(item_id, {"deleted_at": None})
+            if updated is not None:
+                count += 1
+        return count
 
     @staticmethod
     def _declared_bulk_action(resource: Any, action_name: str) -> Any | None:
@@ -289,9 +360,9 @@ class BulkActionHandler:
         if callable(callback):
             try:
                 result = await _maybe_await(callback(records))
-            except Exception as exc:  # noqa: BLE001 — surface action failures safely
+            except Exception:  # noqa: BLE001 — do not expose hook/storage details
                 logger.exception("admin.resource_bulk_callback_failed")
-                return False, str(exc)
+                return False, "Bulk action failed"
             return await self._action_result_message(result)
 
         # The canonical admin action API owns authorization and execution.
@@ -331,9 +402,9 @@ class BulkActionHandler:
             )
             try:
                 result = await _maybe_await(executor(records, context))
-            except Exception as exc:  # noqa: BLE001 — surface action failures safely
+            except Exception:  # noqa: BLE001 — do not expose hook/storage details
                 logger.exception("admin.bulk_action_execution_failed")
-                return False, str(exc)
+                return False, "Bulk action failed"
             return await self._action_result_message(result)
 
         if declared is None:
@@ -344,9 +415,9 @@ class BulkActionHandler:
         if callable(callback):
             try:
                 result = await _maybe_await(callback(records))
-            except Exception as exc:  # noqa: BLE001 — surface action failures safely
+            except Exception:  # noqa: BLE001 — do not expose hook/storage details
                 logger.exception("admin.legacy_bulk_action_execution_failed")
-                return False, str(exc)
+                return False, "Bulk action failed"
             return await self._action_result_message(result)
 
         return False, f"Bulk action '{action_name}' is not executable"
@@ -391,9 +462,24 @@ class BulkActionHandler:
         # ── Bulk action execution (POST) ──
         form = request.scope.get("admin_form_data")
         if form is None:
-            form = await request.form()
-        action_name = str(form.get("action", "") or "")
-        form_ids = form.getlist("ids") if hasattr(form, "getlist") else []
+            try:
+                form = await request.form()
+            except (RuntimeError, ValueError, OSError, TypeError):
+                return HTMLResponse("Invalid form submission", status_code=400)
+        action_name = str(form.get("action", "") or "").strip()
+        raw_ids = form.getlist("ids") if hasattr(form, "getlist") else []
+        form_ids: list[str] = []
+        seen_ids: set[str] = set()
+        for raw_id in raw_ids:
+            item_id = str(raw_id).strip()
+            if item_id and item_id not in seen_ids:
+                seen_ids.add(item_id)
+                form_ids.append(item_id)
+        if len(form_ids) > self._MAX_SELECTED_IDS:
+            return HTMLResponse(
+                f"Select no more than {self._MAX_SELECTED_IDS} records",
+                status_code=413,
+            )
         # ``delete_selected`` is the legacy Resource string declaration. Keep
         # its public action name for rendering, but dispatch it through the
         # canonical delete implementation.
@@ -440,8 +526,19 @@ class BulkActionHandler:
             can_delete = getattr(resource, "can_delete", None)
             if can_delete:
                 for item_id in form_ids:
-                    item = await data_source.find_one(item_id)
-                    if item is not None and not await _maybe_await(can_delete(item)):
+                    try:
+                        item = await data_source.find_one(item_id)
+                    except Exception as exc:  # noqa: BLE001 — storage details stay private
+                        logger.exception("admin.bulk_delete_lookup_failed", error=str(exc))
+                        return HTMLResponse("Unable to load selected records", status_code=503)
+                    if item is None:
+                        continue
+                    try:
+                        allowed = await _maybe_await(can_delete(item))
+                    except Exception:  # noqa: BLE001 — record authorization fails closed
+                        logger.exception("admin.bulk_delete_record_permission_failed")
+                        allowed = False
+                    if not allowed:
                         message = "One or more selected records cannot be deleted"
                         if is_htmx:
                             response = HTMLResponse("", status_code=409)
@@ -466,16 +563,23 @@ class BulkActionHandler:
                 form,
             )
             if custom is None:
-                return HTMLResponse(f"Unknown action: {action_name}", status_code=400)
+                return HTMLResponse(
+                    render_to_string(el("p", f"Unknown action: {action_name}")),
+                    status_code=400,
+                )
             ok, message = custom
             if not ok:
-                return HTMLResponse(message, status_code=403 if message == "Forbidden" else 400)
+                return HTMLResponse(
+                    render_to_string(el("p", message)),
+                    status_code=403 if message == "Forbidden" else 400,
+                )
             if is_htmx:
                 response = HTMLResponse(render_to_string(el("p", message)))
-                response.headers["HX-Trigger"] = (
-                    '{"refresh-list":true,"show-toast":{"message":"'
-                    + message.replace('"', '\\"')
-                    + '","type":"success"}}'
+                response.headers["HX-Trigger"] = json.dumps(
+                    {
+                        "refresh-list": True,
+                        "show-toast": {"message": message, "type": "success"},
+                    }
                 )
                 return response
             return RedirectResponse(
@@ -487,10 +591,34 @@ class BulkActionHandler:
             )
 
         if execution_action == "delete":
-            count = await data_source.bulk_delete(form_ids)
+            try:
+                count = await self._bulk_delete(
+                    resource, data_source, form_ids, purge=False
+                )
+            except (PermissionError, PermissionDeniedError):
+                return HTMLResponse("Forbidden", status_code=403)
+            except LookupError:
+                return HTMLResponse("Not found", status_code=404)
+            except NotImplementedError:
+                return HTMLResponse("Delete is unavailable", status_code=503)
+            except Exception as exc:  # noqa: BLE001 — storage/hook details stay private
+                logger.exception("admin.bulk_delete_failed", error=str(exc))
+                return HTMLResponse("Unable to delete selected records", status_code=503)
             message = f"Deleted {count} item(s)"
         elif execution_action == "purge":
-            count = await data_source.bulk_delete(form_ids)
+            try:
+                count = await self._bulk_delete(
+                    resource, data_source, form_ids, purge=True
+                )
+            except (PermissionError, PermissionDeniedError):
+                return HTMLResponse("Forbidden", status_code=403)
+            except LookupError:
+                return HTMLResponse("Not found", status_code=404)
+            except NotImplementedError:
+                return HTMLResponse("Purge is unavailable", status_code=503)
+            except Exception as exc:  # noqa: BLE001 — storage/hook details stay private
+                logger.exception("admin.bulk_purge_failed", error=str(exc))
+                return HTMLResponse("Unable to purge selected records", status_code=503)
             message = f"Purged {count} item(s)"
         elif execution_action in {"export", "export_csv"}:
             import csv
@@ -544,8 +672,19 @@ class BulkActionHandler:
             can_update = getattr(resource, "can_update", None)
             if can_update:
                 for item_id in form_ids:
-                    item = await data_source.find_one(item_id)
-                    if item is not None and not await _maybe_await(can_update(item)):
+                    try:
+                        item = await data_source.find_one(item_id)
+                    except Exception as exc:  # noqa: BLE001 — storage details stay private
+                        logger.exception("admin.bulk_restore_lookup_failed", error=str(exc))
+                        return HTMLResponse("Unable to load selected records", status_code=503)
+                    if item is None:
+                        continue
+                    try:
+                        allowed = await _maybe_await(can_update(item))
+                    except Exception:  # noqa: BLE001 — record authorization fails closed
+                        logger.exception("admin.bulk_restore_record_permission_failed")
+                        allowed = False
+                    if not allowed:
                         message = "One or more selected records cannot be restored"
                         if is_htmx:
                             response = HTMLResponse("", status_code=409)
@@ -556,23 +695,31 @@ class BulkActionHandler:
                             )
                             return response
                         return HTMLResponse(message, status_code=409)
-            count = 0
-            for item_id in form_ids:
-                updated = await data_source.update(
-                    item_id, {"deleted_at": None}
-                )
-                if updated is not None:
-                    count += 1
+            try:
+                count = await self._bulk_restore(resource, data_source, form_ids)
+            except (PermissionError, PermissionDeniedError):
+                return HTMLResponse("Forbidden", status_code=403)
+            except LookupError:
+                return HTMLResponse("Not found", status_code=404)
+            except NotImplementedError:
+                return HTMLResponse("Restore is unavailable", status_code=503)
+            except Exception as exc:  # noqa: BLE001 — storage/hook details stay private
+                logger.exception("admin.bulk_restore_failed", error=str(exc))
+                return HTMLResponse("Unable to restore selected records", status_code=503)
             message = f"Restored {count} item(s)"
         else:
-            return HTMLResponse(f"Unknown action: {action_name}", status_code=400)
+            return HTMLResponse(
+                render_to_string(el("p", f"Unknown action: {action_name}")),
+                status_code=400,
+            )
 
         if is_htmx:
-            response = HTMLResponse(f"<p>{message}</p>")
-            response.headers["HX-Trigger"] = (
-                '{"refresh-list":true,"show-toast":{"message":"'
-                + message.replace('"', '\\"')
-                + '","type":"success"}}'
+            response = HTMLResponse(render_to_string(el("p", message)))
+            response.headers["HX-Trigger"] = json.dumps(
+                {
+                    "refresh-list": True,
+                    "show-toast": {"message": message, "type": "success"},
+                }
             )
             return response
         return RedirectResponse(

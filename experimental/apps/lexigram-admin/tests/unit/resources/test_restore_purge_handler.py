@@ -138,6 +138,9 @@ class _FakeDataSource:
         record.update(data)
         return record
 
+    async def delete(self, item_id: Any) -> bool:
+        return self._store.pop(str(item_id), None) is not None
+
     async def bulk_delete(self, ids: list[str]) -> int:
         deleted = 0
         for id_ in ids:
@@ -329,6 +332,59 @@ class TestBulkActionHandlerPurgeRestore:
         assert response.status_code == 302
         assert self.ds._store["1"]["deleted_at"] is None
         assert "2" in self.ds._store
+
+    @pytest.mark.asyncio
+    async def test_post_delete_honors_soft_delete_and_hooks(self) -> None:
+        self.resource.soft_delete_enabled = True
+        events: list[str] = []
+
+        async def before(item_id: Any) -> None:
+            events.append(f"before:{item_id}")
+
+        async def after(item_id: Any) -> None:
+            events.append(f"after:{item_id}")
+
+        self.resource.before_delete = before  # type: ignore[method-assign]
+        self.resource.after_delete = after  # type: ignore[method-assign]
+        scope = self._make_scope("POST", scope_extra={"admin_resource_prefix": "users"})
+        request = Request(scope)
+        form = MagicMock()
+        form.get = lambda k, d=None: {"action": "delete"}.get(k, d)
+        form.getlist = lambda k: {"ids": ["1", "2"]}.get(k, [])
+        request.scope["admin_form_data"] = form
+
+        response = await self.handler.handle(request, self.resource)
+
+        assert response.status_code == 302
+        assert self.ds._store["1"]["deleted_at"] is not None
+        assert self.ds._store["2"]["deleted_at"] is not None
+        assert events == ["before:1", "after:1", "before:2", "after:2"]
+
+    @pytest.mark.asyncio
+    async def test_post_purge_runs_archive_hooks(self) -> None:
+        events: list[str] = []
+
+        async def before(data: dict[str, Any]) -> dict[str, Any]:
+            events.append(f"before:{data['id']}")
+            return data
+
+        async def after(item_id: Any) -> None:
+            events.append(f"after:{item_id}")
+
+        self.resource.before_purge = before  # type: ignore[method-assign]
+        self.resource.after_purge = after  # type: ignore[method-assign]
+        scope = self._make_scope("POST", scope_extra={"admin_resource_prefix": "users"})
+        request = Request(scope)
+        form = MagicMock()
+        form.get = lambda k, d=None: {"action": "purge"}.get(k, d)
+        form.getlist = lambda k: {"ids": ["1", "2"]}.get(k, [])
+        request.scope["admin_form_data"] = form
+
+        response = await self.handler.handle(request, self.resource)
+
+        assert response.status_code == 302
+        assert self.ds._store == {}
+        assert events == ["before:1", "after:1", "before:2", "after:2"]
 
     @pytest.mark.asyncio
     async def test_post_unknown_action_returns_400(self) -> None:
