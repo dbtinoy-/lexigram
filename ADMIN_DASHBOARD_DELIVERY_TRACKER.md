@@ -64,20 +64,20 @@ workspace packages.
 - Workspace `ruff check .` and `ruff format --check .`: passed after formatting
   the remaining baseline files touched by the delivery branch.
 - Full admin unit suite after the latest URL and quality passes: passed
-  (`4723 passed, 8 skipped, 13 warnings`).
+  (`4726 passed, 8 skipped, 13 warnings`).
 - Full `lexigram-ui` suite after the latest quality passes: passed
   (`1342 passed, 78 skipped`).
 - Focused dashboard/navigation/contributor suite: passed (`74 passed, 1 warning`).
 - Focused SystemBox/Breadcrumbs/command-palette/settings suite: passed (`12 passed, 1 warning`).
 - Cluster/navigation suite: passed (`26 passed, 1 warning`).
 - UI notification bell suite: passed (`9 passed`).
-- Full available admin unit suite: passed (`4723 passed, 8 skipped, 13 warnings`) after provisioning `argon2-cffi`; the prior auth-provider failure is resolved in the current test environment.
+- Full available admin unit suite: passed (`4726 passed, 8 skipped, 13 warnings`) after provisioning `argon2-cffi`; the prior auth-provider failure is resolved in the current test environment.
 - Complete resource suite after the latest hardening: passed (`255 passed, 2 warnings`), including submission-boundary, relation-option, custom-prefix, wizard, and field-authorization coverage.
 - Focused form/HTMX and accessibility UI checks: passed (`115 passed`).
 - Earlier complete focused admin regression: passed (`160 passed, 2 warnings`).
 - Permissions E2E: passed (`7 passed, 2 warnings`).
 - Full UI suite: passed (`1342 passed, 78 skipped`).
-- Follow-up custom-prefix regression suite: passed (`63 passed, 1 warning`), covering
+- Follow-up custom-prefix regression suite: passed (`80 passed, 1 warning`), covering
   mounted auth/profile/error/plugin flows, action URLs, and UI breadcrumb/palette links.
 - Reactive SSE bridge DI regression suite: passed (`11 passed, 1 warning`); the
   bridge now resolves to the callable factory instead of an eagerly-created

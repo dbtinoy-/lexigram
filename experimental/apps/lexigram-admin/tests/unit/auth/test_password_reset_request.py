@@ -223,6 +223,34 @@ async def test_request_reset_known_email_stores_hashed_token_and_notifies() -> N
 
 
 @pytest.mark.asyncio
+async def test_request_reset_uses_custom_admin_prefix() -> None:
+    notification = _notification()
+    service, _, _, _, _ = _make_service(
+        users=[
+            {
+                "user_id": "u1",
+                "name": "Admin",
+                "email": EMAIL,
+                "hashed_password": "old",
+            }
+        ],
+        notification=notification,
+    )
+
+    result = await service.request_reset(
+        EMAIL,
+        "10.0.0.1",
+        "test-agent",
+        "https://panel.example",
+        "/console",
+    )
+
+    assert result.is_ok()
+    reset_url = notification.notify_password_reset.await_args.kwargs["reset_url"]
+    assert reset_url.startswith("https://panel.example/console/password-reset/")
+
+
+@pytest.mark.asyncio
 async def test_request_reset_normalizes_email_case() -> None:
     service, _, token_store, _, _ = _make_service(
         users=[

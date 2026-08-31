@@ -46,10 +46,12 @@ def _mock_request(
     method: str = "GET",
     form_data: dict | None = None,
     session: dict | None = None,
+    scope_prefix: str | None = None,
 ) -> MagicMock:
     """Build a minimal Starlette Request mock for setup testing."""
     req = MagicMock(spec=Request)
     req.method = method
+    req.scope = {"admin_prefix": scope_prefix} if scope_prefix else {}
     req.headers = {}
 
     async def _form() -> dict:
@@ -128,6 +130,15 @@ class TestSetupController:
     async def test_setup_form_when_no_admins(self, controller: SetupController) -> None:
         resp = await controller.setup_form(_mock_request())
         assert resp.status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_setup_form_uses_custom_prefix_for_actions_and_assets(
+        self, controller: SetupController
+    ) -> None:
+        resp = await controller.setup_form(_mock_request(scope_prefix="/console"))
+        html = resp.body.decode()
+        assert 'action="/console/setup"' in html
+        assert "/console/static/css/tailwind.css" in html
 
     @pytest.mark.asyncio
     async def test_setup_form_when_admins_exist(

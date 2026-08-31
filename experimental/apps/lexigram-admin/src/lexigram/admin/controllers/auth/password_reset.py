@@ -17,6 +17,7 @@ from lexigram.admin.lib.template import (
     render_password_reset_confirm_page,
     render_password_reset_request_page,
 )
+from lexigram.admin.resources.urls import admin_prefix_from_request
 from lexigram.contracts.web import get, post
 
 if TYPE_CHECKING:
@@ -107,6 +108,7 @@ class AuthPasswordResetMixin(AuthCoreMixin):
                 ip_address=self._get_client_ip(request),
                 user_agent=request.headers.get("user-agent", ""),
                 base_url=str(request.base_url),
+                admin_prefix=admin_prefix_from_request(request),
             )
             if result.is_err():
                 return RedirectResponse(

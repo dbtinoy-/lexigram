@@ -70,6 +70,7 @@ class AdminPasswordResetServiceProtocol(Protocol):
         ip_address: str,
         user_agent: str,
         base_url: str,
+        admin_prefix: str = "/admin",
     ) -> Result[None, AdminAuthError]:
         """Issue a reset token and notify the user.
 

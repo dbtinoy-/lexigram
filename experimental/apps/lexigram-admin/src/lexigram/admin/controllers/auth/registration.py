@@ -17,6 +17,7 @@ from lexigram.admin.lib.template import (
     render_register_page,
     render_verify_email_page,
 )
+from lexigram.admin.resources.urls import admin_prefix_from_request
 from lexigram.contracts.web import get, post
 
 if TYPE_CHECKING:
@@ -223,6 +224,7 @@ class AuthRegistrationMixin(AuthCoreMixin):
                 user_name=name,
                 base_url=str(request.base_url),
                 ip_address=ip,
+                admin_prefix=admin_prefix_from_request(request),
             )
             if verify_result.is_ok():
                 notice = (
@@ -368,6 +370,7 @@ class AuthRegistrationMixin(AuthCoreMixin):
             user_name=email,
             base_url=str(request.base_url),
             ip_address=self._get_client_ip(request),
+            admin_prefix=admin_prefix_from_request(request),
         )
         if result.is_err():
             return RedirectResponse(

@@ -115,9 +115,7 @@ async def test_send_verification_noops_when_already_verified() -> None:
         notification_service=notifier,
     )
 
-    result = await svc.send_verification(
-        "user-001", "admin@example.com", "Admin User"
-    )
+    result = await svc.send_verification("user-001", "admin@example.com", "Admin User")
 
     assert result.is_ok()
     store.save_token.assert_not_awaited()
@@ -161,15 +159,36 @@ async def test_send_verification_saves_token_and_notifies() -> None:
 
 
 @pytest.mark.asyncio
+async def test_send_verification_uses_custom_admin_prefix() -> None:
+    store = _make_store(verified=False)
+    notifier = _make_notifier()
+    svc = AdminEmailVerificationService(
+        config=AdminEmailVerificationConfig(),
+        store=store,
+        notification_service=notifier,
+    )
+
+    result = await svc.send_verification(
+        "user-001",
+        "admin@example.com",
+        "Admin User",
+        base_url="https://panel.example",
+        admin_prefix="/console",
+    )
+
+    assert result.is_ok()
+    verify_url = notifier.notify_email_verification.await_args.kwargs["verify_url"]
+    assert verify_url.startswith("https://panel.example/console/verify-email/")
+
+
+@pytest.mark.asyncio
 async def test_send_verification_fails_without_notifier() -> None:
     store = _make_store(verified=False)
     svc = AdminEmailVerificationService(
         config=AdminEmailVerificationConfig(), store=store
     )
 
-    result = await svc.send_verification(
-        "user-001", "admin@example.com", "Admin User"
-    )
+    result = await svc.send_verification("user-001", "admin@example.com", "Admin User")
 
     assert result.is_err()
     assert isinstance(result.unwrap_err(), AdminAuthError)
@@ -187,9 +206,7 @@ async def test_send_verification_noops_when_flow_disabled() -> None:
         notification_service=notifier,
     )
 
-    result = await svc.send_verification(
-        "user-001", "admin@example.com", "Admin User"
-    )
+    result = await svc.send_verification("user-001", "admin@example.com", "Admin User")
 
     assert result.is_ok()
     store.save_token.assert_not_awaited()
@@ -265,9 +282,7 @@ async def test_send_verification_rate_limited_returns_err() -> None:
         config=AdminEmailVerificationConfig(), store=store, cache=cache
     )
 
-    result = await svc.send_verification(
-        "user-001", "a@b.c", "A", ip_address="1.2.3.4"
-    )
+    result = await svc.send_verification("user-001", "a@b.c", "A", ip_address="1.2.3.4")
 
     assert result.is_err()
     assert isinstance(result.unwrap_err(), RateLimitExceededError)
@@ -286,9 +301,7 @@ async def test_send_verification_rate_limit_increments() -> None:
         notification_service=_make_notifier(),
     )
 
-    result = await svc.send_verification(
-        "user-001", "a@b.c", "A", ip_address="1.2.3.4"
-    )
+    result = await svc.send_verification("user-001", "a@b.c", "A", ip_address="1.2.3.4")
 
     assert result.is_ok()
     cache.set.assert_awaited_once()
@@ -308,9 +321,7 @@ async def test_send_verification_cache_failure_fails_open() -> None:
         notification_service=_make_notifier(),
     )
 
-    result = await svc.send_verification(
-        "user-001", "a@b.c", "A", ip_address="1.2.3.4"
-    )
+    result = await svc.send_verification("user-001", "a@b.c", "A", ip_address="1.2.3.4")
 
     assert result.is_ok()
     store.save_token.assert_awaited_once()

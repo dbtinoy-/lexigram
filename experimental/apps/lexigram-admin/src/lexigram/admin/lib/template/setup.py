@@ -20,6 +20,9 @@ def render_setup_page(
     locked: bool = False,
     csrf_token: str = "",
     setup_token_required: bool = False,
+    login_url: str = "/admin/login",
+    setup_url: str = "/admin/setup",
+    base_url: str = "/admin",
 ) -> str:
     """Render the first-run admin setup page.
 
@@ -31,6 +34,9 @@ def render_setup_page(
         setup_token_required: When True, an extra setup-token field is shown
             so an ``ADMIN_SETUP_TOKEN`` guard configured via the environment
             or admin config can be satisfied.
+        login_url: Mounted route used by the locked-state login link.
+        setup_url: Mounted form action for the setup route.
+        base_url: Mounted admin base URL used for shared assets.
 
     Returns:
         HTML string for the setup page.
@@ -43,7 +49,7 @@ def render_setup_page(
     if locked:
         action = el(
             "div",
-            _primary_link("Go to Login", "/admin/login"),
+            _primary_link("Go to Login", login_url),
             class_="text-center",
         )
         return _standalone_card(
@@ -52,6 +58,7 @@ def render_setup_page(
             "An administrator account already exists. Please log in with your credentials.",
             [action],
             site_name=site_name,
+            base_url=base_url,
             flash_messages=flash_messages,
         )
 
@@ -96,7 +103,7 @@ def render_setup_page(
         )
 
     form = _auth_form(
-        "/admin/setup",
+        setup_url,
         csrf_token,
         fields,
         "Create Administrator",
@@ -108,5 +115,6 @@ def render_setup_page(
         "Set up the first administrative account for this application",
         [form],
         site_name=site_name,
+        base_url=base_url,
         flash_messages=flash_messages,
     )

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hmac
 import secrets
+from typing import Any
 from urllib.parse import quote_plus
 
 from starlette.requests import Request
@@ -26,6 +27,7 @@ from lexigram.admin.config import AdminConfig, AdminRbacConfig
 from lexigram.admin.controllers.base import AdminController
 from lexigram.admin.engine.renderer import AdminRenderer
 from lexigram.admin.lib.template import render_setup_page
+from lexigram.admin.resources.urls import admin_prefix_from_request
 from lexigram.contracts.core import TaskManagerProtocol
 from lexigram.contracts.web import get, post
 from lexigram.di.decorators import inject
@@ -88,6 +90,15 @@ class SetupController(AdminController):
         self._email_verification_service = email_verification_service
         self._rbac_config = rbac_config
 
+    def _render_setup_page(self, request: Request, **kwargs: Any) -> str:
+        """Render setup with every action and asset URL under this mount."""
+        return render_setup_page(
+            login_url=self._admin_path(request, "/admin/login"),
+            setup_url=self._admin_path(request, "/admin/setup"),
+            base_url=self._admin_path(request).rstrip("/"),
+            **kwargs,
+        )
+
     def _fresh_csrf(self, request: Request) -> str:
         """Generate a fresh session-scoped CSRF token for the setup form."""
         csrf_session_id = secrets.token_urlsafe(16)
@@ -116,21 +127,24 @@ class SetupController(AdminController):
             count = await self._user_store.get_admin_count()
         except (RuntimeError, ValueError, OSError) as e:
             logger.warning("setup.count_failed error=%s", e)
-            html = render_setup_page(
+            html = self._render_setup_page(
+                request,
                 error="Unable to verify setup status. Database may be unavailable.",
                 csrf_token=self._fresh_csrf(request),
                 setup_token_required=bool(required_token),
             )
             return HTMLResponse(content=html, status_code=503)
         if count > 0:
-            html = render_setup_page(
+            html = self._render_setup_page(
+                request,
                 locked=True,
                 error="Setup is already complete. Please log in with your existing account.",
             )
             return HTMLResponse(content=html, status_code=200)
 
         error = request.query_params.get("error", "")
-        html = render_setup_page(
+        html = self._render_setup_page(
+            request,
             error=error,
             csrf_token=self._fresh_csrf(request),
             setup_token_required=bool(required_token),
@@ -163,14 +177,16 @@ class SetupController(AdminController):
             count = await self._user_store.get_admin_count()
         except (RuntimeError, ValueError, OSError) as e:
             logger.warning("setup.count_failed error=%s", e)
-            html = render_setup_page(
+            html = self._render_setup_page(
+                request,
                 error="Unable to verify setup status. Database may be unavailable.",
                 csrf_token=self._fresh_csrf(request),
                 setup_token_required=bool(required_token),
             )
             return HTMLResponse(content=html, status_code=503)
         if count > 0:
-            html = render_setup_page(
+            html = self._render_setup_page(
+                request,
                 locked=True,
                 error="Setup is already complete. Please log in with your existing account.",
             )
@@ -193,7 +209,8 @@ class SetupController(AdminController):
             csrf_session_id, csrf_token
         ):
             logger.warning("setup.csrf_validation_failed", ip=ip)
-            html = render_setup_page(
+            html = self._render_setup_page(
+                request,
                 error="Invalid or expired security token. Please reload the page and try again.",
                 csrf_token=self._fresh_csrf(request),
                 setup_token_required=bool(required_token),
@@ -215,7 +232,8 @@ class SetupController(AdminController):
                 success=False,
                 metadata={"reason": "invalid_setup_token"},
             )
-            html = render_setup_page(
+            html = self._render_setup_page(
+                request,
                 error="Invalid setup token.",
                 csrf_token=self._fresh_csrf(request),
                 setup_token_required=bool(required_token),
@@ -224,7 +242,8 @@ class SetupController(AdminController):
 
         # ── Basic field presence ───────────────────────────────────────
         if not name or not email or not password:
-            html = render_setup_page(
+            html = self._render_setup_page(
+                request,
                 error="All fields are required.",
                 csrf_token=self._fresh_csrf(request),
                 setup_token_required=bool(required_token),
@@ -232,7 +251,8 @@ class SetupController(AdminController):
             return HTMLResponse(content=html, status_code=422)
 
         if password != confirm:
-            html = render_setup_page(
+            html = self._render_setup_page(
+                request,
                 error="Passwords do not match.",
                 csrf_token=self._fresh_csrf(request),
                 setup_token_required=bool(required_token),
@@ -245,7 +265,8 @@ class SetupController(AdminController):
             violation_lines = "\n".join(
                 f"• {v.message}" for v in policy_result.violations
             )
-            html = render_setup_page(
+            html = self._render_setup_page(
+                request,
                 error=violation_lines,
                 csrf_token=self._fresh_csrf(request),
                 setup_token_required=bool(required_token),
@@ -266,7 +287,8 @@ class SetupController(AdminController):
             # Treat any persistence failure (duplicate email, DB error, etc.)
             # as a non-fatal setup error that is shown back to the user.
             logger.error("setup.create_user_failed", email=email, error=str(exc))
-            html = render_setup_page(
+            html = self._render_setup_page(
+                request,
                 error=f"Failed to create account: {exc}",
                 csrf_token=self._fresh_csrf(request),
                 setup_token_required=bool(required_token),
@@ -276,7 +298,8 @@ class SetupController(AdminController):
         if created_result.is_err():
             # Another submission created the first admin between the
             # pre-flight count check and this insert — lock the wizard.
-            html = render_setup_page(
+            html = self._render_setup_page(
+                request,
                 locked=True,
                 error="Setup is already complete. Please log in with your existing account.",
             )
@@ -306,6 +329,7 @@ class SetupController(AdminController):
                 user_name=name,
                 base_url=str(request.base_url),
                 ip_address=ip,
+                admin_prefix=admin_prefix_from_request(request),
             )
             if send_result.is_ok():
                 notice = (
@@ -324,7 +348,8 @@ class SetupController(AdminController):
                     "before signing in."
                 )
 
-        url = "/admin/login?next=/admin/"
+        admin_home = self._admin_path(request)
+        url = f"{self._admin_path(request, '/admin/login')}?next={admin_home}"
         if notice:
             url += "&notice=" + quote_plus(notice)
         return RedirectResponse(url=url, status_code=302)

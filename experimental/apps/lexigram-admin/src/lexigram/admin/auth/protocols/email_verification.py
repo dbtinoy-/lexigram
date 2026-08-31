@@ -101,6 +101,7 @@ class AdminEmailVerificationServiceProtocol(Protocol):
         user_name: str,
         base_url: str = "",
         ip_address: str = "",
+        admin_prefix: str = "/admin",
     ) -> Result[None, AdminAuthError]:
         """Issue a verification link and email it to the user.
 
@@ -125,6 +126,7 @@ class AdminEmailVerificationServiceProtocol(Protocol):
         user_name: str,
         base_url: str = "",
         ip_address: str = "",
+        admin_prefix: str = "/admin",
     ) -> Result[None, AdminAuthError]:
         """Re-issue and re-send the verification email."""
         ...

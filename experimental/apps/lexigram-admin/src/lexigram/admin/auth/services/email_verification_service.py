@@ -102,6 +102,7 @@ class AdminEmailVerificationService:
         user_name: str,
         base_url: str = "",
         ip_address: str = "",
+        admin_prefix: str = "/admin",
     ) -> Result[None, AdminAuthError]:
         """Issue a verification link and email it to the user.
 
@@ -119,6 +120,7 @@ class AdminEmailVerificationService:
             base_url: Origin used to build the absolute verify link
                 (e.g. ``https://panel.example.com``).
             ip_address: Client IP for resend rate limiting.
+            admin_prefix: Configured admin mount, without the origin.
 
         Returns:
             ``Ok(None)`` when the link was issued and delivered.
@@ -144,7 +146,8 @@ class AdminEmailVerificationService:
         expires_at = datetime.now(UTC) + timedelta(hours=self._config.token_ttl_hours)
         await self._store.save_token(user_id, token_hash, expires_at)
 
-        verify_url = f"{base_url.rstrip('/')}/admin/verify-email/{token}"
+        prefix = f"/{admin_prefix.strip('/')}" if admin_prefix.strip("/") else "/admin"
+        verify_url = f"{base_url.rstrip('/')}{prefix}/verify-email/{token}"
 
         if self._notification_service is None:
             logger.error(
@@ -264,6 +267,7 @@ class AdminEmailVerificationService:
         user_name: str,
         base_url: str = "",
         ip_address: str = "",
+        admin_prefix: str = "/admin",
     ) -> Result[None, AdminAuthError]:
         """Re-issue and re-send the verification email.
 
@@ -273,12 +277,18 @@ class AdminEmailVerificationService:
             user_name: Display name for the email greeting.
             base_url: Origin used to build the absolute verify link.
             ip_address: Client IP for resend rate limiting.
+            admin_prefix: Configured admin mount, without the origin.
 
         Returns:
             ``Ok(None)`` on success or when the flow is disabled/verified.
         """
         return await self.send_verification(
-            user_id, email, user_name, base_url, ip_address
+            user_id,
+            email,
+            user_name,
+            base_url,
+            ip_address,
+            admin_prefix,
         )
 
     async def _is_rate_limited(self, ip_address: str) -> bool:

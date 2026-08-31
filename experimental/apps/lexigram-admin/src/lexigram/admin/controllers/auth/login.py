@@ -14,6 +14,7 @@ from lexigram.admin.controllers.auth.core import (
     logger,
 )
 from lexigram.admin.lib.template import render_login_page
+from lexigram.admin.resources.urls import admin_prefix_from_request
 from lexigram.contracts.web import get, post
 
 if TYPE_CHECKING:
@@ -203,6 +204,7 @@ class AuthLoginMixin(AuthCoreMixin):
                             user_name=auth_result.email,
                             base_url=str(request.base_url),
                             ip_address=ip,
+                            admin_prefix=admin_prefix_from_request(request),
                         )
                     )
                     if verify_result.is_err():

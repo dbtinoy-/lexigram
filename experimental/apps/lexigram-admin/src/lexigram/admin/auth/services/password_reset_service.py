@@ -96,6 +96,7 @@ class AdminPasswordResetService:
         ip_address: str,
         user_agent: str,
         base_url: str,
+        admin_prefix: str = "/admin",
     ) -> Result[None, AdminAuthError]:
         """Issue a reset token and notify the user.
 
@@ -109,6 +110,7 @@ class AdminPasswordResetService:
             ip_address: Client IP for audit and rate limiting.
             user_agent: Client user agent for audit.
             base_url: Request base URL used to build the reset link.
+            admin_prefix: Configured admin mount, without the origin.
 
         Returns:
             ``Ok(None)`` — always, regardless of whether the email exists —
@@ -137,7 +139,10 @@ class AdminPasswordResetService:
         await self._token_store.create(email, token_hash, expires_at)
 
         if self._notification_service is not None:
-            reset_url = f"{base_url.rstrip('/')}/admin/password-reset/{raw_token}"
+            prefix = (
+                f"/{admin_prefix.strip('/')}" if admin_prefix.strip("/") else "/admin"
+            )
+            reset_url = f"{base_url.rstrip('/')}{prefix}/password-reset/{raw_token}"
             result = await self._notification_service.notify_password_reset(
                 user_email=email,
                 user_name=getattr(user, "name", email),
