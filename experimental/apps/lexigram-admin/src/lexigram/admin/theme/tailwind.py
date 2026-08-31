@@ -12,6 +12,11 @@ DARK_BOOTSTRAP_SCRIPT: str = """<script>
   var stored = localStorage.getItem('darkMode');
   var dark = stored !== null ? stored === 'true' : window.matchMedia('(prefers-color-scheme: dark)').matches;
   if (dark) document.documentElement.classList.add('dark');
+  // Marks scripting as available before first paint so progressively
+  // enhanced controls can hide their no-JS fallbacks without a flash.
+  // Set here rather than on load: a control whose fallback disappears
+  // after the page is interactive would visibly shift.
+  document.documentElement.classList.add('js');
 })();
 </script>"""
 

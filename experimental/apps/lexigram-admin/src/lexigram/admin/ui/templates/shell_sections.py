@@ -175,43 +175,92 @@ def build_impersonation_banner(
     csrf_token: str,
     admin_prefix: str = "/admin",
 ) -> Any:
-    """Build the impersonation notice banner, or an empty string when inactive."""
-    return (
+    """Build the impersonation notice banner, or an empty string when inactive.
+
+    Acting as another user is the highest-consequence state in the admin:
+    every action taken is attributed to the impersonated account. The banner
+    is therefore a live region so the state is announced when it appears,
+    and it names the mechanism explicitly rather than relying on colour
+    alone to signal that this session is not the operator's own.
+    """
+    if not active:
+        return ""
+
+    return el(
+        "div",
         el(
             "div",
             el(
-                "span",
-                f"Impersonating {target_id}",
-                class_="font-medium",
+                "svg",
+                el(
+                    "path",
+                    **{
+                        "fill-rule": "evenodd",
+                        "clip-rule": "evenodd",
+                        "d": (
+                            "M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c."
+                            "75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646"
+                            "-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0z"
+                            "m-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                        ),
+                    },
+                ),
+                viewBox="0 0 20 20",
+                fill="currentColor",
+                class_="w-4 h-4 flex-shrink-0",
+                **{"aria-hidden": "true", "focusable": "false"},
             ),
             el(
-                "form",
+                "span",
+                el("span", "Impersonating", class_="font-semibold"),
+                " ",
+                # The identifier is the one piece of data that tells the
+                # operator whose account they are acting as, so it is set
+                # apart from the surrounding sentence rather than run
+                # together with it.
+                el("span", target_id, class_="font-mono"),
                 el(
-                    "input",
-                    type_="hidden",
-                    name="csrf_token",
-                    value=csrf_token or "",
+                    "span",
+                    ". Actions you take are recorded against this account.",
+                    class_="sr-only",
                 ),
-                el(
-                    "button",
-                    "Stop impersonating",
-                    type="submit",
-                    class_=(
-                        "ml-4 px-3 py-1 text-xs font-medium rounded-md "
-                        "bg-white/20 hover:bg-white/30 transition-colors"
-                    ),
+            ),
+            class_="flex items-center gap-2 min-w-0",
+        ),
+        el(
+            "form",
+            el(
+                "input",
+                type_="hidden",
+                name="csrf_token",
+                value=csrf_token or "",
+            ),
+            el(
+                "button",
+                "Stop impersonating",
+                type="submit",
+                class_=(
+                    "ml-4 px-3 py-1 text-xs font-medium rounded-md "
+                    "bg-white/20 hover:bg-white/30 transition-colors "
+                    "focus-visible:outline-none focus-visible:ring-2 "
+                    "focus-visible:ring-white focus-visible:ring-offset-2 "
+                    "focus-visible:ring-offset-amber-700"
                 ),
-                method="post",
-                action=f"{admin_prefix.rstrip('/') or '/admin'}/impersonate/stop",
-                class_="inline-flex items-center",
+                **{"aria-label": f"Stop impersonating {target_id}"},
             ),
-            class_=(
-                "flex items-center justify-between px-4 py-2 text-sm text-white "
-                "bg-amber-600 dark:bg-amber-700"
-            ),
-        )
-        if active
-        else ""
+            method="post",
+            action=f"{admin_prefix.rstrip('/') or '/admin'}/impersonate/stop",
+            class_="inline-flex items-center flex-shrink-0",
+        ),
+        # amber-700 rather than amber-600: white on amber-600 measures
+        # 3.19:1, below the 4.5:1 WCAG AA minimum for body text. amber-700
+        # is 5.02:1 and amber-800 is 7.09:1.
+        class_=(
+            "flex items-center justify-between gap-3 px-4 py-2 text-sm "
+            "text-white bg-amber-700 dark:bg-amber-800"
+        ),
+        role="status",
+        **{"aria-live": "polite", "data-impersonation-banner": "true"},
     )
 
 

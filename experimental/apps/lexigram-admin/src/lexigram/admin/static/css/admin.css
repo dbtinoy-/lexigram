@@ -1150,3 +1150,40 @@ body.modal-open {
   border: 1px solid var(--admin-border);
   box-shadow: var(--admin-shadow-sm);
 }
+
+/* Card-wide click target.
+
+   A cluster/infrastructure card shows a hover affordance across the whole
+   tile, so the whole tile must be clickable rather than just the heading
+   text. The link's ::after is stretched over the nearest positioned
+   ancestor (the card, which sets `position: relative`).
+
+   Tailwind's `after:content-['']` cannot be used here: the quotes are
+   HTML-escaped when the class attribute is rendered, so the emitted markup
+   no longer matches the generated CSS. */
+.stretched-link::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  pointer-events: auto;
+}
+
+/* Keep genuinely interactive children above the stretched overlay so a card
+   with sub-links does not swallow them. */
+.cluster-card > ul,
+.cluster-card > ul a {
+  position: relative;
+  z-index: 2;
+}
+
+/* Progressive enhancement: the tenant switcher auto-submits on change via
+   Alpine, but that is a script-dependent behaviour. The explicit submit
+   button ships in the markup and is hidden only when scripting is
+   confirmed available (`js` is set on <html> before first paint), so a
+   scripting failure degrades to an ordinary form submit rather than an
+   inert control that silently fails to switch tenant. */
+.js .tenant-switch-fallback {
+  display: none;
+}

@@ -83,6 +83,79 @@ def _render_live_widget_script(admin_prefix: str = "/admin") -> str:
     )
 
 
+def _render_widget_state_script() -> str:
+    """Per-widget load/error state, delegated from the document root.
+
+    HTMX does not swap non-2xx responses, so a widget whose endpoint fails
+    would otherwise keep showing its loading skeleton indefinitely — visually
+    identical to a slow request, with no way to tell that it had failed or to
+    retry it. This resolves each widget's busy state and renders a scoped
+    error with a retry button in the card that failed, leaving the rest of
+    the dashboard usable.
+
+    One delegated listener serves every widget rather than inline handlers
+    per card, so the cost does not grow with dashboard size.
+    """
+    return (
+        "<script>"
+        "(function(){"
+        "if(window.__lexigramWidgetState)return;"
+        "window.__lexigramWidgetState=true;"
+        "function body(elt){"
+        "return elt&&elt.closest?elt.closest('[data-widget-body]'):null;"
+        "}"
+        "document.body.addEventListener('htmx:beforeRequest',function(e){"
+        "var b=body(e.detail&&e.detail.elt);"
+        "if(b)b.setAttribute('aria-busy','true');"
+        "});"
+        "document.body.addEventListener('htmx:afterSwap',function(e){"
+        "var b=body(e.detail&&e.detail.target);"
+        "if(b)b.setAttribute('aria-busy','false');"
+        "});"
+        # Both a non-2xx response and a transport failure leave the widget
+        # unswapped; treat them the same from the user's point of view.
+        "function fail(e){"
+        "var b=body(e.detail&&e.detail.elt);"
+        "if(!b)return;"
+        "b.setAttribute('aria-busy','false');"
+        "var title=b.getAttribute('data-widget-title')||'This widget';"
+        "var xhr=e.detail&&e.detail.xhr;"
+        "var status=xhr&&xhr.status?xhr.status:0;"
+        "var reason=status===403?'You do not have access to this data.'"
+        ":status===404?'This widget is no longer available.'"
+        ":status>=500?'The server could not load this widget.'"
+        ":status===0?'Could not reach the server.'"
+        ":'This widget could not be loaded.';"
+        "while(b.firstChild)b.removeChild(b.firstChild);"
+        "var wrap=document.createElement('div');"
+        "wrap.className='py-3 text-sm';"
+        "wrap.setAttribute('role','alert');"
+        "var msg=document.createElement('p');"
+        "msg.className='text-muted-foreground';"
+        "msg.textContent=reason;"
+        "var btn=document.createElement('button');"
+        "btn.type='button';"
+        "btn.className='mt-2 inline-flex items-center rounded border "
+        "border-border px-2 py-1 text-xs font-medium text-foreground "
+        "hover:bg-muted focus-visible:outline-none focus-visible:ring-2 "
+        "focus-visible:ring-ring';"
+        "btn.textContent='Retry';"
+        "btn.setAttribute('aria-label','Retry loading '+title);"
+        "btn.addEventListener('click',function(){"
+        "if(window.htmx)window.htmx.trigger(b,'live-refresh');"
+        "});"
+        "wrap.appendChild(msg);"
+        "wrap.appendChild(btn);"
+        "b.appendChild(wrap);"
+        "}"
+        "document.body.addEventListener('htmx:responseError',fail);"
+        "document.body.addEventListener('htmx:sendError',fail);"
+        "document.body.addEventListener('htmx:timeout',fail);"
+        "})();"
+        "</script>"
+    )
+
+
 class WidgetRegistry(Registry[str, type[IWidget]]):
     """Registry for dashboard widget implementations.
 
@@ -167,6 +240,8 @@ class WidgetRegistry(Registry[str, type[IWidget]]):
                 )
             )
 
+        parts.append(_render_widget_state_script())
+
         if any(w.live_resource_types for w in contributor_widgets):
             parts.append(_render_live_widget_script(admin_prefix))
 
@@ -217,8 +292,11 @@ def _render_contributor_card(
     load_trigger = f"load delay:{widget_index * 350}ms"
     if refresh_trigger:
         load_trigger = f"{load_trigger}, {refresh_trigger}"
-    if is_live:
-        load_trigger = f"{load_trigger}, live-refresh"
+    # Every widget listens for live-refresh, not just SSE-driven ones: the
+    # retry button after a failure re-fires the request through this same
+    # trigger, and a widget that failed to load is exactly the one that
+    # needs to be retryable.
+    load_trigger = f"{load_trigger}, live-refresh"
 
     # Build the title bar with optional icon and config cog.
     icon_html = (
@@ -234,16 +312,30 @@ def _render_contributor_card(
     config_endpoint = _admin_endpoint(
         f"/admin/core/widgets/{widget_def.name}/config", admin_prefix
     )
+    # The control is revealed on hover, but hover is not the only way in:
+    # focus-within reveals it for keyboard users and it stays operable for
+    # screen readers, which an opacity-only rule would hide from sighted
+    # keyboard navigation without ever removing it from the tab order.
     cog = el(
         "button",
-        "⚙",
+        el("span", "⚙", **{"aria-hidden": "true"}),
+        el("span", f"Configure {widget_def.title} widget", class_="sr-only"),
         **{
             "hx-get": config_endpoint,
             "hx-target": "#slide-over-container",
             "hx-swap": "innerHTML",
             "hx-push-url": "false",
+            "aria-label": f"Configure {widget_def.title} widget",
+            "aria-haspopup": "dialog",
         },
-        class_="opacity-0 group-hover:opacity-100 transition-opacity ml-auto text-muted-foreground hover:text-muted-foreground text-sm cursor-pointer",
+        type="button",
+        class_=(
+            "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 "
+            "focus-visible:opacity-100 transition-opacity ml-auto rounded "
+            "text-muted-foreground hover:text-foreground text-sm cursor-pointer "
+            "focus-visible:outline-none focus-visible:ring-2 "
+            "focus-visible:ring-ring focus-visible:ring-offset-1"
+        ),
     )
     title_row = el(
         "div",
@@ -259,13 +351,21 @@ def _render_contributor_card(
     if widget_def.description:
         subtitle_parts.append(widget_def.description)
 
-    # Loading skeleton shown while HTMX request is in flight
+    # Loading skeleton shown while the HTMX request is in flight. The bars
+    # are decorative, so they are hidden from assistive tech and replaced by
+    # a single spoken "Loading" message rather than three anonymous boxes.
     skeleton = el(
         "div",
-        el("div", class_="h-4 bg-muted rounded w-3/4 mb-2"),
-        el("div", class_="h-4 bg-muted rounded w-1/2 mb-2"),
-        el("div", class_="h-4 bg-muted rounded w-5/6"),
-        class_="animate-pulse py-2",
+        el(
+            "div",
+            el("div", class_="h-4 bg-muted rounded w-3/4 mb-2"),
+            el("div", class_="h-4 bg-muted rounded w-1/2 mb-2"),
+            el("div", class_="h-4 bg-muted rounded w-5/6"),
+            class_="animate-pulse py-2 motion-reduce:animate-none",
+            **{"aria-hidden": "true"},
+        ),
+        el("span", f"Loading {widget_def.title}…", class_="sr-only"),
+        class_="widget-skeleton",
     )
 
     card_children: list[Any] = [
@@ -281,6 +381,10 @@ def _render_contributor_card(
             ),
         )
 
+    # HTMX does not swap non-2xx responses by default, so without this the
+    # skeleton would pulse forever on a failed widget and look like a hang
+    # rather than an error. Errors are surfaced in the card itself, next to
+    # the widget that failed, with a retry that re-fires the same request.
     body_kwargs: dict[str, Any] = {
         "class": "widget-body",
         "id": f"widget-{widget_def.name}-body",
@@ -289,6 +393,10 @@ def _render_contributor_card(
         ),
         "hx-trigger": load_trigger,
         "hx-swap": "innerHTML",
+        "aria-busy": "true",
+        "aria-live": "polite",
+        "data-widget-body": widget_def.name,
+        "data-widget-title": widget_def.title,
     }
     if is_live:
         body_kwargs["data-live-resources"] = ",".join(widget_def.live_resource_types)

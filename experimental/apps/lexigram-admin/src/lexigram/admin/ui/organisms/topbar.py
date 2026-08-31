@@ -124,18 +124,50 @@ class TenantSwitcher(Component):
             )
             for tenant_id, name in self.tenants
         ]
+        current_name = next(
+            (name for tid, name in self.tenants if tid == self.current_tenant_id),
+            None,
+        )
+        # Switching tenant changes which organisation's data every
+        # subsequent page edits, so the control must say what it does. An
+        # unlabelled select in the topbar is announced only as its selected
+        # value, which is indistinguishable from a language or theme picker.
         select = el(
             "select",
             *options,
+            id="admin-tenant-switcher",
             name="tenant_id",
             class_=(
                 "text-sm bg-transparent border border-border "
                 "rounded px-2 py-1 text-foreground "
                 "focus:outline-none focus:ring-2 focus:ring-ring cursor-pointer"
             ),
-            **{"x-on:change": "$el.form.submit()"},
+            **{
+                "x-on:change": "$el.form.submit()",
+                "aria-label": "Active tenant",
+                "aria-describedby": "admin-tenant-switcher-hint",
+            },
         )
-        children: list[Any] = [select]
+        children: list[Any] = [
+            el(
+                "label",
+                "Tenant",
+                for_="admin-tenant-switcher",
+                class_="sr-only",
+            ),
+            select,
+            el(
+                "span",
+                (
+                    f"Currently viewing {current_name}. "
+                    "Changing this switches the active tenant."
+                    if current_name
+                    else "Changing this switches the active tenant."
+                ),
+                id="admin-tenant-switcher-hint",
+                class_="sr-only",
+            ),
+        ]
         if self.csrf_token:
             children.append(
                 el(
@@ -145,12 +177,31 @@ class TenantSwitcher(Component):
                     value=self.csrf_token,
                 )
             )
+        # Auto-submit is a JS enhancement. Without this fallback a scripting
+        # failure leaves the select silently inert: it looks changed but the
+        # tenant never switches, so the operator believes they are working
+        # in a tenant they are not. The button is present by default and
+        # hidden by CSS only once scripting is confirmed available, so the
+        # no-JS path degrades to an ordinary form submit.
+        children.append(
+            el(
+                "button",
+                "Switch",
+                type="submit",
+                class_=(
+                    "tenant-switch-fallback ml-1 text-xs px-2 py-1 rounded "
+                    "border border-border text-foreground hover:bg-muted "
+                    "focus-visible:outline-none focus-visible:ring-2 "
+                    "focus-visible:ring-ring"
+                ),
+            )
+        )
         return el(
             "form",
             *children,
             method="POST",
             action=self.action_url,
-            class_="inline-block",
+            class_="inline-flex items-center",
         )
 
 
