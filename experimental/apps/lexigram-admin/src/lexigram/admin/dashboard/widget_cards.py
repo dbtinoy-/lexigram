@@ -47,9 +47,13 @@ def _render_live_widget_script(admin_prefix: str = "/admin") -> str:
     return (
         "<script>"
         "(function(){"
-        "if(window.__lexigramLiveWidgets)return;"
-        "window.__lexigramLiveWidgets=true;"
+        # Reuse a live connection, but treat a closed/errored one as absent so
+        # the stream is re-established after an SPA body swap. A plain boolean
+        # guard would leave every page after the first with no live updates.
+        "var existing=window.__lexigramLiveWidgets;"
+        "if(existing&&existing.readyState!==2)return;"
         f"var es=new EventSource('{prefix}/_sse/widgets');"
+        "window.__lexigramLiveWidgets=es;"
         "es.onmessage=function(ev){"
         "var data;"
         "try{data=JSON.parse(ev.data);}catch(e){return;}"
@@ -61,6 +65,19 @@ def _render_live_widget_script(admin_prefix: str = "/admin") -> str:
         "}"
         "});"
         "};"
+        # Drop the handle on error so the guard above can reconnect. The
+        # browser retries on its own; clearing the reference only matters
+        # once it gives up and the connection is permanently closed.
+        "es.onerror=function(){"
+        "if(es.readyState===2&&window.__lexigramLiveWidgets===es){"
+        "window.__lexigramLiveWidgets=null;"
+        "}"
+        "};"
+        # Close on unload so the stream does not hold a connection slot.
+        "window.addEventListener('pagehide',function(){"
+        "if(window.__lexigramLiveWidgets===es){window.__lexigramLiveWidgets=null;}"
+        "es.close();"
+        "});"
         "})();"
         "</script>"
     )

@@ -37,6 +37,23 @@ class StoreBase:
     async def set(self, key: str, value: Any, tenant_id: str | None = None) -> None:
         """Persist a value by key."""
 
+    async def set_many(
+        self, items: dict[str, Any], tenant_id: str | None = None
+    ) -> None:
+        """Persist several values as one unit of work.
+
+        The default implementation writes each key in turn and is therefore
+        **not** atomic — a mid-way failure leaves earlier keys committed.
+        Backends that can write transactionally must override this so a
+        failed multi-key save does not half-apply.
+
+        Args:
+            items: Mapping of key to already-validated value.
+            tenant_id: Optional tenant scope.
+        """
+        for key, value in items.items():
+            await self.set(key, value, tenant_id=tenant_id)
+
 
 class EnvStore(StoreBase):
     """Read-only store for environment variables."""
@@ -76,6 +93,12 @@ class MemoryStore(StoreBase):
     async def set(self, key: str, value: Any, tenant_id: str | None = None) -> None:
         """Persist a value to the in-memory store."""
         self._data[key] = value
+
+    async def set_many(
+        self, items: dict[str, Any], tenant_id: str | None = None
+    ) -> None:
+        """Apply every value at once so a partial write cannot be observed."""
+        self._data.update(items)
 
 
 class ConfigRegistry:
@@ -277,8 +300,15 @@ class ConfigRegistry:
 
         store = self._stores.get(store_name, self._stores["default"])
         nodes = spec.get_nodes()
+
+        # Validate the whole batch before writing any of it: a value that
+        # fails validation must not leave earlier keys already committed.
+        pending: dict[str, Any] = {}
         for key, value in values.items():
             if key in nodes and not nodes[key].readonly:
-                full_key = f"{namespace}.{key}"
-                validated = nodes[key].validate(value)
-                await store.set(full_key, validated, tenant_id=tenant_id)
+                pending[f"{namespace}.{key}"] = nodes[key].validate(value)
+
+        if not pending:
+            return
+
+        await store.set_many(pending, tenant_id=tenant_id)

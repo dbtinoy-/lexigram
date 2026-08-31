@@ -11,6 +11,14 @@ from lexigram.admin.controllers.settings import SettingsController
 from lexigram.admin.settings.panel.registry import ConfigRegistry
 
 
+async def _current_revision(
+    registry: ConfigRegistry, spec: type, store_name: str = "default"
+) -> str:
+    """Return the revision token a freshly rendered form would carry."""
+    values = await registry.get_values(spec.namespace, store_name)
+    return SettingsController._settings_revision(spec, values)
+
+
 def _mock_request(
     method: str = "GET",
     form_data: dict[str, str] | None = None,
@@ -70,7 +78,12 @@ class TestSaveSpecReadonlyEnforcement:
         )
 
         req = _mock_request(
-            method="POST", form_data={"locked": "hacked"}, user=_FakeUser()
+            method="POST",
+            form_data={
+                "locked": "hacked",
+                "settings_revision": await _current_revision(registry, _ReadonlySpec),
+            },
+            user=_FakeUser(),
         )
         req.path_params = {"namespace": "admin.readonly_post_test"}
         await controller.save_spec(req)
@@ -102,7 +115,14 @@ class TestSaveSpecSecretHandling:
         renderer = MagicMock()
         renderer.render_page = MagicMock(return_value=MagicMock(status_code=200))
         controller = SettingsController(renderer=renderer, registry=registry)
-        req = _mock_request(method="POST", form_data={"api_key": ""}, user=_FakeUser())
+        req = _mock_request(
+            method="POST",
+            form_data={
+                "api_key": "",
+                "settings_revision": await _current_revision(registry, _SecretSpec),
+            },
+            user=_FakeUser(),
+        )
         req.path_params = {"namespace": "admin.secret_test"}
         await controller.save_spec(req)
 
@@ -128,7 +148,12 @@ class TestSaveSpecSecretHandling:
         renderer.render_page = MagicMock(return_value=MagicMock(status_code=200))
         controller = SettingsController(renderer=renderer, registry=registry)
         req = _mock_request(
-            method="POST", form_data={"api_key": "sk-new"}, user=_FakeUser()
+            method="POST",
+            form_data={
+                "api_key": "sk-new",
+                "settings_revision": await _current_revision(registry, _SecretSpec2),
+            },
+            user=_FakeUser(),
         )
         req.path_params = {"namespace": "admin.secret_test2"}
         await controller.save_spec(req)
@@ -309,10 +334,13 @@ class TestSettingsFormDataAndValidation:
         req = _mock_request(user=_FakeUser())
         req.method = "POST"
         req.path_params = {"namespace": "admin.cache"}
+        from lexigram.admin.settings.panel import CacheSpec
+
         req.scope["admin_form_data"] = _MultiForm(
             ("enabled", "true"),
             ("enabled", "false"),
             ("default_ttl", "120"),
+            ("settings_revision", await _current_revision(registry, CacheSpec)),
         )
 
         await controller.save_spec(req)
@@ -326,9 +354,15 @@ class TestSettingsFormDataAndValidation:
         registry = ConfigRegistry.with_defaults()
         renderer = MagicMock()
         controller = SettingsController(renderer=renderer, registry=registry)
+        from lexigram.admin.settings.panel import CacheSpec
+
         req = _mock_request(
             method="POST",
-            form_data={"enabled": "true", "default_ttl": "-1"},
+            form_data={
+                "enabled": "true",
+                "default_ttl": "-1",
+                "settings_revision": await _current_revision(registry, CacheSpec),
+            },
             hx_request=True,
             user=_FakeUser(),
         )

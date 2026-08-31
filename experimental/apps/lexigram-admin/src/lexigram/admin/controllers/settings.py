@@ -6,8 +6,6 @@ the config panel UI and persists values to the DB-backed store.
 
 from __future__ import annotations
 
-import hashlib
-import hmac
 from typing import TYPE_CHECKING, Any
 
 from starlette.requests import Request
@@ -24,9 +22,13 @@ from lexigram.admin.settings.panel.layout import ConfigLayout
 from lexigram.admin.settings.panel.registry import ConfigRegistry
 from lexigram.admin.settings.panel.types import ConfigCategory
 from lexigram.admin.settings.panel.ui import ConfigDashboardUI
+from lexigram.admin.settings.revision import (
+    extract_submitted_revision,
+    revision_matches,
+    settings_revision,
+)
 from lexigram.contracts.web import get, post
 from lexigram.logging import get_logger
-from lexigram.serialization import dumps_str
 from lexigram.ui import el, render_to_string
 
 if TYPE_CHECKING:
@@ -220,19 +222,7 @@ class SettingsController(AdminController):
     @staticmethod
     def _settings_revision(spec: type[Any], values: dict[str, Any]) -> str:
         """Return a non-reversible revision token for the rendered settings."""
-        revision_values: list[tuple[str, Any]] = []
-        for key, node in sorted(spec.get_nodes().items()):
-            value = values.get(key)
-            # Include only whether a secret is present. Hashing its content
-            # would still create an unnecessary secret-derived identifier.
-            if isinstance(node, SecretNode):
-                value = "<set>" if value else "<unset>"
-            revision_values.append((key, value))
-        payload = dumps_str(
-            revision_values,
-            sort_keys=True,
-        ).encode("utf-8")
-        return hashlib.sha256(payload).hexdigest()
+        return settings_revision(spec, values)
 
     @staticmethod
     def _revision_matches(
@@ -240,11 +230,12 @@ class SettingsController(AdminController):
         spec: type[Any],
         values: dict[str, Any],
     ) -> bool:
-        """Compare a submitted revision without timing side channels."""
-        return not expected or hmac.compare_digest(
-            expected,
-            SettingsController._settings_revision(spec, values),
-        )
+        """Compare a submitted revision without timing side channels.
+
+        A missing token never matches: optimistic concurrency is mandatory on
+        writes, so omitting the field cannot be used to bypass the check.
+        """
+        return revision_matches(expected, spec, values)
 
     async def _audit(
         self,
@@ -449,15 +440,20 @@ class SettingsController(AdminController):
             namespace, self._store_name(spec), tenant_id=tenant_id
         )
 
-        submitted_revision = form.get("settings_revision")
-        if submitted_revision and not self._revision_matches(
-            str(submitted_revision), spec, existing_values
-        ):
+        # Optimistic concurrency is mandatory: a submission that omits the
+        # token is rejected exactly like a stale one, so dropping the field
+        # cannot bypass the check.
+        submitted_revision = extract_submitted_revision(form)
+        if not self._revision_matches(submitted_revision, spec, existing_values):
             await self._audit(
                 request,
                 success=False,
                 namespace=namespace,
-                reason="concurrent_update",
+                reason=(
+                    "concurrent_update"
+                    if submitted_revision
+                    else "missing_settings_revision"
+                ),
             )
             conflict_message = (
                 "These settings changed in another session. Review the current "

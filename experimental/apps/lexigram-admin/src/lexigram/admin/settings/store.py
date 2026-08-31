@@ -40,3 +40,21 @@ class TenantConfigStore(StoreBase):
     async def set(self, key: str, value: Any, tenant_id: str | None = None) -> None:
         """Persist a value by key."""
         await self._service.set(tenant_id or self._tenant, key, value)
+
+    async def set_many(
+        self, items: dict[str, Any], tenant_id: str | None = None
+    ) -> None:
+        """Persist several values atomically when the backend supports it.
+
+        Prefers :meth:`AdminSettingsService.set_many`, which wraps the writes
+        in a database transaction where one is available so a failure part-way
+        through rolls the whole batch back. Services predating that method
+        fall back to sequential writes, which are not atomic.
+        """
+        tenant = tenant_id or self._tenant
+        batch = getattr(self._service, "set_many", None)
+        if callable(batch):
+            await batch(tenant, items)
+            return
+        for key, value in items.items():
+            await self._service.set(tenant, key, value)

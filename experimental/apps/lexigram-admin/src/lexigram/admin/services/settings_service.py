@@ -102,12 +102,46 @@ class AdminSettingsDbProvider(TenantConfigProviderProtocol):
     async def set_config(self, tenant_id: str, key: str, value: Any) -> None:
         await self._ensure_table()
         await self._db.execute(
-            f"""INSERT INTO {_TABLE} (tenant_id, key, value)
-               VALUES (?, ?, ?)
-               ON CONFLICT (tenant_id, key)
-               DO UPDATE SET value = excluded.value, updated_at = {now_expr(self._db)}""",  # noqa: S608 — table name is module constant, now_expr yields fixed NOW()/CURRENT_TIMESTAMP
+            self._upsert_sql(),
             [tenant_id, key, dumps_str(value)],
         )
+
+    def _upsert_sql(self) -> str:
+        """Return the single-row upsert statement for the configured dialect."""
+        return f"""INSERT INTO {_TABLE} (tenant_id, key, value)
+               VALUES (?, ?, ?)
+               ON CONFLICT (tenant_id, key)
+               DO UPDATE SET value = excluded.value, updated_at = {now_expr(self._db)}"""  # noqa: S608 — table name is module constant, now_expr yields fixed NOW()/CURRENT_TIMESTAMP
+
+    async def set_config_many(self, tenant_id: str, items: dict[str, Any]) -> None:
+        """Upsert several config rows inside one transaction when supported.
+
+        Falls back to sequential writes only when the database provider does
+        not expose a usable ``transaction()`` context manager.
+
+        Args:
+            tenant_id: Tenant scope for every row.
+            items: Mapping of fully-qualified key to value.
+        """
+        if not items:
+            return
+        await self._ensure_table()
+        sql = self._upsert_sql()
+        params = [[tenant_id, key, dumps_str(value)] for key, value in items.items()]
+
+        transaction = getattr(self._db, "transaction", None)
+        if callable(transaction):
+            async with transaction():
+                for row in params:
+                    await self._db.execute(sql, row)
+            return
+
+        logger.warning(
+            "Database provider exposes no transaction(); "
+            "settings batch write is not atomic"
+        )
+        for row in params:
+            await self._db.execute(sql, row)
 
 
 class AdminSettingsService:
@@ -149,15 +183,33 @@ class AdminSettingsService:
             merged.update(tenant_data)
         return merged
 
-    async def set_all(self, tenant_id: str, settings: dict[str, Any]) -> None:
-        if self._provider is None:
-            self._memory.setdefault(tenant_id, {}).update(
-                {k: v for k, v in settings.items() if k in DEFAULT_SETTINGS}
-            )
+    async def set_many(self, tenant_id: str, items: dict[str, Any]) -> None:
+        """Persist several named settings as one unit of work.
+
+        Args:
+            tenant_id: Tenant scope.
+            items: Mapping of setting name to value.
+        """
+        if not items:
             return
-        for name, value in settings.items():
-            if name in DEFAULT_SETTINGS:
-                await self._provider.set_config(tenant_id, self._key(name), value)
+        if self._provider is None:
+            self._memory.setdefault(tenant_id, {}).update(items)
+            return
+
+        keyed = {self._key(name): value for name, value in items.items()}
+        batch = getattr(self._provider, "set_config_many", None)
+        if callable(batch):
+            await batch(tenant_id, keyed)
+            return
+        for key, value in keyed.items():
+            await self._provider.set_config(tenant_id, key, value)
+
+    async def set_all(self, tenant_id: str, settings: dict[str, Any]) -> None:
+        known = {k: v for k, v in settings.items() if k in DEFAULT_SETTINGS}
+        if self._provider is None:
+            self._memory.setdefault(tenant_id, {}).update(known)
+            return
+        await self.set_many(tenant_id, known)
 
     async def get_widget_prefs(self, tenant_id: str, user_id: str) -> dict[str, Any]:
         key = f"widgets.{user_id}"
