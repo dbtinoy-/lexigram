@@ -367,9 +367,10 @@ Known environment-limited checks from the audit baseline:
       coverage. Browser-level verification remains separately tracked below.
 - [ ] Add effective-value/runtime applicability/read-versus-edit metadata and
       audited non-secret history where the underlying contracts support it.
-- [ ] Resolve the current GitHub Actions startup failure: runs through
-      `cd9f99a` fail all jobs before any workflow step executes, so the quality,
-      integration, and coverage gates have not produced actionable results yet.
+- [ ] Resolve the current GitHub Actions startup failure: the latest run
+      `33359248227` still fails all jobs before any workflow step executes (the
+      test matrix is skipped), so the quality, integration, and coverage gates
+      have not produced actionable results yet.
 - [ ] Run browser/live-preview QA for desktop/mobile shell behavior, dark mode,
       dashboard reorder feedback, HTMX swaps, and resource/form flows.
 - [x] Resolve the local auth-provider test dependency by provisioning
