@@ -20,7 +20,10 @@ from lexigram.admin.resources.data_access import get_resource_data_source
 from lexigram.admin.resources.form_coercion import (
     _validation_errors_to_dict,
 )
-from lexigram.admin.resources.form_guard import PROTECTED_FORM_FIELDS
+from lexigram.admin.resources.form_guard import (
+    PROTECTED_FORM_FIELDS,
+    sanitize_form_data,
+)
 from lexigram.admin.resources.urls import (
     admin_prefix_from_request,
     admin_url,
@@ -191,6 +194,71 @@ async def _authorize_form_fields(
         if not await _field_edit_allowed(request, resource, field_name):
             return HTMLResponse("Forbidden", status_code=403)
     return None
+
+
+def _sanitize_submitted_form_data(
+    resource: Any,
+    data: dict[str, Any],
+) -> dict[str, Any]:
+    """Apply the resource's mass-assignment boundary before custom hooks.
+
+    ``before_validate`` is intentionally overridable. Sanitizing the raw
+    request first prevents a custom validation implementation from accidentally
+    reintroducing client-supplied IDs, tenant keys, hidden fields, or unknown
+    model fields before its output reaches ``before_create``/``before_update``.
+    Hook-added server values remain supported because only the untrusted input
+    is sanitized here.
+    """
+    protected_fields = set(
+        getattr(resource, "protected_form_fields", PROTECTED_FORM_FIELDS)
+    )
+    protected_fields.update(getattr(resource, "form_exclude_fields", ()) or ())
+    protected_fields.update(getattr(resource, "readonly_fields", ()) or ())
+
+    declared_fields = {
+        str(getattr(field, "name", ""))
+        for field in (getattr(resource, "fields", ()) or ())
+        if getattr(field, "name", None)
+    }
+    form_getter = getattr(resource, "get_form_class", None)
+    form_class = None
+    try:
+        form_class = form_getter() if callable(form_getter) else getattr(resource, "form_class", None)
+    except Exception:  # noqa: BLE001 — validation/rendering will report config errors
+        form_class = None
+    declared_form_fields = getattr(form_class, "_declared_fields", None)
+    if isinstance(declared_form_fields, dict):
+        declared_fields.update(str(name) for name in declared_form_fields)
+        protected_fields.update(
+            str(name)
+            for name, field in declared_form_fields.items()
+            if not getattr(field, "visible_in_form", True)
+            or getattr(field, "readonly", False)
+        )
+    protected_fields.update(
+        str(getattr(field, "name", ""))
+        for field in (getattr(resource, "fields", ()) or ())
+        if getattr(field, "name", None)
+        and (
+            not getattr(field, "visible_in_form", True)
+            or getattr(field, "readonly", False)
+        )
+    )
+
+    allow_extra_fields = bool(getattr(resource, "form_allow_extra_fields", False))
+    cleaned = sanitize_form_data(
+        data,
+        model=getattr(resource, "model", None),
+        protected_fields=protected_fields,
+        allow_extra_fields=allow_extra_fields,
+    )
+    if getattr(resource, "model", None) is None and declared_fields and not allow_extra_fields:
+        cleaned = {
+            key: value
+            for key, value in cleaned.items()
+            if key in declared_fields and key not in protected_fields
+        }
+    return cleaned
 
 
 def _normalize_validation_result(
@@ -430,6 +498,7 @@ class CreateActionHandler:
 
         data_source = get_resource_data_source(resource)
         if isinstance(resource, Resource) and data_source is not None:
+            data = _sanitize_submitted_form_data(resource, data)
             field_error = await _authorize_form_fields(request, resource, data)
             if field_error is not None:
                 return field_error
@@ -538,6 +607,7 @@ class EditActionHandler:
 
         data_source = get_resource_data_source(resource)
         if isinstance(resource, Resource) and data_source is not None:
+            data = _sanitize_submitted_form_data(resource, data)
             try:
                 record = await data_source.find_one(item_id)
             except Exception as exc:  # noqa: BLE001 — storage failures are not form errors

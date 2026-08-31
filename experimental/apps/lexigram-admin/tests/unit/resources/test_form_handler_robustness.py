@@ -127,6 +127,41 @@ async def test_untyped_declared_resource_rejects_unknown_form_fields() -> None:
     assert source.created == [{"name": "Ada"}]
 
 
+async def test_custom_validation_hook_cannot_bypass_form_sanitization() -> None:
+    class Model(BaseModel):
+        name: str
+
+    class ItemResource(Resource):
+        name = "items"
+        model = Model
+
+        async def before_validate(self, data: dict[str, Any]) -> dict[str, Any]:
+            # A custom hook must receive the sanitized request, not be able to
+            # reintroduce framework-managed or unknown client fields.
+            return data
+
+    source = _DataSource()
+    resource = ItemResource()
+    resource._data_source = source
+    renderer = _Renderer()
+
+    response = await CreateActionHandler(renderer)._handle_create(
+        _request(
+            "POST",
+            {
+                "name": "Ada",
+                "id": "forged",
+                "tenant_id": "other-tenant",
+                "secret": "forged",
+            },
+        ),
+        resource,
+    )
+
+    assert response.status_code == 302
+    assert source.created == [{"name": "Ada"}]
+
+
 async def test_create_hook_value_error_rerenders_as_form_level_error() -> None:
     class Model(BaseModel):
         name: str
