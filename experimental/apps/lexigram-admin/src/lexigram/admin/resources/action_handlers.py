@@ -1287,8 +1287,8 @@ class DeleteActionHandler:
                 response.headers["HX-Redirect"] = url
                 return response
 
-            return HTMLResponse(
-                f'<html><head><meta http-equiv="refresh" content="0;url={url}"></head><body></body></html>'
-            )
+            from starlette.responses import RedirectResponse
+
+            return RedirectResponse(url=url, status_code=302)
 
         return HTMLResponse("Delete not supported", status_code=400)

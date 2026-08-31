@@ -106,7 +106,8 @@ class TestDeleteActionHandlerGuard:
         request = self._make_request(item_id="2")
         response = await self.handler.handle(request, self.resource)
 
-        assert response.status_code == 200
+        assert response.status_code == 302
+        assert response.headers["location"] == "/admin/items"
         assert self.resource._data_source.deleted == ["2"]
 
 
