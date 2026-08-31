@@ -34,7 +34,13 @@ def register_transport_services(
     from lexigram.contracts.web.sse import ReactiveSseBridgeProtocol
     from lexigram.web.transport.reactive import sse_from_stream
 
-    container.singleton(ReactiveSseBridgeProtocol, sse_from_stream)
+    # The DI resolver calls factories with the resolver as an optional
+    # argument. Return the bridge callable itself so resolution does not
+    # consume a resolver object as the bridge's stream and cache a response.
+    container.singleton(
+        ReactiveSseBridgeProtocol,
+        factory=lambda: sse_from_stream,
+    )
 
     from lexigram.primitives.context import Context, create_default_context
 

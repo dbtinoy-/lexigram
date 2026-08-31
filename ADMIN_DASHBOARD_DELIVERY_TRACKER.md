@@ -66,6 +66,12 @@ workspace packages.
 - Earlier complete focused admin regression: passed (`160 passed, 2 warnings`).
 - Permissions E2E: passed (`7 passed, 2 warnings`).
 - Full UI suite: passed (`1341 passed, 78 skipped`).
+- Reactive SSE bridge DI regression suite: passed (`11 passed, 1 warning`); the
+  bridge now resolves to the callable factory instead of an eagerly-created
+  response.
+- Local preview smoke test: `/admin/`, `/admin/search`, and
+  `/admin/infrastructure` return `200`; `/admin/_sse/widgets` returns a live
+  `text/event-stream` response.
 
 Known environment-limited checks from the audit baseline:
 
