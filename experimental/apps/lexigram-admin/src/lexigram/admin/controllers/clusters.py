@@ -30,7 +30,13 @@ logger = get_logger(__name__)
 
 __all__ = ["ClusterCenterController"]
 
-_AREA_DESCRIPTIONS: dict[str, str] = {
+#: Fallback copy for the framework's own infrastructure areas, which predate
+#: ``NavigationContribution.description``. Contributors should set that field
+#: instead: this map is keyed on the lowercased label, so it cannot tell a
+#: "Web" area in the infrastructure cluster from one in any other cluster,
+#: and it silently goes stale as areas are added. It is consulted only when
+#: the contribution carries no description of its own.
+_LEGACY_INFRASTRUCTURE_DESCRIPTIONS: dict[str, str] = {
     "web": "HTTP routing, middleware, and web API endpoints.",
     "sql": "Database connections, queries, and schema management.",
     "cache": "Cache backends, keys, and TTL policies.",
@@ -38,8 +44,6 @@ _AREA_DESCRIPTIONS: dict[str, str] = {
     "queue": "Background job queue and worker management.",
     "tasks": "Scheduled tasks, cron jobs, and automation.",
 }
-
-_DEFAULT_AREA_DESCRIPTION = "Manage and monitor this infrastructure area."
 
 
 class ClusterCenterController(AdminController):
@@ -178,9 +182,7 @@ class ClusterCenterController(AdminController):
             )
             for child in item.children
         ]
-        description = _AREA_DESCRIPTIONS.get(
-            str(item.label).lower(), _DEFAULT_AREA_DESCRIPTION
-        )
+        description = self._describe(item)
         # The heading link is stretched over the whole card so the entire
         # tile is a click target, which is what the card-wide hover style
         # already implied. Child links sit above it in the stacking order so
@@ -233,6 +235,26 @@ class ClusterCenterController(AdminController):
                 "focus-within:border-primary/50 transition-colors"
             ),
         )
+
+    def _describe(self, item: Any) -> str:
+        """Return the description shown under an area's heading.
+
+        Prefers the description the contributing package supplied, since only
+        it knows what its area does. Falls back to the framework's legacy map
+        for the built-in infrastructure areas, and finally to copy that names
+        this cluster rather than asserting "infrastructure" on, say, a Content
+        landing page.
+        """
+        contributed = str(getattr(item, "description", "") or "").strip()
+        if contributed:
+            return contributed
+
+        if self._cluster.name == "infrastructure":
+            legacy = _LEGACY_INFRASTRUCTURE_DESCRIPTIONS.get(str(item.label).lower())
+            if legacy:
+                return legacy
+
+        return f"Manage and monitor this {self._cluster.label.lower()} area."
 
     def _render_icon(self, icon_name: str) -> Any:
         try:

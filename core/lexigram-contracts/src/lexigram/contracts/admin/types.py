@@ -81,6 +81,13 @@ class NavigationContribution:
     order: int = 100
     permission: str | None = None
     badge_endpoint: str | None = None
+    #: Short sentence describing what this area is for, shown on cluster
+    #: landing pages. Defaults to empty so existing contributors are
+    #: unaffected; the renderer falls back to generic copy when unset.
+    #: Owned by the contributing package because only it knows what its
+    #: own area does -- the alternative is the admin maintaining a
+    #: hardcoded lookup that silently goes stale as areas are added.
+    description: str = ""
     children: tuple[NavigationContribution, ...] = field(default_factory=tuple)
 
 

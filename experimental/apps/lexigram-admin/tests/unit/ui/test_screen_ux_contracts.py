@@ -283,3 +283,102 @@ class TestContrastMath:
 
     def test_amber_800_passes_aa_for_body_text(self) -> None:
         assert _contrast("ffffff", "92400e") >= 4.5
+
+
+class TestDashboardEmptyState:
+    """An empty dashboard must not misattribute its own cause."""
+
+    @pytest.fixture
+    def html(self) -> str:
+        return WidgetRegistry().render_contributor_widgets([])
+
+    def test_is_announced(self, html: str) -> None:
+        assert 'role="status"' in html
+
+    def test_does_not_assert_nothing_is_configured(self, html: str) -> None:
+        """The list is also emptied by the assembler's permission filter, so
+        claiming "none configured" sends the operator to inspect config when
+        the real cause may be their own access."""
+        assert "No contributor widgets configured" not in html
+
+    def test_names_both_possible_causes(self, html: str) -> None:
+        assert "contributor registers" in html
+        assert "permission" in html
+
+    def test_decorative_icon_is_hidden(self, html: str) -> None:
+        assert 'aria-hidden="true"' in html
+
+
+class TestAreaDescriptions:
+    """Area copy belongs to the contributing package, not a hardcoded map."""
+
+    def _controller(self, cluster: object) -> ClusterCenterController:
+        instance = ClusterCenterController.__new__(ClusterCenterController)
+        instance._cluster = cluster
+        return instance
+
+    def _area(self, label: str, description: str = "") -> types.SimpleNamespace:
+        return types.SimpleNamespace(
+            label=label,
+            icon="globe",
+            url="/x",
+            children=[],
+            description=description,
+        )
+
+    def test_contributed_description_wins(self) -> None:
+        controller = self._controller(INFRASTRUCTURE_CLUSTER)
+
+        assert (
+            controller._describe(self._area("Web", "Package-owned copy."))
+            == "Package-owned copy."
+        )
+
+    def test_falls_back_to_legacy_map_for_builtin_areas(self) -> None:
+        """Built-in areas predate the contract field; they must not regress."""
+        controller = self._controller(INFRASTRUCTURE_CLUSTER)
+
+        assert "HTTP routing" in controller._describe(self._area("Web"))
+
+    def test_tolerates_contributions_without_the_field(self) -> None:
+        """The field is new; older contributions simply lack the attribute."""
+        controller = self._controller(INFRASTRUCTURE_CLUSTER)
+        legacy = types.SimpleNamespace(
+            label="Web", icon="globe", url="/x", children=[]
+        )
+
+        assert "HTTP routing" in controller._describe(legacy)
+
+    def test_blank_description_is_treated_as_unset(self) -> None:
+        controller = self._controller(INFRASTRUCTURE_CLUSTER)
+
+        assert "HTTP routing" in controller._describe(self._area("Web", "   "))
+
+    def test_generic_fallback_names_the_actual_cluster(self) -> None:
+        """The controller is generic; asserting "infrastructure" on a Content
+        landing page is simply false."""
+        controller = self._controller(
+            types.SimpleNamespace(
+                name="content", label="Content", group="content"
+            )
+        )
+
+        assert controller._describe(self._area("Widgets")) == (
+            "Manage and monitor this content area."
+        )
+
+    def test_legacy_map_does_not_leak_across_clusters(self) -> None:
+        """The map is keyed on label alone, so a "Web" area in another
+        cluster would otherwise inherit infrastructure copy."""
+        controller = self._controller(
+            types.SimpleNamespace(
+                name="content", label="Content", group="content"
+            )
+        )
+
+        assert "HTTP routing" not in controller._describe(self._area("Web"))
+
+    def test_contract_exposes_the_field(self) -> None:
+        from lexigram.contracts.admin.types import NavigationContribution
+
+        assert NavigationContribution(label="A", url="/a").description == ""

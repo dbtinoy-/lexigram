@@ -211,19 +211,41 @@ class WidgetRegistry(Registry[str, type[IWidget]]):
             Concatenated HTML string for all widget cards.
         """
         if not contributor_widgets:
+            # An empty dashboard has two indistinguishable causes at this
+            # layer: no contributor registered a widget, or every widget was
+            # removed by the permission filter in the assembler. Asserting
+            # "none configured" would be actively wrong in the second case
+            # and would send the operator to inspect configuration when the
+            # real answer is their own access. The copy therefore names both
+            # possibilities instead of guessing.
             return render_to_string(
                 el(
                     "div",
                     el(
                         "div",
-                        class_="text-muted-foreground text-lg mb-1",
+                        "📊",
+                        class_="text-4xl mb-3",
+                        **{"aria-hidden": "true"},
+                    ),
+                    el(
+                        "h3",
+                        "No widgets to show",
+                        class_="text-base font-semibold text-foreground",
                     ),
                     el(
                         "p",
-                        "No contributor widgets configured.",
-                        class_="text-sm text-muted-foreground",
+                        (
+                            "Widgets appear here once a contributor registers "
+                            "them. If you expected to see something, your "
+                            "account may not have permission to view it."
+                        ),
+                        class_=("text-sm text-muted-foreground mt-2 max-w-md mx-auto"),
                     ),
-                    class_="widget-empty-state bg-muted border border-border rounded-lg p-6 text-center",
+                    class_=(
+                        "widget-empty-state bg-muted border border-border "
+                        "rounded-lg p-8 text-center"
+                    ),
+                    role="status",
                 )
             )
 
