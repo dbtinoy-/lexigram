@@ -80,6 +80,18 @@ def test_builder_form_includes_csrf_for_native_and_htmx_rendering() -> None:
     assert 'name="csrf_token"' in form.render_htmx("/submit")
 
 
+def test_builder_form_renders_form_level_errors_for_both_clients() -> None:
+    class Model(BaseModel):
+        name: str
+
+    form = FormBuilder(Model).build()
+    form.errors = {"__root__": ["The record could not be saved."]}
+
+    assert 'role="alert"' in form.render_html("/submit")
+    assert 'role="alert"' in form.render_htmx("/submit")
+    assert "The record could not be saved." in form.render_html("/submit")
+
+
 def test_builder_form_clears_previous_errors_when_reused() -> None:
     class Model(BaseModel):
         name: str

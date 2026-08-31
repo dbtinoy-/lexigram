@@ -242,6 +242,23 @@ class Form(Generic[T]):
             ),
         )
 
+    def _global_errors(self) -> Any:
+        """Render non-field validation errors for native and HTMX submits."""
+        messages = [
+            message
+            for name, field_errors in self.errors.items()
+            if name in {"__all__", "__root__"}
+            for message in field_errors
+        ]
+        if not messages:
+            return ""
+        return el(
+            "div",
+            *[el("p", message) for message in messages],
+            role="alert",
+            class_="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive",
+        )
+
     def _csrf_input(self) -> Any:
         """Render a CSRF input when a request/token was attached to the form."""
         token = self.csrf_token
@@ -276,6 +293,7 @@ class Form(Generic[T]):
             el(
                 "form",
                 self._csrf_input(),
+                self._global_errors(),
                 self._fields_container_el(field_els),
                 el("div", *btns, class_="form-actions", style="margin-top:1.5rem"),
                 action=action,
@@ -304,6 +322,7 @@ class Form(Generic[T]):
             el(
                 "form",
                 self._csrf_input(),
+                self._global_errors(),
                 el("div", "Saving...", id=spinner_id, class_="htmx-indicator"),
                 self._fields_container_el(field_els),
                 el("div", *btns, class_="form-actions", style="margin-top:1.5rem"),
