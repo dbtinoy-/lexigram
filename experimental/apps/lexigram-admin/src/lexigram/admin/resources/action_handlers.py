@@ -72,9 +72,22 @@ def _request_permission_service(request: StarletteRequest) -> Any | None:
         return service
     try:
         request_state = request.state
-    except (AttributeError, KeyError):
+    except (AttributeError, KeyError, RuntimeError):
         request_state = None
-    state_service = getattr(request_state, "permission_service", None)
+    # Only read explicitly stored state values. Some minimal test requests use
+    # MagicMock for ``state``; fabricated attributes must not become an
+    # authorization service and accidentally turn masking on for every field.
+    if isinstance(request_state, dict):
+        state_service = request_state.get("permission_service")
+    else:
+        storage = getattr(request_state, "_state", None)
+        if isinstance(storage, dict):
+            state_service = storage.get("permission_service")
+        else:
+            try:
+                state_service = vars(request_state).get("permission_service")
+            except TypeError:
+                state_service = None
     if state_service is not None and callable(
         getattr(state_service, "can_edit_field", None)
     ):
@@ -134,6 +147,29 @@ async def _field_view_allowed(
     return await _field_permission_allowed(
         request, resource, field_name, "can_view_field"
     )
+
+
+async def _field_masked(
+    request: StarletteRequest,
+    resource: Any,
+    field_name: str,
+) -> bool:
+    """Return whether the field value must be hidden from this request."""
+    service = _request_permission_service(request)
+    checker = getattr(service, "should_mask_field", None)
+    if service is None or not callable(checker):
+        return False
+    user = getattr(getattr(request, "state", None), "user", None)
+    try:
+        result = checker(user, resource.name or "", field_name)
+        return bool(await _maybe_await(result))
+    except Exception:  # noqa: BLE001 — masking fails closed
+        logger.exception(
+            "admin.resource_field_mask_check_failed",
+            resource=getattr(resource, "name", None),
+            field=field_name,
+        )
+        return True
 
 
 async def _authorize_form_fields(
@@ -749,6 +785,8 @@ class InlineMutationActionHandler:
             return None, "This record cannot be updated"
         if not await _field_view_allowed(request, resource, field_name):
             return None, "Forbidden"
+        if await _field_masked(request, resource, field_name):
+            return None, "Forbidden"
         if not await _field_edit_allowed(request, resource, field_name):
             return None, "Forbidden"
 
@@ -775,16 +813,15 @@ class InlineMutationActionHandler:
         item_id: str,
         field_name: str,
         value: Any,
+        request: StarletteRequest | None = None,
     ) -> str:
         from html import escape
 
         safe_id = escape(str(item_id), quote=True)
         safe_field = escape(field_name, quote=True)
         display = escape(str(value if value is not None else ""))
-        url = (
-            f"{self._config.prefix.rstrip('/')}/{self.resource_name}/"
-            f"{safe_id}/field/{safe_field}"
-        )
+        prefix = admin_prefix_from_request(request) if request is not None else self._config.prefix
+        url = f"{prefix.rstrip('/')}/{self.resource_name}/{safe_id}/field/{safe_field}"
         return (
             '<td class="py-2 text-sm text-foreground">'
             f'<span class="inline-edit-value">{display}</span>'
@@ -831,6 +868,8 @@ class InlineMutationActionHandler:
             if not self._inline_field_editable(resource, field_name, field_schema):
                 return HTMLResponse("This field is read-only", status_code=403)
             if not await _field_view_allowed(request, resource, field_name):
+                return HTMLResponse("Forbidden", status_code=403)
+            if await _field_masked(request, resource, field_name):
                 return HTMLResponse("Forbidden", status_code=403)
             if not await _field_edit_allowed(request, resource, field_name):
                 return HTMLResponse("Forbidden", status_code=403)
@@ -892,7 +931,12 @@ class InlineMutationActionHandler:
         item_dict = self._as_dict(updated)
         if request.scope.get("admin_action") == "field":
             return HTMLResponse(
-                self._render_display_cell(item_id, field_name, item_dict.get(field_name))
+                self._render_display_cell(
+                    item_id,
+                    field_name,
+                    item_dict.get(field_name),
+                    request=request,
+                )
             )
 
         from html import escape
@@ -901,7 +945,12 @@ class InlineMutationActionHandler:
             "<tr>"
             f'<td class="py-2 pr-4 align-top text-sm font-medium text-muted-foreground">'
             f"<strong>{escape(field_name)}</strong></td>"
-            + self._render_display_cell(item_id, field_name, item_dict.get(field_name))
+            + self._render_display_cell(
+                item_id,
+                field_name,
+                item_dict.get(field_name),
+                request=request,
+            )
             + "</tr>"
         )
 

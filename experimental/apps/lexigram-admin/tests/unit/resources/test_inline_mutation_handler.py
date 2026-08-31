@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -178,6 +179,48 @@ async def test_inline_mutation_honors_explicit_field_visibility(
     )
 
     response = await handler.handle(request, restricted)
+
+    assert response.status_code == 403
+    assert resource._data_source.records["1"]["name"] == "Before"  # type: ignore[attr-defined]
+
+
+@pytest.mark.asyncio
+async def test_inline_mutation_rejects_masked_fields(
+    resource: _InlineResource,
+) -> None:
+    class MaskedPermissions:
+        async def can_view_field(
+            self, user: Any, resource_name: str, field_name: str
+        ) -> bool:
+            return True
+
+        async def can_edit_field(
+            self, user: Any, resource_name: str, field_name: str
+        ) -> bool:
+            return True
+
+        async def should_mask_field(
+            self, user: Any, resource_name: str, field_name: str
+        ) -> bool:
+            return field_name == "name"
+
+    handler = InlineMutationActionHandler(
+        AdminConfig(title="Admin", prefix="/admin"),
+        "items",
+    )
+    request = _request(
+        "POST",
+        "/admin/items/1/field/name",
+        action="field",
+        path_params={"id": "1", "field": "name"},
+        form=FormData([("name", "After")]),
+    )
+    request.scope["state"] = {"user": object()}
+    request.scope["app"] = SimpleNamespace(
+        state=SimpleNamespace(permission_service=MaskedPermissions())
+    )
+
+    response = await handler.handle(request, resource)
 
     assert response.status_code == 403
     assert resource._data_source.records["1"]["name"] == "Before"  # type: ignore[attr-defined]
