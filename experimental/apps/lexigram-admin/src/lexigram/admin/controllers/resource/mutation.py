@@ -160,10 +160,13 @@ class ResourceMutationMixin:
         from lexigram.admin.resources.form_guard import sanitize_form_data
 
         model = cls._model_type()
+        protected_fields = set(cls._PROTECTED_FIELDS)
+        protected_fields.update(getattr(cls, "form_exclude_fields", ()) or ())
+        protected_fields.update(getattr(cls, "readonly_fields", ()) or ())
         cleaned = sanitize_form_data(
             data,
             model=model,
-            protected_fields=cls._PROTECTED_FIELDS,
+            protected_fields=protected_fields,
         )
         if model is None:
             return cleaned

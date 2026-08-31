@@ -8,6 +8,7 @@ relation dropdowns silently stayed empty).
 from __future__ import annotations
 
 from types import SimpleNamespace
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
@@ -154,6 +155,50 @@ class TestBelongsToOptions:
         query = captured[0]
         assert getattr(query, "per_page", None) == 200
         assert getattr(query, "sort_by", None) == "id"
+
+    @pytest.mark.asyncio
+    async def test_hidden_relation_field_does_not_load_related_records(self) -> None:
+        calls = 0
+
+        class _SpyDataSource(_RelatedDataSource):
+            async def find_many(self, query: object) -> object:
+                nonlocal calls
+                calls += 1
+                return await super().find_many(query)
+
+        class _HiddenRelatedResource(Resource):
+            name = "owners"
+            _data_source = _SpyDataSource([_OwnerRecord(1, "Ada")])
+
+        class _FieldPermissions:
+            async def can_view_field(
+                self, user: Any, resource: str, field: str
+            ) -> bool:
+                return field != "owner_id"
+
+            async def can_edit_field(
+                self, user: Any, resource: str, field: str
+            ) -> bool:
+                return True
+
+            async def can_view(self, user: Any, resource: str) -> bool:
+                return True
+
+        request = _create_request()
+        request.state.user = object()
+        renderer = FormRenderer(
+            AdminConfig(prefix="/admin", title="Test"),
+            "widgets",
+            AdminRenderer(),
+            permission_service=_FieldPermissions(),
+            resources={"owners": _HiddenRelatedResource()},
+        )
+
+        response = await renderer.render_create(request, _OwnerResource)
+        html = response.body.decode("utf-8", "replace")
+
+        assert 'name="owner_id"' not in html
+        assert calls == 0
 
     @pytest.mark.asyncio
     async def test_form_submits_via_htmx_to_slide_over(self) -> None:

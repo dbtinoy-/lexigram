@@ -498,7 +498,11 @@ class FormRenderer(WizardRendererMixin):
             await self._apply_declared_field_permissions(
                 form, user, permission_service
             )
-            await self._populate_form_relation_options(form)
+            await self._populate_form_relation_options(
+                form,
+                user=user,
+                permission_service=permission_service,
+            )
             if errors:
                 form.errors.update(errors)
             return form
@@ -517,7 +521,11 @@ class FormRenderer(WizardRendererMixin):
 
                 # Populate relation field options from the related resource's
                 # registered instance/class (IDataSource protocol: find_many).
-                await self._populate_relation_options(schema)
+                await self._populate_relation_options(
+                    schema,
+                    user=user,
+                    permission_service=permission_service,
+                )
 
                 # Build field components from schema
                 rendered_fields: dict[str, Any] = {}
@@ -687,7 +695,70 @@ class FormRenderer(WizardRendererMixin):
             return None
         return str(record_id), str(label if label is not None else record_id)
 
-    async def _populate_form_relation_options(self, form: Any) -> None:
+    async def _relation_options_allowed(
+        self,
+        related: Any,
+        field_name: str,
+        user: Any,
+        permission_service: Any | None,
+    ) -> bool:
+        """Check access before embedding related records in a form.
+
+        Relation options are rendered into the parent form HTML, so protecting
+        only the separate ``relation-options`` endpoint is insufficient. A
+        caller must be able to view the parent field and the related resource
+        before its records are loaded here.
+        """
+        if user is None:
+            return True
+        if permission_service is not None and not await self._field_permission(
+            permission_service,
+            "can_view_field",
+            user,
+            field_name,
+        ):
+            return False
+        if isinstance(related, type):
+            return False
+        checker = getattr(related, "has_view_permission", None)
+        if callable(checker):
+            try:
+                result = checker(user)
+                if inspect.isawaitable(result):
+                    result = await result
+                if not result:
+                    return False
+            except Exception:  # noqa: BLE001 — relation access must fail closed
+                logger.exception(
+                    "admin.related_resource_permission_check_failed",
+                    resource=self.resource_name,
+                    field=field_name,
+                )
+                return False
+        if permission_service is not None:
+            checker = getattr(permission_service, "can_view", None)
+            if callable(checker):
+                try:
+                    result = checker(user, getattr(related, "name", ""))
+                    if inspect.isawaitable(result):
+                        result = await result
+                    if not result:
+                        return False
+                except Exception:  # noqa: BLE001 — relation access must fail closed
+                    logger.exception(
+                        "admin.related_permission_service_check_failed",
+                        resource=self.resource_name,
+                        field=field_name,
+                    )
+                    return False
+        return True
+
+    async def _populate_form_relation_options(
+        self,
+        form: Any,
+        user: Any = None,
+        permission_service: Any | None = None,
+    ) -> None:
         """Populate relation options on a declared FormBase instance.
 
         FormBase keeps an instance-local ``fields`` mapping, so replacing a
@@ -704,7 +775,13 @@ class FormRenderer(WizardRendererMixin):
         for name, field_schema in list(fields.items()):
             if not isinstance(field_schema, (BelongsToField, HasManyField)):
                 continue
+            if not getattr(field_schema, "visible_in_form", True):
+                continue
             related = self._resolve_related_resource(field_schema.resource)
+            if not await self._relation_options_allowed(
+                related, name, user, permission_service
+            ):
+                continue
             ds = get_resource_data_source(related)
             if ds is None or not hasattr(ds, "find_many"):
                 continue
@@ -730,7 +807,12 @@ class FormRenderer(WizardRendererMixin):
                     name,
                 )
 
-    async def _populate_relation_options(self, schema: Any) -> None:
+    async def _populate_relation_options(
+        self,
+        schema: Any,
+        user: Any = None,
+        permission_service: Any | None = None,
+    ) -> None:
         """Load selectable options for relation fields into the form schema.
 
         Handles belongs-to and has-many relation fields; the related resource
@@ -745,7 +827,13 @@ class FormRenderer(WizardRendererMixin):
         for idx, field_schema in enumerate(schema.fields):
             if not isinstance(field_schema, (BelongsToField, HasManyField)):
                 continue
+            if not getattr(field_schema, "visible_in_form", True):
+                continue
             related = self._resolve_related_resource(field_schema.resource)
+            if not await self._relation_options_allowed(
+                related, field_schema.name, user, permission_service
+            ):
+                continue
             if related is None:
                 continue
             ds = get_resource_data_source(related)
