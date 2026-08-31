@@ -92,8 +92,7 @@ class ColumnVisibilitySwitcher(Component):
                 attrs.update(
                     {
                         "hx_get": (
-                            f"{self.resource_prefix.rstrip('/')}/"
-                            f"?hide_cols={name}"
+                            f"{self.resource_prefix.rstrip('/')}/?hide_cols={name}"
                         ),
                         "hx_target": Zones.TABLE.selector,
                         "hx_swap": "outerHTML",

@@ -116,9 +116,7 @@ class Form(Generic[T]):
                 value is None or (isinstance(value, str) and not value.strip())
             ):
                 errors.setdefault(name, []).append("This field is required.")
-            elif name in data or (
-                isinstance(field, BooleanField) and field.required
-            ):
+            elif name in data or (isinstance(field, BooleanField) and field.required):
                 # An unchecked required checkbox is intentionally omitted by
                 # HTML, but BooleanField.from_form(None) turns that omission
                 # into the valid value False. Keep it in the model payload.

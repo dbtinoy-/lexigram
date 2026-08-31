@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import inspect
-import json
 from typing import Any
 
 from starlette.requests import Request as StarletteRequest
@@ -11,6 +10,7 @@ from lexigram.admin.config import AdminConfig
 from lexigram.admin.exceptions import PermissionDeniedError
 from lexigram.di.decorators import inject
 from lexigram.logging import get_logger
+from lexigram.serialization import dumps_str
 
 logger = get_logger(__name__)
 
@@ -127,7 +127,9 @@ class UserPermissionsActionHandler:
             else:
                 raw_value = form.get("permissions", [])
                 raw_permissions = (
-                    raw_value if isinstance(raw_value, (list, tuple, set)) else [raw_value]
+                    raw_value
+                    if isinstance(raw_value, (list, tuple, set))
+                    else [raw_value]
                 )
             permissions = sorted(
                 {str(v).strip() for v in raw_permissions if str(v).strip()}
@@ -383,7 +385,9 @@ class BulkActionHandler:
         """
         for declared in getattr(resource, "bulk_actions", None) or []:
             declared_name = (
-                declared if isinstance(declared, str) else getattr(declared, "name", None)
+                declared
+                if isinstance(declared, str)
+                else getattr(declared, "name", None)
             )
             if str(declared_name or "") == action_name:
                 return declared
@@ -424,9 +428,7 @@ class BulkActionHandler:
         # string configuration useful without treating an arbitrary request
         # value as a callable name.
         callback = None
-        if isinstance(declared, str):
-            callback = getattr(resource, f"bulk_{action_name}", None)
-        elif declared is None:
+        if isinstance(declared, str) or declared is None:
             callback = getattr(resource, f"bulk_{action_name}", None)
 
         if callable(callback):
@@ -567,7 +569,9 @@ class BulkActionHandler:
         }.get(execution_action)
         if required_capability:
             capabilities = getattr(getattr(request, "state", None), "permissions", None)
-            if isinstance(capabilities, dict) and not capabilities.get(required_capability, False):
+            if isinstance(capabilities, dict) and not capabilities.get(
+                required_capability, False
+            ):
                 return HTMLResponse("Forbidden", status_code=403)
             hook_name = (
                 "has_delete_permission"
@@ -601,8 +605,12 @@ class BulkActionHandler:
                     try:
                         item = await data_source.find_one(item_id)
                     except Exception as exc:  # noqa: BLE001 — storage details stay private
-                        logger.exception("admin.bulk_delete_lookup_failed", error=str(exc))
-                        return HTMLResponse("Unable to load selected records", status_code=503)
+                        logger.exception(
+                            "admin.bulk_delete_lookup_failed", error=str(exc)
+                        )
+                        return HTMLResponse(
+                            "Unable to load selected records", status_code=503
+                        )
                     if item is None:
                         continue
                     try:
@@ -625,7 +633,13 @@ class BulkActionHandler:
         # A declared action object owns custom execution. String declarations
         # without a server hook intentionally remain non-executable, except
         # for the legacy delete_selected alias handled below.
-        if execution_action not in {"delete", "purge", "restore", "export", "export_csv"}:
+        if execution_action not in {
+            "delete",
+            "purge",
+            "restore",
+            "export",
+            "export_csv",
+        }:
             custom = await self._execute_declared_action(
                 request,
                 resource,
@@ -647,7 +661,7 @@ class BulkActionHandler:
                 )
             if is_htmx:
                 response = HTMLResponse(render_to_string(el("p", message)))
-                response.headers["HX-Trigger"] = json.dumps(
+                response.headers["HX-Trigger"] = dumps_str(
                     {
                         "refresh-list": True,
                         "show-toast": {"message": message, "type": "success"},
@@ -675,7 +689,9 @@ class BulkActionHandler:
                 return HTMLResponse("Delete is unavailable", status_code=503)
             except Exception as exc:  # noqa: BLE001 — storage/hook details stay private
                 logger.exception("admin.bulk_delete_failed", error=str(exc))
-                return HTMLResponse("Unable to delete selected records", status_code=503)
+                return HTMLResponse(
+                    "Unable to delete selected records", status_code=503
+                )
             message = f"Deleted {count} item(s)"
         elif execution_action == "purge":
             try:
@@ -720,20 +736,21 @@ class BulkActionHandler:
             from lexigram.admin.services.export.sanitize import sanitize_cell_value
 
             records = [
-                {
-                    key: sanitize_cell_value(value)
-                    for key, value in record.items()
-                }
+                {key: sanitize_cell_value(value) for key, value in record.items()}
                 for record in records
             ]
             output = StringIO()
             if fieldnames:
-                writer = csv.DictWriter(output, fieldnames=fieldnames, extrasaction="ignore")
+                writer = csv.DictWriter(
+                    output, fieldnames=fieldnames, extrasaction="ignore"
+                )
                 writer.writeheader()
                 writer.writerows(records)
             filename = f"{resource.name or 'records'}-export.csv"
             response = HTMLResponse(output.getvalue(), media_type="text/csv")
-            response.headers["Content-Disposition"] = f'attachment; filename="{filename}"'
+            response.headers["Content-Disposition"] = (
+                f'attachment; filename="{filename}"'
+            )
             if is_htmx:
                 # An HTMX swap must not put CSV bytes into the table. A
                 # non-HTMX submission downloads normally; callers using HTMX
@@ -747,8 +764,12 @@ class BulkActionHandler:
                     try:
                         item = await data_source.find_one(item_id)
                     except Exception as exc:  # noqa: BLE001 — storage details stay private
-                        logger.exception("admin.bulk_restore_lookup_failed", error=str(exc))
-                        return HTMLResponse("Unable to load selected records", status_code=503)
+                        logger.exception(
+                            "admin.bulk_restore_lookup_failed", error=str(exc)
+                        )
+                        return HTMLResponse(
+                            "Unable to load selected records", status_code=503
+                        )
                     if item is None:
                         continue
                     try:
@@ -777,7 +798,9 @@ class BulkActionHandler:
                 return HTMLResponse("Restore is unavailable", status_code=503)
             except Exception as exc:  # noqa: BLE001 — storage/hook details stay private
                 logger.exception("admin.bulk_restore_failed", error=str(exc))
-                return HTMLResponse("Unable to restore selected records", status_code=503)
+                return HTMLResponse(
+                    "Unable to restore selected records", status_code=503
+                )
             message = f"Restored {count} item(s)"
         else:
             return HTMLResponse(
@@ -787,7 +810,7 @@ class BulkActionHandler:
 
         if is_htmx:
             response = HTMLResponse(render_to_string(el("p", message)))
-            response.headers["HX-Trigger"] = json.dumps(
+            response.headers["HX-Trigger"] = dumps_str(
                 {
                     "refresh-list": True,
                     "show-toast": {"message": message, "type": "success"},
@@ -917,7 +940,11 @@ class ResourceHandler:
                 "bulk-purge-confirm": "has_delete_permission",
                 "bulk-restore-confirm": "has_change_permission",
             }.get(self.action)
-            checker = getattr(resource, permission_method, None) if permission_method else None
+            checker = (
+                getattr(resource, permission_method, None)
+                if permission_method
+                else None
+            )
             if callable(checker):
                 user = getattr(request.state, "user", None)
                 try:

@@ -117,9 +117,7 @@ async def _field_permission_allowed(
     except (AttributeError, KeyError):
         user = None
     try:
-        allowed = await _maybe_await(
-            checker(user, resource.name or "", field_name)
-        )
+        allowed = await _maybe_await(checker(user, resource.name or "", field_name))
     except Exception:  # noqa: BLE001 — authorization must fail closed
         logger.exception(
             "admin.resource_field_permission_check_failed",
@@ -223,7 +221,11 @@ def _sanitize_submitted_form_data(
     form_getter = getattr(resource, "get_form_class", None)
     form_class = None
     try:
-        form_class = form_getter() if callable(form_getter) else getattr(resource, "form_class", None)
+        form_class = (
+            form_getter()
+            if callable(form_getter)
+            else getattr(resource, "form_class", None)
+        )
     except Exception:  # noqa: BLE001 — validation/rendering will report config errors
         form_class = None
     declared_form_fields = getattr(form_class, "_declared_fields", None)
@@ -252,7 +254,11 @@ def _sanitize_submitted_form_data(
         protected_fields=protected_fields,
         allow_extra_fields=allow_extra_fields,
     )
-    if getattr(resource, "model", None) is None and declared_fields and not allow_extra_fields:
+    if (
+        getattr(resource, "model", None) is None
+        and declared_fields
+        and not allow_extra_fields
+    ):
         cleaned = {
             key: value
             for key, value in cleaned.items()
@@ -379,11 +385,11 @@ def _mutation_redirect(
     from starlette.responses import RedirectResponse
 
     if request.headers.get("HX-Request") == "true":
-        import json
+        from lexigram.serialization import dumps_str
 
         response = HTMLResponse("")
         response.headers["HX-Redirect"] = url
-        response.headers["HX-Trigger"] = json.dumps(
+        response.headers["HX-Trigger"] = dumps_str(
             {"show-toast": {"message": message, "type": "success"}}
         )
         return response
@@ -795,7 +801,9 @@ class InlineMutationActionHandler:
         return data_source, await data_source.find_one(item_id)
 
     @staticmethod
-    def _inline_field_editable(resource: Any, field_name: str, field_schema: Any) -> bool:
+    def _inline_field_editable(
+        resource: Any, field_name: str, field_schema: Any
+    ) -> bool:
         """Return whether a field is allowed in the inline-write contract."""
         protected = set(
             getattr(resource, "protected_form_fields", PROTECTED_FORM_FIELDS)
@@ -886,7 +894,9 @@ class InlineMutationActionHandler:
             except (NameError, TypeError, ValueError):
                 return None, "Invalid value"
             except Exception:  # noqa: BLE001 — a malformed model must not leak
-                logger.exception("admin.inline_field_validation_failed", field=field_name)
+                logger.exception(
+                    "admin.inline_field_validation_failed", field=field_name
+                )
                 return None, "Unable to validate field"
         else:
             # Untyped declarative resources still have field-level coercion and
@@ -908,7 +918,9 @@ class InlineMutationActionHandler:
             except (AttributeError, TypeError, ValueError):
                 return None, "Invalid value"
             except Exception:  # noqa: BLE001 — custom field validators are untrusted
-                logger.exception("admin.inline_field_validation_failed", field=field_name)
+                logger.exception(
+                    "admin.inline_field_validation_failed", field=field_name
+                )
                 return None, "Unable to validate field"
         return value, None
 
@@ -959,7 +971,9 @@ class InlineMutationActionHandler:
             if changed is None:
                 changed = requested_change
             if not isinstance(changed, Mapping):
-                logger.error("admin.inline_before_update_invalid_result", field=field_name)
+                logger.error(
+                    "admin.inline_before_update_invalid_result", field=field_name
+                )
                 return None, "Unable to update record"
             # Hooks are trusted server code, but keep inline updates scoped to
             # the requested field to preserve the endpoint's narrow contract.
@@ -999,7 +1013,11 @@ class InlineMutationActionHandler:
         safe_id = escape(str(item_id), quote=True)
         safe_field = escape(field_name, quote=True)
         display = escape(str(value if value is not None else ""))
-        prefix = admin_prefix_from_request(request) if request is not None else self._config.prefix
+        prefix = (
+            admin_prefix_from_request(request)
+            if request is not None
+            else self._config.prefix
+        )
         url = f"{prefix.rstrip('/')}/{self.resource_name}/{safe_id}/field/{safe_field}"
         return (
             '<td class="py-2 text-sm text-foreground">'
@@ -1018,9 +1036,9 @@ class InlineMutationActionHandler:
             return HTMLResponse("Not found", status_code=404)
 
         if request.method == "GET":
-            if self.can_handle(request.scope.get("admin_action", "")) and request.scope.get(
-                "admin_action"
-            ) in {"inline", "inline-edit"}:
+            if self.can_handle(
+                request.scope.get("admin_action", "")
+            ) and request.scope.get("admin_action") in {"inline", "inline-edit"}:
                 from lexigram.admin.engine.renderer import AdminRenderer
                 from lexigram.admin.resources.detail_renderer import DetailRenderer
 
@@ -1129,9 +1147,12 @@ class InlineMutationActionHandler:
         if error:
             if error == "Not found":
                 status = 404
-            elif error in {"This field is read-only", "This record cannot be updated"} or error == "Forbidden":
+            elif (
+                error in {"This field is read-only", "This record cannot be updated"}
+                or error == "Forbidden"
+            ):
                 status = 403
-            elif error == "Inline editing is not available" or error == "Unable to load record":
+            elif error in {"Inline editing is not available", "Unable to load record"}:
                 status = 503
             else:
                 status = 422
@@ -1382,7 +1403,8 @@ class RelationOptionsActionHandler:
                 service = None
         return (
             service
-            if service is not None and callable(getattr(service, "can_view_field", None))
+            if service is not None
+            and callable(getattr(service, "can_view_field", None))
             else None
         )
 
@@ -1403,7 +1425,9 @@ class RelationOptionsActionHandler:
             return False
         try:
             allowed = service.can_view_field(user, source, field)
-            return bool(await allowed) if inspect.isawaitable(allowed) else bool(allowed)
+            return (
+                bool(await allowed) if inspect.isawaitable(allowed) else bool(allowed)
+            )
         except Exception:  # noqa: BLE001 — lookup authorization fails closed
             logger.exception(
                 "admin.relation_options_permission_check_failed",

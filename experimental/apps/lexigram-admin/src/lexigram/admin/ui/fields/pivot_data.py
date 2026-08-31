@@ -4,12 +4,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import html as _html
-import json
 from typing import Any
 
 from lexigram.admin.schema.base import SchemaField
 from lexigram.admin.schema.exceptions import FieldError
 from lexigram.result import Ok, Result
+from lexigram.serialization import dumps_str
 from lexigram.ui import Element, raw
 
 
@@ -137,7 +137,7 @@ class PivotTable:
     ) -> str:
         """Render pivot controls using the configured admin mount prefix."""
         rel_name = "pivot"
-        prefix = (admin_prefix.rstrip("/") or "/admin")
+        prefix = admin_prefix.rstrip("/") or "/admin"
         safe_resource = _html.escape(str(resource_name), quote=True)
         safe_parent = _html.escape(str(parent_id), quote=True)
         csrf_attr = ""
@@ -145,7 +145,7 @@ class PivotTable:
             csrf_attr = (
                 ' hx-headers="'
                 + _html.escape(
-                    json.dumps({"X-CSRF-Token": str(csrf_token)}),
+                    dumps_str({"X-CSRF-Token": str(csrf_token)}),
                     quote=True,
                 )
                 + '"'
@@ -179,9 +179,7 @@ class PivotTable:
                            hx-trigger="change" hx-swap="none"{csrf_attr} />
                 </td>"""
 
-            detach_url = (
-                f"{prefix}/{safe_resource}/{safe_parent}/relations/{rel_name}/{related_id}"
-            )
+            detach_url = f"{prefix}/{safe_resource}/{safe_parent}/relations/{rel_name}/{related_id}"
             rows_html += f"""<tr>
                 <td class="px-4 py-2 text-sm font-medium text-foreground">{label}</td>
                 {pivot_cells}

@@ -170,9 +170,7 @@ async def test_permissions_submit_sorts_and_deduplicates() -> None:
     async with _client() as client:
         await client.post(
             "/admin/users/u1/permissions",
-            data={
-                "permissions": ["users.view", "roles.list", "users.view"]
-            },
+            data={"permissions": ["users.view", "roles.list", "users.view"]},
         )
         store = _current_store()
         assert store.user.permissions == ["roles.list", "users.view"]

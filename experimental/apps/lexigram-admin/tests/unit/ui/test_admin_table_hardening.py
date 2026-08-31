@@ -8,8 +8,8 @@ from typing import Any
 import pytest
 
 from lexigram.admin.actions.base import BulkAction
-from lexigram.admin.actions.types import ActionContext
 from lexigram.admin.actions.standard import DeleteAction, DeleteBulkAction, EditAction
+from lexigram.admin.actions.types import ActionContext
 from lexigram.admin.resources.config import TableConfiguration
 from lexigram.admin.resources.list_columns import get_bulk_actions
 from lexigram.admin.resources.list_query import ListDataFetcher
@@ -102,9 +102,7 @@ def test_list_renderer_maps_request_permissions_to_table_capabilities():
     renderer = object.__new__(ListRenderer)
     renderer.resource_name = "users"
     request = SimpleNamespace(
-        state=SimpleNamespace(
-            permissions=_Permissions({"users.list", "users.edit"})
-        )
+        state=SimpleNamespace(permissions=_Permissions({"users.list", "users.edit"}))
     )
 
     assert renderer._permissions_for_request(request) == {
@@ -121,9 +119,7 @@ async def test_list_masks_fields_before_table_rendering():
         def get_schema(self, resource: str) -> Any:
             return SimpleNamespace(fields={"secret": object()})
 
-        async def should_mask_field(
-            self, user: Any, resource: str, field: str
-        ) -> bool:
+        async def should_mask_field(self, user: Any, resource: str, field: str) -> bool:
             return field == "secret"
 
     renderer = object.__new__(ListRenderer)
@@ -238,9 +234,9 @@ def test_generic_bulk_action_posts_to_canonical_route_with_selected_ids():
 
     rendered = str(html)
     assert 'hx-post="/admin/users/bulk"' in rendered
-    assert 'hx-vals=' in rendered
-    assert 'hx-include=' in rendered
-    assert 'hx-params=' not in rendered
+    assert "hx-vals=" in rendered
+    assert "hx-include=" in rendered
+    assert "hx-params=" not in rendered
 
 
 def test_bulk_csv_action_uses_native_download_submission():

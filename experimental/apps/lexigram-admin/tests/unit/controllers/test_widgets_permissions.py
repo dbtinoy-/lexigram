@@ -18,8 +18,10 @@ from lexigram.contracts.admin.types import (
 from lexigram.contracts.admin.widget_content import MessageContent
 from lexigram.contracts.core.health import HealthStatus
 from lexigram.result import Ok
-
-from tests.unit.controllers.widgets_test_support import _request_for, _user_with_permissions
+from tests.unit.controllers.widgets_test_support import (
+    _request_for,
+    _user_with_permissions,
+)
 
 
 class TestWidgetControllerPermissionGate:
@@ -457,9 +459,7 @@ class TestWidgetControllerHealthPermissionGate:
         controller, contributor = self._make_controller(health_def)
 
         response = await controller.render_health_check(
-            request=_request_for(
-                _user_with_permissions("governance.read")
-            ),
+            request=_request_for(_user_with_permissions("governance.read")),
             contributor_id="governance",
             check_name="billing",
         )

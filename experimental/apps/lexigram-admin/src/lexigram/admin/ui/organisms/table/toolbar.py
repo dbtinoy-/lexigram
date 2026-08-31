@@ -75,9 +75,7 @@ class TableToolbar(Component):
                     action,
                     resource_name=self.config.resource_name,
                     resource_prefix=self.config.resource_prefix,
-                    form_display_mode=getattr(
-                        self.config, "form_display_mode", None
-                    ),
+                    form_display_mode=getattr(self.config, "form_display_mode", None),
                 )
                 if node:
                     header_buttons.append(node)
@@ -130,7 +128,9 @@ class TableToolbar(Component):
                 # carrying the checked row IDs and CSRF field.
                 action_name = str(getattr(action, "name", ""))
                 if action_name in {"export", "export_csv"}:
-                    export_url = f"{(self.config.resource_prefix or '').rstrip('/')}/bulk"
+                    export_url = (
+                        f"{(self.config.resource_prefix or '').rstrip('/')}/bulk"
+                    )
                     _label = getattr(action, "label", None) or action_name
                     _icon_value = getattr(action, "icon", None)
                     _icon = (

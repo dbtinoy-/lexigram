@@ -283,9 +283,7 @@ class FormSchemaGenerator:
                     help_text=help_text,
                     required=required,
                     default=default,
-                    resource=self._related_resource_name(
-                        args[0].__name__.lower()
-                    ),
+                    resource=self._related_resource_name(args[0].__name__.lower()),
                 )
             if args[0] is str:
                 return MultiSelectField(

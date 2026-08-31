@@ -119,9 +119,7 @@ def _check_route_group(config: RouteGroupConfig) -> list[str]:
 def _check_entity(config: EntityConfig) -> list[str]:
     errors: list[str] = []
     if not is_snake_case_identifier(config.name):
-        errors.append(
-            f"entity.name must be snake_case identifier, got {config.name!r}"
-        )
+        errors.append(f"entity.name must be snake_case identifier, got {config.name!r}")
     for field_name, ftype in _parse_field_spec(config.fields):
         if ftype not in FIELD_TYPES:
             errors.append(
@@ -170,9 +168,7 @@ def _check_feature_flag(config: FeatureFlagConfig) -> list[str]:
 def _check_auth(config: AuthConfig) -> list[str]:
     errors: list[str] = []
     if not is_snake_case_identifier(config.name):
-        errors.append(
-            f"auth.name must be snake_case identifier, got {config.name!r}"
-        )
+        errors.append(f"auth.name must be snake_case identifier, got {config.name!r}")
     if config.provider not in AUTH_PROVIDERS:
         errors.append(
             f"auth.provider must be one of {sorted(AUTH_PROVIDERS)}, "
@@ -184,9 +180,7 @@ def _check_auth(config: AuthConfig) -> list[str]:
 def _check_role(config: RoleConfig) -> list[str]:
     errors: list[str] = []
     if not is_snake_case_identifier(config.name):
-        errors.append(
-            f"role.name must be snake_case identifier, got {config.name!r}"
-        )
+        errors.append(f"role.name must be snake_case identifier, got {config.name!r}")
     if config.inherits and not is_snake_case_identifier(config.inherits):
         errors.append(
             f"role.inherits must be snake_case identifier, got {config.inherits!r}"
@@ -278,9 +272,7 @@ def check_edge(source_kind: str, target_kind: str) -> list[str]:
     Returns a list of error strings (empty means valid).
     """
     if (source_kind, target_kind) not in ALLOWED_EDGES:
-        return [
-            f"Edge ({source_kind!r}, {target_kind!r}) is not in ALLOWED_EDGES"
-        ]
+        return [f"Edge ({source_kind!r}, {target_kind!r}) is not in ALLOWED_EDGES"]
     return []
 
 

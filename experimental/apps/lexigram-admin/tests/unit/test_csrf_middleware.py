@@ -175,7 +175,9 @@ class TestAdminCsrfBypassPaths:
         assert status == 200
 
     def test_static_prefix_collision_is_not_bypassed(self) -> None:
-        mw = AdminCsrfMiddleware(lambda scope, receive, send: None, _make_csrf_service())
+        mw = AdminCsrfMiddleware(
+            lambda _scope, _receive, _send: None, _make_csrf_service()
+        )
 
         assert mw._is_bypass_path("/admin/static/app.js") is True
         assert mw._is_bypass_path("/admin/staticized") is False
@@ -400,7 +402,9 @@ class TestAdminCsrfViolationAudit:
             await send({"type": "http.response.start", "status": 200, "headers": []})
             await send({"type": "http.response.body", "body": b"ok"})
 
-        mw = AdminCsrfMiddleware(inner_app, _make_csrf_service(valid=True), audit_service=audit_service)
+        mw = AdminCsrfMiddleware(
+            inner_app, _make_csrf_service(valid=True), audit_service=audit_service
+        )
         status, body = await _collect_response(
             mw,
             _make_scope(

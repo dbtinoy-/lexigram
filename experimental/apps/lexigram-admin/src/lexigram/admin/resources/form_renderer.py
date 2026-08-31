@@ -99,8 +99,8 @@ class FormRenderer(WizardRendererMixin):
         # request.state.permissions, which is deliberately not treated as a
         # field-permission service.
         await self._ensure_csrf_token(request)
-        permission_service = self._permission_service or self._request_permission_service(
-            request
+        permission_service = (
+            self._permission_service or self._request_permission_service(request)
         )
         form_component = await self._build_form_component(
             resource,
@@ -220,8 +220,8 @@ class FormRenderer(WizardRendererMixin):
         # Build form component with initial data. See render_create for why
         # permissions are resolved from app state instead of request.state.
         await self._ensure_csrf_token(request)
-        permission_service = self._permission_service or self._request_permission_service(
-            request
+        permission_service = (
+            self._permission_service or self._request_permission_service(request)
         )
         form_component = await self._build_form_component(
             resource,
@@ -321,7 +321,8 @@ class FormRenderer(WizardRendererMixin):
             values = {
                 name: getattr(record, name)
                 for name in dir(record)
-                if not name.startswith("_") and not callable(getattr(record, name, None))
+                if not name.startswith("_")
+                and not callable(getattr(record, name, None))
             }
         return dict(values) if isinstance(values, dict) else {}
 
@@ -538,9 +539,7 @@ class FormRenderer(WizardRendererMixin):
                 hx_target=overlay_target if htmx_enabled else None,
                 hx_swap="innerHTML",
             )
-            await self._apply_declared_field_permissions(
-                form, user, permission_service
-            )
+            await self._apply_declared_field_permissions(form, user, permission_service)
             await self._populate_form_relation_options(
                 form,
                 user=user,
@@ -557,9 +556,7 @@ class FormRenderer(WizardRendererMixin):
 
                 from lexigram.admin.forms.components import FormSchemaGenerator
 
-                generator = FormSchemaGenerator(
-                    resource_registry=dict(self._resources)
-                )
+                generator = FormSchemaGenerator(resource_registry=dict(self._resources))
                 schema = generator.from_pydantic(resource.model)
 
                 # Populate relation field options from the related resource's
@@ -603,7 +600,10 @@ class FormRenderer(WizardRendererMixin):
                                 continue
                             # A create form also writes field values; it must
                             # not expose a control that the caller cannot set.
-                            if mode in {"create", "edit"} and not await self._field_permission(
+                            if mode in {
+                                "create",
+                                "edit",
+                            } and not await self._field_permission(
                                 _perm_svc,
                                 "can_edit_field",
                                 user,
@@ -850,6 +850,7 @@ class FormRenderer(WizardRendererMixin):
         if not isinstance(fields, dict):
             return
         from dataclasses import replace as dc_replace
+
         from lexigram.admin.data.query import QuerySpec
         from lexigram.admin.schema import BelongsToField, HasManyField
 
@@ -991,9 +992,7 @@ class FormRenderer(WizardRendererMixin):
                 title=getattr(section, "title", None),
                 description=getattr(section, "description", None),
                 columns=columns,
-                children=[
-                    FieldNode(field_name=name) for name in section_names
-                ],
+                children=[FieldNode(field_name=name) for name in section_names],
             )
             form = _FieldsForm(
                 {name: _RenderedField(rendered_fields[name]) for name in section_names}

@@ -66,8 +66,8 @@ class ClusterCenterController(AdminController):
     async def index(self, request: Request) -> Response:
         from lexigram.admin.engine.renderer import resolve_admin_nav
         from lexigram.admin.navigation.clusters import cluster_items
-        from lexigram.admin.ui.organisms.secondary_nav import ClusterLayout
         from lexigram.admin.resources.urls import admin_prefix_from_request, admin_url
+        from lexigram.admin.ui.organisms.secondary_nav import ClusterLayout
         from lexigram.ui import render_to_string
 
         state = getattr(request, "app", None)
@@ -115,7 +115,9 @@ class ClusterCenterController(AdminController):
             class_="mb-2",
         )
 
-    def _render_overview(self, items: list[Any], *, admin_prefix: str = "/admin") -> Any:
+    def _render_overview(
+        self, items: list[Any], *, admin_prefix: str = "/admin"
+    ) -> Any:
         if not items:
             return el(
                 "div",

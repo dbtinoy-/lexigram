@@ -118,7 +118,9 @@ def parse_table_state(
 
     raw_per_page = q.get("per_page")
     try:
-        per_page = max(1, int(raw_per_page)) if raw_per_page is not None else default_per_page
+        per_page = (
+            max(1, int(raw_per_page)) if raw_per_page is not None else default_per_page
+        )
     except (ValueError, TypeError):
         per_page = default_per_page
         # Explicitly check for 'limit' as an alias often used in APIs.

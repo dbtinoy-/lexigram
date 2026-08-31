@@ -121,8 +121,7 @@ class FormBase(Component, metaclass=FormMeta):
                 continue
             cleaned = result.unwrap()
             if field_schema.required and (
-                cleaned is None
-                or (isinstance(cleaned, str) and not cleaned.strip())
+                cleaned is None or (isinstance(cleaned, str) and not cleaned.strip())
             ):
                 self.errors[name] = ["This field is required."]
                 is_valid = False

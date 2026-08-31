@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import re
 from html import unescape
+import re
 from types import SimpleNamespace
 from typing import Any
 
@@ -80,7 +80,7 @@ class TestBelongsToManyRenderXss:
         assert 'data-related-id="x&quot; onmouseover=&quot;alert(1)' in html
         assert "&lt;img" in html
         assert "<img" not in html
-        assert '<img ' not in html
+        assert "<img " not in html
 
     @pytest.mark.asyncio
     async def test_hostile_pivot_value_escaped_in_value_attribute(self) -> None:

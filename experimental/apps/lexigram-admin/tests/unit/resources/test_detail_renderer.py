@@ -156,7 +156,7 @@ async def test_detail_escapes_untrusted_record_id_in_fragment() -> None:
         )
     ).body.decode()
 
-    assert '<script>alert(1)</script>' not in html
+    assert "<script>alert(1)</script>" not in html
     assert "&lt;script&gt;alert(1)&lt;/script&gt;" in html
 
 
@@ -174,7 +174,9 @@ async def test_detail_masks_sensitive_fields_before_infolist_rendering() -> None
         async def can_view_field(self, user: object, resource: str, field: str) -> bool:
             return True
 
-        async def should_mask_field(self, user: object, resource: str, field: str) -> bool:
+        async def should_mask_field(
+            self, user: object, resource: str, field: str
+        ) -> bool:
             return field == "secret"
 
     request = _fragment_request()
@@ -188,9 +190,7 @@ async def test_detail_masks_sensitive_fields_before_infolist_rendering() -> None
         _data_source=Source(),
     )
 
-    html = (
-        await _renderer().render_detail(request, resource, "1")
-    ).body.decode()
+    html = (await _renderer().render_detail(request, resource, "1")).body.decode()
 
     assert "Acme" in html
     assert "top-secret" not in html

@@ -39,7 +39,9 @@ class _Renderer:
         self.create_call: dict[str, Any] | None = None
         self.edit_call: dict[str, Any] | None = None
 
-    async def render_create(self, request: Request, resource: Any, **kwargs: Any) -> HTMLResponse:
+    async def render_create(
+        self, request: Request, resource: Any, **kwargs: Any
+    ) -> HTMLResponse:
         self.create_call = kwargs
         return HTMLResponse("<form>create</form>")
 
@@ -64,7 +66,8 @@ def _request(
     scope: dict[str, Any] = {
         "type": "http",
         "method": method,
-        "path": "/backoffice/items/" + (f"{item_id}/edit" if method == "POST" else "create"),
+        "path": "/backoffice/items/"
+        + (f"{item_id}/edit" if method == "POST" else "create"),
         "raw_path": b"/backoffice/items/create",
         "query_string": b"",
         "headers": [],
@@ -238,7 +241,9 @@ async def test_after_create_failure_is_sanitized_after_persisting() -> None:
     assert source.created == [{"name": "Ada"}]
 
 
-async def test_edit_validates_against_existing_record_without_writing_readonly_data() -> None:
+async def test_edit_validates_against_existing_record_without_writing_readonly_data() -> (
+    None
+):
     class Model(BaseModel):
         name: str
         status: str

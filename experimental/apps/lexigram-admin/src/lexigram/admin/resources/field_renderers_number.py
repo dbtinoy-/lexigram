@@ -54,6 +54,8 @@ class BooleanFieldRenderer:
             name=common_args["name"],
             value=bool(value),
             error=error,
-            disabled=bool(common_args.get("readonly", common_args.get("disabled", False))),
+            disabled=bool(
+                common_args.get("readonly", common_args.get("disabled", False))
+            ),
             **hx_props,
         )

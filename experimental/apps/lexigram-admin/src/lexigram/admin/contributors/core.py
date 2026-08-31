@@ -208,7 +208,9 @@ class CoreAdminContributor(BaseAdminContributor):
                 name="activity",
                 title="Recent Activity",
                 contributor="core",
-                render_endpoint=admin_url(DEFAULT_ADMIN_PREFIX, "core/widgets/activity"),
+                render_endpoint=admin_url(
+                    DEFAULT_ADMIN_PREFIX, "core/widgets/activity"
+                ),
                 size=WidgetSize.LARGE,
                 category=WidgetCategory.ACTIVITY,
                 view_kind=WidgetKind.TABLE,
@@ -222,7 +224,9 @@ class CoreAdminContributor(BaseAdminContributor):
                 name="chart_metrics",
                 title="Framework Metrics",
                 contributor="core",
-                render_endpoint=admin_url(DEFAULT_ADMIN_PREFIX, "core/widgets/chart_metrics"),
+                render_endpoint=admin_url(
+                    DEFAULT_ADMIN_PREFIX, "core/widgets/chart_metrics"
+                ),
                 size=WidgetSize.FULL,
                 category=WidgetCategory.METRICS,
                 view_kind=WidgetKind.CHART,
@@ -252,7 +256,9 @@ class CoreAdminContributor(BaseAdminContributor):
                 name="admin_core",
                 contributor="core",
                 component="Admin Core",
-                check_endpoint=admin_url(DEFAULT_ADMIN_PREFIX, "core/health/admin_core"),
+                check_endpoint=admin_url(
+                    DEFAULT_ADMIN_PREFIX, "core/health/admin_core"
+                ),
                 icon="shield-check",
                 description="Admin panel core services health.",
             ),

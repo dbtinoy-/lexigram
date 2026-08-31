@@ -159,8 +159,7 @@ class StatsOverviewWidget(Component):
                     aria_live="polite",
                 ),
                 class_=(
-                    f"bg-card rounded-xl shadow-sm border border-border p-5 "
-                    f"{span}"
+                    f"bg-card rounded-xl shadow-sm border border-border p-5 {span}"
                 ).strip(),
                 **hx_attrs,
             )

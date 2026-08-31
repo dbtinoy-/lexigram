@@ -204,9 +204,7 @@ class ColumnRenderingMixin:
             sort_icon = get_icon(icon_name, size=icon_classes)
 
             # Content with label + icon inside the sort button
-            sort_button_attrs = {
-                k.replace("-", "_"): v for k, v in htmx_attrs.items()
-            }
+            sort_button_attrs = {k.replace("-", "_"): v for k, v in htmx_attrs.items()}
             content = el(
                 "button",
                 el(

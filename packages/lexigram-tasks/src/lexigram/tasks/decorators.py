@@ -55,8 +55,7 @@ def iter_registered_tasks(module_filters: tuple[str, ...] | None = None) -> list
 
     def _matches(module_name: str) -> bool:
         return any(
-            module_name == module_filter
-            or module_name.startswith(f"{module_filter}.")
+            module_name == module_filter or module_name.startswith(f"{module_filter}.")
             for module_filter in module_filters
         )
 
@@ -86,8 +85,7 @@ def _clear_registered_tasks(module_filters: tuple[str, ...] | None = None) -> No
 
     for module_name in list(_REGISTERED_TASKS):
         if any(
-            module_name == module_filter
-            or module_name.startswith(f"{module_filter}.")
+            module_name == module_filter or module_name.startswith(f"{module_filter}.")
             for module_filter in module_filters
         ):
             del _REGISTERED_TASKS[module_name]

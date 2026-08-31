@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-import inspect
 from collections.abc import Mapping
 from datetime import UTC, datetime
+import inspect
 from typing import TYPE_CHECKING, Any, ClassVar, get_args
 
 from starlette.requests import Request
@@ -17,9 +17,9 @@ from lexigram.admin.exceptions import (
 )
 from lexigram.admin.resources.form_guard import PROTECTED_FORM_FIELDS
 from lexigram.admin.resources.urls import admin_prefix_from_request, admin_url
-from lexigram.contracts.exceptions.domain import FieldError
 from lexigram.admin.state.context import AdminContextManager
 from lexigram.admin.ui.molecules.toast_notification import ToastNotification
+from lexigram.contracts.exceptions.domain import FieldError
 from lexigram.logging import get_logger
 
 logger = get_logger(__name__)
@@ -90,13 +90,13 @@ class ResourceMutationMixin:
     def _record_id(record: Any) -> str:
         """Read an identifier from object- and mapping-backed records."""
         value = (
-            record.get("id")
-            if isinstance(record, dict)
-            else getattr(record, "id", "")
+            record.get("id") if isinstance(record, dict) else getattr(record, "id", "")
         )
         return str(value) if value is not None else ""
 
-    async def _record_permission(self, request: Request, name: str, item: Any = None) -> bool:
+    async def _record_permission(
+        self, request: Request, name: str, item: Any = None
+    ) -> bool:
         """Evaluate an optional resource-level permission hook.
 
         The controller is also used without the legacy ``Resource`` wrapper,
@@ -143,7 +143,9 @@ class ResourceMutationMixin:
                 logger.exception("admin.resource_create_form_parse_failed")
                 return HTMLResponse("Invalid form data", status_code=400)
 
-            from lexigram.admin.resources.action_handlers import _validation_errors_to_dict
+            from lexigram.admin.resources.action_handlers import (
+                _validation_errors_to_dict,
+            )
 
             # Validate
             try:
@@ -257,7 +259,9 @@ class ResourceMutationMixin:
                 if hasattr(instance, "model_dump"):
                     cleaned = {
                         key: value
-                        for key, value in instance.model_dump(exclude_unset=True).items()
+                        for key, value in instance.model_dump(
+                            exclude_unset=True
+                        ).items()
                         if key in cleaned
                     }
             else:
@@ -272,7 +276,9 @@ class ResourceMutationMixin:
                 for error in raw_errors():
                     location = error.get("loc", ())
                     field = str(location[0]) if location else "__all__"
-                    errors.append(FieldError(field=field, message=str(error.get("msg", exc))))
+                    errors.append(
+                        FieldError(field=field, message=str(error.get("msg", exc)))
+                    )
             if not errors:
                 errors.append(FieldError(field="__all__", message=str(exc)))
             raise AdminValidationError(
@@ -351,7 +357,9 @@ class ResourceMutationMixin:
                 logger.exception("admin.resource_update_form_parse_failed")
                 return HTMLResponse("Invalid form data", status_code=400)
 
-            from lexigram.admin.resources.action_handlers import _validation_errors_to_dict
+            from lexigram.admin.resources.action_handlers import (
+                _validation_errors_to_dict,
+            )
 
             # Fetch before validation so a partial edit can be validated
             # against the persisted record. Disabled/readonly controls are
@@ -430,8 +438,8 @@ class ResourceMutationMixin:
             )
             if ctx.is_htmx:
                 response = Response(status_code=200)
-                response.headers["HX-Redirect"] = (
-                    self._resource_url(request, str(item_id))
+                response.headers["HX-Redirect"] = self._resource_url(
+                    request, str(item_id)
                 )
                 return response
 
@@ -471,7 +479,11 @@ class ResourceMutationMixin:
         if not await self._record_permission(request, "can_delete", item):
             return HTMLResponse("Forbidden", status_code=403)
         for field in ("name", "title", "email", "username", "label"):
-            val = item.get(field) if isinstance(item, dict) else getattr(item, field, None)
+            val = (
+                item.get(field)
+                if isinstance(item, dict)
+                else getattr(item, field, None)
+            )
             if val:
                 record_label = str(val)
                 break
@@ -598,7 +610,9 @@ class ResourceMutationMixin:
             except (PermissionError, PermissionDeniedError):
                 return HTMLResponse("Forbidden", status_code=403)
             except NotImplementedError:
-                return HTMLResponse("Resource does not support restore", status_code=503)
+                return HTMLResponse(
+                    "Resource does not support restore", status_code=503
+                )
             except Exception:  # noqa: BLE001 — storage failures are sanitized
                 logger.exception("admin.resource_restore_failed")
                 return HTMLResponse("Unable to restore record", status_code=503)

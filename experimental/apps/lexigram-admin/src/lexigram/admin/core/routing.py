@@ -341,7 +341,9 @@ class AdminRouter:
             ),
             Route(
                 f"{prefix}/{{id}}/inline-edit",
-                ResourceHandler(self._config, name, "inline-edit", resources=resources_dict),
+                ResourceHandler(
+                    self._config, name, "inline-edit", resources=resources_dict
+                ),
                 name=f"admin_{name}_inline_edit",
                 methods=["GET"],
             ),

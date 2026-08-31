@@ -154,7 +154,7 @@ class TestUserMenuItems:
 
 
 @pytest.mark.parametrize(
-    "label,action",
+    ("label", "action"),
     [
         ("Settings", None),
         ("Plugins", None),

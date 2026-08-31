@@ -117,11 +117,11 @@ class DashboardController(AdminController):
         )
         resource_names = self._get_resource_list(request)
         primary_resource_url = (
-            f"{admin_prefix}/{resource_names[0]}"
-            if resource_names
-            else admin_prefix
+            f"{admin_prefix}/{resource_names[0]}" if resource_names else admin_prefix
         )
-        primary_resource_label = "Browse resources" if resource_names else "Explore dashboard"
+        primary_resource_label = (
+            "Browse resources" if resource_names else "Explore dashboard"
+        )
 
         # Page-level filter state: schema defaults → session → query params
         filter_state: dict[str, Any] = {}
@@ -231,12 +231,8 @@ class DashboardController(AdminController):
             resources_chart = ChartWidget(
                 title="Registered Resources",
                 chart_type=ChartType.BAR,
-                data_source=(
-                    f"{admin_prefix_from_request(request)}/widgets/resources"
-                ),
-                description=(
-                    "Every admin resource registered with this application."
-                ),
+                data_source=(f"{admin_prefix_from_request(request)}/widgets/resources"),
+                description=("Every admin resource registered with this application."),
                 col_span=3,
                 refresh_interval=120,
             )
@@ -261,9 +257,7 @@ class DashboardController(AdminController):
                 StatCardGrid(
                     default_stats,
                     cols=4,
-                    data_source=(
-                        f"{admin_prefix_from_request(request)}/widgets/stats"
-                    ),
+                    data_source=(f"{admin_prefix_from_request(request)}/widgets/stats"),
                     refresh_interval=120,
                     aria_label="Overview statistics",
                 ),
@@ -346,8 +340,7 @@ class DashboardController(AdminController):
 """.replace(
                 "/admin/core/widgets/reorder",
                 f"{admin_prefix}/core/widgets/reorder",
-            )
-            .replace("__LEXIGRAM_CSRF_TOKEN__", escape(csrf_token))
+            ).replace("__LEXIGRAM_CSRF_TOKEN__", escape(csrf_token))
         )
 
         customize_btn = el(

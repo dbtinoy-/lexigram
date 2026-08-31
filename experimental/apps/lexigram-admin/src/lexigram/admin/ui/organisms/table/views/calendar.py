@@ -441,9 +441,7 @@ class CalendarView(AbstractDataView):
                     user=self.user,
                     resource_name=self.resource_name,
                     resource_prefix=prefix,
-                    form_display_mode=getattr(
-                        self.config, "form_display_mode", None
-                    ),
+                    form_display_mode=getattr(self.config, "form_display_mode", None),
                 )
                 if node:
                     action_nodes.append(node)

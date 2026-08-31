@@ -80,7 +80,8 @@ class DetailRenderer:
         service = getattr(state, "permission_service", None)
         return (
             service
-            if service is not None and callable(getattr(service, "can_view_field", None))
+            if service is not None
+            and callable(getattr(service, "can_view_field", None))
             else None
         )
 
@@ -285,7 +286,9 @@ class DetailRenderer:
 
         if resource:
             try:
-                from lexigram.admin.resources.data_access import get_resource_data_source
+                from lexigram.admin.resources.data_access import (
+                    get_resource_data_source,
+                )
 
                 data_source = get_resource_data_source(resource)
                 getter = getattr(data_source, "find_one", None)
@@ -328,7 +331,9 @@ class DetailRenderer:
         field_rows: list[Any] = []
         for field_name, field_value in item_dict.items():
             field_schema = field_schemas.get(field_name)
-            if field_schema is None or not getattr(field_schema, "visible_in_view", True):
+            if field_schema is None or not getattr(
+                field_schema, "visible_in_view", True
+            ):
                 continue
             if not await self._field_visible(
                 request,

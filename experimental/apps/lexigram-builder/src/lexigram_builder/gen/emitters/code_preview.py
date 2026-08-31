@@ -142,7 +142,9 @@ def _preview_role_guard(name: str, permissions: tuple[str, ...]) -> PreviewFile:
     )
 
 
-def _preview_rate_limit(name: str, strategy: str, max_requests: int, window_seconds: int) -> PreviewFile:
+def _preview_rate_limit(
+    name: str, strategy: str, max_requests: int, window_seconds: int
+) -> PreviewFile:
     """Generate a preview for a rate-limit definition."""
     pascal = "".join(word.capitalize() for word in name.split("_"))
     content = (
@@ -284,12 +286,16 @@ def emit_code_preview(
     # Rate limits
     for rl in rate_limit_configs:
         files.append(
-            _preview_rate_limit(rl.name, rl.strategy, rl.max_requests, rl.window_seconds)
+            _preview_rate_limit(
+                rl.name, rl.strategy, rl.max_requests, rl.window_seconds
+            )
         )
 
     # Contracts
     for contract in contract_configs:
-        files.append(_preview_contract(contract.name, contract.direction, contract.fields))
+        files.append(
+            _preview_contract(contract.name, contract.direction, contract.fields)
+        )
 
     # Scaffold files
     scaffold = emit_scaffold_files(
@@ -304,7 +310,9 @@ def emit_code_preview(
     files.append(PreviewFile(path="main.py", content=scaffold.main_py))
     files.append(PreviewFile(path="di_provider.py", content=scaffold.di_provider))
     for module_name, module_content in scaffold.modules:
-        files.append(PreviewFile(path=f"src/app/guards/{module_name}", content=module_content))
+        files.append(
+            PreviewFile(path=f"src/app/guards/{module_name}", content=module_content)
+        )
 
     return CodePreview(files=tuple(files))
 

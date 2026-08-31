@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from datetime import date, datetime, time
 
-import pytest
-
 from lexigram.admin.schema import FieldError, SchemaField
 from lexigram.admin.schema.datetime_ import DateField, DateTimeField, TimeField
 from lexigram.result import Err, Ok

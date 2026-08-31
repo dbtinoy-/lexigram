@@ -66,9 +66,9 @@ class ListDataFetcher:
         else:
             search_fields = []
             for col in source_columns:
-                if hasattr(col, "is_searchable") and col.is_searchable():
-                    search_fields.append(col.name)
-                elif getattr(col, "searchable", False):
+                if (hasattr(col, "is_searchable") and col.is_searchable()) or getattr(
+                    col, "searchable", False
+                ):
                     search_fields.append(col.name)
 
         # Extract active filters from TableState
@@ -267,9 +267,7 @@ class ListDataFetcher:
         if user is None:
             request_scope = getattr(request, "scope", None)
             user = (
-                request_scope.get("user")
-                if isinstance(request_scope, dict)
-                else None
+                request_scope.get("user") if isinstance(request_scope, dict) else None
             )
         principal = (
             getattr(user, "id", None)

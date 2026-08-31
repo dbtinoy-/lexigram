@@ -181,9 +181,7 @@ class Tabs(AbstractLayoutNode):
         form_id = getattr(form, "form_id", None) or group_id
 
         def _tab_button(index: int, tab: Tab) -> Any:
-            active_cls = (
-                "border-primary-500 text-primary-600 dark:text-primary-400"
-            )
+            active_cls = "border-primary-500 text-primary-600 dark:text-primary-400"
             inactive_cls = (
                 "border-transparent text-muted-foreground hover:text-foreground"
                 " hover:border-border"
@@ -204,8 +202,7 @@ class Tabs(AbstractLayoutNode):
                     "aria-controls": f"{form_id}-tab-panel-{index}",
                     ":tabindex": f"activeTab === {index} ? 0 : -1",
                     ":class": (
-                        f"activeTab === {index}"
-                        f" ? '{active_cls}' : '{inactive_cls}'"
+                        f"activeTab === {index} ? '{active_cls}' : '{inactive_cls}'"
                     ),
                     "@click": f"activeTab = {index}",
                     "@keydown.arrow-right.prevent": (
@@ -220,9 +217,7 @@ class Tabs(AbstractLayoutNode):
                 },
             )
 
-        tab_headers = [
-            _tab_button(index, tab) for index, tab in enumerate(self.tabs)
-        ]
+        tab_headers = [_tab_button(index, tab) for index, tab in enumerate(self.tabs)]
         tab_contents = [
             el(
                 "div",

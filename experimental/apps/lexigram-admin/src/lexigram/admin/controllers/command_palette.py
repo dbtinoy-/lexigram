@@ -28,7 +28,12 @@ _STATIC_COMMANDS: list[dict[str, Any]] = [
         "icon": "moon",
         "shortcut": "T D",
     },
-    {"label": "Settings", "href": "/admin/settings", "icon": "settings", "shortcut": ","},
+    {
+        "label": "Settings",
+        "href": "/admin/settings",
+        "icon": "settings",
+        "shortcut": ",",
+    },
 ]
 
 _MIN_QUERY_LENGTH = 2

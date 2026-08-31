@@ -22,6 +22,7 @@ if TYPE_CHECKING:
 
 logger = get_logger(__name__)
 
+
 def _public_paths(admin_prefix: str) -> tuple[str, ...]:
     """Public paths relative to the configured admin mount prefix."""
     prefix = admin_prefix.rstrip("/")
@@ -104,7 +105,10 @@ class AdminAuthorizationMiddleware(BaseHTTPMiddleware):
             "bulk-purge-confirm",
             "bulk-restore-confirm",
         }:
-            return resource, "delete" if operation != "bulk-restore-confirm" else "update"
+            return (
+                resource,
+                "delete" if operation != "bulk-restore-confirm" else "update",
+            )
         if operation in {"import-example", "import-report"}:
             return resource, "create"
         if operation == "relation-options":
@@ -158,18 +162,24 @@ class AdminAuthorizationMiddleware(BaseHTTPMiddleware):
             "can_update": await check("can_update", "can_edit"),
             "can_delete": await check("can_delete"),
         }
-        if not capabilities.get({
-            "view": "can_view",
-            "create": "can_create",
-            "update": "can_update",
-            "delete": "can_delete",
-        }.get(action, "can_view"), False):
+        if not capabilities.get(
+            {
+                "view": "can_view",
+                "create": "can_create",
+                "update": "can_update",
+                "delete": "can_delete",
+            }.get(action, "can_view"),
+            False,
+        ):
             return None
         return capabilities
 
     def _is_public_path(self, path: str) -> bool:
         """Match public endpoints exactly or beneath their path boundary."""
-        return any(path == public or path.startswith(f"{public}/") for public in self._public_paths)
+        return any(
+            path == public or path.startswith(f"{public}/")
+            for public in self._public_paths
+        )
 
     async def dispatch(self, request: Request, call_next: Any) -> Any:
         """Check authorization before dispatching to the next handler."""

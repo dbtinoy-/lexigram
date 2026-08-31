@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-from typing import Any
-
 import pytest
 
-from lexigram.admin.schema import FieldError, SchemaField
+from lexigram.admin.schema import SchemaField
 from lexigram.admin.schema.text import (
     EmailField,
     PasswordField,

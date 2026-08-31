@@ -27,7 +27,7 @@ def _admin_endpoint(path: str, admin_prefix: str) -> str:
     if normalized == prefix or normalized.startswith(f"{prefix}/"):
         return normalized
     if normalized == "/admin" or normalized.startswith("/admin/"):
-        return f"{prefix}{normalized[len('/admin'):]}"
+        return f"{prefix}{normalized[len('/admin') :]}"
     return normalized
 
 
@@ -314,9 +314,7 @@ def render_dashboard_widgets(
     Returns:
         Concatenated HTML string for all widget cards.
     """
-    return registry.render_contributor_widgets(
-        definitions, admin_prefix=admin_prefix
-    )
+    return registry.render_contributor_widgets(definitions, admin_prefix=admin_prefix)
 
 
 __all__ = ["WidgetRegistry", "render_dashboard_widgets"]

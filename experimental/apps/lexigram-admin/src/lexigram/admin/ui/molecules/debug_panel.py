@@ -82,9 +82,7 @@ class DebugPanel(Component):
         if self.csrf_token:
             from lexigram.serialization import dumps_str
 
-            csrf_attrs["hx_headers"] = dumps_str(
-                {"X-CSRF-Token": self.csrf_token}
-            )
+            csrf_attrs["hx_headers"] = dumps_str({"X-CSRF-Token": self.csrf_token})
 
         return el(
             "div",

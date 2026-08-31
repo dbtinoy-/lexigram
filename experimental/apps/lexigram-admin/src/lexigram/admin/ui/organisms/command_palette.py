@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-import json
 from typing import Any
 
 from lexigram.admin.settings import get_admin_settings
+from lexigram.serialization import dumps_str
 from lexigram.ui import Component, el, raw
 
 
@@ -68,7 +68,7 @@ class CommandPalette(Component):
         # characters so a contributor-supplied command label cannot terminate
         # the script block before Alpine parses the data.
         commands_json = (
-            json.dumps(processed_commands, ensure_ascii=False)
+            dumps_str(processed_commands)
             .replace("<", "\\u003c")
             .replace(">", "\\u003e")
             .replace("&", "\\u0026")

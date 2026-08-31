@@ -40,7 +40,9 @@ async def test_before_validate_respects_custom_protected_fields() -> None:
     class _TightResource(Resource):
         model = _Account
         name = "tight"
-        protected_form_fields = frozenset({"id", "tenant_id", "created_at", "updated_at", "owner_id"})
+        protected_form_fields = frozenset(
+            {"id", "tenant_id", "created_at", "updated_at", "owner_id"}
+        )
 
     resource = _TightResource()
     result = await resource.before_validate({"name": "Ada", "owner_id": "9"})

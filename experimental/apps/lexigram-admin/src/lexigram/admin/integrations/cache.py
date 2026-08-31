@@ -27,7 +27,10 @@ class _NoOpCache:
         return None
 
     async def set(
-        self, key: str, value: Any, ttl: int | None = None  # noqa: ARG002
+        self,
+        key: str,
+        value: Any,
+        ttl: int | None = None,  # noqa: ARG002
     ) -> None:
         return None
 

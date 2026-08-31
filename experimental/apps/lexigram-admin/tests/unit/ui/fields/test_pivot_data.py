@@ -147,8 +147,9 @@ class TestBelongsToManyField:
     def test_to_form_with_list(self) -> None:
         field = BelongsToManyField(name="roles")
         result = field.to_form(["1", "2"])
-        import json
-        assert json.loads(result) == ["1", "2"]
+        from lexigram.serialization import loads_str
+
+        assert loads_str(result) == ["1", "2"]
 
     def test_to_form_with_none(self) -> None:
         field = BelongsToManyField(name="roles")
@@ -205,7 +206,9 @@ class TestPivotInputEscaping:
     def _render(self, value: str, field_type: str = "text") -> str:
         field = PivotDataField(
             name="pivot_data",
-            pivot_columns=[PivotColumn(name="role", label="Role", field_type=field_type)],
+            pivot_columns=[
+                PivotColumn(name="role", label="Role", field_type=field_type)
+            ],
         )
         element = field.render_form({"role": value})
         return str(element)
@@ -228,7 +231,11 @@ class TestPivotInputEscaping:
     def test_field_type_escaped_in_attribute(self) -> None:
         field = PivotDataField(
             name="pivot_data",
-            pivot_columns=[PivotColumn(name="role", label="Role", field_type='text" autofocus onfocus="x')],
+            pivot_columns=[
+                PivotColumn(
+                    name="role", label="Role", field_type='text" autofocus onfocus="x'
+                )
+            ],
         )
         html = str(field.render_form({"role": "v"}))
         # The injected quotes are escaped, so no attribute breakout is possible

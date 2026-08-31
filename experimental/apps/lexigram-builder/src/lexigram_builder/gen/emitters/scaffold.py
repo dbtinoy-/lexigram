@@ -79,11 +79,15 @@ def emit_scaffold_files(
 
     # ── Auth / guards ─────────────────────────────────────────────────
     if auth_configs or role_configs:
-        imports.append("from lexigram.auth.authz.guards import require_auth, require_roles")
+        imports.append(
+            "from lexigram.auth.authz.guards import require_auth, require_roles"
+        )
 
     # ── Rate limiting ─────────────────────────────────────────────────
     if rate_limit_configs:
-        imports.append("from lexigram.auth.web.middleware.throttle import RateLimitMiddleware")
+        imports.append(
+            "from lexigram.auth.web.middleware.throttle import RateLimitMiddleware"
+        )
 
     # ── Contracts ─────────────────────────────────────────────────────
     for contract in contract_configs:

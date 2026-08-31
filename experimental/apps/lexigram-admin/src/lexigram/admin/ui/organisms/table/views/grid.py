@@ -82,7 +82,11 @@ class GridView(AbstractDataView):
                         action_nodes.append(node)
 
             actions_overlay = (
-                el("div", *action_nodes, class_="absolute top-2 right-2 z-10 flex flex-col items-end gap-2")
+                el(
+                    "div",
+                    *action_nodes,
+                    class_="absolute top-2 right-2 z-10 flex flex-col items-end gap-2",
+                )
                 if action_nodes
                 else ""
             )

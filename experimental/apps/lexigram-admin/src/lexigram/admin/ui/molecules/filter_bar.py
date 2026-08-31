@@ -172,23 +172,21 @@ class FilterBar(Component):
                             or field_name.replace("_", " ").title(),
                             placeholder=filter_config.get("placeholder"),
                             input_type=f_type,
-                            **{
-                                "hx_get": (
-                                    self.resource_prefix.rstrip("/") + "/"
-                                    if self.resource_prefix
-                                    else "/"
-                                ),
-                                "hx_trigger": "change",
-                                "hx_target": Zones.DATA.selector,
-                                "hx_swap": Zones.DATA.swap_mode.value,
-                                "hx_select": Zones.DATA.selector,
-                                "hx_push_url": "true",
-                                "hx_include": (
-                                    f"{Zones.DATA.selector} [data-state='true'], "
-                                    f"#{Zones.SEARCH.id}, #{Zones.FILTERS.id}"
-                                ),
-                                "hx_params": "*",
-                            },
+                            hx_get=(
+                                self.resource_prefix.rstrip("/") + "/"
+                                if self.resource_prefix
+                                else "/"
+                            ),
+                            hx_trigger="change",
+                            hx_target=Zones.DATA.selector,
+                            hx_swap=Zones.DATA.swap_mode.value,
+                            hx_select=Zones.DATA.selector,
+                            hx_push_url="true",
+                            hx_include=(
+                                f"{Zones.DATA.selector} [data-state='true'], "
+                                f"#{Zones.SEARCH.id}, #{Zones.FILTERS.id}"
+                            ),
+                            hx_params="*",
                         ).render()
                     )
                     continue

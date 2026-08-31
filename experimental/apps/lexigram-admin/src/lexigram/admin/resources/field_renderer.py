@@ -8,7 +8,6 @@ from starlette.responses import HTMLResponse
 
 from lexigram.admin.config import AdminConfig
 from lexigram.admin.resources.data_access import get_resource_data_source
-from lexigram.admin.resources.urls import admin_prefix_from_request
 from lexigram.admin.resources.field_renderers_common import (
     FieldRendererProtocol as FieldRendererProtocol,
 )
@@ -63,11 +62,12 @@ from lexigram.admin.resources.field_renderers_text import (
 from lexigram.admin.resources.field_renderers_text import (
     TextFieldRenderer as TextFieldRenderer,
 )
+from lexigram.admin.resources.urls import admin_prefix_from_request
 from lexigram.admin.schema import SchemaField
 from lexigram.di.decorators import inject
 from lexigram.logging import get_logger
-from lexigram.serialization import dumps_str
 from lexigram.primitives.registry import Registry
+from lexigram.serialization import dumps_str
 from lexigram.ui import el, render_to_string
 
 logger = get_logger(__name__)
@@ -328,7 +328,9 @@ class FieldRenderer:
         # from the request path so an editor loaded under a custom prefix does
         # not submit back to the default ``/admin`` mount.
         prefix = (admin_prefix or self._config.prefix).rstrip("/")
-        action_url = f"{prefix}/{self.resource_name}/{item_id}/field/{field_schema.name}"
+        action_url = (
+            f"{prefix}/{self.resource_name}/{item_id}/field/{field_schema.name}"
+        )
 
         common_args = {
             "label": None,  # No label for inline editing

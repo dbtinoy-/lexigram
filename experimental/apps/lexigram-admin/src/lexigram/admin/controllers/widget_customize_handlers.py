@@ -108,9 +108,8 @@ async def render_customize_panel(
     )
 
     customize_save_url = (
-        (admin_prefix_from_request(request).rstrip("/") or "/admin")
-        + "/core/widgets/customize/save"
-    )
+        admin_prefix_from_request(request).rstrip("/") or "/admin"
+    ) + "/core/widgets/customize/save"
     form = el(
         "form",
         el("input", type_="hidden", name="csrf_token", value=csrf_token or ""),

@@ -151,7 +151,6 @@ class TestResourceFetchList:
         assert total == 1
         assert items == [{"id": 1, "name": "A"}]
 
-
     @pytest.mark.asyncio
     async def test_fetch_list_delegates_to_find_many(self) -> None:
         """fetch_list should call _data_source.find_many with a Query."""

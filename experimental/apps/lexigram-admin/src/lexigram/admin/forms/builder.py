@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from dataclasses import field as dataclass_field
 from datetime import date, datetime
 from enum import Enum
+import types
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -23,8 +24,6 @@ from typing import (
     get_origin,
     get_type_hints,
 )
-import types
-
 
 from lexigram.admin.forms.form import (
     Form as Form,

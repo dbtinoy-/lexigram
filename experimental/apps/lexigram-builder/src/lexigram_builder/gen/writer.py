@@ -210,9 +210,7 @@ class ProjectWriter:
             edges_by_source.setdefault(src, []).append((tgt, kind))
 
         # Index nodes by id
-        node_map: dict[str, dict[str, Any]] = {
-            n["id"]: n for n in doc.get("nodes", [])
-        }
+        node_map: dict[str, dict[str, Any]] = {n["id"]: n for n in doc.get("nodes", [])}
 
         for node in doc.get("nodes", []):
             kind = node["kind"]
@@ -234,9 +232,7 @@ class ProjectWriter:
                 entities[node["id"]] = config
 
         # ── Emit generators ───────────────────────────────────────────
-        gen_dirs: dict[str, str] = {
-            spec.kind: spec.output_dir for spec in VERB_SPECS
-        }
+        gen_dirs: dict[str, str] = {spec.kind: spec.output_dir for spec in VERB_SPECS}
 
         for node in doc.get("nodes", []):
             kind = node["kind"]
@@ -281,9 +277,7 @@ class ProjectWriter:
                 result = generator.generate(name, **gen_kwargs)
 
                 if result.files_created:
-                    report.files_created.extend(
-                        str(p) for p in result.files_created
-                    )
+                    report.files_created.extend(str(p) for p in result.files_created)
                     self._written_paths.update(
                         Path(p).resolve() for p in result.files_created
                     )
@@ -295,14 +289,10 @@ class ProjectWriter:
                         Path(p).resolve() for p in result.files_overwritten
                     )
                 if result.files_skipped:
-                    report.files_skipped.extend(
-                        str(p) for p in result.files_skipped
-                    )
+                    report.files_skipped.extend(str(p) for p in result.files_skipped)
 
             except (ImportError, RuntimeError, OSError) as exc:
-                report.errors.append(
-                    f"Failed to generate {kind} {name!r}: {exc}"
-                )
+                report.errors.append(f"Failed to generate {kind} {name!r}: {exc}")
 
         # ── Emit scaffold files ───────────────────────────────────────
         try:

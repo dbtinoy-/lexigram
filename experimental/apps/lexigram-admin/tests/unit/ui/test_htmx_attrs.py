@@ -9,8 +9,8 @@ Tests the htmx_attrs.py module which provides:
 import pytest
 
 from lexigram.ui import HTMXAttrs, HTMXAttrsBuilder
-from lexigram.ui.state import TableState
 from lexigram.ui.core.zones import Zones
+from lexigram.ui.state import TableState
 
 
 class TestHTMXAttrsBuilder:

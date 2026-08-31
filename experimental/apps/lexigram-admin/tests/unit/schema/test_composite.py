@@ -1,9 +1,5 @@
 from __future__ import annotations
 
-from typing import Any
-
-import pytest
-
 from lexigram.admin.schema import FieldError, SchemaField
 from lexigram.admin.schema.composite import (
     AvatarField,
@@ -72,7 +68,7 @@ class TestJsonField:
 
     def test_from_form_valid_list_json(self) -> None:
         field = JsonField(name="data")
-        result = field.from_form('[1,2,3]')
+        result = field.from_form("[1,2,3]")
         assert isinstance(result, Ok)
         assert result.unwrap() == [1, 2, 3]
 
@@ -100,9 +96,10 @@ class TestJsonField:
 
     def test_to_form_with_dict(self) -> None:
         field = JsonField(name="data")
-        import json
+        from lexigram.serialization import loads_str
+
         result = field.to_form({"a": 1})
-        assert json.loads(result) == {"a": 1}
+        assert loads_str(result) == {"a": 1}
 
     def test_to_form_with_none(self) -> None:
         field = JsonField(name="data")

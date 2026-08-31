@@ -16,13 +16,13 @@ from lexigram.admin.actions.base import BulkAction
 from lexigram.admin.actions.types import ActionContext
 from lexigram.admin.config import AdminConfig
 from lexigram.admin.core.routing import AdminRouter
-from lexigram.admin.resources.base import Resource
-from lexigram.result import Ok
 from lexigram.admin.resources.action_handlers import (
     PurgeActionHandler,
     RestoreActionHandler,
 )
+from lexigram.admin.resources.base import Resource
 from lexigram.admin.resources.handler import BulkActionHandler
+from lexigram.result import Ok
 
 
 class TestRestoreActionHandler:
@@ -91,7 +91,8 @@ class TestRestorePurgeRouteRegistration:
         routes = router._build_resource_routes("users", mock_resource)
         restore_routes = [r for r in routes if "/restore" in (r.path or "")]
         purge_routes = [r for r in routes if "/purge" in (r.path or "")]
-        assert restore_routes and purge_routes
+        assert restore_routes
+        assert purge_routes
         assert all(route.methods == {"POST"} for route in restore_routes)
         assert all(route.methods == {"POST", "DELETE"} for route in purge_routes)
 

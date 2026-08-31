@@ -73,7 +73,7 @@ def cluster_child_href(
         return url
     legacy_cluster_url = f"/admin/{cluster.slug}"
     if cleaned == legacy_cluster_url or cleaned.startswith(legacy_cluster_url + "/"):
-        return f"{prefix}{cleaned[len('/admin'):]}"
+        return f"{prefix}{cleaned[len('/admin') :]}"
     relative = cleaned.removeprefix(source_prefix).lstrip("/")
     return f"{cluster_url}/{relative}"
 
@@ -138,10 +138,8 @@ def _mounted_source_url(url: str, admin_prefix: str) -> str:
     if not url:
         return url
     prefix = (admin_prefix or "/admin").rstrip("/") or "/admin"
-    if prefix != "/admin" and (
-        url == "/admin" or url.startswith("/admin/")
-    ):
-        return f"{prefix}{url[len('/admin'):]}"
+    if prefix != "/admin" and (url == "/admin" or url.startswith("/admin/")):
+        return f"{prefix}{url[len('/admin') :]}"
     return url
 
 
@@ -186,7 +184,10 @@ def build_secondary_nav(
                     cluster_child_href(
                         child.url, cluster=cluster, admin_prefix=admin_prefix
                     ),
-                ) or _is_active(current_path, _mounted_source_url(child.url, admin_prefix)),
+                )
+                or _is_active(
+                    current_path, _mounted_source_url(child.url, admin_prefix)
+                ),
             }
             for child in item.children
         ]

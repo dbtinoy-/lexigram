@@ -169,8 +169,7 @@ class AdminShell(Component):
         # keep full fidelity (title/icon/duration/actions) via flash_to_toast.
         channel = ServerToastChannel()
         toasts = "".join(
-            channel.render_toast(toast)
-            for toast in flash_to_toast(self.flash_messages)
+            channel.render_toast(toast) for toast in flash_to_toast(self.flash_messages)
         )
         toast_node = raw(toasts) if toasts else ""
 

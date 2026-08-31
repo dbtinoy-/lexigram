@@ -33,8 +33,10 @@ def _internal_path(path: str, mount_prefix: str) -> str:
     prefix = (mount_prefix or "").rstrip("/")
     if prefix and (normalized == prefix or normalized.startswith(f"{prefix}/")):
         normalized = normalized[len(prefix) :]
-    elif prefix and prefix != "/admin" and (
-        normalized == "/admin" or normalized.startswith("/admin/")
+    elif (
+        prefix
+        and prefix != "/admin"
+        and (normalized == "/admin" or normalized.startswith("/admin/"))
     ):
         normalized = normalized[len("/admin") :]
     return normalized or "/"

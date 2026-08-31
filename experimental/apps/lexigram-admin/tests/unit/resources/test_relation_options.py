@@ -12,8 +12,8 @@ from __future__ import annotations
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
-import pytest
 from pydantic import BaseModel
+import pytest
 from starlette.requests import Request as StarletteRequest
 
 from lexigram.admin.config import AdminConfig
@@ -29,7 +29,7 @@ from lexigram.ui import render_to_string
 class _Widget(BaseModel):
     name: str
     category_id: int
-    tags: list["_Category"] | None = None
+    tags: list[_Category] | None = None
 
 
 class _Category(BaseModel):
@@ -140,7 +140,7 @@ class TestGeneratedFormRelationOptions:
             'hx-get="/admin/categories/relation-options?source=widgets&amp;field=category_id"'
             in html
         )
-        assert "hx-trigger=\"keyup changed delay:300ms\"" in html
+        assert 'hx-trigger="keyup changed delay:300ms"' in html
 
     def test_non_searchable_relation_gets_no_options_url(self) -> None:
         renderer = _renderer({"categories": _CategoryResource})
@@ -217,7 +217,9 @@ class TestRelationOptionsEndpoint:
         class _BrokenResource(_CategoryResource):
             _data_source = _BrokenDataSource()
 
-        handler = RelationOptionsActionHandler(resources={"categories": _BrokenResource})
+        handler = RelationOptionsActionHandler(
+            resources={"categories": _BrokenResource}
+        )
         response = await handler.handle(
             _request("/admin/categories/relation-options"), _BrokenResource()
         )

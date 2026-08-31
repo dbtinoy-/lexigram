@@ -11,8 +11,8 @@ from types import SimpleNamespace
 from typing import Any
 from unittest.mock import MagicMock
 
-import pytest
 from pydantic import BaseModel
+import pytest
 from starlette.requests import Request as StarletteRequest
 
 from lexigram.admin.config import AdminConfig
@@ -123,7 +123,6 @@ class TestBelongsToOptions:
         assert "value=\"{'id': 7" not in html
         assert "Ada" in html
         assert "Grace" in html
-
 
     @pytest.mark.asyncio
     async def test_masked_field_is_not_rendered_in_form_defaults(self) -> None:

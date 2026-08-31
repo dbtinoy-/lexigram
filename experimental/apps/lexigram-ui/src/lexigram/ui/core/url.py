@@ -35,14 +35,10 @@ def is_safe_navigation_url(value: str | None) -> bool:
         return False
 
     if parsed.scheme:
-        return parsed.scheme.lower() in _ALLOWED_NETWORK_SCHEMES and bool(
-            parsed.netloc
-        )
-    if parsed.netloc:
-        # ``//example.test/path`` is protocol-relative and therefore not a
-        # local relative path.
-        return False
-    return True
+        return parsed.scheme.lower() in _ALLOWED_NETWORK_SCHEMES and bool(parsed.netloc)
+    # ``//example.test/path`` is protocol-relative and therefore not a
+    # local relative path.
+    return not parsed.netloc
 
 
 __all__ = ["is_safe_navigation_url"]

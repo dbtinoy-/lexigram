@@ -45,9 +45,7 @@ class ContributorRegistry(Registry[str, AdminContributorProtocol]):
 
     def get_by_group(self, group: str) -> Sequence[AdminContributorProtocol]:
         """Get contributors in a specific group, sorted by priority."""
-        return [
-            c for c in self.values_ordered() if c.group == group
-        ]
+        return [c for c in self.values_ordered() if c.group == group]
 
 
 def _priority_or_default(contributor: AdminContributorProtocol) -> int:

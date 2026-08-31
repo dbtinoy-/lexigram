@@ -91,11 +91,7 @@ class DataTableRenderer:
         # into Alpine's selection set, otherwise several id-less rows collapse
         # into one selected value and a destructive action can target the wrong
         # server record.
-        return [
-            row_id
-            for item in self.data
-            if (row_id := extract_row_id(item))
-        ]
+        return [row_id for item in self.data if (row_id := extract_row_id(item))]
 
     @property
     def all_ids_json(self) -> str:
@@ -384,7 +380,9 @@ class DataTableRenderer:
         inputs = self.state.render_hidden_inputs(exclude=exclude_keys)
         csrf_token = self.props.get("csrf_token")
         if csrf_token:
-            inputs.append(el("input", type="hidden", name="csrf_token", value=csrf_token))
+            inputs.append(
+                el("input", type="hidden", name="csrf_token", value=csrf_token)
+            )
         return inputs
 
     def _render_htmx_wrapper(self, table_content: Any) -> Any:

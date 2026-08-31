@@ -72,7 +72,7 @@ async def test_page_mode_does_not_emit_overlay_htmx_submission() -> None:
 
     assert "Create Page Widgets" in html
     assert 'action="/admin/page_widgets/create"' in html
-    assert "hx-post=\"/admin/page_widgets/create\"" not in html
+    assert 'hx-post="/admin/page_widgets/create"' not in html
     assert 'id="modal-title-' not in html
     assert 'aria-labelledby="slide-over-title"' not in html
 

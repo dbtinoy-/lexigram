@@ -1,7 +1,7 @@
 from lexigram.admin.actions.standard import DeleteBulkAction
-from lexigram.ui.core.base import render_to_string
-from lexigram.ui.columns.types import TextColumn
 from lexigram.admin.ui.organisms.data_table import DataTable
+from lexigram.ui.columns.types import TextColumn
+from lexigram.ui.core.base import render_to_string
 
 
 def test_bulk_action_bar_includes_bulk_buttons_and_hx_include():
@@ -37,7 +37,7 @@ def test_bulk_action_includes_action_name():
     )
     html = render_to_string(dt)
     # hx-vals JSON attribute present with action name
-    assert 'hx-vals=' in html
+    assert "hx-vals=" in html
 
 
 def test_bulk_counter_says_on_this_page():

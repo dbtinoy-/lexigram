@@ -36,11 +36,11 @@ class AdminObjectMapper:
 
     def __init__(self) -> None:
         """Create an empty mapping registry."""
-        self._registry: Registry[
-            tuple[type[Any], type[Any]], Callable[[Any], Any]
-        ] = Registry(
-            name="admin.mapping",
-            allow_overwrite=True,
+        self._registry: Registry[tuple[type[Any], type[Any]], Callable[[Any], Any]] = (
+            Registry(
+                name="admin.mapping",
+                allow_overwrite=True,
+            )
         )
 
     def register(

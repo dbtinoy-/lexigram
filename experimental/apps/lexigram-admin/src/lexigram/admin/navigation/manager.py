@@ -137,13 +137,9 @@ class NavigationManager:
                 continue
             item = dict(raw_item)
             if item.get("href"):
-                item["href"] = mount_admin_url(
-                    str(item["href"]), self._admin_prefix
-                )
+                item["href"] = mount_admin_url(str(item["href"]), self._admin_prefix)
             if item.get("badge"):
-                item["badge"] = mount_admin_url(
-                    str(item["badge"]), self._admin_prefix
-                )
+                item["badge"] = mount_admin_url(str(item["badge"]), self._admin_prefix)
             assembler_nav_items.append(item)
 
         cluster_nav: list | None = None

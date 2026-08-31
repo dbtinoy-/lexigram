@@ -162,6 +162,7 @@ def _adapt_legacy_form_action(action: Any, form_display_mode: str | None) -> Any
         return action
 
     from copy import copy
+
     from lexigram.ui import Zones
 
     adapted = copy(action)
@@ -262,7 +263,9 @@ def render_bulk_action_button(
 
         ctx = ActionContext(
             resource_name=resource_name or "",
-            resource_prefix=resource_prefix or f"/{resource_name}" if resource_name else "",
+            resource_prefix=resource_prefix or f"/{resource_name}"
+            if resource_name
+            else "",
         )
         # The generic resource bulk route receives the action name in
         # ``hx-vals``. BulkAction._get_url() is an action-specific convention
@@ -298,10 +301,10 @@ def render_bulk_action_button(
     from lexigram.ui import HTMXAttrs
 
     _method = "DELETE" if _hx_delete else "POST"
-    _url = _hx_delete or _hx_post or (
-        f"{(resource_prefix or '').rstrip('/')}/bulk"
-        if resource_prefix
-        else ""
+    _url = (
+        _hx_delete
+        or _hx_post
+        or (f"{(resource_prefix or '').rstrip('/')}/bulk" if resource_prefix else "")
     )
 
     bulk_attrs = HTMXAttrs.for_bulk_action(
@@ -381,14 +384,10 @@ class ActionManager:
             action for action in self.config.actions if self._is_allowed(action)
         ]
         self.config.header_actions = [
-            action
-            for action in self.config.header_actions
-            if self._is_allowed(action)
+            action for action in self.config.header_actions if self._is_allowed(action)
         ]
         self.config.bulk_actions = [
-            action
-            for action in self.config.bulk_actions
-            if self._is_allowed(action)
+            action for action in self.config.bulk_actions if self._is_allowed(action)
         ]
 
     def _configure_existing_actions(self) -> None:

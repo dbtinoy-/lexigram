@@ -10,8 +10,8 @@ from __future__ import annotations
 
 import re
 from typing import Any
+
 import pytest
-from pydantic import BaseModel
 from starlette.requests import Request as StarletteRequest
 
 from lexigram.admin.config import AdminConfig
@@ -20,7 +20,7 @@ from lexigram.admin.forms import FormBase
 from lexigram.admin.resources.base import Resource
 from lexigram.admin.resources.form_renderer import FormRenderer
 from lexigram.admin.schema import TextField
-from lexigram.ui import SlideOver, render_to_string
+from lexigram.ui import render_to_string
 
 _BUTTON_RE = re.compile(r"<button[^>]*>.*?</button>", re.S)
 

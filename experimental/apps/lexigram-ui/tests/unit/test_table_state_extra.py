@@ -19,7 +19,9 @@ class _Q:
 
     def getlist(self, key: str) -> list[str]:
         value = self._params.get(key)
-        return value if isinstance(value, list) else ([value] if value is not None else [])
+        return (
+            value if isinstance(value, list) else ([value] if value is not None else [])
+        )
 
     def __iter__(self):
         return iter(self._params)
@@ -133,15 +135,11 @@ class TestFromRequest:
         }
 
     def test_filters_multivalue_list(self) -> None:
-        state = TableState.from_request(
-            _Req({"filter_status": ["a", "b", "a", ""]})
-        )
+        state = TableState.from_request(_Req({"filter_status": ["a", "b", "a", ""]}))
         assert state.filters == {"status": ["a", "b"]}
 
     def test_filters_array_notation_strips_transport_suffix(self) -> None:
-        state = TableState.from_request(
-            _Req({"filter_status[]": ["a", "b"]})
-        )
+        state = TableState.from_request(_Req({"filter_status[]": ["a", "b"]}))
         assert state.filters == {"status": ["a", "b"]}
 
     def test_filters_repaired_list_string(self) -> None:
@@ -301,6 +299,7 @@ class TestResourcePrefixAndInputs:
         state = TableState.from_request(_Req({"search": "x"}))
         inputs = state.render_hidden_inputs(exclude=["search"])
         assert inputs == []
+
 
 class TestDensity:
     """Density state: parsing, URL round-trip and mutation helpers."""

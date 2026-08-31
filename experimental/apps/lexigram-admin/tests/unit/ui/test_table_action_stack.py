@@ -1,9 +1,9 @@
 from types import SimpleNamespace
 
 from lexigram.admin.actions.standard import DeleteBulkAction
-from lexigram.ui.actions.standard import EditAction
 from lexigram.admin.ui.organisms.table.views.stacked import StackedView
 from lexigram.admin.ui.organisms.table.views.tabular import TabularView
+from lexigram.ui.actions.standard import EditAction
 
 
 def make_config(actions=None, columns=None):

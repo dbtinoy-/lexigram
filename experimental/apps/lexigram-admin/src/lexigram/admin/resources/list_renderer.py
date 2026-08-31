@@ -7,8 +7,8 @@ paginated data fetcher (:mod:`..list_query`) into the DataTable-driven
 list view for an admin resource.
 """
 
-import inspect
 from copy import copy
+import inspect
 from typing import Any
 
 from starlette.responses import HTMLResponse
@@ -61,7 +61,9 @@ class ListRenderer:
         except (AttributeError, KeyError, RuntimeError):
             app = None
         service = getattr(getattr(app, "state", None), "permission_service", None)
-        if service is not None and callable(getattr(service, "should_mask_field", None)):
+        if service is not None and callable(
+            getattr(service, "should_mask_field", None)
+        ):
             return service
         try:
             state = request.state
@@ -87,15 +89,13 @@ class ListRenderer:
         """Return an isolated record copy with sensitive values redacted."""
         if isinstance(record, dict):
             masked = dict(record)
-            masked.update({name: _MASKED_FIELD_VALUE for name in fields})
+            masked.update(dict.fromkeys(fields, _MASKED_FIELD_VALUE))
             return masked
 
         model_copy = getattr(record, "model_copy", None)
         if callable(model_copy):
             try:
-                return model_copy(
-                    update={name: _MASKED_FIELD_VALUE for name in fields}
-                )
+                return model_copy(update=dict.fromkeys(fields, _MASKED_FIELD_VALUE))
             except (AttributeError, TypeError, ValueError):
                 pass
 
@@ -111,7 +111,7 @@ class ListRenderer:
                 values = dict(vars(record))
             except (AttributeError, TypeError, ValueError):
                 values = {}
-            values.update({name: _MASKED_FIELD_VALUE for name in fields})
+            values.update(dict.fromkeys(fields, _MASKED_FIELD_VALUE))
             return values
 
     async def _mask_items(
@@ -136,8 +136,7 @@ class ListRenderer:
             try:
                 permission_schema = schema(self.resource_name)
                 field_names.update(
-                    str(name)
-                    for name in getattr(permission_schema, "fields", {})
+                    str(name) for name in getattr(permission_schema, "fields", {})
                 )
             except Exception:  # noqa: BLE001 — renderer must remain available
                 logger.exception("admin.list_permission_schema_resolution_failed")
@@ -209,8 +208,7 @@ class ListRenderer:
         if callable(has_method):
             has = has_method
         elif isinstance(raw, dict) and any(
-            key in raw
-            for key in ("can_view", "can_create", "can_update", "can_delete")
+            key in raw for key in ("can_view", "can_create", "can_update", "can_delete")
         ):
             return {
                 key: bool(raw.get(key, False))
@@ -220,7 +218,9 @@ class ListRenderer:
             values = {str(value) for value in raw}
 
             def has(permission: str) -> bool:
-                return permission in values or "*" in values or f"{resource}.*" in values
+                return (
+                    permission in values or "*" in values or f"{resource}.*" in values
+                )
         else:
             return {
                 "can_view": False,
@@ -232,9 +232,7 @@ class ListRenderer:
         return {
             "can_view": bool(has(f"{resource}.view") or has(f"{resource}.list")),
             "can_create": bool(has(f"{resource}.create")),
-            "can_update": bool(
-                has(f"{resource}.edit") or has(f"{resource}.update")
-            ),
+            "can_update": bool(has(f"{resource}.edit") or has(f"{resource}.update")),
             "can_delete": bool(has(f"{resource}.delete")),
         }
 
@@ -257,13 +255,13 @@ class ListRenderer:
         )
         return {str(name) for name in (model_fields or {})}
 
-    def _sanitize_table_state(self, state: TableState, table_config, source_columns, resource):
+    def _sanitize_table_state(
+        self, state: TableState, table_config, source_columns, resource
+    ):
         """Whitelist URL-controlled sort/group fields before data access/rendering."""
         allowed_fields = self._available_fields(source_columns, resource)
         default_sort = getattr(table_config, "default_sort_by", None)
-        safe_default_sort = (
-            default_sort if default_sort in allowed_fields else None
-        )
+        safe_default_sort = default_sort if default_sort in allowed_fields else None
 
         sort_by = state.sort_by
         sort_order = state.sort_order
@@ -289,9 +287,7 @@ class ListRenderer:
         # is not a known/available field so the table can never be told to
         # suppress fields it does not own.
         hidden_columns = [
-            name
-            for name in (state.hidden_columns or [])
-            if name in allowed_fields
+            name for name in (state.hidden_columns or []) if name in allowed_fields
         ]
 
         if (
@@ -393,7 +389,9 @@ class ListRenderer:
             "order"
         )
         if legacy_sort:
-            direction = legacy_direction if legacy_direction in ("asc", "desc") else "asc"
+            direction = (
+                legacy_direction if legacy_direction in ("asc", "desc") else "asc"
+            )
             state = state.model_copy(
                 update={
                     "sort_by": legacy_sort,

@@ -64,7 +64,7 @@ def mount_admin_url(url: str | None, prefix: str) -> str:
     if normalized == DEFAULT_ADMIN_PREFIX or normalized.startswith(
         f"{DEFAULT_ADMIN_PREFIX}/"
     ):
-        return f"{mount}{normalized[len(DEFAULT_ADMIN_PREFIX):]}"
+        return f"{mount}{normalized[len(DEFAULT_ADMIN_PREFIX) :]}"
     return normalized
 
 

@@ -187,7 +187,9 @@ def _render_stat_content(content: StatContent) -> str:
     col_class = (
         "lg:grid-cols-4"
         if count >= 4
-        else "lg:grid-cols-3" if count == 3 else "sm:grid-cols-2"
+        else "lg:grid-cols-3"
+        if count == 3
+        else "sm:grid-cols-2"
     )
     return render_to_string(
         el("div", *cards, class_=f"grid grid-cols-1 {col_class} gap-4")

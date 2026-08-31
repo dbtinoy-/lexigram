@@ -21,9 +21,9 @@ Rules
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
+from dataclasses import MISSING, is_dataclass
+from dataclasses import fields as dataclass_fields
 from typing import Any, Final, get_type_hints
-
-from dataclasses import MISSING, fields as dataclass_fields, is_dataclass
 
 from lexigram.admin.resources.form_coercion import _coerce_form_data
 

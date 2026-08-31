@@ -64,7 +64,12 @@ class TestLanguageSwitcher:
         assert "select" in html.lower()
 
     def test_multiple_locales(self) -> None:
-        locales = [("en", "English"), ("fr", "Français"), ("es", "Español"), ("de", "Deutsch")]
+        locales = [
+            ("en", "English"),
+            ("fr", "Français"),
+            ("es", "Español"),
+            ("de", "Deutsch"),
+        ]
         sw = LanguageSwitcher(locales=locales, current_locale="es")
         html = str(sw.render())
         for code, _ in locales:

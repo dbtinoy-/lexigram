@@ -1,8 +1,8 @@
 from lexigram.admin.schema import SelectField
 from lexigram.admin.ui.filters.types import SelectFilter
 from lexigram.admin.ui.molecules.filter_bar import FilterBar
-from lexigram.ui.state import TableState
 from lexigram.ui.core.base import render_to_string
+from lexigram.ui.state import TableState
 
 
 def test_filter_bar_renders_various_controls_and_htmx_attrs():
@@ -14,7 +14,9 @@ def test_filter_bar_renders_various_controls_and_htmx_attrs():
     }
     current = {"status": "active", "is_featured": "true", "start_date": "2025-01-01"}
     fb = FilterBar(
-        filters=filters, current_values=current, resource_prefix="/admin/items",
+        filters=filters,
+        current_values=current,
+        resource_prefix="/admin/items",
     )
     html = render_to_string(fb)
 

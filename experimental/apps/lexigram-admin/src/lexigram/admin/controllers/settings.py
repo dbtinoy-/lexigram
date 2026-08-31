@@ -15,8 +15,8 @@ from lexigram.admin.auth.types import AdminSecurityEventType
 from lexigram.admin.config import AdminRbacConfig
 from lexigram.admin.controllers.base import AdminController
 from lexigram.admin.multitenancy.adapter import resolve_tenant_id
-from lexigram.admin.resources.urls import admin_prefix_from_request, admin_url
 from lexigram.admin.rbac.super_admin import is_super_admin
+from lexigram.admin.resources.urls import admin_prefix_from_request, admin_url
 from lexigram.admin.settings.panel import BooleanNode, SecretNode
 from lexigram.admin.settings.panel.layout import ConfigLayout
 from lexigram.admin.settings.panel.registry import ConfigRegistry

@@ -73,13 +73,10 @@ class SecondaryNav(Component):
             self._render_header_icon(item.get("icon")),
             el("span", item.get("label", ""), class_="font-medium"),
         )
-        header_classes = (
-            "flex items-center gap-2 px-3 py-2 text-sm "
-            + (
-                "text-primary-700 dark:text-primary-400"
-                if active
-                else "text-muted-foreground dark:text-muted-foreground"
-            )
+        header_classes = "flex items-center gap-2 px-3 py-2 text-sm " + (
+            "text-primary-700 dark:text-primary-400"
+            if active
+            else "text-muted-foreground dark:text-muted-foreground"
         )
         header_href = item.get("href")
         header = (

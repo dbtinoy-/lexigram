@@ -66,9 +66,7 @@ class ResourceRenderMixin:
         action = admin_url(prefix, self.meta.name)
         if item:
             id_val = (
-                item.get("id")
-                if isinstance(item, dict)
-                else getattr(item, "id", None)
+                item.get("id") if isinstance(item, dict) else getattr(item, "id", None)
             )
             if id_val is not None:
                 action = admin_url(prefix, self.meta.name, str(id_val))

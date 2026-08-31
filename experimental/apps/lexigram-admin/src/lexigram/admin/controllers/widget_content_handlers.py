@@ -125,7 +125,7 @@ async def render_health_check_fragment(
         (
             h
             for h in contributor.get_health_definitions()
-            if h.name == check_name or h.name == f"{contributor_id}.{check_name}"
+            if h.name in {check_name, f"{contributor_id}.{check_name}"}
         ),
         None,
     )

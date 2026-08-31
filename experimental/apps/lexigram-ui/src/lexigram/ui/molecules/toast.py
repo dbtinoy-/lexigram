@@ -125,6 +125,3 @@ class InlineToast(Component):
             },
             aria_live="assertive" if is_error else "polite",
         )
-
-
-

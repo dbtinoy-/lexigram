@@ -5,15 +5,19 @@ from __future__ import annotations
 from pydantic import BaseModel
 import pytest
 
-from lexigram.ui import render_to_string
-
 from lexigram.admin.forms import FormBase
 from lexigram.admin.forms.builder import FormBuilder
 from lexigram.admin.resources.action_handlers import _form_data_dict
 from lexigram.admin.resources.base import Resource
-from lexigram.admin.resources.list_columns import SchemaFieldColumn, build_columns
 from lexigram.admin.resources.form_coercion import _coerce_form_data
-from lexigram.admin.schema import BooleanField, LengthValidator, MultiSelectField, TextField
+from lexigram.admin.resources.list_columns import SchemaFieldColumn, build_columns
+from lexigram.admin.schema import (
+    BooleanField,
+    LengthValidator,
+    MultiSelectField,
+    TextField,
+)
+from lexigram.ui import render_to_string
 
 
 class _OptionalModel(BaseModel):
@@ -56,10 +60,14 @@ def test_builder_field_validators_run_during_submission() -> None:
     class Model(BaseModel):
         name: str
 
-    form = FormBuilder(Model).field(
-        "name",
-        validators=[LengthValidator(min_length=3)],
-    ).build()
+    form = (
+        FormBuilder(Model)
+        .field(
+            "name",
+            validators=[LengthValidator(min_length=3)],
+        )
+        .build()
+    )
 
     import asyncio
 
@@ -149,10 +157,14 @@ def test_builder_handles_repeated_list_controls() -> None:
     class Model(BaseModel):
         tags: list[str]
 
-    form = FormBuilder(Model).field(
-        "tags",
-        options=[("one", "One"), ("two", "Two")],
-    ).build()
+    form = (
+        FormBuilder(Model)
+        .field(
+            "tags",
+            options=[("one", "One"), ("two", "Two")],
+        )
+        .build()
+    )
 
     import asyncio
 

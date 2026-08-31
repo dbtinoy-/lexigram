@@ -78,7 +78,10 @@ class TenantScopedDataSource:
     def _in_scope(self, record: Any) -> bool:
         """Return whether a concrete record belongs to the active tenant."""
         record_tenant = self._record_tenant(record)
-        return record_tenant is not None and str(record_tenant) == self._effective_tenant_id()
+        return (
+            record_tenant is not None
+            and str(record_tenant) == self._effective_tenant_id()
+        )
 
     def _filter_result(self, result: Any) -> Any:
         """Apply a response-side tenant check to defensive read results."""
@@ -138,7 +141,9 @@ class TenantScopedDataSource:
         if callable(count_method):
             return await count_method(scoped_query)
         result = await self.find_many(query)
-        return int(getattr(result, "total", len(result) if hasattr(result, "__len__") else 0))
+        return int(
+            getattr(result, "total", len(result) if hasattr(result, "__len__") else 0)
+        )
 
     async def find_one(self, id: Any) -> Any:
         """Find a single record, ensuring it belongs to the active tenant."""

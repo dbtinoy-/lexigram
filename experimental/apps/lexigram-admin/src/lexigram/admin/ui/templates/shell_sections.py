@@ -20,7 +20,9 @@ def _user_has_permission(user: Any, permission: str) -> bool:
 
     if isinstance(user, dict):
         perms = user.get("permissions") or []
-        return permission in perms or ("*" in perms if isinstance(perms, list) else False)
+        return permission in perms or (
+            "*" in perms if isinstance(perms, list) else False
+        )
 
     has_perm = getattr(user, "has_permission", None)
     if callable(has_perm):
@@ -92,8 +94,10 @@ def prepare_navigation(
         # Resource nav links are ``{admin_prefix}/{resource}`` — derive the
         # ``{resource}.read`` permission from the first path segment after
         # the configured admin prefix (works for any mount prefix).
-        if not required_permission and href and href.startswith(
-            admin_prefix.rstrip("/") + "/"
+        if (
+            not required_permission
+            and href
+            and href.startswith(admin_prefix.rstrip("/") + "/")
         ):
             remainder = href[len(admin_prefix.rstrip("/")) + 1 :]
             resource = remainder.split("/", 1)[0].split("?")[0]
@@ -103,8 +107,10 @@ def prepare_navigation(
         # Check permission if required. The user record (or dict) carries its
         # own permission list; legacy RBACChecker was removed — authorization
         # is provided by the request/session user object.
-        if required_permission and user and not _user_has_permission(
-            user, required_permission
+        if (
+            required_permission
+            and user
+            and not _user_has_permission(user, required_permission)
         ):
             continue
 
@@ -224,7 +230,12 @@ def build_main_area(
         *build_breadcrumbs_nav(breadcrumbs),
         el(
             "main",
-            el("div", content_inner, id="main-content", class_="admin-shell-content px-4 py-4"),
+            el(
+                "div",
+                content_inner,
+                id="main-content",
+                class_="admin-shell-content px-4 py-4",
+            ),
             class_="admin-shell-scroll flex-1 overflow-y-auto bg-muted dark:bg-muted focus:outline-none transition-colors duration-300",
         ),
         class_="admin-shell-main flex flex-col flex-1 min-w-0 overflow-hidden",

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from types import SimpleNamespace
 from typing import Any
 
@@ -104,18 +104,14 @@ class TestRegistryDispatch:
             SelectFieldRenderer,
         )
         assert isinstance(
-            registry.get_renderer(
-                MultiSelectField(name="m", options=[("a", "A")])
-            ),
+            registry.get_renderer(MultiSelectField(name="m", options=[("a", "A")])),
             MultiSelectFieldRenderer,
         )
 
     def test_relation_fields_dispatch_by_class(self) -> None:
         registry = FieldRendererRegistry.with_defaults()
         assert isinstance(
-            registry.get_renderer(
-                BelongsToField(name="owner", resource="owners")
-            ),
+            registry.get_renderer(BelongsToField(name="owner", resource="owners")),
             BelongsToFieldRenderer,
         )
         assert isinstance(
@@ -129,7 +125,9 @@ class TestRegistryDispatch:
 
     def test_unknown_fields_use_default_renderer(self) -> None:
         registry = FieldRendererRegistry.with_defaults()
-        assert isinstance(registry.get_renderer(RatingField(name="rating")), DefaultFieldRenderer)
+        assert isinstance(
+            registry.get_renderer(RatingField(name="rating")), DefaultFieldRenderer
+        )
 
     def test_registry_starts_empty(self) -> None:
         assert len(list(FieldRendererRegistry().items())) == 0
@@ -206,12 +204,14 @@ class TestRendererOutput:
     def test_datetime_field_uses_browser_datetime_local_format(self) -> None:
         html = _render(
             DateTimeField(name="dt"),
-            value=datetime(2026, 1, 2, 10, 30, 45, tzinfo=timezone.utc),
+            value=datetime(2026, 1, 2, 10, 30, 45, tzinfo=UTC),
         )
         assert 'type="datetime-local"' in html
         assert 'value="2026-01-02T10:30"' in html
 
-    def test_datetime_field_preserves_failed_value_without_timezone_suffix(self) -> None:
+    def test_datetime_field_preserves_failed_value_without_timezone_suffix(
+        self,
+    ) -> None:
         html = _render(DateTimeField(name="dt"), value="2026-01-02T10:30:45+00:00")
         assert 'value="2026-01-02T10:30"' in html
 

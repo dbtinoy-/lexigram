@@ -78,7 +78,9 @@ class DataTable(Component):
             sort_by if sort_by is not None else self.config.default_sort_by
         )
         effective_sort_order = (
-            sort_order if sort_order in ("asc", "desc") else self.config.default_sort_order
+            sort_order
+            if sort_order in ("asc", "desc")
+            else self.config.default_sort_order
         )
         effective_filters = dict(filters or {})
         legacy_search = effective_filters.pop("search", "")

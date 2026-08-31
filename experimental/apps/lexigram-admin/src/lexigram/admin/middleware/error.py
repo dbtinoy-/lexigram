@@ -44,9 +44,7 @@ class AdminErrorMiddleware(BaseHTTPMiddleware):
         """
         super().__init__(app)
         self.debug = debug
-        self._admin_prefix = (
-            admin_prefix or "/admin"
-        ).rstrip("/")
+        self._admin_prefix = (admin_prefix or "/admin").rstrip("/")
         self.login_url = login_url or f"{self._admin_prefix}/login"
 
     async def dispatch(self, request: Request, call_next) -> Any:
