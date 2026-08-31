@@ -16,6 +16,7 @@ from starlette.requests import Request
 from starlette.responses import RedirectResponse, Response
 
 from lexigram.admin.auth.models import AdminUser
+from lexigram.admin.auth.next_url import build_login_redirect
 from lexigram.admin.auth.protocols import (
     AdminAuditLogServiceProtocol,
     AdminCsrfServiceProtocol,
@@ -143,7 +144,10 @@ class ProfileController(AdminController):
         user: AdminUser = self.current_user(request)
         if not user or user.user_id == "guest":
             return RedirectResponse(
-                url=f"{self._admin_path(request, '/admin/login')}?next={quote_plus(self._admin_path(request, '/admin/profile'))}",
+                url=build_login_redirect(
+                    self._admin_path(request, "/admin/login"),
+                    self._admin_path(request, "/admin/profile"),
+                ),
                 status_code=302,
             )
 
@@ -205,7 +209,10 @@ class ProfileController(AdminController):
         user: AdminUser = self.current_user(request)
         if not user or user.user_id == "guest":
             return RedirectResponse(
-                url=f"{self._admin_path(request, '/admin/login')}?next={quote_plus(self._admin_path(request, '/admin/profile'))}",
+                url=build_login_redirect(
+                    self._admin_path(request, "/admin/login"),
+                    self._admin_path(request, "/admin/profile"),
+                ),
                 status_code=302,
             )
         if self._user_store is None:

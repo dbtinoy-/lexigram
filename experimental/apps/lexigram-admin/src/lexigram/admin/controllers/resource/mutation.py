@@ -231,6 +231,48 @@ class ResourceMutationMixin:
         return None
 
     @classmethod
+    def _missing_protected_arguments(
+        cls, model: type, cleaned: dict[str, Any]
+    ) -> set[str]:
+        """Return required constructor arguments a form is not allowed to send.
+
+        Server-owned columns such as ``id`` are stripped from submitted data,
+        but a dataclass typically still declares them as required arguments.
+        This reports those names so a validation probe can fill them without
+        treating their absence as a user-facing error.
+
+        Args:
+            model: The bound model type.
+            cleaned: The sanitized, form-supplied values.
+
+        Returns:
+            Names of required parameters that are both protected and absent.
+            Empty when the signature cannot be inspected.
+        """
+        protected = set(cls._PROTECTED_FIELDS)
+        protected.update(getattr(cls, "form_exclude_fields", ()) or ())
+        protected.update(getattr(cls, "readonly_fields", ()) or ())
+
+        try:
+            signature = inspect.signature(model)
+        except (TypeError, ValueError):  # pragma: no cover — exotic callables
+            return set()
+
+        missing: set[str] = set()
+        for name, parameter in signature.parameters.items():
+            if name in cleaned or name not in protected:
+                continue
+            if parameter.default is not inspect.Parameter.empty:
+                continue
+            if parameter.kind in {
+                inspect.Parameter.VAR_POSITIONAL,
+                inspect.Parameter.VAR_KEYWORD,
+            }:
+                continue
+            missing.add(name)
+        return missing
+
+    @classmethod
     def _validated_model_fields(cls, data: dict[str, Any]) -> dict[str, Any]:
         """Coerce, validate, and guard HTML form data.
 
@@ -268,7 +310,20 @@ class ResourceMutationMixin:
                 # Dataclass/domain-model compatibility for older controller
                 # users. Keep the sanitized mapping on success so framework
                 # fields/defaults are not accidentally sent to the data source.
-                model(**cleaned)
+                #
+                # Protected fields (id, tenant_id, created_at, updated_at) are
+                # stripped above because a form must never assign them, but a
+                # dataclass usually declares them as required positional
+                # arguments. Constructing with only the cleaned mapping would
+                # therefore raise TypeError for every create, making the
+                # operation structurally impossible rather than reporting a
+                # real validation problem. Fill those server-owned fields with
+                # placeholders purely to exercise the model's own validation,
+                # and never propagate them to the data source.
+                probe = dict(cleaned)
+                for name in cls._missing_protected_arguments(model, cleaned):
+                    probe[name] = None
+                model(**probe)
         except (TypeError, ValueError, AttributeError) as exc:
             errors: list[FieldError] = []
             raw_errors = getattr(exc, "errors", None)

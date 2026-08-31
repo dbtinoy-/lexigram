@@ -24,6 +24,8 @@ LAZY_IMPORTS: dict[str, str] = {
     "Zone": "lexigram.ui.core.zones",
     "Zones": "lexigram.ui.core.zones",
     "SwapMode": "lexigram.ui.core.zones",
+    # ---- URL safety ----
+    "is_safe_navigation_url": "lexigram.ui.core.url",
     # ---- Table state ----
     "TableState": "lexigram.ui.state",
     # ---- Table actions ----

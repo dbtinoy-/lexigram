@@ -6,6 +6,7 @@ from urllib.parse import quote_plus
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, RedirectResponse
 
+from lexigram.admin.auth.next_url import build_login_redirect
 from lexigram.admin.controllers.auth.core import (
     _CACHE_CONTROL_NO_STORE,
     AuthCoreMixin,
@@ -260,7 +261,10 @@ class AuthMfaMixin(AuthCoreMixin):
         user = getattr(request.state, "user", None)
         if not user or user.user_id == "guest":
             return RedirectResponse(
-                url=f"{self._admin_path(request, '/admin/login')}?next={quote_plus(self._admin_path(request, '/admin/profile/mfa'))}",
+                url=build_login_redirect(
+                    self._admin_path(request, "/admin/login"),
+                    self._admin_path(request, "/admin/profile/mfa"),
+                ),
                 status_code=302,
             )
         if self._mfa_service is None:
@@ -344,7 +348,10 @@ class AuthMfaMixin(AuthCoreMixin):
         user = getattr(request.state, "user", None)
         if not user or user.user_id == "guest":
             return RedirectResponse(
-                url=f"{self._admin_path(request, '/admin/login')}?next={quote_plus(self._admin_path(request, '/admin/profile/mfa'))}",
+                url=build_login_redirect(
+                    self._admin_path(request, "/admin/login"),
+                    self._admin_path(request, "/admin/profile/mfa"),
+                ),
                 status_code=302,
             )
         if self._mfa_service is None:
@@ -403,7 +410,10 @@ class AuthMfaMixin(AuthCoreMixin):
         user = getattr(request.state, "user", None)
         if not user or user.user_id == "guest":
             return RedirectResponse(
-                url=f"{self._admin_path(request, '/admin/login')}?next={quote_plus(self._admin_path(request, '/admin/profile/mfa'))}",
+                url=build_login_redirect(
+                    self._admin_path(request, "/admin/login"),
+                    self._admin_path(request, "/admin/profile/mfa"),
+                ),
                 status_code=302,
             )
         if self._mfa_service is None:

@@ -7,6 +7,7 @@ from urllib.parse import quote_plus
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, RedirectResponse
 
+from lexigram.admin.auth.next_url import build_login_redirect
 from lexigram.admin.controllers.auth.core import (
     _CACHE_CONTROL_NO_STORE,
     AuthCoreMixin,
@@ -127,7 +128,11 @@ class AuthLoginMixin(AuthCoreMixin):
                 "auth.csrf_validation_failed", ip=self._get_client_ip(request)
             )
             return RedirectResponse(
-                url=f"{self._admin_path(request, '/admin/login')}?error={quote_plus('Invalid or expired security token. Please try again.')}&next={quote_plus(next_url)}",
+                url=build_login_redirect(
+                    self._admin_path(request, "/admin/login"),
+                    next_url,
+                    error="Invalid or expired security token. Please try again.",
+                ),
                 status_code=302,
             )
 
@@ -135,13 +140,17 @@ class AuthLoginMixin(AuthCoreMixin):
         if not email or not password:
             email_err = "Email is required." if not email else ""
             password_err = "Password is required." if not password else ""
-            params = [f"next={quote_plus(next_url)}"]
+            field_errors: dict[str, str] = {}
             if email_err:
-                params.append(f"email_err={quote_plus(email_err)}")
+                field_errors["email_err"] = email_err
             if password_err:
-                params.append(f"password_err={quote_plus(password_err)}")
+                field_errors["password_err"] = password_err
             return RedirectResponse(
-                url=f"{self._admin_path(request, '/admin/login')}?{'&'.join(params)}",
+                url=build_login_redirect(
+                    self._admin_path(request, "/admin/login"),
+                    next_url,
+                    **field_errors,
+                ),
                 status_code=302,
             )
 
@@ -249,7 +258,11 @@ class AuthLoginMixin(AuthCoreMixin):
         self._metrics.record_login(status="failure")
         logger.warning("auth.login_failed", email=email, ip=ip, reason=error_msg)
         return RedirectResponse(
-            url=f"{self._admin_path(request, '/admin/login')}?error={quote_plus(error_msg)}&next={quote_plus(next_url)}",
+            url=build_login_redirect(
+                self._admin_path(request, "/admin/login"),
+                next_url,
+                error=error_msg,
+            ),
             status_code=302,
         )
 

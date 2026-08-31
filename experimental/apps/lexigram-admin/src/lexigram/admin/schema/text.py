@@ -6,8 +6,7 @@ from typing import Any
 from lexigram.admin.schema.base import SchemaField
 from lexigram.admin.schema.exceptions import FieldError
 from lexigram.result import Ok, Result
-from lexigram.ui import Element, TextInput
-from lexigram.ui.core.url import is_safe_navigation_url
+from lexigram.ui import Element, TextInput, is_safe_navigation_url
 
 
 @dataclass(frozen=True, kw_only=True)

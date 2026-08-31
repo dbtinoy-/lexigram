@@ -7,8 +7,7 @@ from lexigram.admin.schema.base import SchemaField
 from lexigram.admin.schema.exceptions import FieldError
 from lexigram.result import Err, Ok, Result
 from lexigram.serialization import dumps_str, loads_str
-from lexigram.ui import Element, FileUpload, TextArea
-from lexigram.ui.core.url import is_safe_navigation_url
+from lexigram.ui import Element, FileUpload, TextArea, is_safe_navigation_url
 
 
 @dataclass(frozen=True, kw_only=True)
