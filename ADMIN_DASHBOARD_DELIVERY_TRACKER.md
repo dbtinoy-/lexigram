@@ -71,7 +71,7 @@ workspace packages.
 - Reactive SSE bridge DI regression suite: passed (`11 passed, 1 warning`); the
   bridge now resolves to the callable factory instead of an eagerly-created
   response.
-- Optional adapter and dependent resource suites: passed (`45 passed, 1 warning`);
+- Optional adapter and dependent resource suites: passed (`46 passed, 1 warning`);
   cache, storage, resilience, feature-flag, and task-queue contract seams are
   covered.
 - Local preview smoke test: `/admin/`, `/admin/search`, and

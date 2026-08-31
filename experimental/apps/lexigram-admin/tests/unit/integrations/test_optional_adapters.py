@@ -10,6 +10,7 @@ import pytest
 
 from lexigram.admin.integrations.cache import CacheIntegration
 from lexigram.admin.integrations.features import FeaturesIntegration
+from lexigram.admin.integrations.monitor import MonitorIntegration
 from lexigram.admin.integrations.resilience import ResilienceIntegration
 from lexigram.admin.integrations.storage import StorageIntegration
 from lexigram.admin.integrations.tasks import TasksIntegration
@@ -90,6 +91,18 @@ class TestStorageIntegration:
 
         assert await integration.presigned_url("a.txt") == "memory://a.txt"
         backend.get_url.assert_awaited_once_with("a.txt")
+
+
+class TestMonitorIntegration:
+    @pytest.mark.asyncio
+    async def test_fresh_adapter_reports_noop_and_accepts_metrics(self) -> None:
+        integration = MonitorIntegration(SimpleNamespace())
+
+        integration.increment("admin.test")
+        integration.gauge("admin.test", 1.0)
+        integration.histogram("admin.test", 0.5)
+
+        assert await integration.health_check() == {"status": "noop"}
 
 
 class TestFeaturesIntegration:

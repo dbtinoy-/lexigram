@@ -37,7 +37,9 @@ class MonitorIntegration:
 
     def __init__(self, config: Any) -> None:
         self._config = config
-        self._recorder: Any = None
+        # Keep metric calls and health checks safe before the DI lifecycle
+        # resolves the optional recorder.
+        self._recorder: Any = _NoOpMonitor()
         self._enabled = False
 
     def register(self, container: ContainerRegistrarProtocol) -> None:
