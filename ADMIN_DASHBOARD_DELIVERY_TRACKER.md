@@ -93,5 +93,13 @@ Known environment-limited checks from the audit baseline:
 - [x] Commit the completed implementation without author/co-author attribution.
 - [x] Push only `arena/01a054ce-lexigram`.
 - [x] Open the requested development pull request without merging it.
+- [x] Add an explicit custom-prefix wizard regression and normalize legacy
+      `/admin` wizard action URLs under the active mount.
+- [ ] Resolve the current GitHub Actions startup failure: runs for the latest
+      pushed commits fail all jobs before any workflow step executes, so the
+      quality, integration, and coverage gates have not produced actionable
+      results yet.
+- [ ] Run browser/live-preview QA for desktop/mobile shell behavior, dark mode,
+      dashboard reorder feedback, HTMX swaps, and resource/form flows.
 - [ ] Resolve optional-environment failures in CI when the missing auth/AI
       dependencies are available.
