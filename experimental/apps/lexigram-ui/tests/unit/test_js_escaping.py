@@ -331,3 +331,78 @@ class TestChartRenderers:
         plotly = self._render(PlotlyRenderer(), id="sales")
         assert 'id="sales"' in plotly
         assert 'Plotly.newPlot("sales"' in plotly
+
+
+class TestHtmxOptimisticHelpers:
+    """Both helpers build JS by interpolating a selector and a snippet."""
+
+    @pytest.mark.parametrize("payload", BREAKOUT_PAYLOADS)
+    def test_optimistic_update_encodes_both_arguments(self, payload: str) -> None:
+        from lexigram.ui.htmx.helpers import optimistic_update
+
+        expression = optimistic_update(payload, payload)["hx-on::before-request"]
+        selector = _literal_at(expression, "document.querySelector(")
+        content = json.loads(expression.split(".innerHTML = ", 1)[1])
+
+        assert selector == payload
+        assert content == payload
+
+    @pytest.mark.parametrize("payload", BREAKOUT_PAYLOADS)
+    def test_optimistic_swap_encodes_both_arguments(self, payload: str) -> None:
+        from lexigram.ui.htmx.helpers import hx_optimistic_swap
+
+        expression = hx_optimistic_swap(payload, payload)["hx-on-click"]
+        selector = _literal_at(expression, "document.querySelector(")
+        content = json.loads(expression.split(".innerHTML = ", 1)[1])
+
+        assert selector == payload
+        assert content == payload
+
+    def test_backslash_defeated_the_previous_escaping(self) -> None:
+        """The old code did html_snippet.replace("'", "\\'"), so a leading
+        backslash escaped the backslash instead of the quote and the
+        remainder ran as code."""
+        from lexigram.ui.htmx.helpers import hx_optimistic_swap
+
+        expression = hx_optimistic_swap("#t", "\\';alert(1);//")["hx-on-click"]
+
+        assert json.loads(expression.split(".innerHTML = ", 1)[1]) == (
+            "\\';alert(1);//"
+        )
+
+
+class TestDataTableAllIds:
+    """Row ids are database values interpolated into an inline script."""
+
+    def _render(self, all_ids: list[str]) -> str:
+        from lexigram.ui import render_to_string
+        from lexigram.ui.molecules.data_table_client_logic import (
+            DataTableScriptRenderer,
+        )
+
+        return str(render_to_string(DataTableScriptRenderer.render(all_ids)))
+
+    def test_row_id_cannot_close_the_script_block(self) -> None:
+        rendered = self._render(["a", "</script><img src=x onerror=alert(1)>"])
+
+        assert "</script><img" not in rendered
+        assert "<img" not in rendered
+
+    def test_ids_survive_encoding(self) -> None:
+        rendered = self._render(["r1", "r2"])
+
+        assert _literal_at(rendered, "allIds: ") == ["r1", "r2"]
+
+
+class TestAdminLayoutCsrf:
+    """The CSRF token is emitted into script content, not into markup."""
+
+    def test_token_is_a_js_literal_not_an_html_entity(self) -> None:
+        """html.escape would send JavaScript the text &#39; rather than a
+        quote, corrupting the token instead of protecting it."""
+        from lexigram.ui.core.js import js_string
+
+        literal = js_string("tok'en")
+
+        assert "&#39;" not in literal
+        assert json.loads(literal) == "tok'en"

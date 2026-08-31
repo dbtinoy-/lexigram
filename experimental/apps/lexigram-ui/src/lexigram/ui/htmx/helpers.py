@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from lexigram.ui.core.js import js_string
+
 if TYPE_CHECKING:
     from htpy import Element
 
@@ -362,7 +364,10 @@ def optimistic_update(
         HTMX attributes dict for optimistic update.
     """
     return {
-        "hx-on::before-request": f"document.querySelector('{target}').innerHTML = '{content}'",
+        "hx-on::before-request": (
+            f"document.querySelector({js_string(target)})"
+            f".innerHTML = {js_string(content)}"
+        ),
         **kwargs,
     }
 
@@ -376,12 +381,18 @@ def hx_optimistic_swap(target: str, html_snippet: str) -> dict[str, Any]:
 
     Args:
         target: CSS selector for the target element.
-        html_snippet: HTML content to swap in (single quotes escaped).
+        html_snippet: HTML content to swap in.
 
     Returns:
         HTMX attributes dict for optimistic swap.
     """
-    safe_snippet = html_snippet.replace("'", "\\'")
+    # Both values are encoded as complete JS literals. The previous
+    # hand-rolled .replace("'", "\\'") was bypassable: a backslash in the
+    # input escaped the backslash rather than the quote, so "\\';alert(1);//"
+    # closed the string and ran as code.
     return {
-        "hx-on-click": f"document.querySelector('{target}').innerHTML = '{safe_snippet}'",
+        "hx-on-click": (
+            f"document.querySelector({js_string(target)})"
+            f".innerHTML = {js_string(html_snippet)}"
+        ),
     }

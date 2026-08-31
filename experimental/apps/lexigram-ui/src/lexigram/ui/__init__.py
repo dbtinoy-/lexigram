@@ -92,6 +92,8 @@ if TYPE_CHECKING:
         reset_ui_context,
         set_ui_context,
     )
+    from lexigram.ui.core.js import js_json, js_string
+    from lexigram.ui.core.url import is_safe_navigation_url
     from lexigram.ui.core.zones import SwapMode, Zone, Zones
     from lexigram.ui.decorators import component
     from lexigram.ui.di.provider import UIProvider

@@ -2,8 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from lexigram.serialization import dumps_str
-from lexigram.ui import Zones, el, raw
+from lexigram.ui import Zones, el, js_json, raw
 
 
 class DataTableScriptRenderer:
@@ -54,7 +53,7 @@ class DataTableScriptRenderer:
             window.LexigramTableInitialized = true;
 
             window.LexigramTableLogic = {{
-                allIds: {dumps_str(all_ids)},
+                allIds: {js_json(all_ids)},
                 hasActiveFiltersState: false,
 
                 updateActiveFiltersState() {{
