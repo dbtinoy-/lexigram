@@ -45,6 +45,7 @@ class Form(Generic[T]):
         group_labels: dict[str, str] | None = None,
         request: Any | None = None,
         csrf_token: str | None = None,
+        form_attrs: dict[str, Any] | None = None,
     ):
         self.model = model
         self.fields = {f.name: f for f in fields}
@@ -57,6 +58,7 @@ class Form(Generic[T]):
         self.cancel_url = cancel_url
         self.request = request
         self.csrf_token = csrf_token
+        self.form_attrs = {"data-admin-form": "true", **(form_attrs or {})}
         self.values: dict[str, Any] = {}
         self.errors: dict[str, list[str]] = {}
 
@@ -312,7 +314,7 @@ class Form(Generic[T]):
                 action=action,
                 method=method,
                 class_=f"admin-form layout-{self.layout}",
-                data_admin_form="true",
+                **self.form_attrs,
                 aria_busy="false",
             )
         )
@@ -362,7 +364,7 @@ class Form(Generic[T]):
                     "hx-swap": swap,
                     "hx-indicator": f"#{spinner_id}",
                     "class": f"admin-form layout-{self.layout}",
-                    "data-admin-form": "true",
+                    **self.form_attrs,
                     "aria-busy": "false",
                 },
             )

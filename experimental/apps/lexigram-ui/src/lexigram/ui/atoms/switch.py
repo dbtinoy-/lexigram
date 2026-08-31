@@ -2,13 +2,11 @@ from __future__ import annotations
 
 from typing import Any
 
-from lexigram.ui.core.base import Component, el
+from lexigram.ui.core.base import Component
 
 
 class Switch(Component):
-    """
-    A premium toggle switch component implemented using the shared `Toggle` molecule.
-    """
+    """Premium switch that delegates to the shared accessible toggle."""
 
     def __init__(
         self,
@@ -37,21 +35,20 @@ class Switch(Component):
     def render(self) -> Any:
         from lexigram.ui.molecules.toggle import Toggle
 
-        # Delegate to Toggle molecule for consistent rendering
-        t = Toggle(name=self.name, checked=self.value, label=self.label, **self.props)
-
-        # Append error node if present
-        base = t.render()
-        if self.error:
-            return el(
-                "div",
-                base,
-                el(
-                    "p",
-                    self.error,
-                    class_="mt-2 text-sm text-destructive",
-                    role="alert",
-                ),
-                class_="mb-4",
-            )
-        return base
+        # Pass the full field contract instead of leaking disabled, required,
+        # or error as arbitrary attributes on the visual button.
+        props = dict(self.props)
+        disabled = bool(props.pop("disabled", False))
+        required = bool(props.pop("required", False))
+        readonly = bool(props.pop("readonly", False))
+        return Toggle(
+            name=self.name,
+            checked=self.value,
+            label=self.label,
+            description=self.description,
+            error=self.error,
+            disabled=disabled,
+            required=required,
+            readonly=readonly,
+            **props,
+        ).render()

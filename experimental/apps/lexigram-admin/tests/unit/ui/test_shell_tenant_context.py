@@ -33,3 +33,5 @@ def test_admin_shell_includes_shared_form_ux_script() -> None:
     assert "__lexigramAdminFormUXInit" in html
     assert "data-admin-form" in html
     assert "unsaved form changes" in html
+    assert "SubmitButton already owns an Alpine loading presentation" in html
+    assert "Form saved." in html

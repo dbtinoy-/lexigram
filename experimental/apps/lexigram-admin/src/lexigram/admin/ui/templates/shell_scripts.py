@@ -399,7 +399,35 @@ def admin_form_ux_script() -> Any:
                 if (!button) return;
                 button.disabled = false;
                 button.removeAttribute('aria-disabled');
-                button.textContent = button.dataset.adminOriginalText || 'Save';
+                if (button.dataset.adminOriginalText !== undefined) {
+                    button.textContent = button.dataset.adminOriginalText;
+                    delete button.dataset.adminOriginalText;
+                }
+                if (button.dataset.adminHadAriaLabel === 'true') {
+                    button.setAttribute('aria-label', button.dataset.adminOriginalAriaLabel || '');
+                } else if (button.dataset.adminHadAriaLabel === 'false') {
+                    button.removeAttribute('aria-label');
+                }
+                delete button.dataset.adminHadAriaLabel;
+                delete button.dataset.adminOriginalAriaLabel;
+            }
+
+            function lockSubmit(button) {
+                if (!button) return;
+                button.disabled = true;
+                button.setAttribute('aria-disabled', 'true');
+                // SubmitButton already owns an Alpine loading presentation.
+                // Do not replace its nested x-show markup with textContent;
+                // doing so would destroy the spinner and restore the wrong
+                // label after a failed HTMX request.
+                if (button.hasAttribute('x-data') || button.querySelector('[x-show], [x-cloak]')) {
+                    button.dataset.adminHadAriaLabel = button.hasAttribute('aria-label') ? 'true' : 'false';
+                    button.dataset.adminOriginalAriaLabel = button.getAttribute('aria-label') || '';
+                    button.setAttribute('aria-label', 'Saving…');
+                    return;
+                }
+                button.dataset.adminOriginalText = button.textContent;
+                button.textContent = 'Saving…';
             }
 
             document.addEventListener('input', function (event) {
@@ -431,13 +459,7 @@ def admin_form_ux_script() -> Any:
                 form.dataset.submitting = 'true';
                 form.dataset.dirty = 'false';
                 form.setAttribute('aria-busy', 'true');
-                var button = submitButton(form);
-                if (button) {
-                    button.dataset.adminOriginalText = button.textContent;
-                    button.disabled = true;
-                    button.setAttribute('aria-disabled', 'true');
-                    button.textContent = 'Saving…';
-                }
+                lockSubmit(submitButton(form));
                 setStatus(form, 'Saving form.');
             }, true);
 
@@ -462,7 +484,13 @@ def admin_form_ux_script() -> Any:
             document.addEventListener('htmx:afterRequest', function (event) {
                 var detail = event.detail || {};
                 var form = formFor(detail.elt);
-                if (!form || detail.successful) return;
+                if (!form) return;
+                if (detail.successful) {
+                    restoreSubmit(form);
+                    form.dataset.dirty = 'false';
+                    setStatus(form, 'Form saved.');
+                    return;
+                }
                 restoreSubmit(form);
                 form.dataset.dirty = 'true';
                 setStatus(form, 'The form was not saved. Review the errors and try again.');

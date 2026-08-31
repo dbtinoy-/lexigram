@@ -96,7 +96,8 @@ def render_profile_page(
             </div>
           </div>
           <hr class="border-border" />
-          <form method="post" action="{escape(password_url)}" class="space-y-4">
+          <form method="post" action="{escape(password_url)}" class="space-y-4" data-admin-form="true" aria-busy="false">
+            <p data-admin-form-status aria-live="polite" class="sr-only"></p>
             <input type="hidden" name="csrf_token" value="{escape(csrf_token)}" />
             <div>
               <label for="current_password" class="block text-sm font-medium text-foreground">Current password</label>
@@ -118,8 +119,10 @@ def render_profile_page(
                 {field_error(confirmation_err)}
               </div>
             </div>
-            <button type="submit"
-                    class="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90">Change password</button>
+            <div data-admin-form-actions class="flex justify-end border-t border-border pt-4">
+              <button type="submit"
+                      class="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">Change password</button>
+            </div>
           </form>
         </div>
       </div>

@@ -37,7 +37,7 @@ record for the `lexigram-admin` dashboard.
 | Table client behavior | HTMX swaps/OOB, selection, loading, responsive layout, accessibility | Client logic reinitializes after swaps, avoids stale selection state, keeps loading and empty states visible, and uses accessible labels/targets for controls. |
 | Forms | Generated, declarative, builder, and wizard forms; coercion, validation, CSRF, errors, sections/layouts, relations, modal/slide-over/page flows | All current resource form paths carry hidden CSRF fields, shared markers/status/action metadata, preserve submitted values and validation errors, render field-level and form-level errors for native and HTMX responses, accept consistent boolean representations, and provide working submit/cancel paths for page, overlay, wizard, and custom-prefix modes. Edit validation also merges persisted values so disabled/hidden required fields do not produce false failures; relation controls avoid unauthorized option loads and degrade cleanly when their data source is unavailable. |
 | Settings forms | Field widgets, effective-value context, validation recovery, readonly state, HTMX/native parity, navigation safety | Settings forms now resolve duplicate checkbox submissions correctly, reject invalid values without persisting defaults, preserve submitted values with inline accessible errors, expose bounds/scope/source metadata, use textarea/URL/numeric controls where appropriate, show dormant profiler status, provide sticky reset/save actions with duplicate-submit protection, and warn before leaving dirty forms. |
-| Shared form UX alignment | Resource `SchemaField`/`FormBase` and settings `ConfigNode`/`ConfigRegistry` contracts, common `lexigram.ui` controls, loading/dirty/error behavior, page/modal/slide-over parity | Initial adoption delivered: resource and settings forms retain separate domain contracts, while generated/declarative/builder/wizard resource forms and settings forms opt into shared `lexigram.ui` form/action semantics and one shell-loaded delegated dirty/loading/duplicate-submit behavior layer that survives HTMX swaps and overlays. |
+| Shared form UX alignment | Resource `SchemaField`/`FormBase` and settings `ConfigNode`/`ConfigRegistry` contracts, common `lexigram.ui` controls, loading/dirty/error behavior, page/modal/slide-over parity | Initial adoption delivered: resource and settings forms retain separate domain contracts, while generated/declarative/builder/wizard resource forms, profile password forms, and settings forms opt into shared `lexigram.ui` form/action semantics and one shell-loaded delegated dirty/loading/duplicate-submit behavior layer that survives HTMX swaps and overlays. Toggle/Switch error, help, ARIA, and disabled-control semantics are now aligned; structured `SubmitButton` markup is preserved during loading recovery. |
 | Security boundaries | CSRF headers/forms, permission gates, mass assignment, unsafe redirects, script embedding | JSON/HTMX mutations send CSRF headers, form mutations include tokens, model/form exclusions and readonly fields are enforced server-side, submitted fields require both view and edit permission, relation option access fails closed, and command-palette JSON escapes HTML-significant characters before script embedding. |
 | Dashboard widgets | Discovery, structured content, refresh, empty/error states, customization, reorder, filters, responsive grid | Core health/activity/metrics widgets, contributor widgets, refresh controls, widget configuration, page filters, and drag-and-drop reorder are connected to mounted endpoints and render structured fallbacks. |
 | Navigation | Sidebar, clusters, secondary navigation, active state, user menu, custom prefix handling | Cluster centers and secondary links are prefix-aware, legacy contributor `/admin` URLs remain compatible, generic contributor links/badges are remounted, and user-menu destinations are generated from the active prefix. |
@@ -72,6 +72,9 @@ intact while closing the highest-risk form gaps:
 - Resource form surfaces now carry the shared form marker, status region, action
   marker, sticky action styling, and submit lifecycle behavior without changing
   resource validation, relation, field-RBAC, or overlay contracts.
+- The authenticated profile password form now opts into the same marker/status/
+  action contract, and the shared Toggle/Switch primitives preserve error/help
+  associations and disabled state on both the visual and submitted controls.
 - The legacy builder `Form` and resource wizard now carry the same marker,
   status, action, and CSRF contract. Wizard fields reuse relation option loading,
   field view/edit authorization, submitted values, and field errors when those
@@ -105,7 +108,7 @@ resource-shaped wrapper around configuration persistence.
 | --- | --- | --- | --- |
 | Generated resource fields | `admin/resources/field_renderer.py` and `field_renderers_*.py` | Uses `lexigram.ui` atoms through `FieldRendererRegistry` | Generated create/edit forms now attach the shared form marker/status/action contract; field-level semantics remain owned by `SchemaField`. |
 | Declarative resource forms | `admin/forms/components.py`, `admin/forms/form.py`, `admin/forms/layout.py` | `SchemaField.render_form()` uses shared UI field primitives and renders field/global errors | `FormBase` and the legacy builder `Form` expose the shared marker/status/action contract without losing layouts or model validation. |
-| Settings forms | `admin/settings/panel/ui.py` and `controllers/settings.py` | Uses shared UI atoms, `FieldSchema`, `Form`, and `FormActions` | Settings retains its legacy markers and domain metadata while using the shell-level delegated behavior; no resource CRUD assumptions were introduced. |
+| Settings forms | `admin/settings/panel/ui.py` and `controllers/settings.py` | Uses shared UI atoms, `FieldSchema`, `Form`, and `FormActions` | Settings retains its legacy markers and domain metadata while using the shell-level delegated behavior; boolean validation/help/ARIA now use the shared Toggle contract; no resource CRUD assumptions were introduced. |
 | Form state/validation | `admin/forms/state.py`, `admin/forms/validation.py`, settings node validation | Domain-appropriate server-side implementations already exist | Browser interaction state and server validation responses need one explicit cross-form contract. |
 
 ### Target architecture
@@ -310,6 +313,9 @@ workspace packages.
   covering generated, declarative, builder, settings, overlay/page, wizard, and
   mounted resource form contracts; the shell behavior suite passed (`22 passed,
   1 warning`).
+- Follow-up primitive/profile regression suite: passed (`63 passed, 1 warning`);
+  focused form/overlay regression suite passed (`44 passed, 1 warning`); the
+  available UI unit/accessibility suites passed (`1162 passed, 78 skipped`).
 - Workspace `ruff check .` and `ruff format --check .`: passed after formatting
   the remaining baseline files touched by the delivery branch.
 - Full admin unit suite after the latest URL and quality passes: passed
@@ -365,6 +371,14 @@ Known environment-limited checks from the audit baseline:
 - [x] Complete the initial resource-form adoption matrix for relation-option and
       wizard flows, while retaining generated/declarative page/modal/slide-over
       coverage. Browser-level verification remains separately tracked below.
+- [x] Align shared Toggle/Switch error/help/ARIA and disabled-control behavior,
+      and preserve structured SubmitButton markup during shared loading recovery.
+- [x] Apply the shared form contract to the authenticated profile password form.
+- [ ] Consolidate or explicitly deprecate remaining legacy form paths: the
+      compatibility ResourceController renderer, `admin/forms/wizard.py`, and
+      the optional bulk-edit/bulk-assign organisms. Reuse `lexigram.ui.Form`,
+      `FormActions`, `SubmitButton`, `render_slide_over_fragment`, and the
+      mounted CSRF helpers instead of adding another raw form implementation.
 - [ ] Add effective-value/runtime applicability/read-versus-edit metadata and
       audited non-secret history where the underlying contracts support it.
 - [ ] Resolve the current GitHub Actions startup failure: the latest run

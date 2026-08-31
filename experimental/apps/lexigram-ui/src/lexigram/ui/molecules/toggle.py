@@ -7,11 +7,7 @@ from lexigram.ui.core.base import Component, el
 
 
 class Toggle(Component):
-    """Switch-like toggle component for forms.
-
-    Renders a labeled switch with the same structure used by `Switch` atom but
-    centralizes classes and props for consistency.
-    """
+    """Premium switch-like toggle with shared form accessibility semantics."""
 
     def __init__(
         self,
@@ -19,20 +15,60 @@ class Toggle(Component):
         checked: bool = False,
         label: str | None = None,
         size: str = "md",
+        description: str | None = None,
+        error: str | None = None,
+        disabled: bool = False,
+        required: bool = False,
+        readonly: bool = False,
         **props: Any,
     ) -> None:
-        super().__init__(name=name, checked=checked, label=label, size=size, **props)
+        super().__init__(
+            name=name,
+            checked=checked,
+            label=label,
+            size=size,
+            description=description,
+            error=error,
+            disabled=disabled,
+            required=required,
+            readonly=readonly,
+            **props,
+        )
         self.name = name
         self.checked = checked
         self.label = label
         self.size = size
+        self.description = description
+        self.error = error
+        self.disabled = disabled
+        self.required = required
+        self.readonly = readonly
         self.props = props
 
     def render(self) -> Any:
         knob_cls = "pointer-events-none inline-block h-5 w-5 rounded-full bg-background shadow-lg ring-0 transition-transform duration-200 ease-in-out"
-        wrapper_cls = "relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-
-        return el(
+        wrapper_cls = "relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        described_by: list[str] = []
+        if self.description and not self.error:
+            described_by.append(f"{self.name}-description")
+        if self.error:
+            described_by.append(f"{self.name}-error")
+        button_attrs = {
+            "type": "button",
+            "role": "switch",
+            "aria_checked": str(self.checked).lower(),
+            "aria_labelledby": f"{self.name}-label",
+            "aria_disabled": "true" if self.disabled or self.readonly else None,
+            "aria_invalid": "true" if self.error else None,
+            "aria_describedby": " ".join(described_by) if described_by else None,
+            "disabled": self.disabled or self.readonly,
+            "x_data": f"{{ enabled: {'true' if self.checked else 'false'} }}",
+            "x_on_click": "enabled = !enabled; $refs.hiddenInput.checked = enabled",
+            "x_bind__class": "enabled ? 'bg-primary' : 'bg-input'",
+            "class_": wrapper_cls,
+            **self.props,
+        }
+        base = el(
             "div",
             el(
                 "div",
@@ -52,31 +88,47 @@ class Toggle(Component):
                             class_=knob_cls,
                             x_bind__class="enabled ? 'translate-x-5' : 'translate-x-0'",
                         ),
-                        type="button",
-                        role="switch",
-                        aria_checked=str(self.checked).lower(),
-                        aria_labelledby=f"{self.name}-label",
-                        x_data=f"{{ enabled: {'true' if self.checked else 'false'} }}",
-                        x_on_click="enabled = !enabled; $refs.hiddenInput.checked = enabled",
-                        x_bind__class="enabled ? 'bg-primary' : 'bg-input'",
-                        class_=wrapper_cls,
-                        **self.props,
+                        **button_attrs,
                     ),
                     class_="flex-grow flex flex-col",
                 ),
-                # Hidden input for form submission
+                # Hidden input carries the value. It must follow the same
+                # disabled/readonly state as the visual switch.
                 el(
                     "input",
                     type="checkbox",
                     name=self.name,
+                    value="true",
                     x_ref="hiddenInput",
                     checked=self.checked,
+                    disabled=self.disabled or self.readonly,
                     class_="hidden",
                 ),
                 class_="flex items-center justify-between",
             ),
-            class_="mb-4",
+            class_="mb-1",
         )
+        decorations: list[Any] = []
+        if self.description and not self.error:
+            decorations.append(
+                el(
+                    "p",
+                    self.description,
+                    id=f"{self.name}-description",
+                    class_="mt-1 text-xs text-muted-foreground",
+                )
+            )
+        if self.error:
+            decorations.append(
+                el(
+                    "p",
+                    self.error,
+                    id=f"{self.name}-error",
+                    role="alert",
+                    class_="mt-1 text-xs text-destructive",
+                )
+            )
+        return el("div", base, *decorations, class_="mb-4")
 
 
 class ToggleIcon(Component):

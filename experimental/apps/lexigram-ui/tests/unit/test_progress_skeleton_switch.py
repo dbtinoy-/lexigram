@@ -86,9 +86,16 @@ class TestSwitch:
         result = str(Switch(label="Dark mode", name="dark_mode"))
         assert "dark_mode" in result
 
-    def test_switch_with_error(self) -> None:
+    def test_switch_with_error_is_associated_with_the_control(self) -> None:
         result = str(Switch(label="Accept", name="accept", error="Required field"))
         assert "Required field" in result
+        assert 'id="accept-error"' in result
+        assert 'aria-invalid="true"' in result
+        assert 'aria-describedby="accept-error"' in result
+
+    def test_switch_disables_both_visual_and_submitted_controls(self) -> None:
+        result = str(Switch(label="Accept", name="accept", disabled=True))
+        assert result.count("disabled") >= 2
 
     def test_switch_checked_state(self) -> None:
         result = str(Switch(label="Active", name="active", value=True))
@@ -98,4 +105,7 @@ class TestSwitch:
         html = str(Switch(label="s", name="s"))
         assert "h-6 w-11" in html
         assert "rounded-full border-2 border-transparent" in html
-        assert "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" in html
+        assert (
+            "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            in html
+        )

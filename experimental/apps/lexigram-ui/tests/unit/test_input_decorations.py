@@ -7,7 +7,7 @@ help text and every validation message must render in an accessible order
 
 from __future__ import annotations
 
-from lexigram.ui import TextInput, render_to_string
+from lexigram.ui import TextInput, Toggle, render_to_string
 
 
 class TestInputDecorations:
@@ -87,3 +87,22 @@ class TestInputDecorations:
         )
         html = render_to_string(field)
         assert 'aria-describedby="email-error email-error-2"' in html
+
+
+class TestToggleDecorations:
+    def test_toggle_renders_error_and_aria_association(self) -> None:
+        html = render_to_string(
+            Toggle(name="enabled", label="Enabled", error="Choose a value.")
+        )
+        assert "Choose a value." in html
+        assert 'id="enabled-error"' in html
+        assert 'aria-invalid="true"' in html
+        assert 'aria-describedby="enabled-error"' in html
+
+    def test_toggle_renders_description_when_valid(self) -> None:
+        html = render_to_string(
+            Toggle(name="enabled", label="Enabled", description="Controls access.")
+        )
+        assert "Controls access." in html
+        assert 'id="enabled-help"' in html
+        assert 'aria-describedby="enabled-help"' in html
