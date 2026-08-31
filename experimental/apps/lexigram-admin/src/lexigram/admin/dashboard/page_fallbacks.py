@@ -85,6 +85,7 @@ async def _placeholder_page(
     try:
         from pathlib import Path
 
+        from markupsafe import Markup
         from starlette.templating import Jinja2Templates
 
         from lexigram.admin.ui.templates.shell import AdminShell
@@ -131,7 +132,12 @@ async def _placeholder_page(
                 admin_prefix_from_request(request) if request is not None else "/admin"
             ),
         )
-        shell_html = render_to_string(shell)
+        # Markup, not a plain str: admin_shell.html renders {{ content }}
+        # under autoescaping, so an unwrapped string is escaped and the
+        # whole shell reaches the browser as entity text. The template
+        # deliberately has no `| safe` filter -- trust is declared here, at
+        # the point that knows the HTML was framework-composed.
+        shell_html = Markup(render_to_string(shell))  # noqa: S704
 
         templates_dir = Path(__file__).resolve().parent.parent / "views" / "templates"
         templates = Jinja2Templates(directory=str(templates_dir))

@@ -41,11 +41,24 @@ class AdminRenderer:
         content_html: str,
         title: str = "",
     ) -> HTMLResponse:
+        """Render pre-built HTML inside the admin shell.
+
+        Args:
+            request: Starlette request.
+            content_html: Fully-rendered, framework-composed HTML.
+            title: Page title.
+        """
+        from markupsafe import Markup
+
         return self.render_template(
             request,
             "admin_shell.html",
             {
-                "content": content_html,
+                # admin_shell.html renders {{ content }} under autoescaping
+                # and has no `| safe` filter, so already-rendered HTML must
+                # be marked trusted here or it reaches the browser as
+                # entity text.
+                "content": Markup(content_html),  # noqa: S704
                 "title": f"{title} - {self._config.title}"
                 if title
                 else self._config.title,
