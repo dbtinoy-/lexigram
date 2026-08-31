@@ -23,6 +23,8 @@ from lexigram.ui import Form, Modal, SlideOver, Zones, el, render_to_string
 logger = get_logger(__name__)
 
 _VALID_FORM_DISPLAY_MODES = {"page", "modal", "slider"}
+_MAX_RELATION_OPTIONS = 200
+_MAX_RELATION_OPTION_TEXT = 500
 
 
 def _form_display_mode(resource: Any) -> str:
@@ -742,7 +744,22 @@ class FormRenderer(WizardRendererMixin):
             )
         if record_id is None:
             return None
-        return str(record_id), str(label if label is not None else record_id)
+        return str(record_id), str(label if label is not None else record_id)[
+            :_MAX_RELATION_OPTION_TEXT
+        ]
+
+    @classmethod
+    def _relation_options(cls, records: list[Any]) -> list[tuple[str, str]]:
+        """Convert records while isolating malformed option rows."""
+        options: list[tuple[str, str]] = []
+        for record in records:
+            try:
+                option = cls._relation_option(record)
+            except (AttributeError, TypeError, ValueError):
+                continue
+            if option is not None:
+                options.append(option)
+        return options
 
     async def _relation_options_allowed(
         self,
@@ -802,6 +819,21 @@ class FormRenderer(WizardRendererMixin):
                     return False
         return True
 
+    @staticmethod
+    def _bounded_relation_records(result: Any) -> list[Any]:
+        """Normalize a relation query result and enforce an option cap."""
+        raw_records = (
+            result.items
+            if hasattr(result, "items")
+            else result
+            if isinstance(result, list)
+            else []
+        )
+        try:
+            return list(raw_records)[:_MAX_RELATION_OPTIONS]
+        except (TypeError, ValueError):
+            return []
+
     async def _populate_form_relation_options(
         self,
         form: Any,
@@ -836,18 +868,8 @@ class FormRenderer(WizardRendererMixin):
                 continue
             try:
                 result = await ds.find_many(QuerySpec(per_page=200, sort_by="id"))
-                records = (
-                    result.items
-                    if hasattr(result, "items")
-                    else result
-                    if isinstance(result, list)
-                    else []
-                )
-                options = [
-                    option
-                    for record in records
-                    if (option := self._relation_option(record)) is not None
-                ]
+                records = self._bounded_relation_records(result)
+                options = self._relation_options(records)
                 fields[name] = dc_replace(field_schema, options=options)
             except Exception:
                 logger.debug(
@@ -890,17 +912,8 @@ class FormRenderer(WizardRendererMixin):
                 continue
             try:
                 result = await ds.find_many(QuerySpec(per_page=200, sort_by="id"))
-                if hasattr(result, "items"):
-                    records = result.items
-                elif isinstance(result, list):
-                    records = result
-                else:
-                    records = []
-                options = [
-                    option
-                    for record in records
-                    if (option := self._relation_option(record)) is not None
-                ]
+                records = self._bounded_relation_records(result)
+                options = self._relation_options(records)
                 schema.fields[idx] = dc_replace(field_schema, options=options)
             except Exception:
                 logger.debug(
@@ -1026,9 +1039,17 @@ class FormRenderer(WizardRendererMixin):
         # resource's registered relation-options endpoint.
         related_resource = getattr(field_schema, "resource", None)
         if getattr(field_schema, "searchable", False) and related_resource:
+            from urllib.parse import urlencode
+
             prefix = (admin_prefix or self._config.prefix).rstrip("/")
+            query = urlencode(
+                {
+                    "source": self.resource_name,
+                    "field": field_schema.name,
+                }
+            )
             common_args["relation_options_url"] = (
-                f"{prefix}/{related_resource}/relation-options"
+                f"{prefix}/{related_resource}/relation-options?{query}"
             )
 
         # Use registry to get the appropriate renderer and field instance

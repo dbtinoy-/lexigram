@@ -136,7 +136,10 @@ class TestGeneratedFormRelationOptions:
         )
         component = renderer._create_field_component(field, 1)
         html = render_to_string(component.render())
-        assert "hx-get=\"/admin/categories/relation-options\"" in html
+        assert (
+            'hx-get="/admin/categories/relation-options?source=widgets&amp;field=category_id"'
+            in html
+        )
         assert "hx-trigger=\"keyup changed delay:300ms\"" in html
 
     def test_non_searchable_relation_gets_no_options_url(self) -> None:
@@ -179,6 +182,31 @@ class TestRelationOptionsEndpoint:
         )
         assert "&lt;script&gt;" in response.body.decode()
         assert "<script>" not in response.body.decode()
+
+    @pytest.mark.asyncio
+    async def test_source_field_permission_is_enforced(self) -> None:
+        class _DenyFieldPermissions:
+            async def can_view_field(
+                self, user: object, resource: str, field: str
+            ) -> bool:
+                return False
+
+        request = _request(
+            "/admin/categories/relation-options",
+            "source=widgets&field=category_id",
+        )
+        request.scope["state"] = {"user": object()}
+        request.scope["app"] = SimpleNamespace(
+            state=SimpleNamespace(permission_service=_DenyFieldPermissions())
+        )
+        handler = RelationOptionsActionHandler(
+            resources={"categories": _CategoryResource}
+        )
+
+        response = await handler.handle(request, _CategoryResource())
+
+        assert response.status_code == 403
+        assert response.body == b"Forbidden"
 
     @pytest.mark.asyncio
     async def test_data_source_failure_returns_service_unavailable(self) -> None:

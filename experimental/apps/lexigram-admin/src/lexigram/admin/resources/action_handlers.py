@@ -1017,6 +1017,10 @@ class PurgeActionHandler:
         return RedirectResponse(url=url, status_code=302)
 
 
+_MAX_RELATION_OPTIONS = 200
+_MAX_RELATION_OPTION_TEXT = 500
+
+
 class RelationOptionsActionHandler:
     """Serve ``<option>`` markup for searchable relation selects.
 
@@ -1032,6 +1036,62 @@ class RelationOptionsActionHandler:
     def can_handle(self, action: str) -> bool:
         return action == "relation-options"
 
+    @staticmethod
+    def _request_permission_service(request: StarletteRequest) -> Any | None:
+        """Resolve the mounted field-permission service without MagicMock fallbacks."""
+        try:
+            app = request.app
+        except (AttributeError, KeyError, RuntimeError):
+            app = None
+        service = getattr(getattr(app, "state", None), "permission_service", None)
+        if service is not None and callable(getattr(service, "can_view_field", None)):
+            return service
+        try:
+            state = request.state
+        except (AttributeError, KeyError, RuntimeError):
+            state = None
+        storage = getattr(state, "_state", None)
+        if isinstance(storage, dict):
+            service = storage.get("permission_service")
+        elif isinstance(state, dict):
+            service = state.get("permission_service")
+        else:
+            try:
+                service = vars(state).get("permission_service")
+            except TypeError:
+                service = None
+        return (
+            service
+            if service is not None and callable(getattr(service, "can_view_field", None))
+            else None
+        )
+
+    async def _authorize_source_field(self, request: StarletteRequest) -> bool:
+        """Enforce the parent form field policy for searchable options."""
+        source = (request.query_params.get("source") or "").strip()
+        field = (request.query_params.get("field") or "").strip()
+        if not source or not field:
+            # Keep compatibility with callers that use this endpoint as a
+            # generic related-resource lookup; the mounted resource-level
+            # permission check remains authoritative in ResourceHandler.
+            return True
+        service = self._request_permission_service(request)
+        if service is None:
+            return True
+        user = getattr(getattr(request, "state", None), "user", None)
+        if user is None:
+            return False
+        try:
+            allowed = service.can_view_field(user, source, field)
+            return bool(await allowed) if inspect.isawaitable(allowed) else bool(allowed)
+        except Exception:  # noqa: BLE001 — lookup authorization fails closed
+            logger.exception(
+                "admin.relation_options_permission_check_failed",
+                resource=source,
+                field=field,
+            )
+            return False
+
     async def handle(
         self, request: StarletteRequest, resource: Any, **kwargs: Any
     ) -> HTMLResponse:
@@ -1039,6 +1099,8 @@ class RelationOptionsActionHandler:
 
         if resource is None:
             return HTMLResponse("", status_code=404)
+        if not await self._authorize_source_field(request):
+            return HTMLResponse("Forbidden", status_code=403)
 
         ds = get_resource_data_source(resource)
         if ds is None or not hasattr(ds, "find_many"):
@@ -1056,50 +1118,62 @@ class RelationOptionsActionHandler:
             )
             return HTMLResponse("", status_code=503)
         if hasattr(result, "items"):
-            records = result.items
+            raw_records = result.items
         elif isinstance(result, list):
-            records = result
+            raw_records = result
         else:
+            raw_records = []
+        try:
+            records = list(raw_records)[:_MAX_RELATION_OPTIONS]
+        except (TypeError, ValueError):
             records = []
 
-        needle = (request.query_params.get("q") or "").strip().lower()
+        needle = (
+            (request.query_params.get("q") or "")[:_MAX_RELATION_OPTION_TEXT]
+            .strip()
+            .lower()
+        )
         options: list[str] = []
         for record in records:
-            if isinstance(record, dict):
-                record_id = record.get("id", record.get("pk"))
-                label = (
-                    record.get("name")
-                    or record.get("title")
-                    or record.get("label")
-                    or record.get("email")
-                )
-                if label is None or not str(label).strip():
-                    label = record_id
-            else:
-                record_id = getattr(record, "id", getattr(record, "pk", None))
-                label = (
-                    getattr(record, "name", None)
-                    or getattr(record, "title", None)
-                    or getattr(record, "label", None)
-                    or getattr(record, "email", None)
-                )
-                if label is None or not str(label).strip():
-                    # Domain records often expose their display name only via
-                    # __str__. Use that before falling back to the primary key;
-                    # this also keeps searchable labels consistent with table
-                    # and select renderers.
-                    label = str(record)
-                    if not label.strip() or label == repr(record):
+            try:
+                if isinstance(record, dict):
+                    record_id = record.get("id", record.get("pk"))
+                    label = (
+                        record.get("name")
+                        or record.get("title")
+                        or record.get("label")
+                        or record.get("email")
+                    )
+                    if label is None or not str(label).strip():
                         label = record_id
-            if record_id is None:
+                else:
+                    record_id = getattr(record, "id", getattr(record, "pk", None))
+                    label = (
+                        getattr(record, "name", None)
+                        or getattr(record, "title", None)
+                        or getattr(record, "label", None)
+                        or getattr(record, "email", None)
+                    )
+                    if label is None or not str(label).strip():
+                        # Domain records often expose their display name only via
+                        # __str__. Use that before falling back to the primary key.
+                        label = str(record)
+                        if not label.strip() or label == repr(record):
+                            label = record_id
+                if record_id is None:
+                    continue
+                value = str(record_id)[:_MAX_RELATION_OPTION_TEXT]
+                label = str(label if label is not None else value)[
+                    :_MAX_RELATION_OPTION_TEXT
+                ]
+                if needle and needle not in label.lower():
+                    continue
+                options.append(
+                    f'<option value="{escape(value)}">{escape(label)}</option>'
+                )
+            except (AttributeError, TypeError, ValueError):
+                # One malformed record must not break the entire select.
                 continue
-            value = str(record_id)
-            label = str(label if label is not None else value)
-            if needle and needle not in label.lower():
-                continue
-            options.append(
-                f'<option value="{escape(value)}">{escape(label)}</option>'
-            )
         return HTMLResponse("".join(options))
 
 
