@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+import warnings
 from typing import TYPE_CHECKING, Any
 
 from lexigram.admin.schema import SchemaField
@@ -273,9 +274,24 @@ class FormWizard:
 
 
 class WizardRenderer(Component):
-    """UI Renderer for FormWizard."""
+    """Deprecated renderer for the standalone stateful wizard.
+
+    ``FormWizard`` remains useful as a domain/state helper, but this renderer
+    predates the mounted resource form pipeline and does not own request,
+    permissions, CSRF, or HTMX submission semantics. Resource forms should use
+    ``admin.resources.wizard_renderer.WizardRendererMixin`` instead. The class
+    remains importable for downstream compatibility until the next major API
+    cleanup.
+    """
 
     def __init__(self, wizard: FormWizard, **props: Any) -> None:
+        warnings.warn(
+            "admin.forms.wizard.WizardRenderer is deprecated; use "
+            "admin.resources.wizard_renderer.WizardRendererMixin for mounted "
+            "resource forms.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         super().__init__(**props)
         self.wizard = wizard
 

@@ -1,12 +1,16 @@
 """
-Bulk Edit Slide-Over Component.
+Legacy bulk-edit overlay compatibility helpers.
 
-Provides UI for bulk editing multiple records with field updates.
-Now rendered as a slide-over panel consistent with the unified overlay system.
+The active resource flow renders bulk actions through the DataTable action
+pipeline and mounted bulk endpoints. No current admin route imports these
+standalone organisms, so they remain only as compatibility exports while
+callers migrate to the shared ``Form``/``FormActions``/``SubmitButton`` and
+``render_slide_over_fragment`` contract.
 """
 
 from __future__ import annotations
 
+import warnings
 from typing import Any
 
 from htpy import div, form, input_, label, option, p, select, span, textarea
@@ -14,6 +18,16 @@ from htpy import div, form, input_, label, option, p, select, span, textarea
 from lexigram.admin.actions.bulk_manager import BulkEditField
 from lexigram.admin.ui.organisms.admin_slide_over import render_slide_over_fragment
 from lexigram.ui import Button, el, raw
+
+
+def _warn_legacy_overlay(name: str) -> None:
+    """Tell downstream callers to use the mounted resource bulk flow."""
+    warnings.warn(
+        f"{name} is a legacy compatibility helper; use the resource "
+        "DataTable bulk action pipeline instead.",
+        DeprecationWarning,
+        stacklevel=3,
+    )
 
 
 def bulk_edit_modal(
@@ -34,6 +48,7 @@ def bulk_edit_modal(
     Returns:
         HTML string for the SlideOver zone (``#slide-over-container``)
     """
+    _warn_legacy_overlay("bulk_edit_modal")
     preview_block: Any = ""
     if preview_items:
         preview_block = el(
@@ -252,6 +267,7 @@ def bulk_assign_modal(
     Returns:
         htpy component for the modal
     """
+    _warn_legacy_overlay("bulk_assign_modal")
     return div(
         class_="fixed inset-0 bg-muted bg-opacity-50 hidden",
         id="bulk-assign-modal",
@@ -354,6 +370,7 @@ def bulk_confirm_dialog(
     Returns:
         htpy component for the confirmation dialog
     """
+    _warn_legacy_overlay("bulk_confirm_dialog")
 
     return div(
         class_="fixed inset-0 bg-muted bg-opacity-50 hidden",
@@ -435,6 +452,7 @@ def bulk_progress_indicator(
     Returns:
         htpy component for the progress indicator
     """
+    _warn_legacy_overlay("bulk_progress_indicator")
     return div(
         class_="fixed inset-0 bg-muted bg-opacity-50 flex items-center justify-center",
         id="bulk-progress",

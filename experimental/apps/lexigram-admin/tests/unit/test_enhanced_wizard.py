@@ -1,8 +1,11 @@
 """Tests for enhanced wizard functionality."""
 
+import pytest
+
 from lexigram.admin.forms import (
     FormWizard,
     WizardDraft,
+    WizardRenderer,
     WizardStep,
 )
 from lexigram.admin.schema import IntegerField, TextField
@@ -304,3 +307,13 @@ class TestEnhancedWizard:
         assert wizard.form_data == {}
         assert wizard.step_errors == {}
         assert wizard.completed_steps == set()
+
+
+def test_standalone_wizard_renderer_is_explicitly_deprecated() -> None:
+    """Resource wizard rendering must use the mounted resource pipeline."""
+    wizard = FormWizard("deprecated-renderer", [])
+
+    with pytest.warns(DeprecationWarning, match="WizardRenderer is deprecated"):
+        renderer = WizardRenderer(wizard)
+
+    assert renderer.wizard is wizard

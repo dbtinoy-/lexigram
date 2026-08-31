@@ -379,9 +379,15 @@ Known environment-limited checks from the audit baseline:
 - [x] Harden the compatibility ResourceController fallback with escaped,
       mounted actions, hidden CSRF propagation when available, form status and
       action metadata, validation feedback, and HTMX target preservation.
-- [ ] Consolidate or explicitly deprecate the remaining legacy form paths:
-      `admin/forms/wizard.py` and the optional bulk-edit/bulk-assign organisms.
-      Reuse `lexigram.ui.Form`, `FormActions`, `SubmitButton`,
+- [x] Explicitly deprecate the standalone `admin/forms/wizard.py` renderer;
+      retain `FormWizard` state logic and direct resource forms to the mounted
+      resource wizard pipeline.
+- [x] Explicitly deprecate the optional standalone bulk-edit/bulk-assign/
+      confirm overlay exports; no current admin route imports them, so active
+      bulk actions remain owned by the DataTable/resource pipeline.
+- [ ] Remove or replace the deprecated compatibility exports after downstream
+      consumers have migrated. New implementations must reuse
+      `lexigram.ui.Form`, `FormActions`, `SubmitButton`,
       `render_slide_over_fragment`, and the mounted CSRF helpers instead of
       adding another raw form implementation.
 - [ ] Add effective-value/runtime applicability/read-versus-edit metadata and
