@@ -1,5 +1,9 @@
-"""Unified Wizard Component.
-Combines wizard logic, persistence, and rendering.
+"""Wizard state and draft persistence.
+
+Holds step definitions, conditional visibility, validation state and draft
+load/save. Rendering lives in ``admin.resources.wizard_renderer``, which
+owns request, permission, CSRF and HTMX submission semantics -- concerns
+this module has no access to.
 """
 
 from __future__ import annotations
@@ -7,10 +11,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
-import warnings
 
 from lexigram.admin.schema import SchemaField
-from lexigram.ui import Component, el
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -271,74 +273,3 @@ class FormWizard:
 
     def save_draft(self) -> Any:
         self._save_draft()
-
-
-class WizardRenderer(Component):
-    """Deprecated renderer for the standalone stateful wizard.
-
-    ``FormWizard`` remains useful as a domain/state helper, but this renderer
-    predates the mounted resource form pipeline and does not own request,
-    permissions, CSRF, or HTMX submission semantics. Resource forms should use
-    ``admin.resources.wizard_renderer.WizardRendererMixin`` instead. The class
-    remains importable for downstream compatibility until the next major API
-    cleanup.
-    """
-
-    def __init__(self, wizard: FormWizard, **props: Any) -> None:
-        warnings.warn(
-            "admin.forms.wizard.WizardRenderer is deprecated; use "
-            "admin.resources.wizard_renderer.WizardRendererMixin for mounted "
-            "resource forms.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        super().__init__(**props)
-        self.wizard = wizard
-
-    def render(self) -> Any:
-        return el(
-            "div",
-            self.render_progress_bar(),
-            self.render_step_navigation(),
-            self.render_current_step(),
-            class_="wizard-container p-6 bg-card rounded-xl shadow-lg",
-        )
-
-    def render_progress_bar(self) -> Any:
-        progress = self.wizard.get_progress()
-        return el(
-            "div",
-            el(
-                "div",
-                class_="h-2 bg-primary-600 transition-all duration-500",
-                style=f"width: {progress}%",
-            ),
-            class_="w-full h-2 bg-muted rounded-full overflow-hidden mb-8",
-        )
-
-    def render_step_navigation(self) -> Any:
-        steps = self.wizard.get_visible_steps()
-        current = self.wizard.get_current_step()
-        nav_items = []
-        for _i, step in enumerate(steps):
-            is_active = step == current
-            nav_items.append(
-                el(
-                    "div",
-                    step.title,
-                    class_=f"text-sm font-medium {'text-primary-600' if is_active else 'text-muted-foreground'}",
-                ),
-            )
-        return el("div", *nav_items, class_="flex justify-between mb-6")
-
-    def render_current_step(self) -> Any:
-        step = self.wizard.get_current_step()
-        values = self.wizard.form_data
-        fields_html = [f.render_form(values.get(f.name)) for f in step.fields]
-        return el(
-            "div",
-            el("h2", step.title, class_="text-xl font-bold mb-2"),
-            el("p", step.description or "", class_="text-muted-foreground mb-6"),
-            el("div", *fields_html, class_="space-y-4"),
-            class_="step-content",
-        )

@@ -6,9 +6,24 @@ canonical query format across all admin layers (controllers, services, data sour
 This is the single source of truth for query types; the ``Query`` dataclass
 it replaced has been removed.
 
-Not to be confused with ``lexigram.ui.organisms.query_builder.QueryBuilder``,
-which is a current UI component for editing constraint trees, not a
-superseded query type.
+Relationship to ``QueryBuilder``
+--------------------------------
+``lexigram.ui.organisms.query_builder.QueryBuilder`` is **not** a superseded
+version of this type, despite the similar name. The two sit on different
+axes and neither replaces the other:
+
+* ``QuerySpec`` is a *backend* value object. It describes how to retrieve a
+  page of records -- pagination, sorting, eager loading -- and is consumed
+  by data sources and repositories.
+* ``QueryBuilder`` is a *frontend* editor. It renders a constraint tree and
+  serialises it to a JSON block model, which
+  ``lexigram.search.filterset.BlockQueryTranslator`` lowers to a
+  ``SafeSearchQuery`` in the search package.
+
+The pipelines are currently disjoint: nothing converts a block model into
+``QuerySpec.where``. If the admin ever needs the visual builder to drive a
+resource list, the join belongs in a translator at the admin boundary --
+not by widening either type to understand the other.
 """
 
 from __future__ import annotations

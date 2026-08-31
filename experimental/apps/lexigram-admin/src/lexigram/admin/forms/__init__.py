@@ -38,7 +38,6 @@ from lexigram.admin.forms.validation import (
 from lexigram.admin.forms.wizard import (
     FormWizard,
     WizardDraft,
-    WizardRenderer,
     WizardStep,
 )
 
@@ -67,7 +66,6 @@ __all__ = [
     "UniqueValidator",
     "ValidationError",
     "WizardDraft",
-    "WizardRenderer",
     "WizardStep",
     "async_validate",
     "build_form",
