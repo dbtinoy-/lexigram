@@ -17,6 +17,7 @@ from lexigram.admin.controllers.base import AdminController
 from lexigram.admin.multitenancy.adapter import resolve_tenant_id
 from lexigram.admin.rbac.super_admin import is_super_admin
 from lexigram.admin.resources.urls import admin_prefix_from_request, admin_url
+from lexigram.admin.settings.conflict import SettingsConflictError
 from lexigram.admin.settings.panel import BooleanNode, SecretNode
 from lexigram.admin.settings.panel.layout import ConfigLayout
 from lexigram.admin.settings.panel.registry import ConfigRegistry
@@ -237,6 +238,61 @@ class SettingsController(AdminController):
         """
         return revision_matches(expected, spec, values)
 
+    async def _render_save_conflict(
+        self,
+        request: Request,
+        spec: type[Any],
+        namespace: str,
+        tenant_id: str | None,
+    ) -> Response:
+        """Re-render the settings form showing current values after a conflict.
+
+        Used both when the submitted revision is stale or missing and when a
+        store rejects the write itself, so the two paths stay consistent. The
+        form is rebuilt from freshly read values so the user reviews what is
+        actually stored and receives a usable revision token.
+        """
+        conflict_message = (
+            "These settings changed in another session. Review the current "
+            "values before saving again."
+        )
+        current_values = await self._registry.get_values(
+            namespace, self._store_name(spec), tenant_id=tenant_id
+        )
+
+        if request.headers.get("hx-request") == "true":
+            self._flash_messages.clear()
+            value_metadata = await self._registry.get_value_metadata(
+                namespace,
+                self._store_name(spec),
+                tenant_id=tenant_id,
+            )
+            form_html = render_to_string(
+                ConfigDashboardUI().render_config_form(
+                    spec=self._spec_ui_data(spec, can_edit=True),
+                    values=current_values,
+                    errors={"__all__": conflict_message},
+                    value_metadata=value_metadata,
+                    revision=self._settings_revision(spec, current_values),
+                    action=self._settings_url(request, namespace),
+                    csrf_token=self._get_csrf_token(request),
+                )
+            )
+            toast_html = self._render_toast(conflict_message, "warning")
+            flash_oob = (
+                f'<div id="flash-container" hx-swap-oob="true">{toast_html}</div>'
+            )
+            return HTMLResponse(flash_oob + form_html)
+
+        return await self._render_spec_page(
+            request,
+            spec,
+            current_values,
+            errors={"__all__": conflict_message},
+            status_code=409,
+            tenant_id=tenant_id,
+        )
+
     async def _audit(
         self,
         request: Request,
@@ -455,42 +511,7 @@ class SettingsController(AdminController):
                     else "missing_settings_revision"
                 ),
             )
-            conflict_message = (
-                "These settings changed in another session. Review the current "
-                "values before saving again."
-            )
-            if request.headers.get("hx-request") == "true":
-                self._flash_messages.clear()
-                value_metadata = await self._registry.get_value_metadata(
-                    namespace,
-                    self._store_name(spec),
-                    tenant_id=tenant_id,
-                )
-                form_html = render_to_string(
-                    ConfigDashboardUI().render_config_form(
-                        spec=self._spec_ui_data(spec, can_edit=True),
-                        values=existing_values,
-                        errors={"__all__": conflict_message},
-                        value_metadata=value_metadata,
-                        revision=self._settings_revision(spec, existing_values),
-                        action=self._settings_url(request, namespace),
-                        csrf_token=self._get_csrf_token(request),
-                    )
-                )
-                toast_html = self._render_toast(conflict_message, "warning")
-                flash_oob = (
-                    f'<div id="flash-container" hx-swap-oob="true">{toast_html}</div>'
-                )
-                return HTMLResponse(flash_oob + form_html)
-
-            return await self._render_spec_page(
-                request,
-                spec,
-                existing_values,
-                errors={"__all__": conflict_message},
-                status_code=409,
-                tenant_id=tenant_id,
-            )
+            return await self._render_save_conflict(request, spec, namespace, tenant_id)
 
         # Missing unchecked checkboxes are equivalent to false even when a
         # client omits the hidden fallback. Required non-boolean fields are
@@ -596,12 +617,31 @@ class SettingsController(AdminController):
                 tenant_id=tenant_id,
             )
 
-        await self._registry.save_values(
-            namespace,
-            validated_updates,
-            self._store_name(spec),
-            tenant_id=tenant_id,
-        )
+        # The revision comparison above happened before this write, so a save
+        # committed in between would otherwise be silently overwritten. Pass
+        # the values the form was rendered from so stores that support it can
+        # re-check inside the write transaction and reject a late conflict.
+        try:
+            await self._registry.save_values(
+                namespace,
+                validated_updates,
+                self._store_name(spec),
+                tenant_id=tenant_id,
+                expected={
+                    key: existing_values[key]
+                    for key in validated_updates
+                    if key in existing_values
+                },
+            )
+        except SettingsConflictError:
+            await self._audit(
+                request,
+                success=False,
+                namespace=namespace,
+                reason="concurrent_update_at_write",
+                keys=sorted(validated_updates),
+            )
+            return await self._render_save_conflict(request, spec, namespace, tenant_id)
 
         await self._audit(
             request,

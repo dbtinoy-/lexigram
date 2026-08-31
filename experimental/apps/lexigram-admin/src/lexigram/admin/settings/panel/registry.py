@@ -54,6 +54,39 @@ class StoreBase:
         for key, value in items.items():
             await self.set(key, value, tenant_id=tenant_id)
 
+    async def set_many_if_unchanged(
+        self,
+        items: dict[str, Any],
+        expected: dict[str, Any],
+        tenant_id: str | None = None,
+    ) -> None:
+        """Persist *items* only if stored values still match *expected*.
+
+        Re-checking inside the write closes the window between a controller
+        comparing a revision token and issuing the write. The default
+        implementation cannot do that atomically and simply delegates, so a
+        caller only gains the guarantee on backends that override this.
+
+        Args:
+            items: Mapping of key to already-validated value.
+            expected: Mapping of key to the value observed when the form was
+                rendered. Keys absent from the store are expected to be unset.
+            tenant_id: Optional tenant scope.
+
+        Raises:
+            SettingsConflictError: If a backend detects a concurrent change.
+        """
+        del expected
+        await self.set_many(items, tenant_id=tenant_id)
+
+    async def supports_conditional_write(self) -> bool:
+        """Report whether conditional writes are enforced atomically.
+
+        Lets callers tell a genuine guarantee from the delegating default,
+        rather than assuming every store closes the conflict window.
+        """
+        return False
+
 
 class EnvStore(StoreBase):
     """Read-only store for environment variables."""
@@ -292,8 +325,23 @@ class ConfigRegistry:
         values: dict[str, Any],
         store_name: str = "default",
         tenant_id: str | None = None,
+        expected: dict[str, Any] | None = None,
     ) -> None:
-        """Save values for a spec to a store, skipping readonly nodes."""
+        """Save values for a spec to a store, skipping readonly nodes.
+
+        Args:
+            namespace: Configuration namespace being written.
+            values: Submitted, node-validated values keyed by short name.
+            store_name: Target store; falls back to ``default``.
+            tenant_id: Optional tenant scope.
+            expected: Values observed when the form was rendered. When given,
+                the write is issued conditionally so a concurrent change is
+                detected at write time rather than only before it.
+
+        Raises:
+            SettingsConflictError: If *expected* is supplied and the store
+                detects that the stored values changed concurrently.
+        """
         spec = self._specs.get(namespace)
         if not spec:
             return
@@ -311,4 +359,23 @@ class ConfigRegistry:
         if not pending:
             return
 
-        await store.set_many(pending, tenant_id=tenant_id)
+        if expected is None:
+            await store.set_many(pending, tenant_id=tenant_id)
+            return
+
+        # Only the keys being written need to be unchanged. Comparing the
+        # whole spec would reject saves that touch a disjoint set of fields.
+        expected_written = {
+            f"{namespace}.{key}": expected[key] for key in expected if key in nodes
+        }
+        await store.set_many_if_unchanged(
+            pending, expected_written, tenant_id=tenant_id
+        )
+
+    async def supports_conditional_write(self, store_name: str = "default") -> bool:
+        """Report whether *store_name* enforces conditional writes atomically."""
+        store = self._stores.get(store_name, self._stores["default"])
+        try:
+            return await store.supports_conditional_write()
+        except Exception:  # noqa: BLE001 — capability probes must not fail a save
+            return False
