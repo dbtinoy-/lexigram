@@ -4,10 +4,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import StrEnum
+from html import escape
 from typing import Any, Protocol
 
 from lexigram.di.decorators import inject
-from lexigram.serialization import dumps_str
+from lexigram.ui import js_json, js_string
 
 
 class ChartBackend(StrEnum):
@@ -78,16 +79,19 @@ class ChartJSRenderer:
             },
         }
 
-        config_json = dumps_str(config)
+        # js_json rather than a plain JSON dump: chart labels and titles are
+        # caller data, and a label containing "</script>" ends the block for
+        # the HTML tokenizer regardless of JSON quoting.
+        config_json = js_json(config)
 
         return f"""
-        <div style="width: {width}; height: {height};">
-            <canvas id="{chart_id}"></canvas>
+        <div style="width: {escape(str(width), quote=True)}; height: {escape(str(height), quote=True)};">
+            <canvas id="{escape(str(chart_id), quote=True)}"></canvas>
         </div>
         <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
         <script>
             (function() {{
-                const ctx = document.getElementById('{chart_id}').getContext('2d');
+                const ctx = document.getElementById({js_string(chart_id)}).getContext('2d');
                 new Chart(ctx, {config_json});
             }})();
         </script>
@@ -124,14 +128,14 @@ class PlotlyRenderer:
             "autosize": True,
         }
 
-        data_json = dumps_str(plotly_data)
-        layout_json = dumps_str(layout)
+        data_json = js_json(plotly_data)
+        layout_json = js_json(layout)
 
         return f"""
-        <div id="{chart_id}" style="width: {width}; height: {height};"></div>
+        <div id="{escape(str(chart_id), quote=True)}" style="width: {escape(str(width), quote=True)}; height: {escape(str(height), quote=True)};"></div>
         <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
         <script>
-            Plotly.newPlot('{chart_id}', {data_json}, {layout_json}, {{responsive: true}});
+            Plotly.newPlot({js_string(chart_id)}, {data_json}, {layout_json}, {{responsive: true}});
         </script>
         """
 

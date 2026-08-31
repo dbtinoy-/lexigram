@@ -1,8 +1,14 @@
 from __future__ import annotations
 
+import re
 from typing import Any
 
+from lexigram.logging import get_logger
 from lexigram.ui import ActionButton, Component, el
+from lexigram.ui.core.js import js_json, js_string
+from lexigram.ui.core.url import is_safe_navigation_url
+
+logger = get_logger(__name__)
 
 
 class TaskProgress(Component):
@@ -42,16 +48,61 @@ class TaskProgress(Component):
         self.on_complete = on_complete
         self.stream_url = stream_url or f"/admin/progress/{task_id}/stream"
 
+    #: A callback name must look like a plain JS identifier path
+    #: (``notify`` or ``app.onDone``). Anything else -- call syntax,
+    #: operators, quotes -- is rejected rather than escaped, because the
+    #: value is executed, not displayed, and there is no encoding that makes
+    #: arbitrary code safe to run.
+    _CALLBACK_NAME = re.compile(r"^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*$")
+
+    def _on_complete_js(self) -> str:
+        """Return the JS to run when the task completes.
+
+        ``on_complete`` was previously concatenated straight into the script
+        body, so a caller string became executable code and a URL was
+        embedded in a hand-quoted literal. Both are now constrained: a path
+        is emitted as a properly encoded string literal assigned to
+        ``location.href``, and a callback is admitted only if it is a bare
+        identifier path.
+        """
+        target = self.on_complete
+        if not target:
+            return ""
+
+        if target.startswith("/"):
+            if not is_safe_navigation_url(target):
+                logger.warning(
+                    "task_progress_unsafe_redirect",
+                    on_complete=target,
+                )
+                return ""
+            return f"window.location.href = {js_string(target)};"
+
+        if not self._CALLBACK_NAME.match(target):
+            logger.warning(
+                "task_progress_rejected_callback",
+                on_complete=target,
+            )
+            return ""
+        return f"{target}();"
+
     def render(self) -> Any:
-        # Alpine.js data for managing state
-        alpine_data = {
+        # Alpine.js data for managing state.
+        #
+        # `init` and `destroy` are JavaScript method bodies, not data, so
+        # this cannot be serialised with json.dumps -- that would quote them
+        # into strings and Alpine would never call them. The object literal
+        # is assembled explicitly below instead; only the genuinely
+        # data-valued entries go through js_json.
+        state = {
             "status": "pending",
             "progress": 0,
             "message": "Initializing...",
             "error": None,
             "eventSource": None,
-            "init": f"""
-                this.eventSource = new EventSource('{self.stream_url}');
+        }
+        init_body = f"""
+                this.eventSource = new EventSource({js_string(self.stream_url)});
 
                 this.eventSource.addEventListener('progress', (e) => {{
                     const data = JSON.parse(e.data);
@@ -61,8 +112,7 @@ class TaskProgress(Component):
 
                     if (data.status === 'completed') {{
                         this.eventSource.close();
-                        {'window.location.href = "' + self.on_complete + '";' if self.on_complete and self.on_complete.startswith("/") else ""}
-                        {self.on_complete + "();" if self.on_complete and not self.on_complete.startswith("/") else ""}
+                        {self._on_complete_js()}
                     }} else if (data.status === 'failed') {{
                         this.error = data.error || 'Task failed';
                         this.eventSource.close();
@@ -81,13 +131,25 @@ class TaskProgress(Component):
                     }}
                 }});
                 obs.observe(document.body, {{ childList: true, subtree: true }});
-            """,
-            "destroy": """
+        """
+        destroy_body = """
                 if (this.eventSource) {
                     this.eventSource.close();
                 }
-            """,
-        }
+        """
+
+        # Data entries via js_json (so None becomes null, not Python's
+        # None); method bodies spliced in as code.
+        state_entries = ",\n".join(
+            f"    {js_string(key)}: {js_json(value)}" for key, value in state.items()
+        )
+        alpine_data = (
+            "{\n"
+            f"{state_entries},\n"
+            f"    init() {{{init_body}\n    }},\n"
+            f"    destroy() {{{destroy_body}\n    }}\n"
+            "}"
+        )
 
         # Status icon based on current status
         status_icon = el(
@@ -225,7 +287,7 @@ class TaskProgress(Component):
                 ),
                 class_="flex items-center justify-center min-h-screen p-4",
             ),
-            x_data=f"{alpine_data}",
+            x_data=alpine_data,
             x_init="init()",
             x_on_before_unload_window="destroy()",
             class_="fixed inset-0 bg-muted/75 dark:bg-background/75 backdrop-blur-sm z-50",

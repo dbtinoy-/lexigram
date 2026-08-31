@@ -4,6 +4,7 @@ from typing import Any
 
 from lexigram.ui import Component, el, raw
 from lexigram.ui.atoms.icons import get_icon
+from lexigram.ui.core.js import js_string
 
 
 class NotificationBell(Component):
@@ -204,7 +205,7 @@ document.addEventListener('alpine:init', () => {{
         init() {{
             this.loadInbox();
             if (this.eventSource) return;
-            this.eventSource = new EventSource('{self.sse_url}');
+            this.eventSource = new EventSource({js_string(self.sse_url)});
             const handleNotification = (e) => {{
                 const envelope = JSON.parse(e.data);
                 // The widget SSE bridge sends AdminEvent.to_dict() as the
@@ -222,7 +223,7 @@ document.addEventListener('alpine:init', () => {{
                     time: data.timestamp
                 }});
                 this.unreadCount++;
-                if (this.notifications.length > {self.max_display}) {{
+                if (this.notifications.length > {int(self.max_display)}) {{
                     this.notifications.pop();
                 }}
             }};
@@ -247,7 +248,7 @@ document.addEventListener('alpine:init', () => {{
         }},
         async loadInbox() {{
             try {{
-                const res = await fetch('{self.inbox_api_url}', {{
+                const res = await fetch({js_string(self.inbox_api_url)}, {{
                     headers: {{'X-Requested-With': 'fetch'}}
                 }});
                 if (!res.ok) return;
@@ -277,7 +278,7 @@ document.addEventListener('alpine:init', () => {{
                 this.unreadCount = Math.max(0, this.unreadCount - 1);
             }}
             try {{
-                await fetch('{self.mark_read_url}'.replace('{{message_id}}', id), {{
+                await fetch({js_string(self.mark_read_url)}.replace('{{message_id}}', id), {{
                     method: 'POST',
                     headers: {{
                         'X-Requested-With': 'fetch',
@@ -290,7 +291,7 @@ document.addEventListener('alpine:init', () => {{
             this.notifications.forEach(n => n.read = true);
             this.unreadCount = 0;
             try {{
-                await fetch('{self.mark_all_read_url}', {{
+                await fetch({js_string(self.mark_all_read_url)}, {{
                     method: 'POST',
                     headers: {{
                         'X-Requested-With': 'fetch',
