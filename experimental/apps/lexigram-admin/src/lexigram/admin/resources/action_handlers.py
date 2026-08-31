@@ -19,6 +19,7 @@ from lexigram.admin.resources.data_access import get_resource_data_source
 from lexigram.admin.resources.form_coercion import (
     _validation_errors_to_dict,
 )
+from lexigram.admin.resources.form_guard import PROTECTED_FORM_FIELDS
 from lexigram.admin.resources.urls import (
     admin_prefix_from_request,
     admin_url,
@@ -589,35 +590,57 @@ class InlineMutationActionHandler:
 
     @staticmethod
     def _field_schema(resource: Any, field_name: str) -> Any | None:
+        # Explicit declarative fields are the resource's canonical form/view
+        # contract, even when a backing model is also present. Falling back to
+        # generated model fields here would bypass visibility and readonly
+        # metadata on inline routes.
+        declared_fields = getattr(resource, "fields", ()) or ()
+        field = next(
+            (
+                field
+                for field in declared_fields
+                if getattr(field, "name", None) == field_name
+            ),
+            None,
+        )
+        if field is not None:
+            return field
+
         model = getattr(resource, "model", None)
         if model is not None:
             from lexigram.admin.forms.components import FormSchemaGenerator
 
             schema = FormSchemaGenerator().from_pydantic(model)
-            field = next(
+            return next(
                 (field for field in schema.fields if field.name == field_name),
                 None,
             )
-            if field is not None:
-                return field
 
-        # Resources using the declarative SchemaField system may not bind a
-        # Pydantic/dataclass model. Keep inline writes on the same allow-list
-        # as their generated table/form configuration.
-        return next(
-            (
-                field
-                for field in getattr(resource, "fields", ()) or ()
-                if getattr(field, "name", None) == field_name
-            ),
-            None,
-        )
+        # Resources using only the declarative SchemaField system may not bind
+        # a Pydantic/dataclass model; an absent declaration is never editable.
+        return None
 
     async def _load_record(self, resource: Any, item_id: str) -> tuple[Any, Any]:
         data_source = get_resource_data_source(resource)
         if data_source is None or not hasattr(data_source, "find_one"):
             return None, None
         return data_source, await data_source.find_one(item_id)
+
+    @staticmethod
+    def _inline_field_editable(resource: Any, field_name: str, field_schema: Any) -> bool:
+        """Return whether a field is allowed in the inline-write contract."""
+        protected = set(
+            getattr(resource, "protected_form_fields", PROTECTED_FORM_FIELDS)
+            or PROTECTED_FORM_FIELDS
+        )
+        protected.update(getattr(resource, "form_exclude_fields", ()) or ())
+        protected.update(getattr(resource, "readonly_fields", ()) or ())
+        return bool(
+            field_name not in protected
+            and getattr(field_schema, "visible_in_form", True)
+            and getattr(field_schema, "visible_in_view", True)
+            and not getattr(field_schema, "readonly", False)
+        )
 
     async def _authorize_update(self, resource: Any, record: Any) -> bool:
         hook = getattr(resource, "can_update", None)
@@ -644,11 +667,7 @@ class InlineMutationActionHandler:
         field_schema = self._field_schema(resource, field_name)
         if field_schema is None:
             return None, "Field not found"
-        if (
-            getattr(field_schema, "readonly", False)
-            or field_name in (getattr(resource, "readonly_fields", ()) or ())
-            or field_name in (getattr(resource, "form_exclude_fields", ()) or ())
-        ):
+        if not self._inline_field_editable(resource, field_name, field_schema):
             return None, "This field is read-only"
 
         # A checkbox has no successful control when it is switched off.
@@ -706,7 +725,11 @@ class InlineMutationActionHandler:
         field_name: str,
         form: Any,
     ) -> tuple[Any, str | None]:
-        data_source, record = await self._load_record(resource, item_id)
+        try:
+            data_source, record = await self._load_record(resource, item_id)
+        except Exception as exc:  # noqa: BLE001 — storage failures are recoverable UI errors
+            logger.exception("admin.inline_lookup_failed", error=str(exc))
+            return None, "Unable to load record"
         if data_source is None:
             return None, "Inline editing is not available"
         if record is None:
@@ -791,6 +814,15 @@ class InlineMutationActionHandler:
             field_name = str(request.path_params.get("field", ""))
             if not field_name:
                 return HTMLResponse("Field not found", status_code=404)
+            field_schema = self._field_schema(resource, field_name)
+            if field_schema is None:
+                return HTMLResponse("Field not found", status_code=404)
+            if not self._inline_field_editable(resource, field_name, field_schema):
+                return HTMLResponse("This field is read-only", status_code=403)
+            if not await _field_view_allowed(request, resource, field_name):
+                return HTMLResponse("Forbidden", status_code=403)
+            if not await _field_edit_allowed(request, resource, field_name):
+                return HTMLResponse("Forbidden", status_code=403)
             data_source, record = await self._load_record(resource, item_id)
             if data_source is None or record is None:
                 return HTMLResponse("Not found", status_code=404)
@@ -836,7 +868,14 @@ class InlineMutationActionHandler:
             form,
         )
         if error:
-            status = 404 if error == "Not found" else 403 if "cannot" in error else 422
+            if error == "Not found":
+                status = 404
+            elif error in {"This field is read-only", "This record cannot be updated"} or error == "Forbidden":
+                status = 403
+            elif error == "Inline editing is not available" or error == "Unable to load record":
+                status = 503
+            else:
+                status = 422
             return HTMLResponse(error, status_code=status)
 
         item_dict = self._as_dict(updated)

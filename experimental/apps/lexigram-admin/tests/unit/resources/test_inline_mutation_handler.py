@@ -12,6 +12,7 @@ from starlette.requests import Request
 from lexigram.admin.config import AdminConfig
 from lexigram.admin.resources.action_handlers import InlineMutationActionHandler
 from lexigram.admin.resources.base import Resource
+from lexigram.admin.schema import TextField
 
 
 class _InlineModel(BaseModel):
@@ -130,6 +131,56 @@ async def test_inline_patch_returns_updated_table_row(
     assert body.startswith("<tr>")
     assert "After" in body
     assert 'hx-get="/admin/items/1/field/name"' in body
+
+
+@pytest.mark.asyncio
+async def test_inline_mutation_rejects_declared_readonly_fields(
+    resource: _InlineResource,
+) -> None:
+    resource.readonly_fields = ("count",)
+    handler = InlineMutationActionHandler(
+        AdminConfig(title="Admin", prefix="/admin"),
+        "items",
+    )
+    request = _request(
+        "POST",
+        "/admin/items/1/field/count",
+        action="field",
+        path_params={"id": "1", "field": "count"},
+        form=FormData([("count", "42")]),
+    )
+
+    response = await handler.handle(request, resource)
+
+    assert response.status_code == 403
+    assert resource._data_source.records["1"]["count"] == 1  # type: ignore[attr-defined]
+
+
+@pytest.mark.asyncio
+async def test_inline_mutation_honors_explicit_field_visibility(
+    resource: _InlineResource,
+) -> None:
+    class RestrictedResource(_InlineResource):
+        fields = [TextField(name="name", visible_in_form=False)]
+
+    restricted = RestrictedResource()
+    restricted._data_source = resource._data_source
+    handler = InlineMutationActionHandler(
+        AdminConfig(title="Admin", prefix="/admin"),
+        "items",
+    )
+    request = _request(
+        "POST",
+        "/admin/items/1/field/name",
+        action="field",
+        path_params={"id": "1", "field": "name"},
+        form=FormData([("name", "After")]),
+    )
+
+    response = await handler.handle(request, restricted)
+
+    assert response.status_code == 403
+    assert resource._data_source.records["1"]["name"] == "Before"  # type: ignore[attr-defined]
 
 
 @pytest.mark.asyncio

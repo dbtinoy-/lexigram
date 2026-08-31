@@ -8,6 +8,7 @@ from starlette.responses import HTMLResponse
 
 from lexigram.admin.config import AdminConfig
 from lexigram.admin.resources.data_access import get_resource_data_source
+from lexigram.admin.resources.urls import admin_prefix_from_request
 from lexigram.admin.resources.field_renderers_common import (
     FieldRendererProtocol as FieldRendererProtocol,
 )
@@ -223,6 +224,7 @@ class FieldRenderer:
             field_value,
             item_id,
             csrf_token=getattr(getattr(request, "state", None), "csrf_token", None),
+            admin_prefix=admin_prefix_from_request(request),
         )
 
         if not field_component:
@@ -241,6 +243,7 @@ class FieldRenderer:
         value,
         item_id: str | None = None,
         csrf_token: str | None = None,
+        admin_prefix: str | None = None,
     ) -> Any:
         """Build a field component for inline editing.
 
@@ -260,25 +263,24 @@ class FieldRenderer:
             return None
 
         try:
-            field_schema = None
-            model = getattr(resource, "model", None)
-            if model is not None:
-                from lexigram.admin.forms.components import FormSchemaGenerator
-
-                schema = FormSchemaGenerator().from_pydantic(model)
-                field_schema = next(
-                    (fs for fs in schema.fields if fs.name == field_name),
-                    None,
-                )
+            field_schema = next(
+                (
+                    fs
+                    for fs in getattr(resource, "fields", ()) or ()
+                    if getattr(fs, "name", None) == field_name
+                ),
+                None,
+            )
             if field_schema is None:
-                field_schema = next(
-                    (
-                        fs
-                        for fs in getattr(resource, "fields", ()) or ()
-                        if getattr(fs, "name", None) == field_name
-                    ),
-                    None,
-                )
+                model = getattr(resource, "model", None)
+                if model is not None:
+                    from lexigram.admin.forms.components import FormSchemaGenerator
+
+                    schema = FormSchemaGenerator().from_pydantic(model)
+                    field_schema = next(
+                        (fs for fs in schema.fields if fs.name == field_name),
+                        None,
+                    )
             if field_schema is None:
                 return None
 
@@ -292,6 +294,7 @@ class FieldRenderer:
                 value,
                 item_id,
                 csrf_token=csrf_token,
+                admin_prefix=admin_prefix,
             )
 
         except (ImportError, AttributeError, TypeError, ValueError) as e:
@@ -309,6 +312,7 @@ class FieldRenderer:
         value,
         item_id: str | None = None,
         csrf_token: str | None = None,
+        admin_prefix: str | None = None,
     ) -> Any:
         """Create a field component from a FieldSchema for inline editing.
 
@@ -320,8 +324,11 @@ class FieldRenderer:
         Returns:
             Field component instance configured for inline editing
         """
-        # Determine action URL for inline editing
-        action_url = f"{self._config.prefix}/{self.resource_name}/{item_id}/field/{field_schema.name}"
+        # Determine action URL for inline editing. Resolve the active mount
+        # from the request path so an editor loaded under a custom prefix does
+        # not submit back to the default ``/admin`` mount.
+        prefix = (admin_prefix or self._config.prefix).rstrip("/")
+        action_url = f"{prefix}/{self.resource_name}/{item_id}/field/{field_schema.name}"
 
         common_args = {
             "label": None,  # No label for inline editing

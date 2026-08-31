@@ -2,6 +2,7 @@ from __future__ import annotations
 
 """Detail view rendering for admin resources."""
 
+import inspect
 from typing import Any
 
 from starlette.responses import HTMLResponse
@@ -10,11 +11,13 @@ from lexigram.admin.config import AdminConfig
 from lexigram.admin.engine.renderer import AdminRenderer
 from lexigram.admin.exceptions import DataError
 from lexigram.admin.observability.admin_metrics import AdminMetrics, OperationTimer
+from lexigram.admin.resources.form_guard import PROTECTED_FORM_FIELDS
+from lexigram.admin.resources.urls import admin_prefix_from_request
 from lexigram.admin.state.context import wants_fragment
 from lexigram.di.decorators import inject
 from lexigram.logging import get_logger
 from lexigram.serialization import dumps_str
-from lexigram.ui import InfolistWidget, el, render_to_string
+from lexigram.ui import InfolistWidget, el, raw, render_to_string
 
 logger = get_logger(__name__)
 
@@ -35,6 +38,76 @@ class DetailRenderer:
         self._renderer = renderer
         self._metrics = metrics or AdminMetrics(None)
 
+    @staticmethod
+    def _field_schemas(resource: Any) -> dict[str, Any]:
+        """Resolve the fields that are explicitly safe for detail rendering."""
+        declared = getattr(resource, "fields", None)
+        if declared:
+            return {
+                str(field.name): field
+                for field in declared
+                if getattr(field, "name", None)
+            }
+
+        model = getattr(resource, "model", None)
+        if model is None:
+            # Do not infer a detail allow-list from arbitrary record keys. A
+            # data source may contain secrets that were never intended for UI.
+            return {}
+        try:
+            from lexigram.admin.forms.components import FormSchemaGenerator
+
+            schema = FormSchemaGenerator().from_pydantic(model)
+            return {field.name: field for field in schema.fields}
+        except (ImportError, AttributeError, TypeError, ValueError):
+            return {}
+
+    @staticmethod
+    def _permission_service(request: Any) -> Any | None:
+        """Resolve the mounted field-permission service, if available."""
+        try:
+            app = request.app
+        except (AttributeError, KeyError):
+            app = None
+        service = getattr(getattr(app, "state", None), "permission_service", None)
+        if service is not None and callable(getattr(service, "can_view_field", None)):
+            return service
+        try:
+            state = request.state
+        except (AttributeError, KeyError):
+            state = None
+        service = getattr(state, "permission_service", None)
+        return (
+            service
+            if service is not None and callable(getattr(service, "can_view_field", None))
+            else None
+        )
+
+    async def _field_visible(
+        self,
+        request: Any,
+        user: Any,
+        permission_service: Any | None,
+        field_name: str,
+    ) -> bool:
+        """Check field visibility for the inline detail contract."""
+        if user is None or permission_service is None:
+            return True
+        try:
+            result = permission_service.can_view_field(
+                user, self.resource_name, field_name
+            )
+            if inspect.isawaitable(result):
+                result = await result
+            return bool(result)
+        except Exception:  # noqa: BLE001 — field access must fail closed
+            logger.exception(
+                "admin.inline_field_visibility_check_failed",
+                resource=self.resource_name,
+                field=field_name,
+            )
+            return False
+
     async def render_detail(
         self,
         request,
@@ -49,16 +122,42 @@ class DetailRenderer:
 
         item_html = await self._get_item_html(resource, item_id, label)
 
-        content = f"""
-        <div class="resource-header" style="margin-bottom: 1.5rem;">
-            <a href="{self._config.prefix}/{self.resource_name}" style="color: #6366f1;">&larr; Back to {label}</a>
-            <h1>{label} #{item_id}</h1>
-        </div>
-        <div class="resource-content">{item_html}</div>
-        <div class="resource-actions" style="margin-top: 1rem;">
-            <a href="{self._config.prefix}/{self.resource_name}/{item_id}/edit" class="btn btn-secondary">Edit</a>
-        </div>
-        """
+        prefix = admin_prefix_from_request(request)
+        resource_url = f"{prefix}/{self.resource_name}"
+        detail_url = f"{resource_url}/{item_id}"
+        content = render_to_string(
+            el(
+                "div",
+                el(
+                    "div",
+                    el(
+                        "a",
+                        f"← Back to {label}",
+                        href=resource_url,
+                        style="color: #6366f1;",
+                    ),
+                    el("h1", f"{label} #{item_id}"),
+                    style="margin-bottom: 1.5rem;",
+                    class_="resource-header",
+                ),
+                el(
+                    "div",
+                    raw(item_html),
+                    class_="resource-content",
+                ),
+                el(
+                    "div",
+                    el(
+                        "a",
+                        "Edit",
+                        href=f"{detail_url}/edit",
+                        class_="btn btn-secondary",
+                    ),
+                    style="margin-top: 1rem;",
+                    class_="resource-actions",
+                ),
+            )
+        )
 
         is_htmx = wants_fragment(request)
         if is_htmx:
@@ -82,11 +181,11 @@ class DetailRenderer:
             request=request,
             title=f"{label} #{item_id}",
             breadcrumbs=[
-                {"label": "Dashboard", "url": self._config.prefix},
-                {"label": label, "url": f"{self._config.prefix}/{self.resource_name}"},
+                {"label": "Dashboard", "url": prefix},
+                {"label": label, "url": resource_url},
                 {
                     "label": f"#{item_id}",
-                    "url": f"{self._config.prefix}/{self.resource_name}/{item_id}",
+                    "url": detail_url,
                 },
             ],
         )
@@ -148,19 +247,52 @@ class DetailRenderer:
                     original_error=exc,
                 ) from None
 
-        patch_base = f"{self._config.prefix}/{self.resource_name}/{item_id}/inline"
+        prefix = admin_prefix_from_request(request)
+        patch_base = f"{prefix}/{self.resource_name}/{item_id}/inline"
         csrf_token = getattr(getattr(request, "state", None), "csrf_token", None)
         csrf_attrs = (
             {"hx_headers": dumps_str({"X-CSRF-Token": csrf_token})}
             if csrf_token
             else {}
         )
-        protected_fields = {"id", "tenant_id", "created_at", "updated_at"}
+        protected_fields = set(PROTECTED_FORM_FIELDS)
+        protected_fields.update(getattr(resource, "form_exclude_fields", ()) or ())
+        protected_fields.update(getattr(resource, "readonly_fields", ()) or ())
+        field_schemas = self._field_schemas(resource)
+        permission_service = self._permission_service(request)
 
         field_rows: list[Any] = []
         for field_name, field_value in item_dict.items():
+            field_schema = field_schemas.get(field_name)
+            if field_schema is None or not getattr(field_schema, "visible_in_view", True):
+                continue
+            if not await self._field_visible(
+                request,
+                user,
+                permission_service,
+                field_name,
+            ):
+                continue
             alpine_key = f"editing_{field_name}"
-            editable = field_name not in protected_fields
+            editable = bool(
+                field_name not in protected_fields
+                and getattr(field_schema, "visible_in_form", True)
+                and not getattr(field_schema, "readonly", False)
+            )
+            edit_checker = getattr(permission_service, "can_edit_field", None)
+            if editable and user is not None and callable(edit_checker):
+                try:
+                    edit_result = edit_checker(user, self.resource_name, field_name)
+                    if inspect.isawaitable(edit_result):
+                        edit_result = await edit_result
+                    editable = bool(edit_result)
+                except Exception:  # noqa: BLE001 — edit access must fail closed
+                    logger.exception(
+                        "admin.inline_field_edit_check_failed",
+                        resource=self.resource_name,
+                        field=field_name,
+                    )
+                    editable = False
             row = el(
                 "tr",
                 el(
@@ -264,13 +396,38 @@ class DetailRenderer:
             el("table", *field_rows, class_="detail-inline-edit-table w-full")
         )
 
-        content = f"""
-        <div class="resource-header" style="margin-bottom: 1.5rem;">
-            <a href="{self._config.prefix}/{self.resource_name}" style="color: #6366f1;">&larr; Back to {label}</a>
-            <h1>{label} #{item_id} <span class="text-muted-foreground text-xs">(inline edit)</span></h1>
-        </div>
-        <div class="resource-content">{table_html}</div>
-        """
+        resource_url = f"{prefix}/{self.resource_name}"
+        detail_url = f"{resource_url}/{item_id}"
+        content = render_to_string(
+            el(
+                "div",
+                el(
+                    "div",
+                    el(
+                        "a",
+                        f"← Back to {label}",
+                        href=resource_url,
+                        style="color: #6366f1;",
+                    ),
+                    el(
+                        "h1",
+                        f"{label} #{item_id} ",
+                        el(
+                            "span",
+                            "(inline edit)",
+                            class_="text-muted-foreground text-xs",
+                        ),
+                    ),
+                    style="margin-bottom: 1.5rem;",
+                    class_="resource-header",
+                ),
+                el(
+                    "div",
+                    raw(table_html),
+                    class_="resource-content",
+                ),
+            )
+        )
 
         is_htmx = wants_fragment(request)
         if is_htmx:
@@ -281,15 +438,15 @@ class DetailRenderer:
             request=request,
             title=f"{label} #{item_id} — Inline Edit",
             breadcrumbs=[
-                {"label": "Dashboard", "url": self._config.prefix},
-                {"label": label, "url": f"{self._config.prefix}/{self.resource_name}"},
+                {"label": "Dashboard", "url": prefix},
+                {"label": label, "url": resource_url},
                 {
                     "label": f"#{item_id}",
-                    "url": f"{self._config.prefix}/{self.resource_name}/{item_id}",
+                    "url": detail_url,
                 },
                 {
                     "label": "Inline Edit",
-                    "url": f"{self._config.prefix}/{self.resource_name}/{item_id}/inline-edit",
+                    "url": f"{detail_url}/inline-edit",
                 },
             ],
         )
@@ -355,10 +512,16 @@ class DetailRenderer:
                 self.resource_name,
                 exc,
             )
+            safe_names = set(self._field_schemas(resource))
             rows = [
-                el("tr", el("td", el("strong", k)), el("td", str(v)))
-                for k, v in item_dict.items()
+                el("tr", el("td", el("strong", key)), el("td", str(value)))
+                for key, value in item_dict.items()
+                if key in safe_names
             ]
+            if not rows:
+                return render_to_string(
+                    el("p", "No detail fields are configured.", class_="text-muted")
+                )
             return render_to_string(el("table", *rows, class_="detail-table"))
 
 
