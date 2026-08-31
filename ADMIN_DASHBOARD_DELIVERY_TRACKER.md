@@ -108,7 +108,7 @@ resource-shaped wrapper around configuration persistence.
 | --- | --- | --- | --- |
 | Generated resource fields | `admin/resources/field_renderer.py` and `field_renderers_*.py` | Uses `lexigram.ui` atoms through `FieldRendererRegistry` | Generated create/edit forms now attach the shared form marker/status/action contract; field-level semantics remain owned by `SchemaField`. |
 | Declarative resource forms | `admin/forms/components.py`, `admin/forms/form.py`, `admin/forms/layout.py` | `SchemaField.render_form()` uses shared UI field primitives and renders field/global errors | `FormBase` and the legacy builder `Form` expose the shared marker/status/action contract without losing layouts or model validation. |
-| Settings forms | `admin/settings/panel/ui.py` and `controllers/settings.py` | Uses shared UI atoms, `FieldSchema`, `Form`, and `FormActions` | Settings retains its legacy markers and domain metadata while using the shell-level delegated behavior; boolean validation/help/ARIA now use the shared Toggle contract; no resource CRUD assumptions were introduced. |
+| Settings forms | `admin/settings/panel/ui.py` and `controllers/settings.py` | Uses shared UI atoms, `FieldSchema`, `Form`, and `FormActions` | Settings retains its legacy markers and domain metadata while using the shell-level delegated behavior; boolean validation/help/ARIA now use the shared Toggle contract; the legacy dashboard adapter now delegates to the canonical settings form renderer and accepts request-aware action/CSRF values; no resource CRUD assumptions were introduced. |
 | Form state/validation | `admin/forms/state.py`, `admin/forms/validation.py`, settings node validation | Domain-appropriate server-side implementations already exist | Browser interaction state and server validation responses need one explicit cross-form contract. |
 
 ### Target architecture
@@ -374,11 +374,16 @@ Known environment-limited checks from the audit baseline:
 - [x] Align shared Toggle/Switch error/help/ARIA and disabled-control behavior,
       and preserve structured SubmitButton markup during shared loading recovery.
 - [x] Apply the shared form contract to the authenticated profile password form.
-- [ ] Consolidate or explicitly deprecate remaining legacy form paths: the
-      compatibility ResourceController renderer, `admin/forms/wizard.py`, and
-      the optional bulk-edit/bulk-assign organisms. Reuse `lexigram.ui.Form`,
-      `FormActions`, `SubmitButton`, `render_slide_over_fragment`, and the
-      mounted CSRF helpers instead of adding another raw form implementation.
+- [x] Migrate the legacy settings dashboard adapter to the canonical settings
+      form renderer, with request-aware action and CSRF parameters.
+- [x] Harden the compatibility ResourceController fallback with escaped,
+      mounted actions, hidden CSRF propagation when available, form status and
+      action metadata, validation feedback, and HTMX target preservation.
+- [ ] Consolidate or explicitly deprecate the remaining legacy form paths:
+      `admin/forms/wizard.py` and the optional bulk-edit/bulk-assign organisms.
+      Reuse `lexigram.ui.Form`, `FormActions`, `SubmitButton`,
+      `render_slide_over_fragment`, and the mounted CSRF helpers instead of
+      adding another raw form implementation.
 - [ ] Add effective-value/runtime applicability/read-versus-edit metadata and
       audited non-secret history where the underlying contracts support it.
 - [ ] Resolve the current GitHub Actions startup failure: the latest run

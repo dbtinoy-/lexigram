@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from html import escape
 from typing import Any
 
 from lexigram.admin.controllers.resource.meta import ResourceMeta, T
@@ -23,14 +24,22 @@ class ResourceRenderMixin:
         data: dict[str, Any] | None = None,
         errors: dict[str, list[str]] | None = None,
     ) -> str:
-        """Render full form page. Override in subclass."""
+        """Render a compatibility form page.
+
+        Resource subclasses should provide their own renderer (the active
+        resource pipeline does this through ``FormRenderer``). The fallback is
+        nevertheless a real, progressively enhanced form so an older
+        controller cannot silently emit an unusable or unprotected POST
+        surface while an integration is being migrated.
+        """
         title = f"Edit {self.meta.label}" if item else f"Create {self.meta.label}"
+        safe_title = escape(title)
         return f"""
 <!DOCTYPE html>
 <html>
-<head><title>{title}</title></head>
+<head><title>{safe_title}</title></head>
 <body>
-    <h1>{title}</h1>
+    <h1>{safe_title}</h1>
     {self.render_form_partial(ctx, item, data, errors)}
 </body>
 </html>
@@ -71,12 +80,51 @@ class ResourceRenderMixin:
             if id_val is not None:
                 action = admin_url(prefix, self.meta.name, str(id_val))
 
-        from html import escape
+        request_state = getattr(request, "state", None)
+        csrf_token = getattr(request_state, "csrf_token", None)
+        csrf_input = (
+            f'<input type="hidden" name="csrf_token" value="{escape(str(csrf_token), quote=True)}">'
+            if csrf_token
+            else ""
+        )
 
-        action = escape(action, quote=True)
+        error_items: list[str] = []
+        for field, messages in (errors or {}).items():
+            normalized = messages if isinstance(messages, list) else [messages]
+            for message in normalized:
+                error_items.append(
+                    f'<li><strong>{escape(str(field))}:</strong> '
+                    f"{escape(str(message))}</li>"
+                )
+        error_block = (
+            '<div role="alert" class="resource-form-errors">'
+            '<p>Check the form and try again.</p><ul>'
+            + "".join(error_items)
+            + "</ul></div>"
+            if error_items
+            else ""
+        )
+
+        htmx_attrs = ""
+        if ctx.is_htmx:
+            target = request.headers.get("HX-Target") or "#main-content"
+            htmx_attrs = (
+                f' hx-post="{escape(action, quote=True)}"'
+                f' hx-target="{escape(target, quote=True)}" hx-swap="innerHTML"'
+            )
+
+        safe_action = escape(action, quote=True)
+        resource_name = escape(str(self.meta.name), quote=True)
         return f"""
-<form method="POST" action="{action}">
-    <p>Override render_form_partial() to customize</p>
-    <button type="submit">Save</button>
+<form method="POST" action="{safe_action}" data-admin-form="true"
+      data-resource-form="{resource_name}" aria-busy="false"{htmx_attrs}>
+    {csrf_input}
+    <p data-admin-form-status="true" aria-live="polite" class="sr-only"></p>
+    {error_block}
+    <p role="status">This compatibility form has no generated fields. Override
+       render_form_partial() to provide the resource fields.</p>
+    <div data-admin-form-actions="true">
+        <button type="submit">Save</button>
+    </div>
 </form>
 """

@@ -121,3 +121,26 @@ def test_csp_is_rendered_as_multiline_textarea() -> None:
     )
     assert "<textarea" in html
     assert 'name="csp"' in html
+
+
+def test_legacy_main_content_delegates_to_shared_settings_form_contract() -> None:
+    registry = ConfigRegistry.with_defaults()
+    spec = registry.get_spec("admin.cache")
+    assert spec is not None
+
+    html = render_to_string(
+        ConfigDashboardUI().render_main_content(
+            spec.to_dict(),
+            values={"enabled": True},
+            namespace=spec.namespace,
+            action="/console/settings/admin.cache",
+            csrf_token="legacy-token",
+        )
+    )
+
+    assert 'action="/console/settings/admin.cache"' in html
+    assert 'data-admin-form="true"' in html
+    assert 'data-settings-form="true"' in html
+    assert 'name="csrf_token"' in html
+    assert 'data-admin-form-status="true"' in html
+    assert 'type="submit"' in html

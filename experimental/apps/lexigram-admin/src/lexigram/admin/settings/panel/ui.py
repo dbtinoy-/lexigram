@@ -93,8 +93,18 @@ class ConfigDashboardUI:
         active_spec: dict[str, Any] | None,
         values: dict[str, Any],
         state: Any = None,
+        action: str | None = None,
+        csrf_token: str | None = None,
     ) -> Any:
-        """Render the legacy complete dashboard content."""
+        """Render the legacy complete dashboard content.
+
+        The spec-route controller uses :meth:`render_config_form` directly.
+        This compatibility helper remains available for older integrations,
+        but delegates its active form to the same renderer so it cannot drift
+        into a second field, CSRF, or action-bar contract. Callers rendering a
+        writable dashboard should provide the request-aware ``action`` and
+        ``csrf_token`` values.
+        """
         return Stack(
             gap=6,
             children=[
@@ -102,9 +112,17 @@ class ConfigDashboardUI:
                 el(
                     "div",
                     self.render_sidebar(specs, active_ns, category),
-                    self.render_main_content(active_spec, values, active_ns)
-                    if active_spec and active_ns
-                    else self.render_empty_state(),
+                    (
+                        self.render_main_content(
+                            active_spec,
+                            values,
+                            active_ns,
+                            action=action,
+                            csrf_token=csrf_token,
+                        )
+                        if active_spec and active_ns
+                        else self.render_empty_state()
+                    ),
                     class_="flex flex-col lg:flex-row gap-6 items-start",
                 ),
             ],
@@ -190,30 +208,28 @@ class ConfigDashboardUI:
         spec: dict[str, Any],
         values: dict[str, Any],
         namespace: str,
+        *,
+        action: str | None = None,
+        csrf_token: str | None = None,
     ) -> Any:
-        """Render the configuration form for the legacy dashboard."""
-        nodes = spec.get("nodes", [])
-        fields = [self.render_field(node_data, values) for node_data in nodes]
+        """Render the legacy dashboard form through the canonical renderer.
 
-        return Card(
-            title=spec.get("label", "Configuration"),
-            children=[
-                Form(
-                    action_url="?ns=" + namespace,
-                    method="POST",
-                    submit_label="",
-                    hx_target="#config-card",
-                    hx_swap="outerHTML",
-                    children=[
-                        el("input", type="hidden", name="_ns", value=namespace),
-                        Stack(gap=4, children=fields),
-                        el("div", class_="h-4"),
-                        FormActions(primary_text="Save changes", secondary_text=None),
-                    ],
-                ),
-            ],
-            class_="flex-1 w-full",
-            id="config-card",
+        ``render_config_form`` is intentionally generic: settings share field,
+        validation, and action semantics with resource forms, but do not need
+        a resource model or CRUD assumptions. Keeping this adapter thin also
+        makes the legacy dashboard safe to remove once downstream users have
+        migrated to the spec-route controller.
+        """
+        if hasattr(spec, "to_dict"):
+            spec_data = spec.to_dict()
+        else:
+            spec_data = dict(spec)
+        spec_data.setdefault("namespace", namespace)
+        return self.render_config_form(
+            spec=spec_data,
+            values=values,
+            action=action or f"?ns={namespace}",
+            csrf_token=csrf_token,
         )
 
     def render_empty_state(self) -> Any:
