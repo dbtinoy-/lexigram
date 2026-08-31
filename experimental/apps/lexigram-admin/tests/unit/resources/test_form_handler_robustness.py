@@ -190,6 +190,54 @@ async def test_create_hook_value_error_rerenders_as_form_level_error() -> None:
     assert source.created == []
 
 
+async def test_unexpected_validation_hook_error_is_sanitized() -> None:
+    class Model(BaseModel):
+        name: str
+
+    class ItemResource(Resource):
+        name = "items"
+        model = Model
+
+        async def before_validate(self, data: dict[str, Any]) -> dict[str, Any]:
+            raise RuntimeError("database password leaked")
+
+    source = _DataSource()
+    resource = ItemResource()
+    resource._data_source = source
+
+    response = await CreateActionHandler(_Renderer())._handle_create(
+        _request("POST", {"name": "Ada"}), resource
+    )
+
+    assert response.status_code == 500
+    assert "password" not in response.body.decode()
+    assert source.created == []
+
+
+async def test_after_create_failure_is_sanitized_after_persisting() -> None:
+    class Model(BaseModel):
+        name: str
+
+    class ItemResource(Resource):
+        name = "items"
+        model = Model
+
+        async def after_create(self, record: Any) -> None:
+            raise RuntimeError("audit backend unavailable")
+
+    source = _DataSource()
+    resource = ItemResource()
+    resource._data_source = source
+
+    response = await CreateActionHandler(_Renderer())._handle_create(
+        _request("POST", {"name": "Ada"}), resource
+    )
+
+    assert response.status_code == 500
+    assert "audit backend" not in response.body.decode()
+    assert source.created == [{"name": "Ada"}]
+
+
 async def test_edit_validates_against_existing_record_without_writing_readonly_data() -> None:
     class Model(BaseModel):
         name: str

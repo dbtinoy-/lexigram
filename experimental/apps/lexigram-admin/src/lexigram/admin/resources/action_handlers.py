@@ -504,13 +504,14 @@ class CreateActionHandler:
                 return field_error
             try:
                 validation = await resource.before_validate(data)
-            except Exception as exc:  # noqa: BLE001 — expected validation errors re-render
+            except Exception as exc:  # noqa: BLE001 — validation failures re-render safely
                 errors = _validation_errors_from_exception(exc)
-                if errors is None:
-                    raise
-                return await _render_create_validation_error(
-                    self.form_renderer, request, resource, data, errors
-                )
+                if errors is not None:
+                    return await _render_create_validation_error(
+                        self.form_renderer, request, resource, data, errors
+                    )
+                logger.exception("admin.before_validate_create_failed")
+                return HTMLResponse("Unable to validate form", status_code=500)
             validated_data, validation_errors = _normalize_validation_result(validation)
             if validation_errors is not None:
                 return await _render_create_validation_error(
@@ -526,18 +527,27 @@ class CreateActionHandler:
                 if not isinstance(validated, Mapping):
                     raise TypeError("before_create must return a mapping")
                 record = await data_source.create(dict(validated))
+            except (PermissionError, PermissionDeniedError):
+                return HTMLResponse("Forbidden", status_code=403)
             except NotImplementedError:
                 return HTMLResponse("Resource does not support create", status_code=503)
-            except Exception as exc:  # noqa: BLE001 — validation/conflict errors re-render
+            except Exception as exc:  # noqa: BLE001 — validation/storage errors are sanitized
                 errors = _validation_errors_from_exception(exc)
-                if errors is None:
-                    raise
-                return await _render_create_validation_error(
-                    self.form_renderer, request, resource, data, errors
-                )
+                if errors is not None:
+                    return await _render_create_validation_error(
+                        self.form_renderer, request, resource, data, errors
+                    )
+                logger.exception("admin.create_failed")
+                return HTMLResponse("Unable to create record", status_code=503)
             if record is None:
                 return HTMLResponse("Unable to create record", status_code=503)
-            await resource.after_create(record)
+            try:
+                await _maybe_await(resource.after_create(record))
+            except Exception:  # noqa: BLE001 — record is already persisted
+                logger.exception("admin.after_create_failed")
+                return HTMLResponse(
+                    "Record created, but finalization failed", status_code=500
+                )
 
             from starlette.responses import RedirectResponse
 
@@ -631,13 +641,14 @@ class EditActionHandler:
             candidate = {**_record_to_mapping(record), **data}
             try:
                 validation = await resource.before_validate(candidate)
-            except Exception as exc:  # noqa: BLE001 — expected validation errors re-render
+            except Exception as exc:  # noqa: BLE001 — validation failures re-render safely
                 errors = _validation_errors_from_exception(exc)
-                if errors is None:
-                    raise
-                return await _render_edit_validation_error(
-                    self.form_renderer, request, resource, item_id, data, errors
-                )
+                if errors is not None:
+                    return await _render_edit_validation_error(
+                        self.form_renderer, request, resource, item_id, data, errors
+                    )
+                logger.exception("admin.before_validate_edit_failed")
+                return HTMLResponse("Unable to validate form", status_code=500)
             validated_data, validation_errors = _normalize_validation_result(validation)
             if validation_errors is not None:
                 return await _render_edit_validation_error(
@@ -665,18 +676,27 @@ class EditActionHandler:
                 if not isinstance(validated, Mapping):
                     raise TypeError("before_update must return a mapping")
                 updated_record = await data_source.update(item_id, dict(validated))
+            except (PermissionError, PermissionDeniedError):
+                return HTMLResponse("Forbidden", status_code=403)
             except NotImplementedError:
                 return HTMLResponse("Resource does not support update", status_code=503)
-            except Exception as exc:  # noqa: BLE001 — validation/conflict errors re-render
+            except Exception as exc:  # noqa: BLE001 — validation/storage errors are sanitized
                 errors = _validation_errors_from_exception(exc)
-                if errors is None:
-                    raise
-                return await _render_edit_validation_error(
-                    self.form_renderer, request, resource, item_id, data, errors
-                )
+                if errors is not None:
+                    return await _render_edit_validation_error(
+                        self.form_renderer, request, resource, item_id, data, errors
+                    )
+                logger.exception("admin.update_failed")
+                return HTMLResponse("Unable to update record", status_code=503)
             if updated_record is None:
                 return HTMLResponse("Not found", status_code=404)
-            await resource.after_update(updated_record)
+            try:
+                await _maybe_await(resource.after_update(updated_record))
+            except Exception:  # noqa: BLE001 — record is already persisted
+                logger.exception("admin.after_update_failed")
+                return HTMLResponse(
+                    "Record updated, but finalization failed", status_code=500
+                )
 
             from starlette.responses import RedirectResponse
 
@@ -1512,7 +1532,11 @@ class DeleteActionHandler:
 
         data_source = get_resource_data_source(resource)
         if isinstance(resource, AdminResource) and data_source is not None:
-            item = await data_source.find_one(item_id)
+            try:
+                item = await data_source.find_one(item_id)
+            except Exception as exc:  # noqa: BLE001 — storage details stay private
+                logger.exception("admin.delete_lookup_failed", error=str(exc))
+                return HTMLResponse("Unable to load record", status_code=503)
             if item is None:
                 return HTMLResponse("Not found", status_code=404)
 
@@ -1532,27 +1556,50 @@ class DeleteActionHandler:
 
             before_delete = getattr(resource, "before_delete", None)
             if callable(before_delete):
-                await before_delete(item_id)
+                try:
+                    await _maybe_await(before_delete(item_id))
+                except (PermissionError, PermissionDeniedError):
+                    return HTMLResponse("Forbidden", status_code=403)
+                except LookupError:
+                    return HTMLResponse("Not found", status_code=404)
+                except (TypeError, ValueError) as exc:
+                    logger.info("admin.delete_validation_failed", error=str(exc))
+                    return HTMLResponse("Delete validation failed", status_code=422)
+                except Exception:  # noqa: BLE001 — hook failures are sanitized
+                    logger.exception("admin.before_delete_failed")
+                    return HTMLResponse("Unable to delete record", status_code=500)
 
             # Resource declarations can opt into soft deletion. Keep the
             # legacy hard-delete default, but make the routed delete action
             # honor the same setting as ResourceController.delete().
             soft_delete = bool(getattr(resource, "soft_delete_enabled", False))
-            if soft_delete:
-                from datetime import UTC, datetime
+            try:
+                if soft_delete:
+                    from datetime import UTC, datetime
 
-                deleted = await data_source.update(
-                    item_id, {"deleted_at": datetime.now(UTC).isoformat()}
-                )
-                success = deleted is not None
-            else:
-                success = await data_source.delete(item_id)
+                    deleted = await data_source.update(
+                        item_id, {"deleted_at": datetime.now(UTC).isoformat()}
+                    )
+                    success = deleted is not None
+                else:
+                    success = await data_source.delete(item_id)
+            except NotImplementedError:
+                return HTMLResponse("Delete is unavailable", status_code=503)
+            except Exception as exc:  # noqa: BLE001 — storage details stay private
+                logger.exception("admin.delete_failed", error=str(exc))
+                return HTMLResponse("Unable to delete record", status_code=503)
             if not success:
                 return HTMLResponse("Not found", status_code=404)
 
             after_delete = getattr(resource, "after_delete", None)
             if callable(after_delete):
-                await after_delete(item_id)
+                try:
+                    await _maybe_await(after_delete(item_id))
+                except Exception:  # noqa: BLE001 — record is already deleted
+                    logger.exception("admin.after_delete_failed")
+                    return HTMLResponse(
+                        "Record deleted, but finalization failed", status_code=500
+                    )
 
             is_htmx = request.headers.get("HX-Request") == "true"
             url = admin_url(

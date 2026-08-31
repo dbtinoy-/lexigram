@@ -110,6 +110,31 @@ class TestDeleteActionHandlerGuard:
         assert response.headers["location"] == "/admin/items"
         assert self.resource._data_source.deleted == ["2"]
 
+    async def test_before_delete_permission_error_is_forbidden(self) -> None:
+        async def veto(_item_id: Any) -> None:
+            raise PermissionError("published records are protected")
+
+        self.resource.before_delete = veto  # type: ignore[method-assign]
+        response = await self.handler.handle(
+            self._make_request(item_id="2"), self.resource
+        )
+
+        assert response.status_code == 403
+        assert self.resource._data_source.deleted == []
+
+    async def test_after_delete_failure_is_sanitized_after_persisting(self) -> None:
+        async def fail(_item_id: Any) -> None:
+            raise RuntimeError("audit backend unavailable")
+
+        self.resource.after_delete = fail  # type: ignore[method-assign]
+        response = await self.handler.handle(
+            self._make_request(item_id="2"), self.resource
+        )
+
+        assert response.status_code == 500
+        assert "audit backend" not in response.body.decode()
+        assert self.resource._data_source.deleted == ["2"]
+
 
 class _FakeDataSource:
     """In-memory data source with two records (one protected)."""
