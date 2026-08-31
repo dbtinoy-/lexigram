@@ -6,8 +6,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-import warnings
 from typing import TYPE_CHECKING, Any
+import warnings
 
 from lexigram.admin.schema import SchemaField
 from lexigram.ui import Component, el

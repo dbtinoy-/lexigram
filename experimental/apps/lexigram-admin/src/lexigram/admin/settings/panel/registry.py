@@ -218,9 +218,7 @@ class ConfigRegistry:
         if not spec:
             return {}
 
-        resolved_store_name = (
-            store_name if store_name in self._stores else "default"
-        )
+        resolved_store_name = store_name if store_name in self._stores else "default"
         store = self._stores[resolved_store_name]
         store_labels = {
             "env": "Environment override",

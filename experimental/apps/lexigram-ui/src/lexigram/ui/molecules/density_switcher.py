@@ -80,8 +80,8 @@ class DensitySwitcher(Component):
             )
         else:
             if self.state:
-                updated_state = self.state.with_density(  # type: ignore[arg-type]
-                    type_name,
+                updated_state = self.state.with_density(
+                    type_name,  # type: ignore[arg-type]
                 )
                 htmx_attrs = HTMXAttrs.for_full_refresh(
                     updated_state,

@@ -220,10 +220,7 @@ class ConfigDashboardUI:
         makes the legacy dashboard safe to remove once downstream users have
         migrated to the spec-route controller.
         """
-        if hasattr(spec, "to_dict"):
-            spec_data = spec.to_dict()
-        else:
-            spec_data = dict(spec)
+        spec_data = spec.to_dict() if hasattr(spec, "to_dict") else dict(spec)
         spec_data.setdefault("namespace", namespace)
         return self.render_config_form(
             spec=spec_data,

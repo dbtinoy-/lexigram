@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import hashlib
 import hmac
-import json
 from typing import TYPE_CHECKING, Any
 
 from starlette.requests import Request
@@ -27,6 +26,7 @@ from lexigram.admin.settings.panel.types import ConfigCategory
 from lexigram.admin.settings.panel.ui import ConfigDashboardUI
 from lexigram.contracts.web import get, post
 from lexigram.logging import get_logger
+from lexigram.serialization import dumps_str
 from lexigram.ui import el, render_to_string
 
 if TYPE_CHECKING:
@@ -228,11 +228,9 @@ class SettingsController(AdminController):
             if isinstance(node, SecretNode):
                 value = "<set>" if value else "<unset>"
             revision_values.append((key, value))
-        payload = json.dumps(
+        payload = dumps_str(
             revision_values,
             sort_keys=True,
-            separators=(",", ":"),
-            default=str,
         ).encode("utf-8")
         return hashlib.sha256(payload).hexdigest()
 

@@ -10,8 +10,8 @@ callers migrate to the shared ``Form``/``FormActions``/``SubmitButton`` and
 
 from __future__ import annotations
 
-import warnings
 from typing import Any
+import warnings
 
 from htpy import div, form, input_, label, option, p, select, span, textarea
 

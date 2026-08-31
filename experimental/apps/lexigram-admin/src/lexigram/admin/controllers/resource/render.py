@@ -93,12 +93,12 @@ class ResourceRenderMixin:
             normalized = messages if isinstance(messages, list) else [messages]
             for message in normalized:
                 error_items.append(
-                    f'<li><strong>{escape(str(field))}:</strong> '
+                    f"<li><strong>{escape(str(field))}:</strong> "
                     f"{escape(str(message))}</li>"
                 )
         error_block = (
             '<div role="alert" class="resource-form-errors">'
-            '<p>Check the form and try again.</p><ul>'
+            "<p>Check the form and try again.</p><ul>"
             + "".join(error_items)
             + "</ul></div>"
             if error_items
