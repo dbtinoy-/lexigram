@@ -174,6 +174,12 @@ class TestAdminCsrfBypassPaths:
         status, _ = await _collect_response(mw, _make_scope("POST", "/static/app.js"))
         assert status == 200
 
+    def test_static_prefix_collision_is_not_bypassed(self) -> None:
+        mw = AdminCsrfMiddleware(lambda scope, receive, send: None, _make_csrf_service())
+
+        assert mw._is_bypass_path("/admin/static/app.js") is True
+        assert mw._is_bypass_path("/admin/staticized") is False
+
     @pytest.mark.asyncio
     async def test_delete_suffix_not_bypassed(self) -> None:
         """Deletion endpoints must NOT bypass CSRF (blanket /delete bypass removed)."""

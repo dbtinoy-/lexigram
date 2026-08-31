@@ -125,7 +125,9 @@ class AdminCsrfMiddleware:
 
         if check_path in _CSRF_BYPASS_PATHS:
             return True
-        return bool(check_path.startswith("/static"))
+        # Keep the static bypass path-scoped; ``/staticized`` must not inherit
+        # the exemption intended for ``/static/…`` mutation routes.
+        return check_path == "/static" or check_path.startswith("/static/")
 
     async def _validate_csrf(self, request: StarletteRequest) -> bool:
         """Extract and validate CSRF token from request.
