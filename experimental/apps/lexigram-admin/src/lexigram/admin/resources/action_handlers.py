@@ -7,6 +7,7 @@ plus the form-data coercion helpers they share. Specialized handlers
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 import inspect
 from typing import Any, Protocol, get_type_hints
 
@@ -129,17 +130,17 @@ def _normalize_validation_result(
     validation: Any,
 ) -> tuple[dict[str, Any] | None, dict[str, list[str]] | None]:
     """Normalize Resource hook results while keeping legacy overrides usable."""
-    if isinstance(validation, dict):
-        return validation, None
+    if isinstance(validation, Mapping):
+        return dict(validation), None
     if not callable(getattr(validation, "is_err", None)):
         return None, {"__all__": ["before_validate must return a validation result"]}
     try:
         if validation.is_err():
             return None, _validation_errors_to_dict(validation.unwrap_err())
         data = validation.unwrap()
-        if not isinstance(data, dict):
+        if not isinstance(data, Mapping):
             return None, {"__all__": ["before_validate must return a mapping"]}
-        return data, None
+        return dict(data), None
     except Exception as exc:  # noqa: BLE001 — malformed custom hooks re-render safely
         errors = _validation_errors_from_exception(exc)
         return None, errors or {"__all__": ["Form validation failed"]}
@@ -361,9 +362,9 @@ class CreateActionHandler:
             assert validated_data is not None
             try:
                 validated = await resource.before_create(validated_data)
-                if not isinstance(validated, dict):
+                if not isinstance(validated, Mapping):
                     raise TypeError("before_create must return a mapping")
-                record = await data_source.create(validated)
+                record = await data_source.create(dict(validated))
             except NotImplementedError:
                 return HTMLResponse("Resource does not support create", status_code=503)
             except Exception as exc:  # noqa: BLE001 — validation/conflict errors re-render
@@ -488,9 +489,9 @@ class EditActionHandler:
             assert validated_data is not None
             try:
                 validated = await resource.before_update(item_id, validated_data)
-                if not isinstance(validated, dict):
+                if not isinstance(validated, Mapping):
                     raise TypeError("before_update must return a mapping")
-                updated_record = await data_source.update(item_id, validated)
+                updated_record = await data_source.update(item_id, dict(validated))
             except NotImplementedError:
                 return HTMLResponse("Resource does not support update", status_code=503)
             except Exception as exc:  # noqa: BLE001 — validation/conflict errors re-render
