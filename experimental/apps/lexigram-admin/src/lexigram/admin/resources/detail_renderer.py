@@ -108,6 +108,32 @@ class DetailRenderer:
             )
             return False
 
+    async def _can_edit_record(
+        self,
+        request: Any,
+        resource: Any,
+        user: Any,
+    ) -> bool:
+        """Resolve the same update capability used by the route guard."""
+        try:
+            capabilities = getattr(request.state, "permissions", None)
+        except (AttributeError, KeyError):
+            capabilities = None
+        if isinstance(capabilities, dict) and "can_update" in capabilities:
+            return bool(capabilities["can_update"])
+
+        checker = getattr(resource, "has_change_permission", None)
+        if not callable(checker):
+            return True
+        try:
+            result = checker(user)
+            if inspect.isawaitable(result):
+                result = await result
+            return bool(result)
+        except Exception:  # noqa: BLE001 — a broken permission hook hides the action
+            logger.exception("admin.detail_edit_permission_check_failed")
+            return False
+
     async def render_detail(
         self,
         request,
@@ -121,6 +147,10 @@ class DetailRenderer:
         label = self.resource_name.replace("_", " ").title()
 
         item_html = await self._get_item_html(resource, item_id, label)
+        request_user = user
+        if request_user is None:
+            request_user = getattr(getattr(request, "state", None), "user", None)
+        show_edit = await self._can_edit_record(request, resource, request_user)
 
         prefix = admin_prefix_from_request(request)
         resource_url = f"{prefix}/{self.resource_name}"
@@ -145,16 +175,20 @@ class DetailRenderer:
                     raw(item_html),
                     class_="resource-content",
                 ),
-                el(
-                    "div",
+                (
                     el(
-                        "a",
-                        "Edit",
-                        href=f"{detail_url}/edit",
-                        class_="btn btn-secondary",
-                    ),
-                    style="margin-top: 1rem;",
-                    class_="resource-actions",
+                        "div",
+                        el(
+                            "a",
+                            "Edit",
+                            href=f"{detail_url}/edit",
+                            class_="btn btn-secondary",
+                        ),
+                        style="margin-top: 1rem;",
+                        class_="resource-actions",
+                    )
+                    if show_edit
+                    else ""
                 ),
             )
         )

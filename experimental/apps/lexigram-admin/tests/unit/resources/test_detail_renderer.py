@@ -117,6 +117,28 @@ async def test_detail_falls_back_without_service() -> None:
 
 
 @pytest.mark.asyncio
+async def test_detail_hides_edit_action_without_update_permission() -> None:
+    item = _Model(
+        name="Acme",
+        active=True,
+        since=date(2026, 5, 28),
+        website="https://example.com",
+        price=12.5,
+    )
+
+    class ReadOnlyResource(SimpleNamespace):
+        def has_change_permission(self, user: object) -> bool:
+            return False
+
+    resource = ReadOnlyResource(service=_FakeService(item), model=_Model)
+    html = (
+        await _renderer().render_detail(_fragment_request(), resource, "1")
+    ).body.decode()
+
+    assert "Edit" not in html
+
+
+@pytest.mark.asyncio
 async def test_detail_escapes_untrusted_record_id_in_fragment() -> None:
     item = _Model(
         name="Acme",
