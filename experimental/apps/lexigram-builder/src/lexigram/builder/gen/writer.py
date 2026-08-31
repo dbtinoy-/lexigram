@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from dataclasses import replace as dc_replace
 from pathlib import Path
 import shutil
 import subprocess
@@ -717,6 +718,32 @@ class ProjectWriter(GeneratorBase):
                 ):
                     continue
                 upload_cfg_by_route[src_node.id] = dst_node.config
+        driver_type_by_upload: dict[str, str] = {}
+        for edge in graph.document.edges:
+            src_node = by_id.get(edge.src)
+            dst_node = by_id.get(edge.dst)
+            if (
+                src_node is None
+                or dst_node is None
+                or src_node.kind != "file_upload"
+                or dst_node.kind != "storage_driver"
+                or not isinstance(src_node.config, FileUploadConfig)
+                or not isinstance(dst_node.config, StorageDriverConfig)
+                or not dst_node.config.enabled
+            ):
+                continue
+            driver_type_by_upload[src_node.config.name] = dst_node.config.driver_type
+        _DRIVER_STORAGE = {
+            "s3": "s3",
+            "gcs": "gcs",
+            "azure": "azure_blob",
+            "local": "local",
+            "custom": "local",
+        }
+        for route_id, ucfg in list(upload_cfg_by_route.items()):
+            mapped = _DRIVER_STORAGE.get(driver_type_by_upload.get(ucfg.name, ""), ucfg.storage)
+            if mapped != ucfg.storage:
+                upload_cfg_by_route[route_id] = dc_replace(ucfg, storage=mapped)
         upload_entities: dict[str, FileUploadConfig] = {}
         for route_id, upload_cfg in upload_cfg_by_route.items():
             route_node = by_id[route_id]

@@ -292,7 +292,9 @@ NODE_PORTS: dict[str, dict[str, list[dict[str, object]]]] = {
         "outputs": [],
     },
     KIND_STORAGE_DRIVER: {
-        "inputs": [],
+        "inputs": [
+            {"id": "input_upload", "side": "left", "type": PORT_TYPE_DATA_REF, "label": "Uploads", "max": None},
+        ],
         "outputs": [],
     },
     KIND_SEARCH_INDEX: {
@@ -317,7 +319,9 @@ NODE_PORTS: dict[str, dict[str, list[dict[str, object]]]] = {
         "inputs": [
             {"id": "input_route", "side": "left", "type": PORT_TYPE_ROUTE_REF, "label": "Route", "max": 1},
         ],
-        "outputs": [],
+        "outputs": [
+            {"id": "output_storage", "side": "right", "type": PORT_TYPE_DATA_REF, "label": "Driver", "max": 1},
+        ],
     },
     KIND_EMAIL_TEMPLATE: {
         "inputs": [
@@ -467,6 +471,7 @@ ALLOWED_EDGES: frozenset[tuple[str, str]] = frozenset(
         # Integrations
         (KIND_ROUTE, KIND_WEBHOOK),
         (KIND_ROUTE, KIND_FILE_UPLOAD),
+        (KIND_FILE_UPLOAD, KIND_STORAGE_DRIVER),
         (KIND_ROUTE, KIND_REALTIME_CHANNEL),
         (KIND_ENTITY, KIND_EMAIL_TEMPLATE),
         # Feature flags (a route's policies/features socket targets the flag)
@@ -530,6 +535,7 @@ EDGE_KIND_MAP: dict[tuple[str, str], str] = {
     (KIND_ENTITY, KIND_AUDIT_LOG): "entity_to_audit",
     (KIND_ROUTE, KIND_WEBHOOK): "route_to_webhook",
     (KIND_ROUTE, KIND_FILE_UPLOAD): "route_to_file_upload",
+    (KIND_FILE_UPLOAD, KIND_STORAGE_DRIVER): "file_upload_to_storage_driver",
     (KIND_ROUTE, KIND_REALTIME_CHANNEL): "route_to_realtime",
     (KIND_ENTITY, KIND_EMAIL_TEMPLATE): "entity_to_email",
     (KIND_ROUTE, KIND_FEATURE_FLAG): "route_to_feature_flag",
@@ -814,6 +820,7 @@ PALETTE_CATEGORIES: list[dict[str, object]] = [
             {"kind": KIND_ERROR, "label": "HTTP Error", "description": "Domain HTTP error class raised by handlers", "icon": "alert-octagon", "color": NODE_COLORS[KIND_ERROR], "maxCount": None, "required": False},
             {"kind": KIND_HEALTH, "label": "Health Check", "description": "Observability health probe for an entity", "icon": "heart-pulse", "color": NODE_COLORS[KIND_HEALTH], "maxCount": None, "required": False},
             {"kind": KIND_METRIC, "label": "Metric", "description": "Custom application metric recorded by services", "icon": "gauge", "color": NODE_COLORS[KIND_METRIC], "maxCount": None, "required": False},
+            {"kind": KIND_API_CLIENT, "label": "API Client", "description": "Outbound HTTP client wrapping lexigram-http BaseURLHTTPClient", "icon": "globe", "color": NODE_COLORS[KIND_API_CLIENT], "maxCount": None, "required": False},
         ],
     },
     {
@@ -834,6 +841,7 @@ PALETTE_CATEGORIES: list[dict[str, object]] = [
             {"kind": KIND_CACHE, "label": "Cache", "description": "Query result caching", "icon": "zap", "color": NODE_COLORS[KIND_CACHE], "maxCount": None, "required": False},
             {"kind": KIND_SEEDER, "label": "Seeder", "description": "Idempotent seed data for an entity", "icon": "sprout", "color": NODE_COLORS[KIND_SEEDER], "maxCount": None, "required": False},
             {"kind": KIND_AUDIT_LOG, "label": "Audit Log", "description": "Change trail for a wired entity - audit table migration, repository and create/update/delete hooks in its controller", "icon": "scroll-text", "color": NODE_COLORS[KIND_AUDIT_LOG], "maxCount": None, "required": False},
+            {"kind": KIND_STORAGE_DRIVER, "label": "Storage Driver", "description": "Blob storage backend implementing lexigram-storage AbstractDriver", "icon": "hard-drive", "color": NODE_COLORS[KIND_STORAGE_DRIVER], "maxCount": None, "required": False},
         ],
     },
     {
