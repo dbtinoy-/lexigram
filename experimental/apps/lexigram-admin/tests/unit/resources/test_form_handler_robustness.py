@@ -157,6 +157,35 @@ async def test_edit_validates_against_existing_record_without_writing_readonly_d
     assert source.updated == [("1", {"name": "New"})]
 
 
+async def test_submitted_field_without_view_permission_is_rejected() -> None:
+    class Model(BaseModel):
+        name: str
+
+    class ItemResource(Resource):
+        name = "items"
+        model = Model
+
+    class PermissionService:
+        async def can_view_field(self, user: Any, resource: str, field: str) -> bool:
+            return False
+
+        async def can_edit_field(self, user: Any, resource: str, field: str) -> bool:
+            return True
+
+    app = SimpleNamespace(state=SimpleNamespace(permission_service=PermissionService()))
+    source = _DataSource()
+    resource = ItemResource()
+    resource._data_source = source
+
+    response = await CreateActionHandler(_Renderer())._handle_create(
+        _request("POST", {"name": "Ada"}, user=object(), app=app),
+        resource,
+    )
+
+    assert response.status_code == 403
+    assert source.created == []
+
+
 async def test_submitted_field_without_edit_permission_is_rejected() -> None:
     class Model(BaseModel):
         name: str

@@ -81,14 +81,18 @@ def _request_permission_service(request: StarletteRequest) -> Any | None:
     return None
 
 
-async def _field_edit_allowed(
+async def _field_permission_allowed(
     request: StarletteRequest,
     resource: Any,
     field_name: str,
+    method_name: str,
 ) -> bool:
-    """Return whether the mounted permission service allows a field write."""
+    """Evaluate a mounted field permission and fail closed on service errors."""
     service = _request_permission_service(request)
     if service is None:
+        return True
+    checker = getattr(service, method_name, None)
+    if not callable(checker):
         return True
     try:
         user = getattr(request.state, "user", None)
@@ -96,16 +100,39 @@ async def _field_edit_allowed(
         user = None
     try:
         allowed = await _maybe_await(
-            service.can_edit_field(user, resource.name or "", field_name)
+            checker(user, resource.name or "", field_name)
         )
     except Exception:  # noqa: BLE001 — authorization must fail closed
         logger.exception(
             "admin.resource_field_permission_check_failed",
             resource=getattr(resource, "name", None),
             field=field_name,
+            check=method_name,
         )
         return False
     return bool(allowed)
+
+
+async def _field_edit_allowed(
+    request: StarletteRequest,
+    resource: Any,
+    field_name: str,
+) -> bool:
+    """Return whether the mounted permission service allows a field write."""
+    return await _field_permission_allowed(
+        request, resource, field_name, "can_edit_field"
+    )
+
+
+async def _field_view_allowed(
+    request: StarletteRequest,
+    resource: Any,
+    field_name: str,
+) -> bool:
+    """Return whether the submitted field is visible to the caller."""
+    return await _field_permission_allowed(
+        request, resource, field_name, "can_view_field"
+    )
 
 
 async def _authorize_form_fields(
@@ -121,6 +148,8 @@ async def _authorize_form_fields(
     that value is a CRUD capability mapping in the mounted middleware.
     """
     for field_name in data:
+        if not await _field_view_allowed(request, resource, field_name):
+            return HTMLResponse("Forbidden", status_code=403)
         if not await _field_edit_allowed(request, resource, field_name):
             return HTMLResponse("Forbidden", status_code=403)
     return None
@@ -684,6 +713,8 @@ class InlineMutationActionHandler:
             return None, "Not found"
         if not await self._authorize_update(resource, record):
             return None, "This record cannot be updated"
+        if not await _field_view_allowed(request, resource, field_name):
+            return None, "Forbidden"
         if not await _field_edit_allowed(request, resource, field_name):
             return None, "Forbidden"
 
