@@ -1007,7 +1007,15 @@ class RelationOptionsActionHandler:
 
         from lexigram.admin.data.query import QuerySpec
 
-        result = await ds.find_many(QuerySpec(per_page=200, sort_by="id"))
+        try:
+            result = await ds.find_many(QuerySpec(per_page=200, sort_by="id"))
+        except Exception as exc:  # noqa: BLE001 — relation lookups are optional form enhancements
+            logger.exception(
+                "admin.relation_options_lookup_failed",
+                resource=getattr(resource, "name", None),
+                error=str(exc),
+            )
+            return HTMLResponse("", status_code=503)
         if hasattr(result, "items"):
             records = result.items
         elif isinstance(result, list):

@@ -181,6 +181,22 @@ class TestRelationOptionsEndpoint:
         assert "<script>" not in response.body.decode()
 
     @pytest.mark.asyncio
+    async def test_data_source_failure_returns_service_unavailable(self) -> None:
+        class _BrokenDataSource:
+            async def find_many(self, query: object) -> object:
+                raise RuntimeError("database unavailable")
+
+        class _BrokenResource(_CategoryResource):
+            _data_source = _BrokenDataSource()
+
+        handler = RelationOptionsActionHandler(resources={"categories": _BrokenResource})
+        response = await handler.handle(
+            _request("/admin/categories/relation-options"), _BrokenResource()
+        )
+        assert response.status_code == 503
+        assert response.body == b""
+
+    @pytest.mark.asyncio
     async def test_missing_resource_returns_404(self) -> None:
         handler = RelationOptionsActionHandler(resources={})
         response = await handler.handle(
