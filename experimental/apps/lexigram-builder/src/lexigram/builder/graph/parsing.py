@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict
+import json
 import re
 from typing import Any
 
@@ -81,6 +82,26 @@ def _ttl_seconds(value: Any) -> int:
     return 300
 
 
+def _seed_rows(raw_cfg: dict[str, Any]) -> tuple[str, ...]:
+    """JSON-encode Seed Data rows from ``seedData`` / ``seed_data``."""
+    raw = raw_cfg.get("seedData")
+    if raw is None:
+        raw = raw_cfg.get("seed_data")
+    if not isinstance(raw, list):
+        return ()
+    out: list[str] = []
+    for item in raw:
+        if isinstance(item, str):
+            try:
+                json.loads(item)
+            except json.JSONDecodeError:
+                continue
+            out.append(item)
+        elif isinstance(item, dict):
+            out.append(json.dumps(item, default=str, sort_keys=True))
+    return tuple(out)
+
+
 def _event_payload(raw_cfg: dict[str, Any]) -> list[tuple[str, str]]:
     """Extract an event's payload fields from either a ``payload`` list of
     ``{name, type}`` objects or a ``schema`` ``{name: type}`` object."""
@@ -135,6 +156,10 @@ def document_to_dict(document: GraphDocument) -> dict[str, Any]:
         elif isinstance(node.config, EntityConfig):
             cfg = asdict(node.config)
             cfg["fields"] = [asdict(f) for f in node.config.fields]
+            cfg["seedData"] = [
+                json.loads(row) for row in node.config.seed_data
+            ]
+            cfg.pop("seed_data", None)
             entry["config"] = cfg
         elif isinstance(node.config, RouteConfig):
             entry["config"] = {
@@ -499,7 +524,11 @@ def parse_document(data: dict[str, Any]) -> Result[GraphDocument, GraphValidatio
                     )
                     for f in raw_cfg.get("fields", [])
                 )
-                config = EntityConfig(name=str(raw_cfg["name"]), fields=fields)
+                config = EntityConfig(
+                    name=str(raw_cfg["name"]),
+                    fields=fields,
+                    seed_data=_seed_rows(raw_cfg),
+                )
             elif kind == "route":
                 ops_raw = raw_cfg.get("ops", [])
                 prefix = raw_cfg.get("path_prefix")

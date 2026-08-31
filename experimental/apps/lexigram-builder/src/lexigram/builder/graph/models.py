@@ -47,10 +47,16 @@ class FieldConfig:
 
 @dataclass(frozen=True, slots=True)
 class EntityConfig:
-    """An entity node: snake_case name plus one or more fields."""
+    """An entity node: snake_case name plus one or more fields.
+
+    ``seed_data`` is JSON-encoded row dicts authored in the Seed Data
+    screen; a wired seeder emits them as ``SEED_DATA``. Empty means the
+    framework generator's sample row is kept.
+    """
 
     name: str
     fields: tuple[FieldConfig, ...]
+    seed_data: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)

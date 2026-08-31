@@ -167,8 +167,9 @@ def _reconcile_projection(text: str, produced: Path, ctx: ReconcileContext) -> s
 
 
 def _reconcile_seeder(text: str, produced: Path, ctx: ReconcileContext) -> str:
-    del produced, ctx
-    return reconcile_seeder(text).text
+    entity = ctx.entity_by_stem.get(produced.stem)
+    seed = entity.seed_data if entity is not None else ()
+    return reconcile_seeder(text, seed_data=seed).text
 
 
 def _reconcile_exception_filter(text: str, produced: Path, ctx: ReconcileContext) -> str:
