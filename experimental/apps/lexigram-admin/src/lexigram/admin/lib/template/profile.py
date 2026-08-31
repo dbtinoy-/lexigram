@@ -6,6 +6,8 @@ like login, error, etc. Uses StandaloneLayout for consistent styling.
 
 from markupsafe import escape
 
+from lexigram.ui import Badge
+
 
 def render_profile_page(
     *,
@@ -56,21 +58,17 @@ def render_profile_page(
     new_classes = f"mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring {error_ring if new_password_err else ''}"
     confirm_classes = f"mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring {error_ring if confirmation_err else ''}"
     initials = "".join(part[0] for part in name.split()[:2]).upper() or "?"
-    role_chips = "".join(
-        f'<span class="inline-flex items-center rounded-full bg-accent px-2.5 py-0.5 text-xs font-medium text-accent-foreground">{escape(role)}</span>'
-        for role in roles
-    )
+    # Badge escapes its own text, so role names need no manual escape().
+    role_chips = "".join(str(Badge(role, variant="gray")) for role in roles)
     # Uses the success token rather than raw emerald-100/700: those are
     # fixed light-mode palette values with no dark variant, so this badge
     # rendered dark green on near-white inside a dark shell while the
     # "Disabled" badge beside it themed correctly. Whether MFA is on is
     # also stated in text, not by colour alone.
-    mfa_badge = (
-        '<span class="inline-flex items-center rounded-full bg-success '
-        'px-2.5 py-0.5 text-xs font-medium text-success-foreground">'
-        "Enabled</span>"
+    mfa_badge = str(
+        Badge("Enabled", variant="success")
         if mfa_enabled
-        else '<span class="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">Disabled</span>'
+        else Badge("Disabled", variant="gray")
     )
     return f"""
     <div class="max-w-3xl mx-auto space-y-6">

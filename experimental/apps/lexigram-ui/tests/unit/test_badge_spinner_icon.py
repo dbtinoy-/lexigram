@@ -12,9 +12,33 @@ class TestBadge:
         result = str(Badge("New"))
         assert "New" in result
 
-    def test_badge_has_role_status(self) -> None:
+    def test_badge_is_not_a_live_region_by_default(self) -> None:
+        """A static label must not be announced. role="status" makes
+        assistive tech read the badge on every change, so a table full of
+        them becomes unusable noise."""
         result = str(Badge("Active"))
+
+        assert "role=" not in result
+        assert "aria-live" not in result
+
+    def test_badge_can_opt_into_a_live_region(self) -> None:
+        result = str(Badge("Running", live=True))
+
         assert 'role="status"' in result
+        assert 'aria-live="polite"' in result
+
+    def test_badge_forwards_extra_props(self) -> None:
+        result = str(Badge("X", title="Tooltip", id="b1"))
+
+        assert 'title="Tooltip"' in result
+        assert 'id="b1"' in result
+
+    def test_badge_class_extends_rather_than_replaces_variant(self) -> None:
+        """A caller-supplied class must not silently drop the styling."""
+        result = str(Badge("X", variant="success", class_="ml-2"))
+
+        assert "ml-2" in result
+        assert "bg-success" in result
 
     def test_badge_default_variant_classes(self) -> None:
         result = str(Badge("X"))

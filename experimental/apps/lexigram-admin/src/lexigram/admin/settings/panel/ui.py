@@ -7,6 +7,7 @@ from typing import Any
 
 from lexigram.admin.settings.panel.nodes import ConfigSpec
 from lexigram.ui import (
+    Badge,
     Card,
     Component,
     FieldSchema,
@@ -293,26 +294,17 @@ class ConfigDashboardUI:
             "dormant": "Stored, not active",
         }
         runtime_label = runtime_labels.get(runtime_status, "Runtime status unknown")
-        runtime_class = (
-            "inline-flex items-center rounded-full bg-warning/10 px-2.5 py-1 "
-            "text-xs font-medium text-warning"
-            if runtime_status != "active"
-            else "inline-flex items-center rounded-full bg-muted px-2.5 py-1 "
-            "text-xs font-medium text-muted-foreground"
-        )
         metadata = el(
             "div",
-            el(
-                "span",
-                scope_label,
-                class_="inline-flex items-center rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground",
+            Badge(scope_label, variant="gray"),
+            Badge(f"Source: {source_label}", variant="gray"),
+            # The runtime badge reports live state, so it is the one chip
+            # here that should be announced when it changes.
+            Badge(
+                runtime_label,
+                variant="gray" if runtime_status == "active" else "warning",
+                live=True,
             ),
-            el(
-                "span",
-                f"Source: {source_label}",
-                class_="inline-flex items-center rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground",
-            ),
-            el("span", runtime_label, class_=runtime_class),
             class_="flex flex-wrap gap-2 mb-5",
         )
 

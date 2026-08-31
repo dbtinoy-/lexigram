@@ -3,8 +3,12 @@
 This module provides the QuerySpec and PagedResult types that serve as the
 canonical query format across all admin layers (controllers, services, data sources).
 
-This is the single source of truth for query types. QueryBuilder and the
-old Query dataclass are deprecated in favor of QuerySpec.
+This is the single source of truth for query types; the ``Query`` dataclass
+it replaced has been removed.
+
+Not to be confused with ``lexigram.ui.organisms.query_builder.QueryBuilder``,
+which is a current UI component for editing constraint trees, not a
+superseded query type.
 """
 
 from __future__ import annotations

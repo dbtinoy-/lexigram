@@ -383,12 +383,15 @@ class DashboardController(AdminController):
             ),
             el(
                 "div",
+                # Not a Badge: this chip carries a leading status dot, and
+                # Badge renders text only. No role="status" either -- the
+                # label is static, so announcing it would add noise without
+                # reporting any change.
                 el(
                     "span",
                     el("span", class_="h-2 w-2 rounded-full bg-success"),
                     "Live workspace",
                     class_="inline-flex items-center gap-2 rounded-full border border-success/20 bg-success/10 px-3 py-1.5 text-xs font-medium text-success",
-                    role="status",
                 ),
                 el(
                     "a",
