@@ -256,6 +256,18 @@ class CloneAction(RowAction):
         prefix = ctx.resource_prefix or f"/{ctx.resource_name}"
         return f"{prefix}/{record_id}/clone"
 
+    def _get_htmx_attrs(
+        self, url: str, record: Any, ctx: ActionContext
+    ) -> dict[str, str]:
+        """Submit the clone as a CSRF-protected state-changing request."""
+        from lexigram.ui import Zones
+
+        return {
+            "hx-post": url,
+            "hx-target": Zones.DATA.selector,
+            "hx-swap": "none",
+        }
+
     async def execute(self, record: Any, ctx: ActionContext) -> Result[Any, Any]:
         record_id = _extract_id(record)
         if record_id is None:
@@ -316,6 +328,18 @@ class RestoreAction(RowAction):
             return None
         prefix = ctx.resource_prefix or f"/{ctx.resource_name}"
         return f"{prefix}/{record_id}/restore"
+
+    def _get_htmx_attrs(
+        self, url: str, record: Any, ctx: ActionContext
+    ) -> dict[str, str]:
+        """Submit the restore as a CSRF-protected state-changing request."""
+        from lexigram.ui import Zones
+
+        return {
+            "hx-post": url,
+            "hx-target": Zones.DATA.selector,
+            "hx-swap": "none",
+        }
 
     async def execute(self, record: Any, ctx: ActionContext) -> Result[Any, Any]:
         return Ok({"message": f"Restored {record}"})

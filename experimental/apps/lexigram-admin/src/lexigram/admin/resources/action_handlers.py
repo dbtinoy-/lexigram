@@ -15,6 +15,7 @@ from starlette.requests import Request as StarletteRequest
 from starlette.responses import HTMLResponse
 
 from lexigram.admin.config import AdminConfig
+from lexigram.admin.exceptions import PermissionDeniedError
 from lexigram.admin.resources.data_access import get_resource_data_source
 from lexigram.admin.resources.form_coercion import (
     _validation_errors_to_dict,
@@ -294,6 +295,31 @@ async def _render_edit_validation_error(
     )
     response.status_code = 422
     return response
+
+
+def _mutation_redirect(
+    request: StarletteRequest,
+    url: str,
+    message: str,
+) -> Any:
+    """Return a redirect that works for both native and HTMX mutations.
+
+    A plain 302 is followed inside HTMX's XHR and can replace the current
+    table with a full page. ``HX-Redirect`` tells HTMX to perform a real
+    browser navigation while preserving the native POST/DELETE fallback.
+    """
+    from starlette.responses import RedirectResponse
+
+    if request.headers.get("HX-Request") == "true":
+        import json
+
+        response = HTMLResponse("")
+        response.headers["HX-Redirect"] = url
+        response.headers["HX-Trigger"] = json.dumps(
+            {"show-toast": {"message": message, "type": "success"}}
+        )
+        return response
+    return RedirectResponse(url=url, status_code=302)
 
 
 def _form_data_dict(form: Any) -> dict[str, Any]:
@@ -977,22 +1003,36 @@ class CloneActionHandler:
             new_record = await resource.duplicate(item_id)
         except LookupError:
             return HTMLResponse("Not found", status_code=404)
+        except (PermissionError, PermissionDeniedError):
+            return HTMLResponse("Forbidden", status_code=403)
+        except (NotImplementedError, RuntimeError) as exc:
+            logger.exception("admin.clone_unavailable", error=str(exc))
+            return HTMLResponse("Clone is unavailable", status_code=503)
+        except (TypeError, ValueError) as exc:
+            # A before_clone hook may reject source data. Do not expose a
+            # traceback or persist a partial result, but make the client able
+            # to distinguish invalid clone input from a missing resource.
+            logger.info("admin.clone_validation_failed", error=str(exc))
+            return HTMLResponse("Clone validation failed", status_code=422)
+        except Exception:  # noqa: BLE001 — hook/storage failures are sanitized
+            logger.exception("admin.clone_failed")
+            return HTMLResponse("Unable to clone record", status_code=500)
         raw_new_id = (
             new_record.get("id")
             if isinstance(new_record, dict)
             else getattr(new_record, "id", None)
         )
         if raw_new_id is None:
-            return HTMLResponse("Clone failed", status_code=500)
+            logger.error("admin.clone_missing_created_id")
+            return HTMLResponse("Unable to clone record", status_code=500)
         new_id = str(raw_new_id)
-        from starlette.responses import RedirectResponse
 
         url = admin_url(
             admin_prefix_from_request(request),
             resource.name or "",
             f"{new_id}/edit",
         )
-        return RedirectResponse(url=url, status_code=302)
+        return _mutation_redirect(request, url, "Record cloned successfully")
 
 
 class RestoreActionHandler:
@@ -1014,7 +1054,13 @@ class RestoreActionHandler:
             )
 
         data_source = get_resource_data_source(resource)
-        item = await data_source.find_one(item_id) if data_source is not None else None
+        if data_source is None or not callable(getattr(data_source, "find_one", None)):
+            return HTMLResponse("Restore is unavailable", status_code=503)
+        try:
+            item = await data_source.find_one(item_id)
+        except Exception as exc:  # noqa: BLE001 — storage details stay private
+            logger.exception("admin.restore_lookup_failed", error=str(exc))
+            return HTMLResponse("Unable to load record", status_code=503)
         can_update = getattr(resource, "can_update", None)
         if item is None:
             return HTMLResponse("Not found", status_code=404)
@@ -1025,17 +1071,32 @@ class RestoreActionHandler:
             restored = await resource.restore(item_id)
         except LookupError:
             return HTMLResponse("Not found", status_code=404)
+        except (PermissionError, PermissionDeniedError):
+            return HTMLResponse("Forbidden", status_code=403)
+        except (NotImplementedError, RuntimeError) as exc:
+            logger.exception("admin.restore_unavailable", error=str(exc))
+            return HTMLResponse("Restore is unavailable", status_code=503)
+        except (TypeError, ValueError) as exc:
+            logger.info("admin.restore_validation_failed", error=str(exc))
+            return HTMLResponse("Restore validation failed", status_code=422)
+        except Exception:  # noqa: BLE001 — hook/storage failures are sanitized
+            logger.exception("admin.restore_failed")
+            return HTMLResponse("Unable to restore record", status_code=500)
         if restored is None:
             return HTMLResponse("Not found", status_code=404)
-        new_id = str(getattr(restored, "id", item_id))
-        from starlette.responses import RedirectResponse
+        raw_new_id = (
+            restored.get("id")
+            if isinstance(restored, dict)
+            else getattr(restored, "id", item_id)
+        )
+        new_id = str(raw_new_id if raw_new_id is not None else item_id)
 
         url = admin_url(
             admin_prefix_from_request(request),
             resource.name or "",
             f"{new_id}/edit",
         )
-        return RedirectResponse(url=url, status_code=302)
+        return _mutation_redirect(request, url, "Record restored successfully")
 
 
 class PurgeActionHandler:
@@ -1057,7 +1118,13 @@ class PurgeActionHandler:
             )
 
         data_source = get_resource_data_source(resource)
-        item = await data_source.find_one(item_id) if data_source is not None else None
+        if data_source is None or not callable(getattr(data_source, "find_one", None)):
+            return HTMLResponse("Purge is unavailable", status_code=503)
+        try:
+            item = await data_source.find_one(item_id)
+        except Exception as exc:  # noqa: BLE001 — storage details stay private
+            logger.exception("admin.purge_lookup_failed", error=str(exc))
+            return HTMLResponse("Unable to load record", status_code=503)
         can_delete = getattr(resource, "can_delete", None)
         if item is None:
             return HTMLResponse("Not found", status_code=404)
@@ -1068,13 +1135,23 @@ class PurgeActionHandler:
             await resource.purge(item_id)
         except LookupError:
             return HTMLResponse("Not found", status_code=404)
-        from starlette.responses import RedirectResponse
+        except (PermissionError, PermissionDeniedError):
+            return HTMLResponse("Forbidden", status_code=403)
+        except (NotImplementedError, RuntimeError) as exc:
+            logger.exception("admin.purge_unavailable", error=str(exc))
+            return HTMLResponse("Purge is unavailable", status_code=503)
+        except (TypeError, ValueError) as exc:
+            logger.info("admin.purge_validation_failed", error=str(exc))
+            return HTMLResponse("Purge validation failed", status_code=422)
+        except Exception:  # noqa: BLE001 — hook/storage failures are sanitized
+            logger.exception("admin.purge_failed")
+            return HTMLResponse("Unable to purge record", status_code=500)
 
         url = admin_url(
             admin_prefix_from_request(request),
             resource.name or "",
         )
-        return RedirectResponse(url=url, status_code=302)
+        return _mutation_redirect(request, url, "Record permanently deleted")
 
 
 _MAX_RELATION_OPTIONS = 200

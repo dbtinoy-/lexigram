@@ -66,16 +66,17 @@ class TestCloneRouteRegistration:
         assert any("/clone" in p for p in users_paths)
         assert any("/clone" in p for p in posts_paths)
 
-    def test_clone_route_uses_get_method(self) -> None:
+    def test_clone_route_requires_post(self) -> None:
+        """Clone must not be triggerable by a safe browser GET."""
         config = AdminConfig(prefix="/admin")
         mock_resource = MagicMock()
         mock_resource.relations = []
         router = AdminRouter(config=config, resources={"users": mock_resource})
         routes = router._build_resource_routes("users", mock_resource)
         clone_routes = [r for r in routes if "/clone" in (r.path or "")]
+        assert clone_routes
         for route in clone_routes:
-            if hasattr(route, "methods") and route.methods is not None:
-                assert "GET" in route.methods
+            assert route.methods == {"POST"}
 
     def test_inline_mutation_routes_are_registered(self) -> None:
         config = AdminConfig(prefix="/admin")

@@ -356,11 +356,14 @@ class AdminRouter:
                 name=f"admin_{name}_edit",
                 methods=["GET", "POST"],
             ),
+            # Clone, restore, and purge mutate state. Keep them off GET so
+            # browser prefetching and cross-site links cannot trigger a
+            # mutation without the CSRF-protected request methods below.
             Route(
                 f"{prefix}/{{id}}/clone",
                 ResourceHandler(self._config, name, "clone", resources=resources_dict),
                 name=f"admin_{name}_clone",
-                methods=["GET"],
+                methods=["POST"],
             ),
             Route(
                 f"{prefix}/{{id}}/restore",
@@ -368,13 +371,13 @@ class AdminRouter:
                     self._config, name, "restore", resources=resources_dict
                 ),
                 name=f"admin_{name}_restore",
-                methods=["GET"],
+                methods=["POST"],
             ),
             Route(
                 f"{prefix}/{{id}}/purge",
                 ResourceHandler(self._config, name, "purge", resources=resources_dict),
                 name=f"admin_{name}_purge",
-                methods=["GET"],
+                methods=["POST", "DELETE"],
             ),
             Route(
                 f"{prefix}/{{id}}/delete-confirm",

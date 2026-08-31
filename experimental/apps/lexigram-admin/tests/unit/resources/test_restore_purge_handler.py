@@ -82,7 +82,8 @@ class TestRestorePurgeRouteRegistration:
             f"No route with '/purge' found in paths: {paths}"
         )
 
-    def test_restore_purge_routes_use_get_method(self) -> None:
+    def test_restore_and_purge_routes_require_mutating_methods(self) -> None:
+        """Archive mutations must not be triggerable by a safe browser GET."""
         config = AdminConfig(prefix="/admin")
         mock_resource = MagicMock()
         mock_resource.relations = []
@@ -90,9 +91,9 @@ class TestRestorePurgeRouteRegistration:
         routes = router._build_resource_routes("users", mock_resource)
         restore_routes = [r for r in routes if "/restore" in (r.path or "")]
         purge_routes = [r for r in routes if "/purge" in (r.path or "")]
-        for route in restore_routes + purge_routes:
-            if hasattr(route, "methods") and route.methods is not None:
-                assert "GET" in route.methods
+        assert restore_routes and purge_routes
+        assert all(route.methods == {"POST"} for route in restore_routes)
+        assert all(route.methods == {"POST", "DELETE"} for route in purge_routes)
 
     def test_routes_for_multiple_resources(self) -> None:
         config = AdminConfig(prefix="/admin")

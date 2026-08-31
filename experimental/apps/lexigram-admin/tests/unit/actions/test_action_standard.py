@@ -77,6 +77,8 @@ class TestCloneAction:
         ctx = ActionContext(resource_name="users")
         result = action.render_button({"id": "7"}, ctx)
         assert "/users/7/clone" in result
+        assert "hx-post" in result
+        assert "hx-get" not in result
 
 
 class TestRestoreAction:
@@ -85,6 +87,8 @@ class TestRestoreAction:
         ctx = ActionContext(resource_name="users")
         result = action.render_button({"id": "7"}, ctx)
         assert "/users/7/restore" in result
+        assert "hx-post" in result
+        assert "hx-get" not in result
 
 
 class TestPurgeAction:
