@@ -366,7 +366,22 @@ class FormRenderer(WizardRendererMixin):
             request_state = request.state
         except (AttributeError, KeyError):
             request_state = None
-        state_service = getattr(request_state, "permission_service", None)
+
+        # Read only explicitly stored state values. ``MagicMock``-backed unit
+        # scopes manufacture every missing attribute and would otherwise look
+        # like a permission service, masking every form field.
+        state_service = None
+        if isinstance(request_state, dict):
+            state_service = request_state.get("permission_service")
+        else:
+            state_storage = getattr(request_state, "_state", None)
+            if isinstance(state_storage, dict):
+                state_service = state_storage.get("permission_service")
+            if state_service is None:
+                try:
+                    state_service = vars(request_state).get("permission_service")
+                except TypeError:
+                    state_service = None
         if state_service is not None and callable(
             getattr(state_service, "can_view_field", None)
         ):
@@ -397,6 +412,29 @@ class FormRenderer(WizardRendererMixin):
             )
             return False
 
+    async def _field_masked(
+        self,
+        permission_service: Any,
+        user: Any,
+        field_name: str,
+    ) -> bool:
+        """Evaluate masking policy and fail closed if it cannot be checked."""
+        checker = getattr(permission_service, "should_mask_field", None)
+        if not callable(checker):
+            return False
+        try:
+            result = checker(user, self.resource_name, field_name)
+            if inspect.isawaitable(result):
+                result = await result
+            return bool(result)
+        except Exception:  # noqa: BLE001 — masking must fail closed
+            logger.exception(
+                "admin.resource_field_mask_check_failed",
+                resource=self.resource_name,
+                field=field_name,
+            )
+            return True
+
     async def _apply_declared_field_permissions(
         self,
         form: Any,
@@ -412,6 +450,9 @@ class FormRenderer(WizardRendererMixin):
         from dataclasses import replace as dc_replace
 
         for name, field_schema in list(fields.items()):
+            if await self._field_masked(permission_service, user, name):
+                fields[name] = dc_replace(field_schema, visible_in_form=False)
+                continue
             if not await self._field_permission(
                 permission_service, "can_view_field", user, name
             ):
@@ -542,6 +583,14 @@ class FormRenderer(WizardRendererMixin):
                     if user is not None:
                         if permission_service is not None:
                             _perm_svc = permission_service
+                            # Masked fields must not be sent to the browser,
+                            # including as edit-form defaults.
+                            if await self._field_masked(
+                                _perm_svc,
+                                user,
+                                field_schema.name,
+                            ):
+                                continue
                             # Hide field if user lacks view permission.
                             if not await self._field_permission(
                                 _perm_svc,

@@ -20,6 +20,7 @@ from lexigram.serialization import dumps_str
 from lexigram.ui import InfolistWidget, el, raw, render_to_string
 
 logger = get_logger(__name__)
+_MASKED_FIELD_VALUE = "[REDACTED]"
 
 
 @inject
@@ -108,6 +109,29 @@ class DetailRenderer:
             )
             return False
 
+    async def _field_masked(
+        self,
+        user: Any,
+        permission_service: Any | None,
+        field_name: str,
+    ) -> bool:
+        """Check whether a field value must be redacted for this viewer."""
+        checker = getattr(permission_service, "should_mask_field", None)
+        if not callable(checker):
+            return False
+        try:
+            result = checker(user, self.resource_name, field_name)
+            if inspect.isawaitable(result):
+                result = await result
+            return bool(result)
+        except Exception:  # noqa: BLE001 — masking must fail closed
+            logger.exception(
+                "admin.field_mask_check_failed",
+                resource=self.resource_name,
+                field=field_name,
+            )
+            return True
+
     async def _can_edit_record(
         self,
         request: Any,
@@ -146,10 +170,16 @@ class DetailRenderer:
 
         label = self.resource_name.replace("_", " ").title()
 
-        item_html = await self._get_item_html(resource, item_id, label)
         request_user = user
         if request_user is None:
             request_user = getattr(getattr(request, "state", None), "user", None)
+        item_html = await self._get_item_html(
+            resource,
+            item_id,
+            label,
+            request=request,
+            user=request_user,
+        )
         show_edit = await self._can_edit_record(request, resource, request_user)
 
         prefix = admin_prefix_from_request(request)
@@ -307,9 +337,16 @@ class DetailRenderer:
                 field_name,
             ):
                 continue
+            masked = await self._field_masked(
+                user,
+                permission_service,
+                field_name,
+            )
+            display_value = _MASKED_FIELD_VALUE if masked else field_value
             alpine_key = f"editing_{field_name}"
             editable = bool(
-                field_name not in protected_fields
+                not masked
+                and field_name not in protected_fields
                 and getattr(field_schema, "visible_in_form", True)
                 and not getattr(field_schema, "readonly", False)
             )
@@ -341,7 +378,7 @@ class DetailRenderer:
                         "div",
                         el(
                             "span",
-                            str(field_value),
+                            str(display_value),
                             class_="inline-edit-value",
                         ),
                         (
@@ -370,7 +407,7 @@ class DetailRenderer:
                                 "input",
                                 type="text",
                                 name=field_name,
-                                value=str(field_value),
+                                value=str(display_value),
                                 class_=(
                                     "inline-edit-input border border-border "
                                     "rounded px-2 py-1 text-sm w-full "
@@ -485,7 +522,15 @@ class DetailRenderer:
             ],
         )
 
-    async def _get_item_html(self, resource, item_id: str, label: str) -> str:
+    async def _get_item_html(
+        self,
+        resource,
+        item_id: str,
+        label: str,
+        *,
+        request: Any | None = None,
+        user: Any = None,
+    ) -> str:
         """Get HTML representation of the item."""
         if not resource:
             return render_to_string(el("p", f"Item #{item_id}"))
@@ -516,17 +561,48 @@ class DetailRenderer:
                 if hasattr(item, "model_dump")
                 else dict(vars(item))
             )
-            return self._render_item_infolist(resource, item_dict)
+            return await self._render_item_infolist(
+                resource,
+                item_dict,
+                request=request,
+                user=user,
+            )
         return render_to_string(el("p", "Item not found"))
 
-    def _render_item_infolist(self, resource, item_dict: dict) -> str:
+    async def _render_item_infolist(
+        self,
+        resource,
+        item_dict: dict,
+        *,
+        request: Any | None = None,
+        user: Any = None,
+    ) -> str:
         """Render item fields as an infolist widget.
 
         Prefers the resource's ``infolist()`` API when available
         (``HasInfolist`` mixin); otherwise derives entries from the
         resource model. Falls back to a plain key/value table when the
-        resource model cannot be introspected.
+        resource model cannot be introspected. Field visibility and masking
+        are applied before any infolist implementation receives the data.
         """
+        permission_service = self._permission_service(request)
+        safe_item = dict(item_dict)
+        for field_name in list(safe_item):
+            field_schema = self._field_schemas(resource).get(field_name)
+            if field_schema is None:
+                continue
+            if not await self._field_visible(
+                request,
+                user,
+                permission_service,
+                field_name,
+            ):
+                safe_item.pop(field_name, None)
+                continue
+            if await self._field_masked(user, permission_service, field_name):
+                safe_item[field_name] = _MASKED_FIELD_VALUE
+        item_dict = safe_item
+
         try:
             if hasattr(resource, "infolist"):
                 entries = resource.infolist(item_dict)

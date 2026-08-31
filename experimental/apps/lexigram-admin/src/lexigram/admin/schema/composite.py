@@ -8,6 +8,7 @@ from lexigram.admin.schema.exceptions import FieldError
 from lexigram.result import Err, Ok, Result
 from lexigram.serialization import dumps_str, loads_str
 from lexigram.ui import Element, FileUpload, TextArea
+from lexigram.ui.core.url import is_safe_navigation_url
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -105,9 +106,18 @@ class FileField(SchemaField[str]):
     def render_column(self, record: Any, value: str | None) -> Element:
         if value is None:
             return Element("span", "\u2014", class_="text-muted")
-        return Element(
-            "span", Element("a", value, href=value), class_="text-primary-600"
+        link = (
+            Element(
+                "a",
+                value,
+                href=value,
+                target="_blank",
+                rel="noopener noreferrer",
+            )
+            if is_safe_navigation_url(value)
+            else Element("span", value)
         )
+        return Element("span", link, class_="text-primary-600")
 
     def from_form(self, raw: str | None) -> Result[str | None, FieldError]:
         if raw is None:
@@ -142,6 +152,8 @@ class ImageField(FileField):
     def render_column(self, record: Any, value: str | None) -> Element:
         if value is None:
             return Element("span", "\u2014", class_="text-muted")
+        if not is_safe_navigation_url(value):
+            return Element("span", value)
         return Element(
             "img",
             src=value,
@@ -164,6 +176,8 @@ class AvatarField(ImageField):
     def render_column(self, record: Any, value: str | None) -> Element:
         if value is None:
             return Element("span", "\u2014", class_="text-muted")
+        if not is_safe_navigation_url(value):
+            return Element("span", value)
         return Element(
             "img",
             src=value,

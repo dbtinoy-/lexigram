@@ -7,6 +7,7 @@ from lexigram.admin.schema.base import SchemaField
 from lexigram.admin.schema.exceptions import FieldError
 from lexigram.result import Ok, Result
 from lexigram.ui import Element, TextInput
+from lexigram.ui.core.url import is_safe_navigation_url
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -169,4 +170,12 @@ class URLField(TextField):
     def render_column(self, record: Any, value: str | None) -> Element:
         if value is None:
             return Element("span", "\u2014", class_="text-muted")
-        return Element("a", value, href=value, target="_blank")
+        if not is_safe_navigation_url(value):
+            return Element("span", value)
+        return Element(
+            "a",
+            value,
+            href=value,
+            target="_blank",
+            rel="noopener noreferrer",
+        )

@@ -161,6 +161,43 @@ async def test_detail_escapes_untrusted_record_id_in_fragment() -> None:
 
 
 @pytest.mark.asyncio
+async def test_detail_masks_sensitive_fields_before_infolist_rendering() -> None:
+    class SecretModel(BaseModel):
+        name: str
+        secret: str
+
+    class Source:
+        async def find_one(self, item_id: str) -> dict[str, str]:
+            return {"name": "Acme", "secret": "top-secret"}
+
+    class PermissionService:
+        async def can_view_field(self, user: object, resource: str, field: str) -> bool:
+            return True
+
+        async def should_mask_field(self, user: object, resource: str, field: str) -> bool:
+            return field == "secret"
+
+    request = _fragment_request()
+    request.scope["app"] = SimpleNamespace(
+        state=SimpleNamespace(permission_service=PermissionService())
+    )
+    request.state.user = object()
+    resource = SimpleNamespace(
+        model=SecretModel,
+        fields=[TextField(name="name"), TextField(name="secret")],
+        _data_source=Source(),
+    )
+
+    html = (
+        await _renderer().render_detail(request, resource, "1")
+    ).body.decode()
+
+    assert "Acme" in html
+    assert "top-secret" not in html
+    assert "[REDACTED]" in html
+
+
+@pytest.mark.asyncio
 async def test_inline_detail_only_renders_declared_view_fields() -> None:
     class InlineModel(BaseModel):
         name: str

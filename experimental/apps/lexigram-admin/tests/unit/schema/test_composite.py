@@ -208,11 +208,12 @@ class TestFileField:
         output = str(element)
         assert "<a" in output or "report.pdf" in output
 
-    def test_render_column_with_none(self) -> None:
+    def test_render_column_rejects_unsafe_scheme(self) -> None:
         field = FileField(name="file")
-        element = field.render_column(None, None)
-        output = str(element)
-        assert "\u2014" in output
+        output = str(field.render_column(None, "javascript:alert(1)"))
+
+        assert "<a" not in output
+        assert "javascript:alert(1)" in output
 
     def test_from_form_passthrough(self) -> None:
         field = FileField(name="file")

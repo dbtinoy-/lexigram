@@ -12,6 +12,7 @@ from enum import Enum
 from typing import Any
 
 from lexigram.ui import Component, Element, raw
+from lexigram.ui.core.url import is_safe_navigation_url
 
 
 class InfolistEntryType(str, Enum):
@@ -223,6 +224,8 @@ class InfolistWidget(Component):
 
     def _render_image(self, value: Any, image_url: str | None = None) -> Element:
         src = image_url or str(value)
+        if not is_safe_navigation_url(src):
+            return Element("span", str(value))
         return Element(
             "img",
             src=src,
@@ -242,6 +245,8 @@ class InfolistWidget(Component):
 
     def _render_url(self, value: str, url: str | None = None) -> Element:
         href = url or value
+        if not is_safe_navigation_url(href):
+            return Element("span", value)
         return Element(
             "a",
             value,

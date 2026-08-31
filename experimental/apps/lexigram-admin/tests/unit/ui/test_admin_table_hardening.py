@@ -5,6 +5,8 @@ from __future__ import annotations
 from types import SimpleNamespace
 from typing import Any
 
+import pytest
+
 from lexigram.admin.actions.base import BulkAction
 from lexigram.admin.actions.types import ActionContext
 from lexigram.admin.actions.standard import DeleteAction, DeleteBulkAction, EditAction
@@ -111,6 +113,32 @@ def test_list_renderer_maps_request_permissions_to_table_capabilities():
         "can_update": True,
         "can_delete": False,
     }
+
+
+@pytest.mark.asyncio
+async def test_list_masks_fields_before_table_rendering():
+    class PermissionService:
+        def get_schema(self, resource: str) -> Any:
+            return SimpleNamespace(fields={"secret": object()})
+
+        async def should_mask_field(
+            self, user: Any, resource: str, field: str
+        ) -> bool:
+            return field == "secret"
+
+    renderer = object.__new__(ListRenderer)
+    renderer.resource_name = "users"
+    items = [{"id": "1", "name": "Ada", "secret": "top-secret"}]
+
+    masked = await renderer._mask_items(
+        items,
+        source_columns=[TextColumn("name"), TextColumn("secret")],
+        user=object(),
+        permission_service=PermissionService(),
+    )
+
+    assert items[0]["secret"] == "top-secret"
+    assert masked[0]["secret"] == "[REDACTED]"
 
 
 def test_url_sort_and_group_fields_are_whitelisted():

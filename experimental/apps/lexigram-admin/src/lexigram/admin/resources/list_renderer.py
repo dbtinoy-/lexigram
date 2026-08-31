@@ -7,6 +7,8 @@ paginated data fetcher (:mod:`..list_query`) into the DataTable-driven
 list view for an admin resource.
 """
 
+import inspect
+from copy import copy
 from typing import Any
 
 from starlette.responses import HTMLResponse
@@ -26,7 +28,11 @@ from lexigram.admin.resources.list_query import ListDataFetcher
 from lexigram.admin.state.context import wants_fragment
 from lexigram.admin.ui.organisms.data_table import DataTable
 from lexigram.di.decorators import inject
+from lexigram.logging import get_logger
 from lexigram.ui import TableState, Zones, render_to_string
+
+logger = get_logger(__name__)
+_MASKED_FIELD_VALUE = "[REDACTED]"
 
 
 @inject
@@ -45,6 +51,121 @@ class ListRenderer:
         self._renderer = renderer
         self._metrics = metrics or AdminMetrics(None)
         self._fetcher = ListDataFetcher(resource_name, metrics)
+
+    @staticmethod
+    def _request_permission_service(request: Any) -> Any | None:
+        """Resolve the mounted field-permission service, when available."""
+        try:
+            app = request.app
+        except (AttributeError, KeyError, RuntimeError):
+            app = None
+        service = getattr(getattr(app, "state", None), "permission_service", None)
+        if service is not None and callable(getattr(service, "should_mask_field", None)):
+            return service
+        try:
+            state = request.state
+        except (AttributeError, KeyError, RuntimeError):
+            state = None
+        service = getattr(state, "permission_service", None)
+        return (
+            service
+            if service is not None
+            and callable(getattr(service, "should_mask_field", None))
+            else None
+        )
+
+    @staticmethod
+    def _record_value(record: Any, field_name: str) -> Any:
+        """Read a top-level field from dict-like or object records."""
+        if isinstance(record, dict):
+            return record.get(field_name)
+        return getattr(record, field_name, None)
+
+    @staticmethod
+    def _masked_record(record: Any, fields: set[str]) -> Any:
+        """Return an isolated record copy with sensitive values redacted."""
+        if isinstance(record, dict):
+            masked = dict(record)
+            masked.update({name: _MASKED_FIELD_VALUE for name in fields})
+            return masked
+
+        model_copy = getattr(record, "model_copy", None)
+        if callable(model_copy):
+            try:
+                return model_copy(
+                    update={name: _MASKED_FIELD_VALUE for name in fields}
+                )
+            except (AttributeError, TypeError, ValueError):
+                pass
+
+        try:
+            masked = copy(record)
+            for name in fields:
+                setattr(masked, name, _MASKED_FIELD_VALUE)
+            return masked
+        except (AttributeError, TypeError, ValueError):
+            # Last resort: a plain mapping is safer than returning the
+            # original object, whose sensitive attributes would leak.
+            try:
+                values = dict(vars(record))
+            except (AttributeError, TypeError, ValueError):
+                values = {}
+            values.update({name: _MASKED_FIELD_VALUE for name in fields})
+            return values
+
+    async def _mask_items(
+        self,
+        items: list[Any],
+        *,
+        source_columns: Any,
+        user: Any,
+        permission_service: Any | None,
+    ) -> list[Any]:
+        """Apply field masking before records reach any table renderer."""
+        if not items or user is None or permission_service is None:
+            return items
+
+        field_names = {
+            str(getattr(column, "name", ""))
+            for column in source_columns or []
+            if getattr(column, "name", None)
+        }
+        schema = getattr(permission_service, "get_schema", None)
+        if callable(schema):
+            try:
+                permission_schema = schema(self.resource_name)
+                field_names.update(
+                    str(name)
+                    for name in getattr(permission_schema, "fields", {})
+                )
+            except Exception:  # noqa: BLE001 — renderer must remain available
+                logger.exception("admin.list_permission_schema_resolution_failed")
+
+        masked_fields: set[str] = set()
+        checker = permission_service.should_mask_field
+        for field_name in field_names:
+            try:
+                result = checker(user, self.resource_name, field_name)
+                if inspect.isawaitable(result):
+                    result = await result
+                if result and any(
+                    self._record_value(item, field_name) is not None for item in items
+                ):
+                    masked_fields.add(field_name)
+            except Exception:  # noqa: BLE001 — masking must fail closed
+                logger.exception(
+                    "admin.list_field_mask_check_failed",
+                    resource=self.resource_name,
+                    field=field_name,
+                )
+                if any(
+                    self._record_value(item, field_name) is not None for item in items
+                ):
+                    masked_fields.add(field_name)
+
+        if not masked_fields:
+            return items
+        return [self._masked_record(item, masked_fields) for item in items]
 
     def _permissions_for_request(
         self,
@@ -301,6 +422,18 @@ class ListRenderer:
         # Fetch data from service
         items, total = await self._fetcher.fetch_data(
             request, resource, state, source_columns
+        )
+
+        # Redact sensitive values before columns, row actions, or custom table
+        # renderers can inspect the fetched records.
+        request_user = getattr(getattr(request, "state", None), "user", None)
+        permission_user = user if user is not None else request_user
+        permission_service = self._request_permission_service(request)
+        items = await self._mask_items(
+            items,
+            source_columns=source_columns,
+            user=permission_user,
+            permission_service=permission_service,
         )
 
         # Build columns

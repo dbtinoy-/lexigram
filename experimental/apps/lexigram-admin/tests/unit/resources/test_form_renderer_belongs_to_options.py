@@ -126,6 +126,52 @@ class TestBelongsToOptions:
 
 
     @pytest.mark.asyncio
+    async def test_masked_field_is_not_rendered_in_form_defaults(self) -> None:
+        class _SecretModel(BaseModel):
+            name: str
+            secret: str
+
+        class _SecretResource(Resource):
+            name = "secrets"
+            model = _SecretModel
+
+        class _FieldPermissions:
+            async def can_view_field(
+                self, user: Any, resource: str, field: str
+            ) -> bool:
+                return True
+
+            async def can_edit_field(
+                self, user: Any, resource: str, field: str
+            ) -> bool:
+                return True
+
+            async def should_mask_field(
+                self, user: Any, resource: str, field: str
+            ) -> bool:
+                return field == "secret"
+
+        request = _create_request()
+        request.state.user = object()
+        renderer = FormRenderer(
+            AdminConfig(prefix="/admin", title="Test"),
+            "secrets",
+            AdminRenderer(),
+            permission_service=_FieldPermissions(),
+        )
+
+        response = await renderer.render_create(
+            request,
+            _SecretResource,
+            data={"name": "Ada", "secret": "top-secret"},
+        )
+        html = response.body.decode("utf-8", "replace")
+
+        assert 'name="name"' in html
+        assert "top-secret" not in html
+        assert 'name="secret"' not in html
+
+    @pytest.mark.asyncio
     async def test_options_load_uses_query_spec(self) -> None:
         captured: list[object] = []
 
