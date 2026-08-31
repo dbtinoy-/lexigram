@@ -25,6 +25,7 @@ from lexigram.admin.resources.list_columns import (
     get_row_actions,
 )
 from lexigram.admin.resources.list_query import ListDataFetcher
+from lexigram.admin.resources.urls import admin_prefix_from_request
 from lexigram.admin.state.context import wants_fragment
 from lexigram.admin.ui.organisms.data_table import DataTable
 from lexigram.di.decorators import inject
@@ -350,7 +351,8 @@ class ListRenderer:
             .replace("_", " ")
             .title()
         )
-        resource_prefix = f"{self._config.prefix}/{self.resource_name}"
+        admin_prefix = admin_prefix_from_request(request)
+        resource_prefix = f"{admin_prefix}/{self.resource_name}"
 
         # Resolve Columns Early for Search
         source_columns = []
@@ -527,7 +529,7 @@ class ListRenderer:
             request=request,
             title=label,
             breadcrumbs=[
-                {"label": "Dashboard", "url": self._config.prefix},
+                {"label": "Dashboard", "url": admin_prefix},
                 {"label": label, "url": resource_prefix},
             ],
         )

@@ -224,10 +224,10 @@ def build_main_area(
         *build_breadcrumbs_nav(breadcrumbs),
         el(
             "main",
-            el("div", content_inner, id="main-content", class_="px-4 py-4"),
-            class_="flex-1 overflow-y-auto bg-muted dark:bg-muted focus:outline-none transition-colors duration-300",
+            el("div", content_inner, id="main-content", class_="admin-shell-content px-4 py-4"),
+            class_="admin-shell-scroll flex-1 overflow-y-auto bg-muted dark:bg-muted focus:outline-none transition-colors duration-300",
         ),
-        class_="flex flex-col flex-1 min-w-0 overflow-hidden",
+        class_="admin-shell-main flex flex-col flex-1 min-w-0 overflow-hidden",
     )
 
 
@@ -261,7 +261,7 @@ def build_breadcrumbs_nav(breadcrumbs: list[dict[str, Any]]) -> list[Any]:
                         for i, b in enumerate(breadcrumbs)
                     ],
                 ),
-                class_="px-4 mt-2",
+                class_="admin-breadcrumbs px-4 mt-2",
             )
         ]
         if breadcrumbs
@@ -277,6 +277,6 @@ def build_root_data_attrs(dm_expr: str) -> dict[str, str]:
         + " }",
         "x-init": "$watch('darkMode', val => { localStorage.setItem('darkMode', val); document.documentElement.classList.toggle('dark', val) }); $watch('sidebarMini', val => localStorage.setItem('sidebarMini', val)); document.documentElement.classList.toggle('dark', darkMode)",
         "x-on:darkmode-change.window": "darkMode = $event.detail.dark",
-        "class": "flex h-screen overflow-hidden bg-background transition-colors duration-300 font-sans text-foreground",
+        "class": "admin-shell-root flex h-screen overflow-hidden bg-background transition-colors duration-300 font-sans text-foreground",
         "x-on:beforeunload.window": "window.notificationEventSource?.close()",
     }

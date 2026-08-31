@@ -56,6 +56,22 @@ class TestDashboardController:
         assert b"2" in response.body
 
     @pytest.mark.asyncio
+    async def test_index_uses_custom_prefix_for_dashboard_actions(
+        self,
+        mock_renderer: MagicMock,
+        mock_request: MagicMock,
+    ) -> None:
+        mock_request.scope = {"admin_prefix": "/backoffice"}
+        mock_request.app.state.admin_resources = {"users": ...}
+        controller = DashboardController(renderer=mock_renderer, assembler=None)
+        response = await controller.index(mock_request)
+        body = response.body
+        assert b"Welcome back" in body
+        assert b"/backoffice/users" in body
+        assert b"/backoffice/widgets/stats" in body
+        assert b"/backoffice/core/widgets/reorder" in body
+
+    @pytest.mark.asyncio
     async def test_index_fallback_has_default_sections(
         self,
         mock_renderer: MagicMock,

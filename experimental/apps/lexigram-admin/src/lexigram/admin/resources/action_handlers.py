@@ -756,28 +756,33 @@ class InlineMutationActionHandler:
         # Explicit declarative fields are the resource's canonical form/view
         # contract, even when a backing model is also present. Falling back to
         # generated model fields here would bypass visibility and readonly
-        # metadata on inline routes.
-        declared_fields = getattr(resource, "fields", ()) or ()
-        field = next(
-            (
-                field
-                for field in declared_fields
-                if getattr(field, "name", None) == field_name
-            ),
-            None,
-        )
-        if field is not None:
-            return field
-
-        model = getattr(resource, "model", None)
-        if model is not None:
-            from lexigram.admin.forms.components import FormSchemaGenerator
-
-            schema = FormSchemaGenerator().from_pydantic(model)
-            return next(
-                (field for field in schema.fields if field.name == field_name),
+        # metadata on inline routes. A malformed extension must not turn an
+        # inline request into a traceback-bearing response.
+        try:
+            declared_fields = getattr(resource, "fields", ()) or ()
+            field = next(
+                (
+                    field
+                    for field in declared_fields
+                    if getattr(field, "name", None) == field_name
+                ),
                 None,
             )
+            if field is not None:
+                return field
+
+            model = getattr(resource, "model", None)
+            if model is not None:
+                from lexigram.admin.forms.components import FormSchemaGenerator
+
+                schema = FormSchemaGenerator().from_pydantic(model)
+                return next(
+                    (field for field in schema.fields if field.name == field_name),
+                    None,
+                )
+        except Exception:  # noqa: BLE001 — malformed schema is not a server error
+            logger.exception("admin.inline_field_schema_failed", field=field_name)
+            return None
 
         # Resources using only the declarative SchemaField system may not bind
         # a Pydantic/dataclass model; an absent declaration is never editable.
@@ -818,14 +823,26 @@ class InlineMutationActionHandler:
         form: Any,
     ) -> tuple[Any | None, str | None]:
         """Coerce one submitted field and return a user-facing error."""
-        values = form.getlist(field_name) if hasattr(form, "getlist") else []
-        raw_value: Any
-        if len(values) > 1:
-            raw_value = values
-        elif values:
-            raw_value = values[0]
-        else:
-            raw_value = form.get(field_name)
+        try:
+            values = form.getlist(field_name) if hasattr(form, "getlist") else []
+            # Some form adapters return None or a scalar from getlist despite
+            # the Starlette MultiDict contract. Normalize those values before
+            # applying checkbox/multi-value semantics.
+            if values is None:
+                values = []
+            elif isinstance(values, (str, bytes)):
+                values = [values]
+            else:
+                values = list(values)
+            raw_value: Any
+            if len(values) > 1:
+                raw_value = values
+            elif values:
+                raw_value = values[0]
+            else:
+                raw_value = form.get(field_name)
+        except (AttributeError, KeyError, TypeError, ValueError):
+            return None, "Invalid form data"
 
         field_schema = self._field_schema(resource, field_name)
         if field_schema is None:
@@ -840,12 +857,18 @@ class InlineMutationActionHandler:
         from lexigram.admin.resources.form_guard import sanitize_form_data
 
         model = getattr(resource, "model", None)
-        cleaned = sanitize_form_data(
-            {field_name: raw_value},
-            model=model,
-            protected_fields=getattr(resource, "protected_form_fields", ()),
-            allow_extra_fields=False,
-        )
+        try:
+            cleaned = sanitize_form_data(
+                {field_name: raw_value},
+                model=model,
+                protected_fields=getattr(resource, "protected_form_fields", ()),
+                allow_extra_fields=False,
+            )
+        except (TypeError, ValueError):
+            return None, "Invalid value"
+        except Exception:  # noqa: BLE001 — custom coercers must fail safely
+            logger.exception("admin.inline_field_coercion_failed", field=field_name)
+            return None, "Unable to validate field"
         if field_name not in cleaned:
             return None, "This field cannot be updated"
 
@@ -860,24 +883,33 @@ class InlineMutationActionHandler:
                     value = TypeAdapter(expected).validate_python(value)
             except ImportError:
                 pass
-            except (NameError, TypeError, ValueError) as exc:
-                return None, str(exc)
+            except (NameError, TypeError, ValueError):
+                return None, "Invalid value"
+            except Exception:  # noqa: BLE001 — a malformed model must not leak
+                logger.exception("admin.inline_field_validation_failed", field=field_name)
+                return None, "Unable to validate field"
         else:
             # Untyped declarative resources still have field-level coercion and
             # validators. Do not persist the browser's raw string when a
             # SchemaField can produce the declared Python value.
-            result = field_schema.from_form(raw_value)
-            if result.is_err():
-                return None, str(result.unwrap_err())
-            value = result.unwrap()
-            if field_schema.required and (
-                value is None or (isinstance(value, str) and not value.strip())
-            ):
-                return None, "This field is required"
-            validated = field_schema.validate_value(value)
-            if validated.is_err():
-                return None, str(validated.unwrap_err())
-            value = validated.unwrap()
+            try:
+                result = field_schema.from_form(raw_value)
+                if result.is_err():
+                    return None, str(result.unwrap_err())
+                value = result.unwrap()
+                if field_schema.required and (
+                    value is None or (isinstance(value, str) and not value.strip())
+                ):
+                    return None, "This field is required"
+                validated = field_schema.validate_value(value)
+                if validated.is_err():
+                    return None, str(validated.unwrap_err())
+                value = validated.unwrap()
+            except (AttributeError, TypeError, ValueError):
+                return None, "Invalid value"
+            except Exception:  # noqa: BLE001 — custom field validators are untrusted
+                logger.exception("admin.inline_field_validation_failed", field=field_name)
+                return None, "Unable to validate field"
         return value, None
 
     async def _update_field(
@@ -897,8 +929,14 @@ class InlineMutationActionHandler:
             return None, "Inline editing is not available"
         if record is None:
             return None, "Not found"
-        if not await self._authorize_update(resource, record):
-            return None, "This record cannot be updated"
+        try:
+            if not await self._authorize_update(resource, record):
+                return None, "This record cannot be updated"
+        except (PermissionError, PermissionDeniedError):
+            return None, "Forbidden"
+        except Exception:  # noqa: BLE001 — authorization extensions fail closed
+            logger.exception("admin.inline_authorization_failed")
+            return None, "Forbidden"
         if not await _field_view_allowed(request, resource, field_name):
             return None, "Forbidden"
         if await _field_masked(request, resource, field_name):
@@ -911,17 +949,42 @@ class InlineMutationActionHandler:
             return None, error
 
         try:
-            changed = await resource.before_update(item_id, {field_name: value})
-            changed = changed if isinstance(changed, dict) else {field_name: value}
+            requested_change = {field_name: value}
+            before_update = getattr(resource, "before_update", None)
+            changed = (
+                await _maybe_await(before_update(item_id, requested_change))
+                if callable(before_update)
+                else requested_change
+            )
+            if changed is None:
+                changed = requested_change
+            if not isinstance(changed, Mapping):
+                logger.error("admin.inline_before_update_invalid_result", field=field_name)
+                return None, "Unable to update record"
             # Hooks are trusted server code, but keep inline updates scoped to
             # the requested field to preserve the endpoint's narrow contract.
             changed = {field_name: changed.get(field_name, value)}
-            updated = await data_source.update(item_id, changed)
-        except (LookupError, TypeError, ValueError) as exc:
-            return None, str(exc)
+            updated = await _maybe_await(data_source.update(item_id, changed))
+        except (PermissionError, PermissionDeniedError):
+            return None, "Forbidden"
+        except LookupError:
+            return None, "Not found"
+        except (TypeError, ValueError):
+            return None, "Invalid value"
+        except NotImplementedError:
+            return None, "Inline editing is not available"
+        except Exception:  # noqa: BLE001 — hook/storage failures are sanitized
+            logger.exception("admin.inline_update_failed")
+            return None, "Unable to update record"
         if updated is None:
             return None, "Not found"
-        await resource.after_update(updated)
+        after_update = getattr(resource, "after_update", None)
+        if callable(after_update):
+            try:
+                await _maybe_await(after_update(updated))
+            except Exception:  # noqa: BLE001 — the write already succeeded
+                logger.exception("admin.inline_after_update_failed")
+                return None, "Record updated, but finalization failed"
         return updated, None
 
     def _render_display_cell(
@@ -961,19 +1024,27 @@ class InlineMutationActionHandler:
                 from lexigram.admin.engine.renderer import AdminRenderer
                 from lexigram.admin.resources.detail_renderer import DetailRenderer
 
-                data_source, record = await self._load_record(resource, item_id)
+                try:
+                    data_source, record = await self._load_record(resource, item_id)
+                except Exception:  # noqa: BLE001 — storage failures are sanitized
+                    logger.exception("admin.inline_detail_lookup_failed")
+                    return HTMLResponse("Unable to load record", status_code=503)
                 if data_source is None or record is None:
                     return HTMLResponse("Not found", status_code=404)
-                return await DetailRenderer(
-                    self._config,
-                    self.resource_name,
-                    AdminRenderer(None),
-                ).render_inline_edit(
-                    request,
-                    resource,
-                    item_id,
-                    user=getattr(getattr(request, "state", None), "user", None),
-                )
+                try:
+                    return await DetailRenderer(
+                        self._config,
+                        self.resource_name,
+                        AdminRenderer(None),
+                    ).render_inline_edit(
+                        request,
+                        resource,
+                        item_id,
+                        user=getattr(getattr(request, "state", None), "user", None),
+                    )
+                except Exception:  # noqa: BLE001 — rendering/storage failures are sanitized
+                    logger.exception("admin.inline_detail_render_failed")
+                    return HTMLResponse("Unable to render record", status_code=500)
 
             field_name = str(request.path_params.get("field", ""))
             if not field_name:
@@ -989,24 +1060,38 @@ class InlineMutationActionHandler:
                 return HTMLResponse("Forbidden", status_code=403)
             if not await _field_edit_allowed(request, resource, field_name):
                 return HTMLResponse("Forbidden", status_code=403)
-            data_source, record = await self._load_record(resource, item_id)
+            try:
+                data_source, record = await self._load_record(resource, item_id)
+            except Exception:  # noqa: BLE001 — storage failures are sanitized
+                logger.exception("admin.inline_field_lookup_failed")
+                return HTMLResponse("Unable to load record", status_code=503)
             if data_source is None or record is None:
                 return HTMLResponse("Not found", status_code=404)
-            if not await self._authorize_update(resource, record):
+            try:
+                if not await self._authorize_update(resource, record):
+                    return HTMLResponse("Forbidden", status_code=403)
+            except (PermissionError, PermissionDeniedError):
+                return HTMLResponse("Forbidden", status_code=403)
+            except Exception:  # noqa: BLE001 — authorization extensions fail closed
+                logger.exception("admin.inline_authorization_failed")
                 return HTMLResponse("Forbidden", status_code=403)
 
             from lexigram.admin.resources.field_renderer import FieldRenderer
 
-            editor = await FieldRenderer(
-                self._config,
-                self.resource_name,
-            ).render_field(
-                request,
-                resource,
-                field_name,
-                item_id=item_id,
-                user=getattr(getattr(request, "state", None), "user", None),
-            )
+            try:
+                editor = await FieldRenderer(
+                    self._config,
+                    self.resource_name,
+                ).render_field(
+                    request,
+                    resource,
+                    field_name,
+                    item_id=item_id,
+                    user=getattr(getattr(request, "state", None), "user", None),
+                )
+            except Exception:  # noqa: BLE001 — renderer extensions are sanitized
+                logger.exception("admin.inline_field_render_failed", field=field_name)
+                return HTMLResponse("Unable to render field", status_code=500)
             from html import escape
 
             return HTMLResponse(
@@ -1018,7 +1103,15 @@ class InlineMutationActionHandler:
                 status_code=editor.status_code,
             )
 
-        form = request.scope.get("admin_form_data") or await request.form()
+        try:
+            form = (
+                request.scope["admin_form_data"]
+                if "admin_form_data" in request.scope
+                else await request.form()
+            )
+        except Exception:  # noqa: BLE001 — malformed request bodies are sanitized
+            logger.exception("admin.inline_form_parse_failed")
+            return HTMLResponse("Invalid form data", status_code=400)
         if request.scope.get("admin_action") == "field":
             field_name = str(request.path_params.get("field", ""))
         else:

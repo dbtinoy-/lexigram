@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any
 
 from lexigram.admin.controllers.resource.meta import ResourceMeta, T
+from lexigram.admin.resources.urls import admin_prefix_from_request, admin_url
 from lexigram.admin.state.context import AdminContext
 
 
@@ -42,11 +44,31 @@ class ResourceRenderMixin:
         errors: dict[str, list[str]] | None = None,
     ) -> str:
         """Render form content. Override in subclass."""
-        action = f"{self.meta.prefix}/{self.meta.name}"
+        request = ctx.request
+        scope = getattr(request, "scope", None)
+        scope_prefix = scope.get("admin_prefix") if isinstance(scope, Mapping) else None
+        configured_prefix = getattr(self.meta, "prefix", "")
+        prefix = (
+            scope_prefix.rstrip("/")
+            if isinstance(scope_prefix, str) and scope_prefix
+            else (
+                (configured_prefix or "").rstrip("/")
+                or admin_prefix_from_request(request)
+            )
+        )
+        action = admin_url(prefix, self.meta.name)
         if item:
-            id_val = getattr(item, "id", None)
-            action = f"{action}/{id_val}"
+            id_val = (
+                item.get("id")
+                if isinstance(item, dict)
+                else getattr(item, "id", None)
+            )
+            if id_val is not None:
+                action = admin_url(prefix, self.meta.name, str(id_val))
 
+        from html import escape
+
+        action = escape(action, quote=True)
         return f"""
 <form method="POST" action="{action}">
     <p>Override render_form_partial() to customize</p>

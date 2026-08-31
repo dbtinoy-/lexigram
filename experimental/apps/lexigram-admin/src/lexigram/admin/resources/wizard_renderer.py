@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any
 from starlette.responses import HTMLResponse
 
 from lexigram.admin.exceptions import AdminValidationError
+from lexigram.admin.resources.urls import admin_prefix_from_request
 from lexigram.admin.state.context import wants_fragment
 from lexigram.logging import get_logger
 from lexigram.ui import el, render_to_string
@@ -55,6 +56,8 @@ class WizardRendererMixin:
             ``HTMLResponse`` with the wizard form fragment or full page.
         """
         label = self.resource_name.replace("_", " ").title()
+        admin_prefix = admin_prefix_from_request(request)
+        resource_prefix = f"{admin_prefix}/{self.resource_name}"
         total_steps = len(steps)
 
         # Build Alpine.js data initialiser - currentStep is 0-indexed.
@@ -87,7 +90,9 @@ class WizardRendererMixin:
                             )
                             continue
                         field_component = self._create_field_component(
-                            field_schema, field_schema.default
+                            field_schema,
+                            field_schema.default,
+                            admin_prefix=admin_prefix,
                         )
                         if field_component:
                             raw = field_component.render()
@@ -253,7 +258,7 @@ class WizardRendererMixin:
                 el(
                     "a",
                     f"← Back to {label}",
-                    href=f"{self._config.prefix}/{self.resource_name}",
+                    href=resource_prefix,
                     class_="text-primary-600 hover:text-primary-900",
                 ),
                 el(
@@ -276,11 +281,11 @@ class WizardRendererMixin:
             request=request,
             title=f"Create {label}",
             breadcrumbs=[
-                {"label": "Dashboard", "url": self._config.prefix},
-                {"label": label, "url": f"{self._config.prefix}/{self.resource_name}"},
+                {"label": "Dashboard", "url": admin_prefix},
+                {"label": label, "url": resource_prefix},
                 {
                     "label": "Create",
-                    "url": f"{self._config.prefix}/{self.resource_name}/create",
+                    "url": f"{resource_prefix}/create",
                 },
             ],
         )

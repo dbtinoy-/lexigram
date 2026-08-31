@@ -2,18 +2,27 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
 import inspect
+from collections.abc import Mapping
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, ClassVar, get_args
 
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, RedirectResponse, Response
 
-from lexigram.admin.exceptions import AdminValidationError, NotFoundError
+from lexigram.admin.exceptions import (
+    AdminValidationError,
+    NotFoundError,
+    PermissionDeniedError,
+)
 from lexigram.admin.resources.form_guard import PROTECTED_FORM_FIELDS
+from lexigram.admin.resources.urls import admin_prefix_from_request, admin_url
 from lexigram.contracts.exceptions.domain import FieldError
 from lexigram.admin.state.context import AdminContextManager
 from lexigram.admin.ui.molecules.toast_notification import ToastNotification
+from lexigram.logging import get_logger
+
+logger = get_logger(__name__)
 
 if TYPE_CHECKING:
     from lexigram.admin.controllers.resource.meta import ResourceMeta
@@ -31,6 +40,56 @@ class ResourceMutationMixin:
     get_data_source: Any
     _emit_audit: Any
     _record_revision: Any
+
+    def _resource_url(self, request: Request, suffix: str = "") -> str:
+        """Build a URL under the request's active admin mount.
+
+        The compatibility controller predates the mounted resource handler and
+        historically used ``meta.prefix`` directly. Requests can now be served
+        under a custom mount, so redirects and form actions must use the same
+        request-aware URL contract as the newer resource pipeline.
+        """
+        scope = getattr(request, "scope", {})
+        explicit_prefix = (
+            scope.get("admin_prefix") if isinstance(scope, Mapping) else None
+        )
+        prefix = (
+            admin_prefix_from_request(request)
+            if explicit_prefix
+            else getattr(self.meta, "prefix", None)
+            or admin_prefix_from_request(request)
+        )
+        return admin_url(prefix, getattr(self.meta, "name", ""), suffix)
+
+    def _form_response(
+        self,
+        ctx: Any,
+        item: Any,
+        data: dict[str, Any] | None,
+        errors: dict[str, list[str]],
+        status_code: int = 422,
+    ) -> Response:
+        """Render a safe validation response for either request mode."""
+        try:
+            body = (
+                self.render_form_partial(ctx, item, data, errors)
+                if ctx.is_htmx
+                else self.render_form(ctx, item, data, errors)
+            )
+            return HTMLResponse(body, status_code=status_code)
+        except Exception:  # noqa: BLE001 — presentation hooks are extensions
+            logger.exception("admin.resource_form_render_failed")
+            return HTMLResponse("Unable to render form", status_code=500)
+
+    @staticmethod
+    def _record_id(record: Any) -> str:
+        """Read an identifier from object- and mapping-backed records."""
+        value = (
+            record.get("id")
+            if isinstance(record, dict)
+            else getattr(record, "id", "")
+        )
+        return str(value) if value is not None else ""
 
     async def _record_permission(self, request: Request, name: str, item: Any = None) -> bool:
         """Evaluate an optional resource-level permission hook.
@@ -54,61 +113,76 @@ class ResourceMutationMixin:
         async with AdminContextManager(request) as ctx:
             if not await self._record_permission(request, "can_create"):
                 return HTMLResponse("Forbidden", status_code=403)
-            if ctx.is_htmx:
-                return HTMLResponse(self.render_form_partial(ctx, None))
-            return HTMLResponse(self.render_form(ctx, None))
+            try:
+                if ctx.is_htmx:
+                    return HTMLResponse(self.render_form_partial(ctx, None))
+                return HTMLResponse(self.render_form(ctx, None))
+            except Exception:  # noqa: BLE001 — presentation hooks are extensions
+                logger.exception("admin.resource_create_form_render_failed")
+                return HTMLResponse("Unable to render form", status_code=500)
 
     async def create(self, request: Request) -> Response:
         """Create new resource."""
         async with AdminContextManager(request) as ctx:
             if not await self._record_permission(request, "can_create"):
                 return HTMLResponse("Forbidden", status_code=403)
-            form_data = request.scope.get("admin_form_data")
-            if form_data is None:
-                form_data = await request.form()
-            from lexigram.admin.resources.action_handlers import (
-                _form_data_dict,
-                _validation_errors_to_dict,
-            )
+            try:
+                form_data = request.scope.get("admin_form_data")
+                if form_data is None:
+                    form_data = await request.form()
+                from lexigram.admin.resources.action_handlers import _form_data_dict
 
-            data = _form_data_dict(form_data)
-            data.pop("csrf_token", None)
+                data = _form_data_dict(form_data)
+                data.pop("csrf_token", None)
+            except Exception:  # noqa: BLE001 — malformed bodies are client errors
+                logger.exception("admin.resource_create_form_parse_failed")
+                return HTMLResponse("Invalid form data", status_code=400)
+
+            from lexigram.admin.resources.action_handlers import _validation_errors_to_dict
 
             # Validate
             try:
                 validated = self.validate_create(data)
             except AdminValidationError as e:
-                # Return form with errors
-                if ctx.is_htmx:
-                    return HTMLResponse(
-                        self.render_form_partial(ctx, None, data, _validation_errors_to_dict(e)),
-                        status_code=422,
-                    )
-                return HTMLResponse(
-                    self.render_form(ctx, None, data, _validation_errors_to_dict(e)),
-                    status_code=422,
+                return self._form_response(
+                    ctx, None, data, _validation_errors_to_dict(e)
                 )
+            except (TypeError, ValueError) as exc:
+                logger.info("admin.resource_create_validation_failed", error=str(exc))
+                return self._form_response(
+                    ctx, None, data, {"__all__": ["Form validation failed"]}
+                )
+            except Exception:  # noqa: BLE001 — custom validation is an extension
+                logger.exception("admin.resource_create_validation_failed")
+                return HTMLResponse("Unable to validate form", status_code=500)
 
             # Create
-            data_source = self.get_data_source()
             try:
-                created = await data_source.create(validated)
-            except ValueError as e:
-                errors = {"__all__": [str(e)]}
-                if ctx.is_htmx:
-                    return HTMLResponse(
-                        self.render_form_partial(ctx, None, data, errors),
-                        status_code=422,
-                    )
-                return HTMLResponse(
-                    self.render_form(ctx, None, data, errors),
-                    status_code=422,
+                data_source = self.get_data_source()
+                created_result = data_source.create(validated)
+                created = (
+                    await created_result
+                    if inspect.isawaitable(created_result)
+                    else created_result
                 )
+            except (PermissionError, PermissionDeniedError):
+                return HTMLResponse("Forbidden", status_code=403)
             except NotImplementedError:
                 return HTMLResponse("Resource does not support create", status_code=503)
+            except (TypeError, ValueError):
+                logger.exception("admin.resource_create_rejected")
+                return self._form_response(
+                    ctx, None, data, {"__all__": ["Unable to create record"]}
+                )
+            except Exception:  # noqa: BLE001 — storage failures are sanitized
+                logger.exception("admin.resource_create_failed")
+                return HTMLResponse("Unable to create record", status_code=503)
             if created is None:
                 return HTMLResponse("Unable to create record", status_code=503)
-            created_id = str(getattr(created, "id", "") if created else "")
+            created_id = self._record_id(created)
+            if not created_id:
+                logger.error("admin.resource_create_missing_id")
+                return HTMLResponse("Unable to create record", status_code=500)
             await self._emit_audit(
                 request,
                 f"{getattr(self.meta, 'name', 'resource')}.create",
@@ -129,11 +203,11 @@ class ResourceMutationMixin:
             )
             if ctx.is_htmx:
                 response = Response(status_code=200)
-                response.headers["HX-Redirect"] = f"{self.meta.prefix}/{self.meta.name}"
+                response.headers["HX-Redirect"] = self._resource_url(request)
                 return response
 
             return RedirectResponse(
-                url=f"{self.meta.prefix}/{self.meta.name}",
+                url=self._resource_url(request),
                 status_code=302,
             )
 
@@ -217,17 +291,28 @@ class ResourceMutationMixin:
         async with AdminContextManager(request) as ctx:
             item_id = request.path_params.get("id")
 
-            data_source = self.get_data_source()
-            item = await data_source.find_one(item_id)
+            try:
+                data_source = self.get_data_source()
+                lookup = data_source.find_one(item_id)
+                item = await lookup if inspect.isawaitable(lookup) else lookup
+            except NotImplementedError:
+                return HTMLResponse("Resource data source unavailable", status_code=503)
+            except Exception:  # noqa: BLE001 — storage failures are sanitized
+                logger.exception("admin.resource_edit_lookup_failed")
+                return HTMLResponse("Unable to load record", status_code=503)
 
             if item is None:
                 raise NotFoundError(message=f"{self.meta.label} not found")
             if not await self._record_permission(request, "can_update", item):
                 return HTMLResponse("Forbidden", status_code=403)
 
-            if ctx.is_htmx:
-                return HTMLResponse(self.render_form_partial(ctx, item))
-            return HTMLResponse(self.render_form(ctx, item))
+            try:
+                if ctx.is_htmx:
+                    return HTMLResponse(self.render_form_partial(ctx, item))
+                return HTMLResponse(self.render_form(ctx, item))
+            except Exception:  # noqa: BLE001 — presentation hooks are extensions
+                logger.exception("admin.resource_edit_form_render_failed")
+                return HTMLResponse("Unable to render form", status_code=500)
 
     @staticmethod
     def _record_mapping(item: Any) -> dict[str, Any]:
@@ -249,22 +334,32 @@ class ResourceMutationMixin:
         """Update existing resource."""
         async with AdminContextManager(request) as ctx:
             item_id = request.path_params.get("id")
-            form_data = request.scope.get("admin_form_data")
-            if form_data is None:
-                form_data = await request.form()
-            from lexigram.admin.resources.action_handlers import (
-                _form_data_dict,
-                _validation_errors_to_dict,
-            )
+            try:
+                form_data = request.scope.get("admin_form_data")
+                if form_data is None:
+                    form_data = await request.form()
+                from lexigram.admin.resources.action_handlers import _form_data_dict
 
-            data = _form_data_dict(form_data)
-            data.pop("csrf_token", None)
+                data = _form_data_dict(form_data)
+                data.pop("csrf_token", None)
+            except Exception:  # noqa: BLE001 — malformed bodies are client errors
+                logger.exception("admin.resource_update_form_parse_failed")
+                return HTMLResponse("Invalid form data", status_code=400)
+
+            from lexigram.admin.resources.action_handlers import _validation_errors_to_dict
 
             # Fetch before validation so a partial edit can be validated
             # against the persisted record. Disabled/readonly controls are
             # intentionally absent from browser submissions.
-            data_source = self.get_data_source()
-            item = await data_source.find_one(item_id)
+            try:
+                data_source = self.get_data_source()
+                lookup = data_source.find_one(item_id)
+                item = await lookup if inspect.isawaitable(lookup) else lookup
+            except NotImplementedError:
+                return HTMLResponse("Resource data source unavailable", status_code=503)
+            except Exception:  # noqa: BLE001 — storage failures are sanitized
+                logger.exception("admin.resource_update_lookup_failed")
+                return HTMLResponse("Unable to load record", status_code=503)
             if item is None:
                 raise NotFoundError(message=f"{self.meta.label} not found")
             if not await self._record_permission(request, "can_update", item):
@@ -276,33 +371,41 @@ class ResourceMutationMixin:
                     item_id, {**self._record_mapping(item), **data}
                 )
             except AdminValidationError as e:
-                errors = _validation_errors_to_dict(e)
-                if ctx.is_htmx:
-                    return HTMLResponse(
-                        self.render_form_partial(ctx, item, data, errors),
-                        status_code=422,
-                    )
-                return HTMLResponse(
-                    self.render_form(ctx, item, data, errors),
-                    status_code=422,
+                return self._form_response(
+                    ctx, item, data, _validation_errors_to_dict(e)
                 )
+            except (TypeError, ValueError) as exc:
+                logger.info("admin.resource_update_validation_failed", error=str(exc))
+                return self._form_response(
+                    ctx, item, data, {"__all__": ["Form validation failed"]}
+                )
+            except Exception:  # noqa: BLE001 — custom validation is an extension
+                logger.exception("admin.resource_update_validation_failed")
+                return HTMLResponse("Unable to validate form", status_code=500)
 
             # Update
             try:
-                item = await data_source.update(item_id, validated)
-            except ValueError as e:
-                errors = {"__all__": [str(e)]}
-                if ctx.is_htmx:
-                    return HTMLResponse(
-                        self.render_form_partial(ctx, item, data, errors),
-                        status_code=422,
-                    )
-                return HTMLResponse(
-                    self.render_form(ctx, item, data, errors),
-                    status_code=422,
+                update_result = data_source.update(item_id, validated)
+                item = (
+                    await update_result
+                    if inspect.isawaitable(update_result)
+                    else update_result
                 )
+            except (PermissionError, PermissionDeniedError):
+                return HTMLResponse("Forbidden", status_code=403)
             except NotImplementedError:
                 return HTMLResponse("Resource does not support update", status_code=503)
+            except (TypeError, ValueError):
+                logger.exception("admin.resource_update_rejected")
+                return self._form_response(
+                    ctx, item, data, {"__all__": ["Unable to update record"]}
+                )
+            except Exception:  # noqa: BLE001 — storage failures are sanitized
+                logger.exception("admin.resource_update_failed")
+                return HTMLResponse("Unable to update record", status_code=503)
+            # Compatibility data sources may perform an update without
+            # returning the refreshed record; the preflight lookup above still
+            # established that the target existed.
             await self._emit_audit(
                 request,
                 f"{getattr(self.meta, 'name', 'resource')}.update",
@@ -323,12 +426,12 @@ class ResourceMutationMixin:
             if ctx.is_htmx:
                 response = Response(status_code=200)
                 response.headers["HX-Redirect"] = (
-                    f"{self.meta.prefix}/{self.meta.name}/{item_id}"
+                    self._resource_url(request, str(item_id))
                 )
                 return response
 
             return RedirectResponse(
-                url=f"{self.meta.prefix}/{self.meta.name}/{item_id}",
+                url=self._resource_url(request, str(item_id)),
                 status_code=302,
             )
 
@@ -350,19 +453,25 @@ class ResourceMutationMixin:
         record_label = f"{label} #{item_id}"
         try:
             data_source = self.get_data_source()
-            item = await data_source.find_one(item_id)
-            if item:
-                if not await self._record_permission(request, "can_delete", item):
-                    return HTMLResponse("Forbidden", status_code=403)
-                for field in ("name", "title", "email", "username", "label"):
-                    val = getattr(item, field, None)
-                    if val:
-                        record_label = str(val)
-                        break
-        except Exception:  # noqa: BLE001, S110
-            pass
+            lookup = data_source.find_one(item_id)
+            item = await lookup if inspect.isawaitable(lookup) else lookup
+        except NotImplementedError:
+            return HTMLResponse("Resource data source unavailable", status_code=503)
+        except Exception:  # noqa: BLE001 — storage failures are sanitized
+            logger.exception("admin.resource_delete_confirm_lookup_failed")
+            return HTMLResponse("Unable to load record", status_code=503)
 
-        delete_url = f"{self.meta.prefix}/{self.meta.name}/{item_id}"
+        if item is None:
+            raise NotFoundError(message=f"{self.meta.label} not found")
+        if not await self._record_permission(request, "can_delete", item):
+            return HTMLResponse("Forbidden", status_code=403)
+        for field in ("name", "title", "email", "username", "label"):
+            val = item.get(field) if isinstance(item, dict) else getattr(item, field, None)
+            if val:
+                record_label = str(val)
+                break
+
+        delete_url = self._resource_url(request, str(item_id))
         from lexigram.admin.ui.organisms.admin_slide_over import render_delete_confirm
 
         html = render_delete_confirm(
@@ -375,34 +484,61 @@ class ResourceMutationMixin:
         """Delete resource (soft or hard depending on soft_delete_enabled)."""
         async with AdminContextManager(request) as ctx:
             item_id = request.path_params.get("id")
-            data_source = self.get_data_source()
-            item = await data_source.find_one(item_id)
+            try:
+                data_source = self.get_data_source()
+                lookup = data_source.find_one(item_id)
+                item = await lookup if inspect.isawaitable(lookup) else lookup
+            except NotImplementedError:
+                return HTMLResponse("Resource data source unavailable", status_code=503)
+            except Exception:  # noqa: BLE001 — storage failures are sanitized
+                logger.exception("admin.resource_delete_lookup_failed")
+                return HTMLResponse("Unable to load record", status_code=503)
             if item is None:
                 raise NotFoundError(message=f"{self.meta.label} not found")
             if not await self._record_permission(request, "can_delete", item):
                 return HTMLResponse("This record cannot be deleted", status_code=403)
 
-            if self.soft_delete_enabled:
-                # Soft delete — stamp deleted_at instead of removing the row
-                updated = await data_source.update(
-                    item_id, {"deleted_at": datetime.now(UTC).isoformat()}
-                )
-                if updated is None:
-                    raise NotFoundError(message=f"{self.meta.label} not found")
-                await self._emit_audit(
-                    request,
-                    f"{getattr(self.meta, 'name', 'resource')}.soft_delete",
-                    item_id=str(item_id),
-                )
-            else:
-                success = await data_source.delete(item_id)
-                if not success:
-                    raise NotFoundError(message=f"{self.meta.label} not found")
-                await self._emit_audit(
-                    request,
-                    f"{getattr(self.meta, 'name', 'resource')}.delete",
-                    item_id=str(item_id),
-                )
+            try:
+                if self.soft_delete_enabled:
+                    # Soft delete — stamp deleted_at instead of removing the row
+                    update_result = data_source.update(
+                        item_id, {"deleted_at": datetime.now(UTC).isoformat()}
+                    )
+                    updated = (
+                        await update_result
+                        if inspect.isawaitable(update_result)
+                        else update_result
+                    )
+                    if updated is None:
+                        raise NotFoundError(message=f"{self.meta.label} not found")
+                    await self._emit_audit(
+                        request,
+                        f"{getattr(self.meta, 'name', 'resource')}.soft_delete",
+                        item_id=str(item_id),
+                    )
+                else:
+                    delete_result = data_source.delete(item_id)
+                    success = (
+                        await delete_result
+                        if inspect.isawaitable(delete_result)
+                        else delete_result
+                    )
+                    if not success:
+                        raise NotFoundError(message=f"{self.meta.label} not found")
+                    await self._emit_audit(
+                        request,
+                        f"{getattr(self.meta, 'name', 'resource')}.delete",
+                        item_id=str(item_id),
+                    )
+            except NotFoundError:
+                raise
+            except (PermissionError, PermissionDeniedError):
+                return HTMLResponse("Forbidden", status_code=403)
+            except NotImplementedError:
+                return HTMLResponse("Resource does not support delete", status_code=503)
+            except Exception:  # noqa: BLE001 — storage/audit failures are sanitized
+                logger.exception("admin.resource_delete_failed")
+                return HTMLResponse("Unable to delete record", status_code=503)
 
             (
                 ToastNotification.make("Deleted successfully")
@@ -413,11 +549,11 @@ class ResourceMutationMixin:
             )
             if ctx.is_htmx:
                 response = Response(status_code=200)
-                response.headers["HX-Redirect"] = f"{self.meta.prefix}/{self.meta.name}"
+                response.headers["HX-Redirect"] = self._resource_url(request)
                 return response
 
             return RedirectResponse(
-                url=f"{self.meta.prefix}/{self.meta.name}",
+                url=self._resource_url(request),
                 status_code=302,
             )
 
@@ -433,14 +569,34 @@ class ResourceMutationMixin:
                 )
 
             item_id = request.path_params.get("id")
-            data_source = self.get_data_source()
-            item = await data_source.find_one(item_id)
+            try:
+                data_source = self.get_data_source()
+                lookup = data_source.find_one(item_id)
+                item = await lookup if inspect.isawaitable(lookup) else lookup
+            except NotImplementedError:
+                return HTMLResponse("Resource data source unavailable", status_code=503)
+            except Exception:  # noqa: BLE001 — storage failures are sanitized
+                logger.exception("admin.resource_restore_lookup_failed")
+                return HTMLResponse("Unable to load record", status_code=503)
             if item is None:
                 raise NotFoundError(message=f"{self.meta.label} not found")
             if not await self._record_permission(request, "can_update", item):
                 return HTMLResponse("This record cannot be restored", status_code=403)
 
-            updated = await data_source.update(item_id, {"deleted_at": None})
+            try:
+                update_result = data_source.update(item_id, {"deleted_at": None})
+                updated = (
+                    await update_result
+                    if inspect.isawaitable(update_result)
+                    else update_result
+                )
+            except (PermissionError, PermissionDeniedError):
+                return HTMLResponse("Forbidden", status_code=403)
+            except NotImplementedError:
+                return HTMLResponse("Resource does not support restore", status_code=503)
+            except Exception:  # noqa: BLE001 — storage failures are sanitized
+                logger.exception("admin.resource_restore_failed")
+                return HTMLResponse("Unable to restore record", status_code=503)
             if updated is None:
                 raise NotFoundError(message=f"{self.meta.label} not found")
             await self._emit_audit(
@@ -464,6 +620,6 @@ class ResourceMutationMixin:
                 return response
 
             return RedirectResponse(
-                url=f"{self.meta.prefix}/{self.meta.name}",
+                url=self._resource_url(request),
                 status_code=302,
             )

@@ -149,8 +149,16 @@ class StatCard(Component):
 
         icon_el = el(
             "div",
-            el("i", {"data-lucide": s.icon, "class": "w-5 h-5"}),
-            class_=f"flex-shrink-0 rounded-lg p-3 {icon_bg}",
+            el(
+                "i",
+                {
+                    "data-lucide": s.icon,
+                    "class": "h-5 w-5",
+                    "aria-hidden": "true",
+                },
+            ),
+            class_=f"dashboard-stat-icon flex-shrink-0 rounded-xl p-3 {icon_bg}",
+            aria_hidden="true",
         )
         value_row = el(
             "div",
@@ -177,11 +185,17 @@ class StatCard(Component):
             "div",
             icon_el,
             info_el,
-            class_="bg-card rounded-xl shadow-sm border border-border p-5 flex items-start gap-4 hover:shadow-md transition-shadow",
+            class_="dashboard-stat-card group flex items-start gap-4 rounded-2xl border border-border/70 bg-card p-5 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-lg",
+            data_stat_color=s.color,
         )
 
         if s.href:
-            return el("a", inner, href=s.href, class_="block")
+            return el(
+                "a",
+                inner,
+                href=s.href,
+                class_="dashboard-stat-link block rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+            )
         return inner
 
 
@@ -231,7 +245,7 @@ class StatCardGrid(Component):
         grid = el(
             "div",
             *[StatCard(s) for s in self.stats],
-            class_=f"grid grid-cols-1 {col_class} gap-4",
+            class_=f"dashboard-stat-grid grid grid-cols-1 {col_class} gap-4",
         )
         if not self.data_source:
             return grid
@@ -299,23 +313,6 @@ class ActivityFeed(Component):
         self.view_all_href = view_all_href
 
     def render(self) -> Any:
-        header_children: list[Any] = [
-            el(
-                "h3",
-                self.title,
-                class_="text-sm font-semibold text-foreground",
-            ),
-        ]
-        if self.view_all_href:
-            header_children.append(
-                el(
-                    "a",
-                    "View all →",
-                    href=self.view_all_href,
-                    class_="text-xs text-primary-500 hover:text-primary-600 dark:text-primary-400",
-                )
-            )
-
         if not self.items:
             body = el(
                 "p",
@@ -357,6 +354,7 @@ class ActivityFeed(Component):
                         {
                             "data-lucide": item.icon,
                             "class": "w-3.5 h-3.5 text-muted-foreground",
+                            "aria-hidden": "true",
                         },
                     ),
                 )
@@ -370,14 +368,36 @@ class ActivityFeed(Component):
                 )
             body = el("ul", *rows, class_="divide-y-0")
 
+        heading_id = f"activity-heading-{uuid4().hex[:8]}"
         header_el = el(
-            "div", *header_children, class_="flex items-center justify-between mb-4"
+            "div",
+            el(
+                "h3",
+                self.title,
+                id=heading_id,
+                class_="text-sm font-semibold text-foreground",
+            ),
+            *(
+                [
+                    el(
+                        "a",
+                        "View all →",
+                        href=self.view_all_href,
+                        class_="text-xs text-primary hover:text-primary/80",
+                    )
+                ]
+                if self.view_all_href
+                else []
+            ),
+            class_="mb-4 flex items-center justify-between",
         )
         return el(
-            "div",
+            "section",
             header_el,
             body,
-            class_="bg-card rounded-xl shadow-sm border border-border p-5",
+            class_="dashboard-activity-card rounded-2xl border border-border/70 bg-card p-5 shadow-sm",
+            role="region",
+            aria_labelledby=heading_id,
         )
 
 
@@ -420,7 +440,10 @@ class SystemHealthWidget(Component):
                 "div",
                 el(
                     "span",
-                    {"class": f"w-2 h-2 rounded-full {dot_color} flex-shrink-0"},
+                    {
+                        "class": f"h-2 w-2 rounded-full {dot_color} flex-shrink-0",
+                        "aria-hidden": "true",
+                    },
                 ),
                 el(
                     "span",
@@ -433,7 +456,11 @@ class SystemHealthWidget(Component):
                 "div",
                 latency_el,
                 el(
-                    "span", status_label, class_=f"text-xs font-semibold {status_color}"
+                    "span",
+                    status_label,
+                    class_=f"text-xs font-semibold {status_color}",
+                    title=entry.message or None,
+                    aria_label=f"{entry.name}: {status_label}",
                 ),
                 class_="flex items-center gap-2",
             )
@@ -455,15 +482,19 @@ class SystemHealthWidget(Component):
                 class_="text-sm text-muted-foreground",
             )
         )
+        heading_id = f"health-heading-{uuid4().hex[:8]}"
         return el(
-            "div",
+            "section",
             el(
                 "h3",
                 self.title,
-                class_="text-sm font-semibold text-foreground mb-4",
+                id=heading_id,
+                class_="mb-4 text-sm font-semibold text-foreground",
             ),
             body,
-            class_="bg-card rounded-xl shadow-sm border border-border p-5",
+            class_="dashboard-health-card rounded-2xl border border-border/70 bg-card p-5 shadow-sm",
+            role="region",
+            aria_labelledby=heading_id,
         )
 
 

@@ -399,7 +399,7 @@ class Sidebar(Component):
             header,
             nav,
             footer,
-            class_="relative flex flex-col h-full bg-card dark:bg-background border-r border-border transition-all duration-300 ease-in-out",
+            class_="admin-modern-sidebar relative flex flex-col h-full bg-card dark:bg-background border-r border-border transition-all duration-300 ease-in-out",
             **{"id": "main-sidebar", "x-bind:class": "sidebarMini ? 'w-24' : 'w-72'"},
             role="complementary",
             aria_label="Sidebar navigation",

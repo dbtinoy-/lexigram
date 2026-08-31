@@ -224,6 +224,7 @@ class TopBar(Component):
                 size="sm",
                 **{  # type: ignore[arg-type]
                     "x-on:click": "sidebarOpen = !sidebarOpen",
+                    "aria-label": "Open navigation",
                     "class_": "mr-4 lg:hidden",
                 },
             ).render()
@@ -281,7 +282,7 @@ class TopBar(Component):
             right_node = el(
                 "div",
                 *right_elements,
-                class_="flex items-center space-x-3",
+                class_="admin-topbar-actions flex items-center space-x-3",
             )
 
         center_node = self.center or ""
@@ -289,7 +290,7 @@ class TopBar(Component):
             center_node = el(
                 "div",
                 el(
-                    "div",
+                    "button",
                     el(
                         "svg",
                         el(
@@ -309,7 +310,9 @@ class TopBar(Component):
                         "Search (Cmd+K)",
                         class_="ml-3 text-muted-foreground text-sm hidden sm:block",
                     ),
-                    class_="flex items-center w-full max-w-md px-4 py-2 bg-muted rounded-lg cursor-pointer hover:bg-muted/80 transition-colors",
+                    type="button",
+                    aria_label="Open command palette",
+                    class_="admin-command-trigger flex items-center w-full max-w-md px-4 py-2 bg-muted rounded-lg cursor-pointer hover:bg-muted/80 transition-colors",
                     **{"x-on:click": "$dispatch('open-command-palette')"},
                 ),
                 class_="flex-1 flex justify-center max-w-2xl",
@@ -324,5 +327,5 @@ class TopBar(Component):
                 el("div", right_node, class_="flex-shrink-0"),
                 class_="px-4 h-16 flex items-center justify-between",
             ),
-            class_="bg-background/80 backdrop-blur-md border-b border-border sticky top-0 z-20 shadow-sm transition-colors duration-300",
+            class_="admin-topbar bg-background/80 backdrop-blur-md border-b border-border sticky top-0 z-20 shadow-sm transition-colors duration-300",
         )

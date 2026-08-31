@@ -94,6 +94,34 @@ class DashboardController(AdminController):
         admin_prefix = admin_prefix_from_request(request)
         state_csrf_token = getattr(getattr(request, "state", None), "csrf_token", "")
         csrf_token = state_csrf_token if isinstance(state_csrf_token, str) else ""
+        request_user = getattr(getattr(request, "state", None), "user", None)
+        if isinstance(request_user, dict):
+            display_name = (
+                request_user.get("name")
+                or request_user.get("username")
+                or request_user.get("email")
+                or "there"
+            )
+        else:
+            display_name = (
+                getattr(request_user, "name", None)
+                or getattr(request_user, "username", None)
+                or "there"
+            )
+        if not isinstance(display_name, str) or not display_name.strip():
+            display_name = "there"
+        dashboard_title = (
+            "Overview"
+            if dashboard_id == "default"
+            else dashboard_id.replace("_", " ").replace("-", " ").title()
+        )
+        resource_names = self._get_resource_list(request)
+        primary_resource_url = (
+            f"{admin_prefix}/{resource_names[0]}"
+            if resource_names
+            else admin_prefix
+        )
+        primary_resource_label = "Browse resources" if resource_names else "Explore dashboard"
 
         # Page-level filter state: schema defaults → session → query params
         filter_state: dict[str, Any] = {}
@@ -165,7 +193,7 @@ class DashboardController(AdminController):
             default_stats = [
                 Stat(
                     label="Resources",
-                    value=str(len(self._get_resource_list(request))),
+                    value=str(len(resource_names)),
                     icon="layers",
                     color="blue",
                     description="Registered admin resources",
@@ -247,17 +275,23 @@ class DashboardController(AdminController):
         # SortableJS drag-and-drop controls + widget config helpers
         dnd_html = raw(
             """
-<div id="dashboard-dnd-controls" class="mt-4 text-center" data-csrf-token="__LEXIGRAM_CSRF_TOKEN__">
-  <button id="save-layout-btn"
-          class="hidden bg-primary text-primary-foreground px-4 py-2 rounded hover:bg-primary/90 text-sm">
-    💾 Save Layout
+<div id="dashboard-dnd-controls" class="dashboard-dnd-controls mt-1 flex items-center justify-end gap-3" data-csrf-token="__LEXIGRAM_CSRF_TOKEN__">
+  <span id="dashboard-layout-status" class="text-xs text-muted-foreground" role="status" aria-live="polite"></span>
+  <button id="save-layout-btn" type="button"
+          class="hidden inline-flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/10 px-3 py-2 text-sm font-medium text-primary transition hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+    <span aria-hidden="true">✦</span> Save layout
   </button>
 </div>
 <script>
 (function() {
   var grid = document.getElementById('dashboard-grid');
   var saveBtn = document.getElementById('save-layout-btn');
+  var status = document.getElementById('dashboard-layout-status');
   var sortableInstance = null;
+
+  function setStatus(message) {
+    if (status) status.textContent = message || '';
+  }
 
   function initSortable() {
     grid = document.getElementById('dashboard-grid');
@@ -266,7 +300,8 @@ class DashboardController(AdminController):
       animation: 150,
       handle: '.widget-card',
       onEnd: function() {
-        saveBtn.classList.remove('hidden');
+        if (saveBtn) saveBtn.classList.remove('hidden');
+        setStatus('Layout changed');
       }
     });
   }
@@ -287,6 +322,8 @@ class DashboardController(AdminController):
       var order = Array.from(grid.querySelectorAll('.widget-card')).map(function(card) {
         return card.dataset.widgetName;
       });
+      saveBtn.disabled = true;
+      setStatus('Saving layout…');
       try {
         var csrf = document.getElementById('dashboard-dnd-controls').dataset.csrfToken || '';
         var resp = await fetch('/admin/core/widgets/reorder', {
@@ -294,12 +331,14 @@ class DashboardController(AdminController):
           headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrf},
           body: JSON.stringify({order: order})
         });
-        if (resp.ok) {
-          saveBtn.classList.add('hidden');
-          saveBtn.textContent = '✅ Saved!';
-          setTimeout(function() { saveBtn.textContent = '💾 Save Layout'; }, 2000);
-        }
-      } catch(e) {}
+        if (!resp.ok) throw new Error('save_failed');
+        saveBtn.classList.add('hidden');
+        setStatus('Layout saved');
+      } catch(e) {
+        setStatus('Could not save layout. Try again.');
+      } finally {
+        saveBtn.disabled = false;
+      }
     });
   }
 })();
@@ -329,22 +368,53 @@ class DashboardController(AdminController):
             else None
         )
 
-        content = el(
-            "div",
+        dashboard_header = el(
+            "section",
             el(
                 "div",
                 el(
-                    "h2",
-                    dashboard_id,
-                    class_="text-2xl font-bold text-foreground",
+                    "p",
+                    "Workspace overview",
+                    class_="text-xs font-semibold uppercase tracking-[0.18em] text-primary",
                 ),
-                customize_btn,
-                class_="flex items-center justify-between",
+                el(
+                    "h1",
+                    f"Welcome back, {display_name}",
+                    class_="mt-2 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl",
+                ),
+                el(
+                    "p",
+                    f"A calm, current view of your {dashboard_title.lower()} operations.",
+                    class_="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground",
+                ),
             ),
+            el(
+                "div",
+                el(
+                    "span",
+                    el("span", class_="h-2 w-2 rounded-full bg-success"),
+                    "Live workspace",
+                    class_="inline-flex items-center gap-2 rounded-full border border-success/20 bg-success/10 px-3 py-1.5 text-xs font-medium text-success",
+                    role="status",
+                ),
+                el(
+                    "a",
+                    primary_resource_label,
+                    href=primary_resource_url,
+                    class_="inline-flex items-center justify-center rounded-lg bg-primary px-3.5 py-2 text-sm font-medium text-primary-foreground shadow-sm transition hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                ),
+                class_="flex flex-wrap items-center gap-3 sm:justify-end",
+            ),
+            class_="dashboard-hero flex flex-col gap-5 rounded-2xl border border-border/70 bg-card/80 p-5 shadow-sm backdrop-blur sm:flex-row sm:items-end sm:justify-between sm:p-7",
+        )
+
+        content = el(
+            "div",
+            dashboard_header,
             filter_form,
             widgets_section,
             dnd_html,
-            class_="dashboard-view space-y-6",
+            class_="dashboard-view dashboard-page space-y-6",
         )
 
         return await self._render_with_flash(
