@@ -102,7 +102,9 @@ class StorageIntegration:
 
     async def presigned_url(self, path: str, expires_in: int | None = None) -> str:
         """Return a temporary GET URL using the blob-store contract's timedelta API."""
-        ttl = expires_in or getattr(self._config, "presigned_url_expiry", 3600)
+        # `or` already skips 0/None from expires_in, but the config attribute
+        # can itself be None, which timedelta rejects -- fall back again.
+        ttl = expires_in or getattr(self._config, "presigned_url_expiry", 3600) or 3600
         try:
             return await self._store.get_presigned_url(
                 path,

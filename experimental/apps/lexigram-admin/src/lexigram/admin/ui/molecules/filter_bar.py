@@ -75,6 +75,7 @@ class FilterBar(Component):
 
         # If filters is a list, assume they are Filter objects
         if isinstance(self.filters, list):
+            f: Any
             for f in self.filters:
                 # Check visibility if context available
                 if hasattr(f, "is_visible") and not f.is_visible():

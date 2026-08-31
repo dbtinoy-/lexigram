@@ -401,7 +401,11 @@ class AdminLayout(LayoutBase):
             </script>
             """)
 
-        # Core admin JS (served from admin router's static mount)
+        # Core admin JS (served from admin router's static mount).
+        # Derived here rather than reused from render_head: that is a
+        # separate method, so referencing its local raised NameError and
+        # took down every page that reached this line.
+        asset_prefix = ctx.base_url.rstrip("/") or "/admin"
         parts.append(
             f'<script src="{escape(asset_prefix)}/static/js/admin.js"></script>'
         )

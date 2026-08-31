@@ -34,8 +34,19 @@ class ColumnRenderingMixin:
     _copyable: bool
     _sortable: bool
 
-    def is_visible(self, **kwargs: Any) -> bool:
-        """Check if column is visible — implemented by ColumnVisibilityMixin."""
+    def is_visible(
+        self,
+        user: Any = None,
+        resource_name: str | None = None,
+        record: dict | Any | None = None,
+        permission_service: Any = None,
+    ) -> bool:
+        """Check if column is visible — implemented by ColumnVisibilityMixin.
+
+        Mirrors that mixin's signature exactly. This stub previously took
+        **kwargs, so the two co-mixed declarations disagreed and any
+        subclass matching the real one was reported as an invalid override.
+        """
         return True
 
     def get_value(self, record: dict) -> Any:

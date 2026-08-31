@@ -18,7 +18,7 @@ from lexigram.admin.resources.wizard_renderer import WizardRendererMixin
 from lexigram.admin.state.context import wants_fragment
 from lexigram.di.decorators import inject
 from lexigram.logging import get_logger
-from lexigram.ui import Form, Modal, SlideOver, Zones, el, render_to_string
+from lexigram.ui import Component, Form, Modal, SlideOver, Zones, el, render_to_string
 
 logger = get_logger(__name__)
 
@@ -119,7 +119,9 @@ class FormRenderer(WizardRendererMixin):
         form_component._request = request
 
         if overlay_mode and display_mode == "modal":
-            overlay = Modal(
+            # Modal and SlideOver are alternative overlay presentations
+            # chosen per request, so the variable holds either.
+            overlay: Component = Modal(
                 title=f"Create {label}",
                 trigger=None,
                 render_trigger=False,
@@ -241,7 +243,9 @@ class FormRenderer(WizardRendererMixin):
         form_component._request = request
 
         if overlay_mode and display_mode == "modal":
-            overlay = Modal(
+            # Modal and SlideOver are alternative overlay presentations
+            # chosen per request, so the variable holds either.
+            overlay: Component = Modal(
                 title=f"Edit {label}",
                 trigger=None,
                 render_trigger=False,
