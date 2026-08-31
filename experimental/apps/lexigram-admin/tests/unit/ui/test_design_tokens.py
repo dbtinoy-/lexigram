@@ -16,6 +16,7 @@ catch.
 from __future__ import annotations
 
 import re
+import sys
 from pathlib import Path
 
 import pytest
@@ -215,3 +216,77 @@ class TestUtilityClassesExist:
             "these arbitrary Tailwind classes are not in the prebuilt "
             f"tailwind.css and render as nothing: {missing}"
         )
+
+
+class TestOpacityUtilities:
+    """Slash-opacity classes on semantic tokens must resolve to a rule.
+
+    Tailwind cannot generate `bg-card/80` for a colour defined as a bare
+    custom property: the modifier needs raw channels and `var(--card)` is
+    opaque to the compiler. The prebuilt bundle therefore has no rule for
+    any of them, and ~100 call sites across the admin -- error states,
+    overlays, hover affordances -- rendered with no colour at all.
+
+    dev/generate_opacity_utilities.py emits the missing rules as color-mix
+    declarations. These tests keep the generated block honest.
+    """
+
+    _GENERATOR = (
+        Path(__file__).resolve().parents[3]
+        / "dev/generate_opacity_utilities.py"
+    )
+
+    def test_generator_is_present(self) -> None:
+        assert self._GENERATOR.is_file()
+
+    def test_generated_block_is_not_stale(self) -> None:
+        """Fails when source gained a slash-opacity class that was never
+        generated -- the exact regression that made these classes dead."""
+        import subprocess
+
+        result = subprocess.run(  # noqa: S603
+            [sys.executable, str(self._GENERATOR), "--check"],
+            capture_output=True,
+            text=True,
+        )
+
+        assert result.returncode == 0, result.stderr
+
+    @pytest.mark.parametrize(
+        "utility",
+        [
+            "bg-destructive/10",
+            "bg-card/80",
+            "bg-muted/50",
+            "bg-primary/90",
+            "bg-success/10",
+            "bg-warning/10",
+            "border-border/50",
+            "border-destructive/30",
+            "border-primary/50",
+            "text-destructive/90",
+        ],
+    )
+    def test_common_opacity_utilities_resolve(self, utility: str) -> None:
+        css = _all_css()
+        escaped = re.escape(utility).replace("/", r"\\/")
+
+        assert re.search(rf"\.{escaped}[{{:,]", css), (
+            f"{utility} matches no CSS rule, so it renders no colour"
+        )
+
+    def test_generated_rules_use_defined_tokens(self) -> None:
+        """A color-mix against an undefined variable is the original bug in
+        a new costume."""
+        admin_css = _read("admin.css")
+        block = admin_css[
+            admin_css.index("/* BEGIN generated") : admin_css.index(
+                "/* END generated"
+            )
+        ]
+        defined = _defined(admin_css)
+
+        referenced = set(re.findall(r"var\((--[a-z0-9-]+)\)", block))
+
+        assert referenced, "generated block references no tokens"
+        assert not sorted(referenced - defined)

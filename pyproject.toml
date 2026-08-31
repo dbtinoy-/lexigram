@@ -23,6 +23,7 @@ override-dependencies = ["gradio>=6.15.1", "diffusers==0.32.2", "transformers==4
 [tool.uv.sources]
 lexigram = { workspace = true }
 lexigram-admin = { workspace = true }
+lexigram-builder = { workspace = true }
 lexigram-ai-agents = { workspace = true }
 lexigram-ai-mcp = { workspace = true }
 lexigram-ai-feedback = { workspace = true }
@@ -161,6 +162,7 @@ norecursedirs = [".worktrees", ".venv", "build", "dist", "demos", "experimental/
 testpaths = [
     "core/lexigram/tests",
     "experimental/apps/lexigram-admin/tests",
+    "experimental/apps/lexigram-builder/tests",
     "experimental/ai/lexigram-ai/tests",
     "experimental/ai/lexigram-ai-agents/tests",
     "experimental/ai/lexigram-ai-feedback/tests",
@@ -220,6 +222,7 @@ pythonpath = [
     ".",
     "core/lexigram/src",
     "experimental/apps/lexigram-admin/src",
+    "experimental/apps/lexigram-builder/src",
     "experimental/ai/lexigram-ai/src",
     "experimental/ai/lexigram-ai-agents/src",
     "experimental/ai/lexigram-ai-feedback/src",
@@ -613,6 +616,7 @@ mypy_path = [
     "core/lexigram/src",
     "core/lexigram-contracts/src",
     "experimental/apps/lexigram-admin/src",
+    "experimental/apps/lexigram-builder/src",
     "experimental/ai/lexigram-ai/src",
     "experimental/ai/lexigram-ai-agents/src",
     "experimental/ai/lexigram-ai-evaluation/src",
