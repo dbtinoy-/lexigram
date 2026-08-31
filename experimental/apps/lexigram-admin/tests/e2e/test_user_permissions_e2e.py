@@ -21,7 +21,15 @@ from lexigram.admin.resources.users import UserResource
 
 
 class _User:
-    """Minimal admin user shape used by the fake data source."""
+    """Minimal admin user shape used by the fake data source.
+
+    Mirrors AdminUserRecord: ``roles`` is a list and ``has_role()`` is the
+    method the permission checks call. This stub previously exposed
+    ``is_admin`` and a singular ``role``, which no real user type in the
+    admin app has -- it had been written to match the buggy permission
+    checks rather than the user contract, which is why these end-to-end
+    tests passed while /admin/users returned 403 in production.
+    """
 
     def __init__(
         self,
@@ -29,13 +37,16 @@ class _User:
         name: str = "Alice",
         email: str = "alice@example.com",
         permissions: list[str] | None = None,
+        roles: list[str] | None = None,
     ) -> None:
         self.user_id = user_id
         self.name = name
         self.email = email
         self.permissions = permissions or []
-        self.is_admin = True
-        self.role = "admin"
+        self.roles = roles if roles is not None else ["admin"]
+
+    def has_role(self, role: str) -> bool:
+        return role in self.roles
 
 
 class _MemoryDataSource:
@@ -209,3 +220,28 @@ def test_permissions_action_url() -> None:
         )
         == "/admin/users/u1/permissions"
     )
+
+
+@pytest.mark.asyncio
+async def test_permissions_page_denied_without_a_privileged_role() -> None:
+    """The permissions page requires has_change_permission.
+
+    The suite only ever exercised the granted path, so a permission check
+    that raised AttributeError for every user still looked green: the
+    handler catches the error and fails closed, which is indistinguishable
+    from a correct denial unless something asserts on a grant *and* a
+    refusal.
+    """
+    async with _client(user=_User("u1", roles=["viewer"])) as client:
+        response = await client.get("/admin/users/u1/permissions")
+
+        assert response.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_permissions_page_allowed_for_moderator() -> None:
+    """Moderators hold change permission, so they reach the page."""
+    async with _client(user=_User("u1", roles=["moderator"])) as client:
+        response = await client.get("/admin/users/u1/permissions")
+
+        assert response.status_code == 200
