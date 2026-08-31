@@ -290,6 +290,7 @@ VERB_SPECS: dict[str, VerbSpec] = {
             reconcile=_reconcile_projection,
         ),
         VerbSpec("metric", "metrics", "src/app/metrics"),
+        VerbSpec("saga", "sagas", "src/app/sagas"),
         VerbSpec("api_client", "clients", "src/app/clients"),
         VerbSpec("storage_driver", "storage", "src/app/storage/backends"),
         VerbSpec(

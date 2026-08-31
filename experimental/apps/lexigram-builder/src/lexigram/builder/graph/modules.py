@@ -67,7 +67,7 @@ def derive_modules(doc: GraphDocument) -> list[ModuleCard]:
         card("sql", "DatabaseModule", n("entity") > 0, n("entity", "seeder", "search_index", "audit_log"), ("entity", "seeder", "search_index", "audit_log"), search_note),
         card("auth", "AuthModule", n("auth", "role", "api_key_group") > 0, n("auth", "role", "api_key_group"), ("auth", "role", "api_key_group")),
         card("features", "FlagManager", n("feature_flag") > 0, n("feature_flag"), ("feature_flag",)),
-        card("events", "EventsModule", n("event", "event_handler", "command", "query", "projection") > 0, n("event", "event_handler", "command", "query", "projection"), ("event", "event_handler", "command", "query", "projection"), "saga reserved"),
+        card("events", "EventsModule", n("event", "event_handler", "command", "query", "projection", "saga") > 0, n("event", "event_handler", "command", "query", "projection", "saga"), ("event", "event_handler", "command", "query", "projection", "saga")),
         card("tasks", "TasksModule", n("cron", "job") > 0, n("cron", "job"), ("cron", "job"), "queue backend reserved"),
         card("cache", "CacheModule", n("cache") > 0, n("cache"), ("cache",), cache_note),
         card("graphql", "GraphQLModule", gql > 0, gql, ("graphql",), "dataloader reserved" if gql else None),

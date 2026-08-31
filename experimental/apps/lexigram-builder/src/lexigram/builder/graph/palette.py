@@ -40,6 +40,7 @@ KIND_COMMAND = "command"
 KIND_QUERY = "query"
 KIND_PROJECTION = "projection"
 KIND_METRIC = "metric"
+KIND_SAGA = "saga"
 KIND_API_CLIENT = "api_client"
 KIND_STORAGE_DRIVER = "storage_driver"
 KIND_FEATURE_FLAG = "feature_flag"
@@ -56,7 +57,7 @@ KNOWN_KINDS: frozenset[str] = frozenset(
         KIND_RATE_LIMIT, KIND_CRON, KIND_SERVICE, KIND_SEEDER,
         KIND_EXCEPTION_FILTER, KIND_ERROR, KIND_GRAPHQL, KIND_HEALTH,
         KIND_EVENT_HANDLER, KIND_COMMAND, KIND_QUERY,
-        KIND_PROJECTION, KIND_METRIC, KIND_API_CLIENT, KIND_STORAGE_DRIVER,
+        KIND_PROJECTION, KIND_METRIC, KIND_SAGA, KIND_API_CLIENT, KIND_STORAGE_DRIVER,
         KIND_FEATURE_FLAG, KIND_CONTRACT,
     }
 )
@@ -287,6 +288,12 @@ NODE_PORTS: dict[str, dict[str, list[dict[str, object]]]] = {
         "inputs": [],
         "outputs": [],
     },
+    KIND_SAGA: {
+        "inputs": [
+            {"id": "input_events", "side": "left", "type": PORT_TYPE_EVENT_REF, "label": "Events", "max": None},
+        ],
+        "outputs": [],
+    },
     KIND_API_CLIENT: {
         "inputs": [],
         "outputs": [],
@@ -450,6 +457,7 @@ ALLOWED_EDGES: frozenset[tuple[str, str]] = frozenset(
         (KIND_EVENT, KIND_EVENT_HANDLER),
         # Projections consume domain events to build read models
         (KIND_EVENT, KIND_PROJECTION),
+        (KIND_EVENT, KIND_SAGA),
         (KIND_EVENT, KIND_JOB),
         (KIND_CRON, KIND_JOB),
         (KIND_CRON, KIND_EVENT),
@@ -519,6 +527,7 @@ EDGE_KIND_MAP: dict[tuple[str, str], str] = {
     (KIND_ENTITY, KIND_QUERY): "entity_to_query",
     (KIND_EVENT, KIND_EVENT_HANDLER): "event_to_handler",
     (KIND_EVENT, KIND_PROJECTION): "event_to_projection",
+    (KIND_EVENT, KIND_SAGA): "event_to_saga",
     (KIND_EVENT, KIND_JOB): "event_to_job",
     (KIND_CRON, KIND_JOB): "cron_to_job",
     (KIND_CRON, KIND_EVENT): "cron_to_event",
@@ -643,6 +652,9 @@ NODE_DEFAULTS: dict[str, dict[str, object]] = {
     },
     KIND_METRIC: {
         "name": "", "unit": "count", "enabled": True, "description": "",
+    },
+    KIND_SAGA: {
+        "name": "", "enabled": True, "description": "",
     },
     KIND_API_CLIENT: {
         "name": "client", "baseUrl": "https://api.example.com",
@@ -775,6 +787,7 @@ NODE_COLORS: dict[str, str] = {
     KIND_QUERY: "#0284c7",
     KIND_PROJECTION: "#4f46e5",
     KIND_METRIC: "#b45309",
+    KIND_SAGA: "#7c3aed",
     KIND_API_CLIENT: "#0284c7",
     KIND_STORAGE_DRIVER: "#0f766e",
     KIND_FEATURE_FLAG: "#f43f5e",

@@ -38,6 +38,7 @@ from lexigram.builder.graph.models import (
     HealthConfig,
     JobConfig,
     MetricConfig,
+    SagaConfig,
     ApiClientConfig,
     StorageDriverConfig,
     MiddlewareConfig,
@@ -227,6 +228,12 @@ def document_to_dict(document: GraphDocument) -> dict[str, Any]:
             entry["config"] = {
                 "name": node.config.name,
                 "unit": node.config.unit,
+                "enabled": node.config.enabled,
+                "description": node.config.description,
+            }
+        elif isinstance(node.config, SagaConfig):
+            entry["config"] = {
+                "name": node.config.name,
                 "enabled": node.config.enabled,
                 "description": node.config.description,
             }
@@ -446,6 +453,7 @@ def parse_document(data: dict[str, Any]) -> Result[GraphDocument, GraphValidatio
                 | CqrsMessageConfig
                 | ProjectionConfig
                 | MetricConfig
+                | SagaConfig
                 | ApiClientConfig
                 | StorageDriverConfig
                 | ChannelConfig
@@ -685,6 +693,14 @@ def parse_document(data: dict[str, Any]) -> Result[GraphDocument, GraphValidatio
                 config = MetricConfig(
                     name=str(raw_cfg.get("name", "metric")),
                     unit=str(raw_cfg.get("unit", "count")),
+                    enabled=bool(raw_cfg.get("enabled", True)),
+                    description=str(raw_cfg.get("description", "")),
+                )
+            elif kind == "saga":
+                if raw_cfg is None:
+                    raw_cfg = {}
+                config = SagaConfig(
+                    name=str(raw_cfg.get("name", "saga")),
                     enabled=bool(raw_cfg.get("enabled", True)),
                     description=str(raw_cfg.get("description", "")),
                 )

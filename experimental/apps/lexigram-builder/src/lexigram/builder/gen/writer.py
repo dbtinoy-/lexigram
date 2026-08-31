@@ -95,6 +95,7 @@ from lexigram.builder.graph.models import (
     GraphNode,
     JobConfig,
     MetricConfig,
+    SagaConfig,
     MiddlewareConfig,
     ProjectionConfig,
     RateLimitConfig,
@@ -228,6 +229,12 @@ class ProjectWriter(GeneratorBase):
                 metrics.append(node.config)
         metrics.sort(key=lambda m: m.name)
         enabled_metrics = [m for m in metrics if m.enabled]
+        sagas: list[SagaConfig] = []
+        for node in graph.document.nodes:
+            if node.kind == "saga" and isinstance(node.config, SagaConfig):
+                sagas.append(node.config)
+        sagas.sort(key=lambda s: s.name)
+        enabled_sagas = [s for s in sagas if s.enabled]
         api_clients: list[ApiClientConfig] = []
         for node in graph.document.nodes:
             if node.kind == "api_client" and isinstance(node.config, ApiClientConfig):
@@ -813,6 +820,7 @@ class ProjectWriter(GeneratorBase):
                     _resolve_projections(enabled_projections, graph.document, by_id)
                 ),
                 metrics=tuple(enabled_metrics),
+                sagas=tuple(enabled_sagas),
                 flags=tuple(enabled_flags),
                 auths=tuple(auths),
                 api_key_groups=tuple(enabled_api_key_groups),
@@ -1019,6 +1027,12 @@ class ProjectWriter(GeneratorBase):
         for metric in enabled_metrics:
             load_generator("metric", output_dir=gen_dirs["metric"]).generate(
                 metric.name,
+                force=True,
+            )
+
+        for saga in enabled_sagas:
+            load_generator("saga", output_dir=gen_dirs["saga"]).generate(
+                saga.name,
                 force=True,
             )
 
@@ -1498,6 +1512,7 @@ def _prune_stale_generated(project_dir: Path, *, keep: set[str]) -> None:
         project_dir / "src" / "app" / "queries",
         project_dir / "src" / "app" / "projections",
         project_dir / "src" / "app" / "metrics",
+        project_dir / "src" / "app" / "sagas",
         project_dir / "src" / "app" / "clients",
         project_dir / "src" / "app" / "storage" / "backends",
         project_dir / "src" / "app" / "features",

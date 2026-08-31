@@ -24,6 +24,7 @@ from lexigram.builder.graph.models import (
     HealthConfig,
     JobConfig,
     MetricConfig,
+    SagaConfig,
     MiddlewareConfig,
     ProjectionConfig,
     RateLimitConfig,
@@ -64,6 +65,7 @@ def emit_scaffold_files(
     cqrs_messages: tuple[CqrsMessageConfig, ...] | list[CqrsMessageConfig] = (),
     projections: tuple[ProjectionConfig, ...] | list[ProjectionConfig] = (),
     metrics: tuple[MetricConfig, ...] | list[MetricConfig] = (),
+    sagas: tuple[SagaConfig, ...] | list[SagaConfig] = (),
     flags: tuple[FeatureFlagConfig, ...] | list[FeatureFlagConfig] = (),
     auths: tuple[AuthConfig, ...] | list[AuthConfig] = (),
     api_key_groups: tuple[ApiKeyGroupConfig, ...] | list[ApiKeyGroupConfig] = (),
@@ -228,7 +230,7 @@ def emit_scaffold_files(
             + (("lexigram-cache>=0.1.0",) if caches else ())
             + (("lexigram-graphql>=0.1.0",) if graphql else ())
             + (("lexigram-monitor>=0.1.0",) if health_checks else ())
-            + (("lexigram-events>=0.1.0",) if events else ())
+            + (("lexigram-events>=0.1.0",) if (events or sagas) else ())
             + (("lexigram-features>=0.1.0",) if flags else ())
             + (("lexigram-auth>=0.1.0",) if (auths or api_key_groups) else ())
             + (
@@ -240,7 +242,7 @@ def emit_scaffold_files(
             with_cache=bool(caches),
             with_graphql=bool(graphql),
             with_monitor=bool(health_checks),
-            with_events=bool(events),
+            with_events=bool(events) or bool(sagas),
             with_features=bool(flags),
             with_auth=bool(auths or api_key_groups),
             with_email=bool(email_templates),
@@ -275,7 +277,8 @@ def emit_scaffold_files(
             has_events=bool(events)
             or bool(event_handlers)
             or bool(cqrs_messages)
-            or bool(projections),
+            or bool(projections)
+            or bool(sagas),
             has_metrics=bool(metrics),
             has_monitor=bool(health_checks) or bool(metrics),
             has_flags=bool(flags),

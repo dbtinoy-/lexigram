@@ -60,12 +60,14 @@ from lexigram.builder.gen.emitters.validator_emitter import (
     emit_validator_module,
 )
 from lexigram.builder.gen.emitters.http_client_emitter import emit_api_client_module
+from lexigram.builder.gen.emitters.saga_emitter import emit_saga_module
 from lexigram.builder.gen.emitters.storage_driver_emitter import (
     emit_storage_driver_module,
 )
 from lexigram.builder.graph.models import (
     ApiKeyGroupConfig,
     ApiClientConfig,
+    SagaConfig,
     AppSettingsConfig,
     AuditLogConfig,
     AuthConfig,
@@ -123,6 +125,13 @@ def emit_code_preview(document: GraphDocument) -> list[dict[str, str]]:
             api_clients.append(node.config)
     api_clients.sort(key=lambda c: c.name)
     enabled_api_clients = [c for c in api_clients if c.enabled]
+
+    sagas: list[SagaConfig] = []
+    for node in document.nodes:
+        if node.kind == "saga" and isinstance(node.config, SagaConfig):
+            sagas.append(node.config)
+    sagas.sort(key=lambda s: s.name)
+    enabled_sagas = [s for s in sagas if s.enabled]
 
     storage_drivers: list[StorageDriverConfig] = []
     for node in document.nodes:
@@ -413,6 +422,7 @@ def emit_code_preview(document: GraphDocument) -> list[dict[str, str]]:
         extra_dependencies=extra_deps,
         api_clients=bool(enabled_api_clients),
         storage_drivers=bool(enabled_storage_drivers),
+        sagas=tuple(enabled_sagas),
         flags=tuple(enabled_flags),
         auths=tuple(auths),
         api_key_groups=tuple(enabled_api_key_groups),
@@ -734,6 +744,12 @@ def emit_code_preview(document: GraphDocument) -> list[dict[str, str]]:
         })
 
 
+    for saga in enabled_sagas:
+        files.append({
+            "path": f"src/app/sagas/{snake_case(saga.name)}_saga.py",
+            "language": "python",
+            "content": emit_saga_module(saga),
+        })
     for client in enabled_api_clients:
         files.append({
             "path": f"src/app/clients/{snake_case(client.name)}_client.py",

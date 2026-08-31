@@ -194,6 +194,8 @@ def _check_node(node: GraphNode, entity_names: dict[str, str]) -> list[Diagnosti
         return _check_api_key_group(node)
     if isinstance(node.config, EmailTemplateConfig):
         return _check_email_template(node)
+    if node.kind == "saga":
+        return _check_saga(node)
     if node.kind == "api_client":
         return _check_api_client(node)
     if node.kind == "storage_driver":
@@ -962,6 +964,15 @@ def _check_email_template(node: GraphNode) -> list[Diagnostic]:
                         " not a declared merge variable",
                     )
                 )
+    return out
+
+
+def _check_saga(node: GraphNode) -> list[Diagnostic]:
+    config = node.config
+    out: list[Diagnostic] = []
+    name = getattr(config, "name", "")
+    if not is_snake_case_identifier(str(name)):
+        out.append(_diag(node, "invalid-saga-name", "saga name must be snake_case"))
     return out
 
 
