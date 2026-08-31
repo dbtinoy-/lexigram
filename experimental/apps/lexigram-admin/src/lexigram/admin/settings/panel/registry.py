@@ -25,6 +25,15 @@ class StoreBase:
         """Retrieve a value by key."""
         return default
 
+    async def contains(self, key: str, tenant_id: str | None = None) -> bool | None:
+        """Report whether a store has an explicit value for ``key``.
+
+        ``None`` means the adapter cannot determine presence. That distinction
+        prevents the settings UI from incorrectly labelling an opaque external
+        store's value as an application default.
+        """
+        return None
+
     async def set(self, key: str, value: Any, tenant_id: str | None = None) -> None:
         """Persist a value by key."""
 
@@ -43,6 +52,10 @@ class EnvStore(StoreBase):
         env_key = key.upper().replace(".", "_")
         return os.environ.get(env_key, default)
 
+    async def contains(self, key: str, tenant_id: str | None = None) -> bool:
+        """Return whether the corresponding environment variable is set."""
+        return key.upper().replace(".", "_") in os.environ
+
 
 class MemoryStore(StoreBase):
     """In-memory store for testing."""
@@ -55,6 +68,10 @@ class MemoryStore(StoreBase):
     ) -> Any:
         """Retrieve a value from the in-memory store."""
         return self._data.get(key, default)
+
+    async def contains(self, key: str, tenant_id: str | None = None) -> bool:
+        """Return whether an explicit in-memory value exists."""
+        return key in self._data
 
     async def set(self, key: str, value: Any, tenant_id: str | None = None) -> None:
         """Persist a value to the in-memory store."""
@@ -182,6 +199,71 @@ class ConfigRegistry:
                 )
             values[key] = node.validate(raw_val)
         return values
+
+    async def get_value_metadata(
+        self,
+        namespace: str,
+        store_name: str = "default",
+        tenant_id: str | None = None,
+    ) -> dict[str, dict[str, Any]]:
+        """Return effective-value source metadata for a configuration spec.
+
+        Stores that support presence checks distinguish an explicit override
+        from the node default. Opaque external stores return ``None`` for
+        ``configured`` rather than making the UI claim that a value is a
+        default. The metadata is presentation-only; writes still go through
+        ``save_values`` and server-side permissions.
+        """
+        spec = self._specs.get(namespace)
+        if not spec:
+            return {}
+
+        resolved_store_name = (
+            store_name if store_name in self._stores else "default"
+        )
+        store = self._stores[resolved_store_name]
+        store_labels = {
+            "env": "Environment override",
+            "db": "Database value",
+            "default": "Application setting",
+        }
+        configured_label = store_labels.get(
+            resolved_store_name,
+            resolved_store_name.replace("_", " ").title(),
+        )
+        metadata: dict[str, dict[str, Any]] = {}
+        for key, node in spec.get_nodes().items():
+            full_key = f"{namespace}.{key}"
+            lookup_key = (
+                getattr(node, "extra", {}).get("env_name") or full_key
+                if resolved_store_name == "env"
+                else full_key
+            )
+            try:
+                configured = await store.contains(lookup_key, tenant_id=tenant_id)
+            except Exception:  # noqa: BLE001 — metadata must not block rendering
+                configured = None
+
+            if configured is True:
+                source = "configured"
+                source_label = configured_label
+            elif configured is False:
+                source = "default"
+                source_label = "Application default"
+            else:
+                source = "unknown"
+                source_label = "External store value"
+
+            metadata[key] = {
+                "configured": configured,
+                "is_default": configured is False,
+                "source": source,
+                "source_label": source_label,
+                "scope": spec.scope,
+                "store_name": resolved_store_name,
+                "runtime_status": spec.runtime_status,
+            }
+        return metadata
 
     async def save_values(
         self,

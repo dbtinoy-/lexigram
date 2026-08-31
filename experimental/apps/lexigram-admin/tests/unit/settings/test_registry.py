@@ -270,6 +270,30 @@ class TestSpecMetadata:
         assert data["edit_permissions"] == ["admin.settings.edit"]
 
 
+class TestValueMetadata:
+    """Tests for explicit versus default effective-value metadata."""
+
+    @pytest.mark.asyncio
+    async def test_memory_store_distinguishes_default_and_configured_values(self) -> None:
+        class MetadataSpec(ConfigSpec):
+            namespace = "test.metadata"
+            value = StringNode(label="Value", default="default")
+
+        registry = ConfigRegistry()
+        registry.register_spec(MetadataSpec)
+
+        initial = await registry.get_value_metadata("test.metadata")
+        assert initial["value"]["configured"] is False
+        assert initial["value"]["source"] == "default"
+        assert initial["value"]["is_default"] is True
+
+        await registry.save_values("test.metadata", {"value": "configured"})
+        configured = await registry.get_value_metadata("test.metadata")
+        assert configured["value"]["configured"] is True
+        assert configured["value"]["source"] == "configured"
+        assert configured["value"]["source_label"] == "Application setting"
+
+
 class TestOptionalFields:
     """Tests for optional field handling."""
 

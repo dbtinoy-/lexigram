@@ -262,6 +262,7 @@ class ConfigDashboardUI:
         action: str,
         csrf_token: str | None = None,
         errors: dict[str, str] | None = None,
+        value_metadata: dict[str, dict[str, Any]] | None = None,
     ) -> Any:
         """Render a standalone configuration form.
 
@@ -270,6 +271,7 @@ class ConfigDashboardUI:
         default before they have had a chance to correct it.
         """
         errors = errors or {}
+        value_metadata = value_metadata or {}
         nodes = spec.get("nodes", [])
         namespace = spec.get("namespace", "")
         can_edit = bool(spec.get("can_edit", True))
@@ -278,6 +280,7 @@ class ConfigDashboardUI:
                 {**node, "readonly": node.get("readonly", False) or not can_edit},
                 values,
                 errors,
+                value_metadata=value_metadata.get(node.get("name", "")),
             )
             for node in nodes
         ]
@@ -425,6 +428,8 @@ class ConfigDashboardUI:
         node: dict[str, Any],
         values: dict[str, Any],
         errors: dict[str, str] | None = None,
+        *,
+        value_metadata: dict[str, Any] | None = None,
     ) -> Any:
         """Render a single configuration field based on its type."""
         errors = errors or {}
@@ -514,12 +519,17 @@ class ConfigDashboardUI:
                 required=required,
             )
 
+        origin_label = (value_metadata or {}).get("source_label")
+        hint_parts = ["Read only"] if readonly else []
+        if origin_label:
+            hint_parts.append(str(origin_label))
+
         return FieldSchema(
             input_component=input_comp,
             label=label if node_type != "boolean" else None,
             help_text=help_text,
             error=errors.get(name),
             required=required,
-            hint="Read only" if readonly else None,
+            hint=" · ".join(hint_parts) if hint_parts else None,
             class_="mb-0",
         )

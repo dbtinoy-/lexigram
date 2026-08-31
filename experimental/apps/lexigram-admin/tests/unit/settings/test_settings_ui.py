@@ -184,3 +184,24 @@ def test_restart_required_settings_expose_runtime_applicability() -> None:
     assert "Restart required" in html
     assert "Changes require a service restart" in html
     assert 'role="status"' in html
+
+
+def test_effective_value_source_is_visible_on_the_field_metadata() -> None:
+    registry = ConfigRegistry.with_defaults()
+    spec = registry.get_spec("admin.cache")
+    assert spec is not None
+
+    html = render_to_string(
+        ConfigDashboardUI().render_config_form(
+            spec.to_dict(),
+            values={},
+            action="/admin/settings/admin.cache",
+            value_metadata={
+                "enabled": {
+                    "source_label": "Application default",
+                }
+            },
+        )
+    )
+
+    assert "Application default" in html

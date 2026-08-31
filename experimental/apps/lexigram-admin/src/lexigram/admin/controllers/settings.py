@@ -273,16 +273,26 @@ class SettingsController(AdminController):
         values: dict[str, Any],
         errors: dict[str, str] | None = None,
         status_code: int = 200,
+        tenant_id: str | None = None,
     ) -> Response:
         """Render a spec page, optionally preserving a failed submission."""
         categories, _ = self._build_categories(request)
         namespace = spec.namespace
         can_edit = self._can_access_spec(request, spec, "edit")
+        effective_tenant_id = tenant_id
+        if spec.scope == "tenant" and effective_tenant_id is None:
+            effective_tenant_id = await resolve_tenant_id(request, default="default")
+        value_metadata = await self._registry.get_value_metadata(
+            namespace,
+            self._store_name(spec),
+            tenant_id=effective_tenant_id,
+        )
         ui = ConfigDashboardUI()
         form_content = ui.render_config_form(
             spec=self._spec_ui_data(spec, can_edit=can_edit),
             values=values,
             errors=errors,
+            value_metadata=value_metadata,
             action=self._settings_url(request, namespace),
             csrf_token=self._get_csrf_token(request),
         )
@@ -336,7 +346,12 @@ class SettingsController(AdminController):
         values = await self._registry.get_values(
             namespace, self._store_name(spec), tenant_id=tenant_id
         )
-        return await self._render_spec_page(request, spec, values)
+        return await self._render_spec_page(
+            request,
+            spec,
+            values,
+            tenant_id=tenant_id,
+        )
 
     @post("/{namespace:path}")
     async def save_spec(self, request: Request) -> Response:
@@ -465,11 +480,17 @@ class SettingsController(AdminController):
                 cleared_secrets=sorted(preserved_secrets),
             )
             ui = ConfigDashboardUI()
+            value_metadata = await self._registry.get_value_metadata(
+                namespace,
+                self._store_name(spec),
+                tenant_id=tenant_id,
+            )
             form_html = render_to_string(
                 ui.render_config_form(
-                    spec=self._spec_ui_data(spec),
+                    spec=self._spec_ui_data(spec, can_edit=True),
                     values=display_values,
                     errors=validation_errors,
+                    value_metadata=value_metadata,
                     action=self._settings_url(request, namespace),
                     csrf_token=self._get_csrf_token(request),
                 )
@@ -495,6 +516,7 @@ class SettingsController(AdminController):
                 display_values,
                 errors=validation_errors,
                 status_code=422,
+                tenant_id=tenant_id,
             )
 
         await self._registry.save_values(
@@ -531,9 +553,15 @@ class SettingsController(AdminController):
                 namespace, self._store_name(spec), tenant_id=tenant_id
             )
             ui = ConfigDashboardUI()
+            value_metadata = await self._registry.get_value_metadata(
+                namespace,
+                self._store_name(spec),
+                tenant_id=tenant_id,
+            )
             form_content = ui.render_config_form(
-                spec=self._spec_ui_data(spec),
+                spec=self._spec_ui_data(spec, can_edit=True),
                 values=values,
+                value_metadata=value_metadata,
                 action=self._settings_url(request, namespace),
                 csrf_token=self._get_csrf_token(request),
             )
