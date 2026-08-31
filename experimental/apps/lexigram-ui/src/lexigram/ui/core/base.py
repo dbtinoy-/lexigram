@@ -398,6 +398,9 @@ _HTML_TAG_RE = re.compile(r"</?[a-zA-Z][a-zA-Z0-9-]*\b[^>]*>")
 #: every cell of every request.
 _warned_html_strings: set[tuple[str, str]] = set()
 
+#: Cached debug_components flag; see _debug_components_enabled.
+_debug_components_cache: bool | None = None
+
 
 def looks_like_html(value: Any) -> bool:
     """Heuristic: does this string look like it contains an HTML tag?"""
@@ -435,4 +438,79 @@ def warn_html_string_render(
         origin,
         str(snippet)[:120],
         fix,
+    )
+
+
+def _debug_components_enabled() -> bool:
+    """Whether component debugging is on for this process.
+
+    Cached because it is consulted per cell: a table of 50 rows by 8
+    columns would otherwise rebuild the config 400 times per request.
+    """
+    global _debug_components_cache
+    if _debug_components_cache is None:
+        from lexigram.ui.config import UIConfig  # lazy: circular at import time
+
+        try:
+            _debug_components_cache = bool(UIConfig().debug_components)
+        except Exception as e:  # noqa: BLE001
+            logger.debug("ui_config_load_failed", error=str(e))
+            _debug_components_cache = False
+    return _debug_components_cache
+
+
+def html_string_notice(value: Any, origin: str = "") -> Any:
+    """Render an escaped HTML string so it reads as text, not broken markup.
+
+    A renderer that returns an HTML *string* has its output escaped by the
+    element layer, so the browser shows ``&lt;span&gt;...`` where a widget
+    was intended. The escaping is correct -- strings are data -- but the
+    result looks like corrupted output rather than a mistake in the code.
+
+    This presents the value as what it actually is: literal text. The
+    monospace treatment signals "not rendered markup" on its own, and when
+    ``debug_components`` is enabled a short label names the origin so the
+    developer can find the renderer.
+
+    The label is gated on the debug flag rather than shown always because
+    ``looks_like_html`` is a heuristic: values such as ``List<String>`` or
+    ``Widget <Pro> Edition`` match it, and captioning genuine product data
+    as a developer error in front of end users would be worse than the
+    problem it reports.
+
+    Args:
+        value: The offending string, rendered escaped by the element layer.
+        origin: Where the string came from, shown only in debug mode.
+
+    Returns:
+        An element wrapping ``value``.
+    """
+    code = el(
+        "code",
+        value,
+        class_=(
+            "font-mono text-xs break-all rounded bg-muted px-1 py-0.5 "
+            "text-muted-foreground"
+        ),
+    )
+    if not _debug_components_enabled():
+        return code
+
+    return el(
+        "span",
+        code,
+        el(
+            "span",
+            "unrendered HTML string" + (f" from {origin}" if origin else ""),
+            class_=(
+                "ml-1.5 inline-flex items-center rounded border "
+                "border-warning/30 bg-warning/10 px-1.5 py-0.5 text-[10px] "
+                "font-medium uppercase tracking-wide text-warning"
+            ),
+        ),
+        class_="inline-flex items-center gap-0.5 align-middle",
+        title=(
+            "This renderer returned an HTML string, which is escaped and "
+            "shown as text. Return el(...) or wrap it in raw()/Markup."
+        ),
     )
