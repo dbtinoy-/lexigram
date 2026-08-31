@@ -260,7 +260,7 @@ class FilterBar(Component):
             badge = el(
                 "span",
                 str(active_count),
-                class_="absolute -top-1.5 -right-1.5 bg-primary text-primary-foreground text-[10px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1 leading-none",
+                class_="absolute -top-1.5 -right-1.5 bg-primary text-primary-foreground text-xs font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1 leading-none",
             )
 
         toggle_btn = el(

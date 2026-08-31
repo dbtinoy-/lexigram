@@ -35,8 +35,8 @@ def _render_pagination(pagination: PaginationContent) -> str:
                 "p",
                 {
                     "class": (
-                        "text-[11px] uppercase tracking-wider "
-                        "text-[var(--muted-foreground)] font-semibold"
+                        "text-xs uppercase tracking-wider "
+                        "text-muted-foreground font-semibold"
                     ),
                 },
                 "Showing ",

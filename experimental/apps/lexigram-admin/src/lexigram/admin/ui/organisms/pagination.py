@@ -187,7 +187,7 @@ class Pagination(Component):
                         " of ",
                         el("span", str(self.total), class_="font-bold"),
                         " results",
-                        class_="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold",
+                        class_="text-xs uppercase tracking-wider text-muted-foreground font-semibold",
                     ),
                 ),
                 # Pagination Controls

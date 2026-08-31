@@ -60,8 +60,15 @@ def render_profile_page(
         f'<span class="inline-flex items-center rounded-full bg-accent px-2.5 py-0.5 text-xs font-medium text-accent-foreground">{escape(role)}</span>'
         for role in roles
     )
+    # Uses the success token rather than raw emerald-100/700: those are
+    # fixed light-mode palette values with no dark variant, so this badge
+    # rendered dark green on near-white inside a dark shell while the
+    # "Disabled" badge beside it themed correctly. Whether MFA is on is
+    # also stated in text, not by colour alone.
     mfa_badge = (
-        '<span class="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-700">Enabled</span>'
+        '<span class="inline-flex items-center rounded-full bg-success '
+        'px-2.5 py-0.5 text-xs font-medium text-success-foreground">'
+        "Enabled</span>"
         if mfa_enabled
         else '<span class="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">Disabled</span>'
     )

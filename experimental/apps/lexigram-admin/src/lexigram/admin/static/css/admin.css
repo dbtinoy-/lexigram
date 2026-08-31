@@ -3,6 +3,90 @@
  * Supplements Tailwind with admin-specific utilities
  */
 
+/* ========== Design tokens ==========
+ *
+ * The prebuilt tailwind.css compiles semantic utilities to variable
+ * references -- `.bg-muted { background-color: var(--muted) }` -- but ships
+ * no definitions for them, and neither did this file. Only these two
+ * stylesheets are linked by the layouts, so every semantic utility in the
+ * admin resolved against an undefined variable.
+ *
+ * That does not fall back to a sane default. An undefined var() makes the
+ * declaration invalid at computed-value time, so `background-color` and
+ * `border-color` reset to their initial values (transparent / currentColor)
+ * and inherited properties such as `color` fall through to the parent.
+ * Backgrounds, borders, and text colour across the admin collapsed, and the
+ * `.dark` class had nothing to switch.
+ *
+ * Values are the light/dark pairs documented for the shared UI library in
+ * experimental/apps/lexigram-ui/docs/CONFIGURATION.md, so the admin now
+ * renders in the palette the component library was written against.
+ */
+:root {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(1 0 0);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --radius: 0.625rem;
+
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+
+  --color-success: oklch(0.52 0.18 149.214);
+  --color-success-foreground: oklch(1 0 0);
+  --color-warning: oklch(0.795 0.184 86.047);
+  --color-warning-foreground: oklch(0.145 0 0);
+  --color-info: oklch(0.56 0.23 277.117);
+  --color-info-foreground: oklch(1 0 0);
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --destructive-foreground: oklch(0.97 0 0);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+
+  --color-success: oklch(0.76 0.14 149.214);
+  --color-success-foreground: oklch(0.97 0 0);
+  --color-warning: oklch(0.82 0.15 86.047);
+  --color-warning-foreground: oklch(0.2 0 0);
+  --color-info: oklch(0.74 0.135 277.116);
+  --color-info-foreground: oklch(0.97 0 0);
+}
+
 /* ========== CSS Variables ========== */
 :root {
   --admin-sidebar-width: 256px;
