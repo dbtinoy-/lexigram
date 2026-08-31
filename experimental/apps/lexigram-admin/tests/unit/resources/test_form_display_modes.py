@@ -113,3 +113,27 @@ async def test_form_level_errors_are_rendered_for_generated_forms() -> None:
 
     assert 'role="alert"' in html
     assert "The record could not be saved." in html
+
+
+async def test_wizard_urls_follow_the_request_prefix() -> None:
+    request = _request("#main-content")
+    request.scope["headers"] = []
+    request.scope["admin_prefix"] = "/backoffice"
+    renderer = FormRenderer(
+        AdminConfig(prefix="/admin", title="Test"),
+        "page_widgets",
+        AdminRenderer(),
+    )
+
+    response = await renderer.render_wizard(
+        request,
+        _PageResource,
+        [{"title": "Details", "fields": ["name"]}],
+        action_url="/backoffice/page_widgets/create",
+    )
+    html = response.body.decode("utf-8", "replace")
+
+    assert 'action="/backoffice/page_widgets/create"' in html
+    assert 'hx-post="/backoffice/page_widgets/create"' in html
+    assert 'href="/backoffice/page_widgets"' in html
+    assert "/admin/page_widgets" not in html
