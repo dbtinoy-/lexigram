@@ -164,3 +164,23 @@ def test_view_only_settings_render_disabled_fields_without_save_actions() -> Non
     assert "disabled" in html
     assert 'type="submit"' not in html
     assert "view-only access" in html
+
+
+def test_restart_required_settings_expose_runtime_applicability() -> None:
+    registry = ConfigRegistry.with_defaults()
+    spec = registry.get_spec("admin.cache")
+    assert spec is not None
+    spec_data = spec.to_dict()
+    spec_data["runtime_status"] = "restart_required"
+
+    html = render_to_string(
+        ConfigDashboardUI().render_config_form(
+            spec_data,
+            values={},
+            action="/admin/settings/admin.cache",
+        )
+    )
+
+    assert "Restart required" in html
+    assert "Changes require a service restart" in html
+    assert 'role="status"' in html

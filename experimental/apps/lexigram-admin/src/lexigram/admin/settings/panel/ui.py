@@ -285,6 +285,20 @@ class ConfigDashboardUI:
 
         scope_label = "Tenant scoped" if spec.get("scope") == "tenant" else "Global"
         source_label = self._source_label(spec.get("store_name", "default"))
+        runtime_status = spec.get("runtime_status", "active")
+        runtime_labels = {
+            "active": "Active at runtime",
+            "restart_required": "Restart required",
+            "dormant": "Stored, not active",
+        }
+        runtime_label = runtime_labels.get(runtime_status, "Runtime status unknown")
+        runtime_class = (
+            "inline-flex items-center rounded-full bg-warning/10 px-2.5 py-1 "
+            "text-xs font-medium text-warning"
+            if runtime_status != "active"
+            else "inline-flex items-center rounded-full bg-muted px-2.5 py-1 "
+            "text-xs font-medium text-muted-foreground"
+        )
         metadata = el(
             "div",
             el(
@@ -297,6 +311,7 @@ class ConfigDashboardUI:
                 f"Source: {source_label}",
                 class_="inline-flex items-center rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground",
             ),
+            el("span", runtime_label, class_=runtime_class),
             class_="flex flex-wrap gap-2 mb-5",
         )
 
@@ -310,12 +325,20 @@ class ConfigDashboardUI:
             else "",
             metadata,
         ]
-        if spec.get("runtime_status") == "dormant":
+        runtime_messages = {
+            "restart_required": (
+                "Changes require a service restart before they take effect."
+            ),
+            "dormant": (
+                "These values are stored for future use but are not currently applied."
+            ),
+        }
+        if runtime_status in runtime_messages:
             body.append(
                 el(
                     "div",
-                    el("strong", "Not active at runtime. "),
-                    "These values are stored for future use but are not currently applied.",
+                    el("strong", f"{runtime_label}. "),
+                    runtime_messages[runtime_status],
                     role="status",
                     class_="mb-5 rounded-lg border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning",
                 )

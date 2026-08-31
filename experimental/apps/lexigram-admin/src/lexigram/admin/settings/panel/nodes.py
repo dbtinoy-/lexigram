@@ -272,7 +272,7 @@ class ConfigSpec(metaclass=ConfigSpecMeta):
     package_source: str = "built-in"
     scope: Literal["global", "tenant"] = "global"
     store_name: str = "db"
-    runtime_status: Literal["active", "dormant"] = "active"
+    runtime_status: Literal["active", "restart_required", "dormant"] = "active"
 
     _nodes: dict[str, AbstractConfigNode] = {}
 
