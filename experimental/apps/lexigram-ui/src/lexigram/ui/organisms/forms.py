@@ -23,6 +23,7 @@ class Form(Component):
         suppress_submit: bool = False,
         hx_indicator: str | None = None,
         htmx_enabled: bool = True,
+        form_attrs: dict[str, Any] | None = None,
         **props: Any,
     ) -> None:
         super().__init__(
@@ -36,6 +37,7 @@ class Form(Component):
             suppress_submit=suppress_submit,
             hx_indicator=hx_indicator,
             htmx_enabled=htmx_enabled,
+            form_attrs=form_attrs,
             **props,
         )
         self.action_url = action_url
@@ -48,11 +50,13 @@ class Form(Component):
         self.suppress_submit = suppress_submit
         self.hx_indicator = hx_indicator
         self.htmx_enabled = htmx_enabled
+        self.form_attrs = form_attrs or {}
 
     def render(self) -> Any:
         attrs = {
             "method": self.method,
             "class": "space-y-6",
+            **self.form_attrs,
         }
         if self.form_id:
             attrs["id"] = self.form_id

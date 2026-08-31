@@ -79,6 +79,12 @@ class SettingsController(AdminController):
             namespace,
         )
 
+    def _spec_ui_data(self, spec: type[Any]) -> dict[str, Any]:
+        """Return spec metadata with the store actually selected by the registry."""
+        data = spec.to_dict()
+        data["store_name"] = self._store_name(spec)
+        return data
+
     @staticmethod
     def _user_permissions(request: Request) -> frozenset[str]:
         """Return the requesting user's permission set (empty when unknown)."""
@@ -197,6 +203,48 @@ class SettingsController(AdminController):
             ),
         )
 
+    async def _render_spec_page(
+        self,
+        request: Request,
+        spec: type[Any],
+        values: dict[str, Any],
+        errors: dict[str, str] | None = None,
+        status_code: int = 200,
+    ) -> Response:
+        """Render a spec page, optionally preserving a failed submission."""
+        categories, _ = self._build_categories(request)
+        namespace = spec.namespace
+        ui = ConfigDashboardUI()
+        form_content = ui.render_config_form(
+            spec=self._spec_ui_data(spec),
+            values=values,
+            errors=errors,
+            action=self._settings_url(request, namespace),
+            csrf_token=self._get_csrf_token(request),
+        )
+
+        layout = ConfigLayout(
+            categories=categories,
+            active_category=spec.package_source,
+            active_namespace=namespace,
+            content=form_content,
+            title="Settings",
+            admin_prefix=admin_prefix_from_request(request),
+        )
+
+        response = await self.render_admin(
+            request,
+            layout,
+            title=f"{spec.label or namespace} - Settings",
+            breadcrumbs=self.generate_breadcrumbs(
+                ("Home", admin_url(admin_prefix_from_request(request), "")),
+                ("Settings", self._settings_url(request)),
+                current=spec.label or namespace,
+            ),
+        )
+        response.status_code = status_code
+        return response
+
     @get("/{namespace:path}")
     async def spec_view(self, request: Request) -> Response:
         """Spec detail/edit view."""
@@ -221,7 +269,6 @@ class SettingsController(AdminController):
             self.flash("You do not have permission to view this setting.", "error")
             return RedirectResponse(url=self._settings_url(request), status_code=302)
 
-        categories, _ = self._build_categories(request)
         tenant_id = (
             await resolve_tenant_id(request, default="default")
             if spec.scope == "tenant"
@@ -230,34 +277,7 @@ class SettingsController(AdminController):
         values = await self._registry.get_values(
             namespace, self._store_name(spec), tenant_id=tenant_id
         )
-
-        ui = ConfigDashboardUI()
-        form_content = ui.render_config_form(
-            spec=spec.to_dict(),
-            values=values,
-            action=self._settings_url(request, namespace),
-            csrf_token=self._get_csrf_token(request),
-        )
-
-        layout = ConfigLayout(
-            categories=categories,
-            active_category=spec.package_source,
-            active_namespace=namespace,
-            content=form_content,
-            title="Settings",
-            admin_prefix=admin_prefix_from_request(request),
-        )
-
-        return await self.render_admin(
-            request,
-            layout,
-            title=f"{spec.label or namespace} - Settings",
-            breadcrumbs=self.generate_breadcrumbs(
-                ("Home", admin_url(admin_prefix_from_request(request), "")),
-                ("Settings", self._settings_url(request)),
-                current=spec.label or namespace,
-            ),
-        )
+        return await self._render_spec_page(request, spec, values)
 
     @post("/{namespace:path}")
     async def save_spec(self, request: Request) -> Response:
@@ -293,63 +313,161 @@ class SettingsController(AdminController):
         nodes = spec.get_nodes()
         multi = getattr(form, "multi_items", None)
         raw_items = list(multi()) if multi else list(form.items())
-        updates = {
-            key: (
-                "true"
-                if isinstance(nodes[key], BooleanNode)
-                and any(_value == "on" for _key, _value in raw_items if _key == key)
-                else value
-            )
-            for key, value in raw_items
-            if not key.startswith("_") and key in nodes
-        }
+        raw_values: dict[str, list[Any]] = {}
+        for key, value in raw_items:
+            if not key.startswith("_") and key in nodes:
+                raw_values.setdefault(key, []).append(value)
+
+        # Checkboxes submit both a checked value and a hidden false fallback.
+        # Resolve all values explicitly instead of relying on dict ordering,
+        # which previously made a checked toggle save as false.
+        updates: dict[str, Any] = {}
+        for key, submitted in raw_values.items():
+            if isinstance(nodes[key], BooleanNode):
+                normalized = [str(value).strip().lower() for value in submitted]
+                if any(value in BooleanNode.TRUE_VALUES for value in normalized):
+                    updates[key] = "true"
+                elif all(value in BooleanNode.FALSE_VALUES for value in normalized):
+                    updates[key] = "false"
+                else:
+                    updates[key] = submitted[-1]
+            else:
+                updates[key] = submitted[-1]
 
         ignored_readonly = sorted(key for key in updates if nodes[key].readonly)
         editable_updates = {
             key: value for key, value in updates.items() if not nodes[key].readonly
         }
-
-        cleared_secrets: list[str] = []
-        for key in list(editable_updates):
-            if isinstance(nodes[key], SecretNode) and not editable_updates[key]:
-                editable_updates.pop(key)
-                cleared_secrets.append(key)
-
-        invalid = [
-            key
-            for key, value in editable_updates.items()
-            if str(nodes[key].validate(value)).lower() != value.lower()
-        ]
         tenant_id = (
             await resolve_tenant_id(request, default="default")
             if spec.scope == "tenant"
             else None
         )
+        existing_values = await self._registry.get_values(
+            namespace, self._store_name(spec), tenant_id=tenant_id
+        )
+
+        # Missing unchecked checkboxes are equivalent to false even when a
+        # client omits the hidden fallback. Required non-boolean fields are
+        # reported rather than silently omitted.
+        validation_errors: dict[str, str] = {}
+        for key, node in nodes.items():
+            if node.readonly or key in editable_updates:
+                continue
+            if isinstance(node, BooleanNode):
+                editable_updates[key] = "false"
+            elif node.required:
+                validation_errors[key] = node.validation_error("") or (
+                    f"{node.label} is required."
+                )
+
+        preserved_secrets: list[str] = []
+        for key in list(editable_updates):
+            node = nodes[key]
+            if isinstance(node, SecretNode) and not str(editable_updates[key]):
+                if node.required and not existing_values.get(key):
+                    validation_errors[key] = node.validation_error("") or (
+                        f"{node.label} is required."
+                    )
+                else:
+                    editable_updates.pop(key)
+                    preserved_secrets.append(key)
+
+        validated_updates: dict[str, Any] = {}
+        for key, value in editable_updates.items():
+            error = nodes[key].validation_error(value)
+            if error:
+                validation_errors[key] = error
+            else:
+                validated_updates[key] = nodes[key].validate(value)
+
+        # Start from the effective values and overlay the submitted values so
+        # an invalid form can be re-rendered without losing the user's input.
+        display_values = dict(existing_values)
+        for key, value in updates.items():
+            if key in nodes and not nodes[key].readonly:
+                display_values[key] = (
+                    nodes[key].validate(value)
+                    if isinstance(nodes[key], BooleanNode)
+                    else value
+                )
+        for key in editable_updates:
+            if isinstance(nodes[key], SecretNode):
+                # Never echo a submitted secret back into HTML.
+                display_values[key] = existing_values.get(key, "")
+
+        if validation_errors:
+            await self._audit(
+                request,
+                success=False,
+                namespace=namespace,
+                keys=[],
+                invalid=sorted(validation_errors),
+                validation_errors=sorted(validation_errors),
+                ignored_readonly=ignored_readonly,
+                preserved_secrets=sorted(preserved_secrets),
+                # Keep the legacy audit key for downstream consumers; blank
+                # secret fields have always meant "preserve", not delete.
+                cleared_secrets=sorted(preserved_secrets),
+            )
+            ui = ConfigDashboardUI()
+            form_html = render_to_string(
+                ui.render_config_form(
+                    spec=self._spec_ui_data(spec),
+                    values=display_values,
+                    errors=validation_errors,
+                    action=self._settings_url(request, namespace),
+                    csrf_token=self._get_csrf_token(request),
+                )
+            )
+            if request.headers.get("hx-request") == "true":
+                self._flash_messages.clear()
+                toast_html = self._render_toast(
+                    f"No changes saved. Fix {len(validation_errors)} field error(s).",
+                    "warning",
+                )
+                flash_oob = (
+                    f'<div id="flash-container" hx-swap-oob="true">{toast_html}</div>'
+                )
+                # Keep this response 200 so HTMX swaps the form. Its
+                # default response policy deliberately does not swap 4xx
+                # responses, while this fragment contains the recoverable
+                # field-level errors the user needs to see.
+                return HTMLResponse(flash_oob + form_html)
+
+            return await self._render_spec_page(
+                request,
+                spec,
+                display_values,
+                errors=validation_errors,
+                status_code=422,
+            )
+
         await self._registry.save_values(
-            namespace, editable_updates, self._store_name(spec), tenant_id=tenant_id
+            namespace,
+            validated_updates,
+            self._store_name(spec),
+            tenant_id=tenant_id,
         )
 
         await self._audit(
             request,
             namespace=namespace,
-            keys=sorted(editable_updates),
-            invalid=invalid,
+            keys=sorted(validated_updates),
+            invalid=[],
             ignored_readonly=ignored_readonly,
-            cleared_secrets=sorted(cleared_secrets),
+            preserved_secrets=sorted(preserved_secrets),
+            cleared_secrets=sorted(preserved_secrets),
         )
 
         if request.headers.get("hx-request") == "true":
             self._flash_messages.clear()
-            if invalid:
-                toast_message = (
-                    "Settings saved. Invalid values reset to defaults: "
-                    + ", ".join(invalid)
-                )
-                toast_kind = "warning"
-            else:
-                toast_message = "Settings saved successfully."
-                toast_kind = "success"
-            toast_html = self._render_toast(toast_message, toast_kind)
+            message = "Settings saved successfully."
+            if ignored_readonly:
+                message += " Read-only fields were ignored."
+            if preserved_secrets:
+                message += " Existing secrets were kept."
+            toast_html = self._render_toast(message, "success")
             flash_oob = (
                 f'<div id="flash-container" hx-swap-oob="true">{toast_html}</div>'
             )
@@ -359,7 +477,7 @@ class SettingsController(AdminController):
             )
             ui = ConfigDashboardUI()
             form_content = ui.render_config_form(
-                spec=spec.to_dict(),
+                spec=self._spec_ui_data(spec),
                 values=values,
                 action=self._settings_url(request, namespace),
                 csrf_token=self._get_csrf_token(request),
@@ -368,13 +486,7 @@ class SettingsController(AdminController):
 
             return HTMLResponse(flash_oob + form_html)
 
-        if invalid:
-            self.flash(
-                f"Saved. Invalid values reset to defaults: {', '.join(invalid)}",
-                "warning",
-            )
-        else:
-            self.flash("Settings saved successfully.", "success")
+        self.flash("Settings saved successfully.", "success")
         return RedirectResponse(
             url=self._settings_url(request, namespace),
             status_code=302,

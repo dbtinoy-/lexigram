@@ -5,9 +5,9 @@ contributor-contract compatibility fixes where an integrated dashboard surface
 requires them.
 
 **Status:** Core implementation complete; follow-up gap-hardening passes have
-also covered optional extension integrations and the resource/form submission
-boundary. This file is the working plan and durable audit record for the
-`lexigram-admin` dashboard.
+also covered optional extension integrations, the resource/form submission
+boundary, and the settings form interaction and validation contract. This file
+is the working plan and durable audit record for the `lexigram-admin` dashboard.
 
 ## Delivery principles
 
@@ -32,6 +32,7 @@ boundary. This file is the working plan and durable audit record for the
 | Tables | State parsing, search, filters, sorting, grouping, pagination, density, visibility, views, columns, row/header/bulk actions | URL-controlled table state is sanitized against available fields; filter/range controls use the declared data source; pagination and bulk controls preserve state; action URLs and empty/error states are wired. |
 | Table client behavior | HTMX swaps/OOB, selection, loading, responsive layout, accessibility | Client logic reinitializes after swaps, avoids stale selection state, keeps loading and empty states visible, and uses accessible labels/targets for controls. |
 | Forms | Generated and declarative forms, coercion, validation, CSRF, errors, sections/layouts, relations, modal/slide-over/page flows | Both form paths carry hidden CSRF fields, preserve submitted values and validation errors, render field-level and form-level errors for native and HTMX responses, accept consistent boolean representations, and provide working submit/cancel paths for page, overlay, and custom-prefix modes. Edit validation also merges persisted values so disabled/hidden required fields do not produce false failures; relation controls avoid unauthorized option loads and degrade cleanly when their data source is unavailable. |
+| Settings forms | Field widgets, effective-value context, validation recovery, readonly state, HTMX/native parity, navigation safety | Settings forms now resolve duplicate checkbox submissions correctly, reject invalid values without persisting defaults, preserve submitted values with inline accessible errors, expose bounds/scope/source metadata, use textarea/URL/numeric controls where appropriate, show dormant profiler status, provide sticky reset/save actions with duplicate-submit protection, and warn before leaving dirty forms. |
 | Security boundaries | CSRF headers/forms, permission gates, mass assignment, unsafe redirects, script embedding | JSON/HTMX mutations send CSRF headers, form mutations include tokens, model/form exclusions and readonly fields are enforced server-side, submitted fields require both view and edit permission, relation option access fails closed, and command-palette JSON escapes HTML-significant characters before script embedding. |
 | Dashboard widgets | Discovery, structured content, refresh, empty/error states, customization, reorder, filters, responsive grid | Core health/activity/metrics widgets, contributor widgets, refresh controls, widget configuration, page filters, and drag-and-drop reorder are connected to mounted endpoints and render structured fallbacks. |
 | Navigation | Sidebar, clusters, secondary navigation, active state, user menu, custom prefix handling | Cluster centers and secondary links are prefix-aware, legacy contributor `/admin` URLs remain compatible, generic contributor links/badges are remounted, and user-menu destinations are generated from the active prefix. |
@@ -40,6 +41,21 @@ boundary. This file is the working plan and durable audit record for the
 | Notifications and observability | Inbox endpoints, SSE endpoint, notification navigation/spec compatibility, health/system pages | Notification navigation and mounted contributor routes remain compatible with custom mounts; the bell uses the active widget stream endpoint, inbox URLs are exposed for integration, and mark-read/mark-all requests include CSRF. Core System Info and health surfaces are available. |
 | Optional extension integrations | Cache, tasks, search, resilience, storage, feature flags, and monitoring contract seams | Hardened the cache adapter around primitive `get`/`set` results, materialized the resilience factory into an executable pipeline, fixed async feature-flag evaluation, aligned storage URL expiry with the blob-store contract, and adapted first-party task queues to canonical jobs. Missing optional services remain non-fatal. |
 | Regression coverage | Focused tests, custom-prefix seams, handler safety, rendering contracts | Added or updated tests cover omitted required fields, hook/data-source validation re-rendering, native/HTMX form-level errors, boolean representations, view-plus-edit field authorization, readonly/form exclusions, inline mutation, relation/form/table behavior, relation option failures and access gates, cluster/navigation prefixes, command-palette safety, shell wiring, restore/purge flows, contributor/dashboard rendering, and optional integration contracts. |
+
+## Settings form follow-up
+
+The settings pass deliberately keeps the existing registry and resource contracts
+intact while closing the highest-risk form gaps:
+
+- Boolean checkbox and hidden fallback pairs are parsed from all submitted values.
+- Validation is strict on writes, while legacy reads still retain safe default
+  fallback behaviour.
+- HTMX validation fragments return `200` so HTMX's default response policy swaps
+  the recoverable form; native submissions return `422` with the same form state.
+- Secrets remain masked and blank submissions retain the stored value.
+- Readonly/environment-backed specs render without save controls; deployment
+  metadata supports both legacy namespaced environment variables and explicit
+  standard names such as `ENVIRONMENT` and `LOG_LEVEL`.
 
 ## Routing and mount contract
 
@@ -61,6 +77,10 @@ workspace packages.
 
 - `compileall` over admin and UI source: passed.
 - `git diff --check`: passed.
+- Settings/controller/UI focused regression suite: passed (`98 passed, 1 warning`),
+  including duplicate checkbox FormData, strict validation recovery, field-level
+  errors, numeric constraints, multiline CSP controls, readonly settings, and
+  tenant/store handling.
 - Workspace `ruff check .` and `ruff format --check .`: passed after formatting
   the remaining baseline files touched by the delivery branch.
 - Full admin unit suite after the latest URL and quality passes: passed

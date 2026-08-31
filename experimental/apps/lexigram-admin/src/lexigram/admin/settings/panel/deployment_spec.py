@@ -24,12 +24,14 @@ class DeploymentInfoSpec(ConfigSpec):
         default=os.environ.get("ENVIRONMENT", "unknown"),
         readonly=True,
         help_text="Deployment environment name.",
+        env_name="ENVIRONMENT",
     )
     log_level = StringNode(
         label="Log Level",
         default=os.environ.get("LOG_LEVEL", "INFO"),
         readonly=True,
         help_text="Configured application log level.",
+        env_name="LOG_LEVEL",
     )
 
 

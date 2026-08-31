@@ -36,6 +36,7 @@ class Toggle(AbstractInput):
             value=self.value,
             checked=self.checked,
             disabled=self.disabled,
+            required=self.required,
             class_=f"{self.CHECKBOX_CLASSES} {self.props.get('class_', '')}".strip(),
             **self._get_extra_props(exclude=["checked"]),
         )

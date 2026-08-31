@@ -127,7 +127,9 @@ class TestSaveSpecSecretHandling:
         renderer = MagicMock()
         renderer.render_page = MagicMock(return_value=MagicMock(status_code=200))
         controller = SettingsController(renderer=renderer, registry=registry)
-        req = _mock_request(method="POST", form_data={"api_key": "sk-new"}, user=_FakeUser())
+        req = _mock_request(
+            method="POST", form_data={"api_key": "sk-new"}, user=_FakeUser()
+        )
         req.path_params = {"namespace": "admin.secret_test2"}
         await controller.save_spec(req)
 
@@ -229,7 +231,9 @@ class TestTenantScopedSettings:
         controller = SettingsController(renderer=renderer, registry=registry)
 
         async def _fail_resolve(request, *, default):
-            raise AssertionError("resolve_tenant_id should not be called for global specs")
+            raise AssertionError(
+                "resolve_tenant_id should not be called for global specs"
+            )
 
         monkeypatch.setattr(
             "lexigram.admin.controllers.settings.resolve_tenant_id", _fail_resolve
@@ -253,7 +257,9 @@ class TestStoreNameResolution:
 
         assert controller._store_name(CacheSpec) == "db"
 
-    def test_store_name_falls_back_to_default_when_spec_store_unregistered(self) -> None:
+    def test_store_name_falls_back_to_default_when_spec_store_unregistered(
+        self,
+    ) -> None:
         registry = ConfigRegistry.with_defaults()
         renderer = MagicMock()
         controller = SettingsController(renderer=renderer, registry=registry)
@@ -276,3 +282,65 @@ class TestStoreNameResolution:
         renderer = MagicMock()
         controller = SettingsController(renderer=renderer, registry=registry)
         assert controller._store_name(_EnvSpec) == "env"
+
+
+class _MultiForm:
+    """Small FormData stand-in that preserves duplicate field names."""
+
+    def __init__(self, *items: tuple[str, str]) -> None:
+        self._items = list(items)
+
+    def multi_items(self):
+        return iter(self._items)
+
+
+class TestSettingsFormDataAndValidation:
+    """Real browser form semantics must be safe and recoverable."""
+
+    @pytest.mark.asyncio
+    async def test_checked_boolean_wins_over_hidden_false_fallback(self) -> None:
+        registry = ConfigRegistry.with_defaults()
+        await registry.save_values(
+            "admin.cache", {"enabled": "false"}, store_name="default"
+        )
+        renderer = MagicMock()
+        renderer.render_page = MagicMock(return_value=MagicMock(status_code=200))
+        controller = SettingsController(renderer=renderer, registry=registry)
+        req = _mock_request(user=_FakeUser())
+        req.method = "POST"
+        req.path_params = {"namespace": "admin.cache"}
+        req.scope["admin_form_data"] = _MultiForm(
+            ("enabled", "true"),
+            ("enabled", "false"),
+            ("default_ttl", "120"),
+        )
+
+        await controller.save_spec(req)
+
+        values = await registry.get_values("admin.cache")
+        assert values["enabled"] is True
+        assert values["default_ttl"] == 120
+
+    @pytest.mark.asyncio
+    async def test_invalid_value_is_not_saved_and_is_rendered_inline(self) -> None:
+        registry = ConfigRegistry.with_defaults()
+        renderer = MagicMock()
+        controller = SettingsController(renderer=renderer, registry=registry)
+        req = _mock_request(
+            method="POST",
+            form_data={"enabled": "true", "default_ttl": "-1"},
+            hx_request=True,
+            user=_FakeUser(),
+        )
+        req.path_params = {"namespace": "admin.cache"}
+
+        response = await controller.save_spec(req)
+
+        # HTMX must receive a 200 response so its default response policy
+        # swaps the recoverable error fragment into the form.
+        assert response.status_code == 200
+        html = response.body.decode()
+        assert "Default TTL (seconds) must be at least 0." in html
+        assert 'value="-1"' in html
+        values = await registry.get_values("admin.cache")
+        assert values["default_ttl"] == 60

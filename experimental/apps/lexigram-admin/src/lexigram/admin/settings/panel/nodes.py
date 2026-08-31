@@ -55,6 +55,18 @@ class AbstractConfigNode(ABC):
     def validate(self, value: Any) -> Any:
         """Validate and coerce value."""
 
+    def validation_error(self, value: Any) -> str | None:
+        """Return a user-facing validation error without changing ``value``.
+
+        ``validate`` intentionally retains its historical fallback-to-default
+        behaviour because it is also used while loading legacy configuration
+        values. Form submissions need a stricter, non-destructive path so a
+        typo is not silently persisted as a default.
+        """
+        if self.required and (value is None or str(value).strip() == ""):
+            return f"{self.label} is required."
+        return None
+
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for UI rendering."""
         return {
@@ -88,6 +100,17 @@ class ColorNode(StringNode):
         if not _HEX_COLOR_RE.match(val):
             return self.default
         return val
+
+    def validation_error(self, value: Any) -> str | None:
+        """Validate a color while preserving the submitted value on failure."""
+        error = super().validation_error(value)
+        if error:
+            return error
+        if not _HEX_COLOR_RE.match(str(value)):
+            return (
+                f"{self.label} must be a six-digit hexadecimal color, such as #6b7280."
+            )
+        return None
 
 
 class IntNode(AbstractConfigNode):
@@ -131,17 +154,52 @@ class IntNode(AbstractConfigNode):
             return self.default
         return val
 
+    def validation_error(self, value: Any) -> str | None:
+        """Validate integer syntax and bounds without falling back to default."""
+        error = super().validation_error(value)
+        if error:
+            return error
+        try:
+            val = int(value)
+        except (ValueError, TypeError):
+            return f"{self.label} must be a whole number."
+        if self.ge is not None and val < self.ge:
+            return f"{self.label} must be at least {self.ge}."
+        if self.le is not None and val > self.le:
+            return f"{self.label} must be at most {self.le}."
+        return None
+
+    def to_dict(self) -> dict[str, Any]:
+        """Expose bounds so the browser can provide immediate feedback too."""
+        data = super().to_dict()
+        data["min"] = self.ge
+        data["max"] = self.le
+        return data
+
 
 class BooleanNode(AbstractConfigNode):
     """Configuration node for boolean values."""
+
+    TRUE_VALUES = frozenset({"true", "1", "yes", "on"})
+    FALSE_VALUES = frozenset({"false", "0", "no", "off", ""})
 
     def validate(self, value: Any) -> bool:
         """Validate and coerce value to bool."""
         if isinstance(value, bool):
             return value
         if isinstance(value, str):
-            return value.lower() in ("true", "1", "yes", "on")
+            return value.lower() in self.TRUE_VALUES
         return bool(value)
+
+    def validation_error(self, value: Any) -> str | None:
+        """Reject ambiguous boolean payloads instead of treating them as false."""
+        if isinstance(value, bool):
+            return None
+        if isinstance(value, str) and value.lower() in (
+            self.TRUE_VALUES | self.FALSE_VALUES
+        ):
+            return None
+        return f"{self.label} must be a boolean value."
 
 
 class EnumNode(AbstractConfigNode):
@@ -160,6 +218,16 @@ class EnumNode(AbstractConfigNode):
         if val not in allowed:
             return self.default
         return val
+
+    def validation_error(self, value: Any) -> str | None:
+        """Return an error when a submitted choice is not allowed."""
+        error = super().validation_error(value)
+        if error:
+            return error
+        allowed = list(self.options) if isinstance(self.options, dict) else self.options
+        if str(value) not in allowed:
+            return f"{self.label} has an invalid selection."
+        return None
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for UI rendering, including options."""
@@ -199,6 +267,7 @@ class ConfigSpec(metaclass=ConfigSpecMeta):
     package_source: str = "built-in"
     scope: Literal["global", "tenant"] = "global"
     store_name: str = "db"
+    runtime_status: Literal["active", "dormant"] = "active"
 
     _nodes: dict[str, AbstractConfigNode] = {}
 
@@ -215,6 +284,9 @@ class ConfigSpec(metaclass=ConfigSpecMeta):
             "label": cls.label,
             "icon": cls.icon,
             "description": cls.description,
+            "scope": cls.scope,
+            "store_name": cls.store_name,
+            "runtime_status": cls.runtime_status,
             "nodes": [node.to_dict() for node in cls.get_nodes().values()],
         }
 

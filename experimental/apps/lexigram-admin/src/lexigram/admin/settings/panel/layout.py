@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from lexigram.ui import Card, Component, el
+from lexigram.ui import Card, Component, el, raw
 
 if TYPE_CHECKING:
     from lexigram.admin.settings.panel.types import ConfigCategory
@@ -65,6 +65,7 @@ class ConfigLayout(Component):
                 self._render_main(),
                 class_="flex flex-col md:flex-row gap-6",
             ),
+            raw(self._settings_form_script()),
         )
 
     def _render_header(self) -> Any:
@@ -113,7 +114,9 @@ class ConfigLayout(Component):
                         hx_target="#main-content",
                         hx_swap="innerHTML",
                         hx_push_url="true",
-                        class_=f"block px-3 py-2 pl-9 text-sm rounded-lg transition-colors {'bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400 font-medium' if is_active_spec else 'text-muted-foreground hover:bg-muted dark:text-muted-foreground dark:hover:bg-card'}",
+                        data_settings_nav=True,
+                        aria_current="page" if is_active_spec else None,
+                        class_=f"block px-3 py-2 pl-9 text-sm rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring {'bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400 font-medium' if is_active_spec else 'text-muted-foreground hover:bg-muted dark:text-muted-foreground dark:hover:bg-card'}",
                     ),
                 )
 
@@ -170,6 +173,96 @@ class ConfigLayout(Component):
             ],
             class_="flex-1",
         )
+
+    @staticmethod
+    def _settings_form_script() -> str:
+        """Return delegated UX behavior for settings forms and navigation."""
+        return """
+        <script>
+        (function () {
+            if (window.__lexigramSettingsFormInit) return;
+            window.__lexigramSettingsFormInit = true;
+
+            function settingsForm(target) {
+                return target && target.closest
+                    ? target.closest('form[data-settings-form]')
+                    : null;
+            }
+
+            function hasDirtySettingsForm() {
+                return Array.prototype.some.call(
+                    document.querySelectorAll('form[data-settings-form]'),
+                    function (form) { return form.dataset.dirty === 'true'; }
+                );
+            }
+
+            function setFormStatus(form, message) {
+                var status = form.querySelector('[data-settings-status]');
+                if (status) status.textContent = message;
+            }
+
+            document.addEventListener('input', function (event) {
+                var form = settingsForm(event.target);
+                if (form) form.dataset.dirty = 'true';
+            });
+
+            document.addEventListener('change', function (event) {
+                var form = settingsForm(event.target);
+                if (form) form.dataset.dirty = 'true';
+            });
+
+            document.addEventListener('submit', function (event) {
+                var form = settingsForm(event.target);
+                if (!form) return;
+                if (form.dataset.submitting === 'true') {
+                    event.preventDefault();
+                    return;
+                }
+                form.dataset.submitting = 'true';
+                form.dataset.dirty = 'false';
+                var button = form.querySelector('button[type="submit"]');
+                if (button) {
+                    button.dataset.settingsOriginalText = button.textContent;
+                    button.disabled = true;
+                    button.setAttribute('aria-disabled', 'true');
+                    button.textContent = 'Saving…';
+                }
+                setFormStatus(form, 'Saving settings.');
+            }, true);
+
+            document.body.addEventListener('htmx:afterRequest', function (event) {
+                var form = settingsForm(event.detail && event.detail.elt);
+                if (!form || event.detail.successful) return;
+                form.dataset.submitting = 'false';
+                form.dataset.dirty = 'true';
+                var button = form.querySelector('button[type="submit"]');
+                if (button) {
+                    button.disabled = false;
+                    button.removeAttribute('aria-disabled');
+                    button.textContent = button.dataset.settingsOriginalText || 'Save changes';
+                }
+                setFormStatus(form, 'Settings were not saved. Review the errors and try again.');
+            });
+
+            document.addEventListener('click', function (event) {
+                var link = event.target instanceof Element
+                    ? event.target.closest('[data-settings-nav]')
+                    : null;
+                if (!link || !hasDirtySettingsForm()) return;
+                if (!window.confirm('You have unsaved settings changes. Leave without saving?')) {
+                    event.preventDefault();
+                    event.stopImmediatePropagation();
+                }
+            }, true);
+
+            window.addEventListener('beforeunload', function (event) {
+                if (!hasDirtySettingsForm()) return;
+                event.preventDefault();
+                event.returnValue = '';
+            });
+        }());
+        </script>
+        """
 
     def _render_icon(self, icon_name: str) -> Any:
         """Render an icon by name."""

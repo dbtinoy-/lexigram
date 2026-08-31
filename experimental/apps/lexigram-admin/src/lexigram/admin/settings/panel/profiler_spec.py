@@ -15,7 +15,11 @@ class ProfilerSpec(PydanticConfigSpec):
     namespace = "admin.profiler"
     label = "Performance Profiler"
     icon = "clock"
-    description = "Request profiling toggle and slow-request threshold."
+    description = (
+        "Request profiling toggle and slow-request threshold. "
+        "Runtime profiling is not active in this deployment."
+    )
+    runtime_status = "dormant"
     model = ProfilerSettings
     required_permissions = frozenset({"admin.settings.edit"})
 

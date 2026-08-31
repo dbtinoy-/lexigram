@@ -1,7 +1,8 @@
-"""UI components for configuration dashboard."""
+"""UI components for the configuration dashboard."""
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from lexigram.admin.settings.panel.nodes import ConfigSpec
@@ -14,6 +15,7 @@ from lexigram.ui import (
     NumberInput,
     Select,
     Stack,
+    TextArea,
     TextInput,
     Toggle,
     el,
@@ -30,11 +32,17 @@ class BooleanField(Component):
         name: str,
         value: bool,
         label: str | None = None,
+        disabled: bool = False,
+        required: bool = False,
+        error: str | None = None,
     ) -> None:
         super().__init__()
         self.name = name
         self.value = value
         self.label = label
+        self.disabled = disabled
+        self.required = required
+        self.error = error
 
     def render(self) -> Any:
         return el(
@@ -44,15 +52,38 @@ class BooleanField(Component):
                 value="true",
                 checked=self.value,
                 label=self.label,
+                disabled=self.disabled,
+                required=self.required,
+                error=self.error,
             ),
-            el("input", type="hidden", name=self.name, value="false"),
+            # Disabled controls are not submitted. The controller also
+            # normalizes missing booleans, but keep the fallback for normal
+            # editable toggles where it is useful.
+            el("input", type="hidden", name=self.name, value="false")
+            if not self.disabled
+            else "",
             class_="flex flex-col",
             id=f"{self.name}-field",
         )
 
 
 class ConfigDashboardUI:
-    """UI helper for configuration dashboard."""
+    """UI helper for the registry-backed configuration dashboard."""
+
+    @staticmethod
+    def _form_id(namespace: str) -> str:
+        """Return a stable, safe DOM id for a settings form."""
+        slug = re.sub(r"[^a-zA-Z0-9_-]+", "-", namespace).strip("-") or "settings"
+        return f"settings-form-{slug}"
+
+    @staticmethod
+    def _source_label(store_name: str) -> str:
+        """Return a human-readable persistence source label."""
+        return {
+            "env": "Environment",
+            "db": "Database",
+            "default": "Application memory",
+        }.get(store_name, store_name.replace("_", " ").title())
 
     def render_dashboard(
         self,
@@ -63,7 +94,7 @@ class ConfigDashboardUI:
         values: dict[str, Any],
         state: Any = None,
     ) -> Any:
-        """Render the complete dashboard content."""
+        """Render the legacy complete dashboard content."""
         return Stack(
             gap=6,
             children=[
@@ -109,7 +140,7 @@ class ConfigDashboardUI:
         active_ns: str | None,
         category: str,
     ) -> Any:
-        """Render specs navigation."""
+        """Render specs navigation for the legacy dashboard."""
         nav_items = []
         for spec in specs:
             is_active = spec.namespace == active_ns
@@ -124,6 +155,7 @@ class ConfigDashboardUI:
                         el("span", spec.label or spec.namespace.title()),
                     ],
                     href=f"?ns={spec.namespace}",
+                    aria_current="page" if is_active else None,
                     class_=f"flex items-center px-4 py-3 rounded-lg text-sm font-medium transition-colors {'bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400' if is_active else 'text-muted-foreground hover:bg-muted dark:text-muted-foreground dark:hover:bg-card'}",
                 ),
             )
@@ -144,7 +176,12 @@ class ConfigDashboardUI:
                 "Namespaces",
                 class_="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-2",
             ),
-            el("nav", nav_items, class_="space-y-1"),
+            el(
+                "nav",
+                nav_items,
+                aria_label="Configuration namespaces",
+                class_="space-y-1",
+            ),
             class_="w-full lg:w-64 flex-shrink-0",
         )
 
@@ -154,12 +191,9 @@ class ConfigDashboardUI:
         values: dict[str, Any],
         namespace: str,
     ) -> Any:
-        """Render the configuration form."""
+        """Render the configuration form for the legacy dashboard."""
         nodes = spec.get("nodes", [])
-
-        fields = []
-        for node_data in nodes:
-            fields.append(self.render_field(node_data, values))
+        fields = [self.render_field(node_data, values) for node_data in nodes]
 
         return Card(
             title=spec.get("label", "Configuration"),
@@ -167,13 +201,14 @@ class ConfigDashboardUI:
                 Form(
                     action_url="?ns=" + namespace,
                     method="POST",
+                    submit_label="",
                     hx_target="#config-card",
                     hx_swap="outerHTML",
                     children=[
                         el("input", type="hidden", name="_ns", value=namespace),
                         Stack(gap=4, children=fields),
                         el("div", class_="h-4"),
-                        FormActions(submit_label="Save Changes"),
+                        FormActions(primary_text="Save changes", secondary_text=None),
                     ],
                 ),
             ],
@@ -210,24 +245,57 @@ class ConfigDashboardUI:
         values: dict[str, Any],
         action: str,
         csrf_token: str | None = None,
+        errors: dict[str, str] | None = None,
     ) -> Any:
-        """Render a standalone configuration form for use within ConfigLayout.
+        """Render a standalone configuration form.
 
-        Args:
-            spec: Configuration spec dictionary with nodes
-            values: Current values for the spec
-            action: Form action URL
-            csrf_token: Optional CSRF token rendered as a hidden input
-
-        Returns:
-            Card component containing the configuration form
+        ``values`` may contain the submitted values after a validation error;
+        this is deliberate so the form never replaces a user's typo with a
+        default before they have had a chance to correct it.
         """
+        errors = errors or {}
         nodes = spec.get("nodes", [])
         namespace = spec.get("namespace", "")
+        fields = [self.render_field(node, values, errors) for node in nodes]
+        editable = any(not node.get("readonly", False) for node in nodes)
 
-        fields = []
-        for node_data in nodes:
-            fields.append(self.render_field(node_data, values))
+        scope_label = "Tenant scoped" if spec.get("scope") == "tenant" else "Global"
+        source_label = self._source_label(spec.get("store_name", "default"))
+        metadata = el(
+            "div",
+            el(
+                "span",
+                scope_label,
+                class_="inline-flex items-center rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground",
+            ),
+            el(
+                "span",
+                f"Source: {source_label}",
+                class_="inline-flex items-center rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground",
+            ),
+            class_="flex flex-wrap gap-2 mb-5",
+        )
+
+        body: list[Any] = [
+            el(
+                "p",
+                spec.get("description", ""),
+                class_="mb-5 text-sm text-muted-foreground",
+            )
+            if spec.get("description")
+            else "",
+            metadata,
+        ]
+        if spec.get("runtime_status") == "dormant":
+            body.append(
+                el(
+                    "div",
+                    el("strong", "Not active at runtime. "),
+                    "These values are stored for future use but are not currently applied.",
+                    role="status",
+                    class_="mb-5 rounded-lg border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning",
+                )
+            )
 
         hidden = []
         if csrf_token:
@@ -236,65 +304,124 @@ class ConfigDashboardUI:
             )
         hidden.append(el("input", type="hidden", name="_ns", value=namespace))
 
-        return Card(
-            title=spec.get("label", "Configuration"),
-            subtitle=spec.get("description", ""),
-            children=[
+        if editable:
+            form_id = self._form_id(namespace)
+            actions = el(
+                "div",
+                el(
+                    "button",
+                    "Reset form",
+                    type="reset",
+                    class_="inline-flex items-center rounded-md border border-border bg-card px-4 py-2 text-sm font-medium text-foreground shadow-sm hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                ),
+                FormActions(primary_text="Save changes", secondary_text=None),
+                class_="sticky bottom-3 z-10 mt-6 flex items-center justify-between gap-3 rounded-lg border border-border bg-card/95 p-2 shadow-lg backdrop-blur",
+            )
+            body.append(
                 Form(
                     action_url=action,
                     method="POST",
+                    submit_label="",
+                    form_id=form_id,
+                    form_attrs={
+                        "data-settings-form": "true",
+                        "data-settings-namespace": namespace,
+                    },
                     hx_target="#config-card",
                     hx_swap="outerHTML",
                     children=[
                         *hidden,
                         el("div", *fields, class_="space-y-4"),
-                        el("div", class_="h-4"),
-                        FormActions(submit_label="Save Changes"),
+                        el(
+                            "p",
+                            "",
+                            id=f"{form_id}-status",
+                            data_settings_status=True,
+                            aria_live="polite",
+                            class_="sr-only",
+                        ),
+                        actions,
                     ],
-                ),
-            ],
+                )
+            )
+        else:
+            body.extend(
+                [
+                    el("div", *fields, class_="space-y-4"),
+                    el(
+                        "p",
+                        "These values are read-only and managed by the deployment environment.",
+                        role="status",
+                        class_="mt-6 rounded-lg bg-muted px-4 py-3 text-sm text-muted-foreground",
+                    ),
+                ]
+            )
+
+        return Card(
+            title=spec.get("label", "Configuration"),
+            children=body,
             class_="w-full",
             id="config-card",
         )
 
-    def render_field(self, node: dict[str, Any], values: dict[str, Any]) -> Any:
+    def render_field(
+        self,
+        node: dict[str, Any],
+        values: dict[str, Any],
+        errors: dict[str, str] | None = None,
+    ) -> Any:
         """Render a single configuration field based on its type."""
+        errors = errors or {}
         name = node["name"]
-        value = values.get(name, node["default"])
-        label = node["label"]
-        help_text = node["help_text"]
-        node_type = node["type"]
-        readonly = node["readonly"]
+        value = values.get(name, node.get("default"))
+        label = node.get("label") or name.replace("_", " ").title()
+        help_text = node.get("help_text")
+        node_type = node.get("type", "string")
+        readonly = bool(node.get("readonly", False))
+        required = bool(node.get("required", False))
         options = node.get("options", [])
 
-        # Decide input component based on type
-        input_comp: Any = None
+        if readonly:
+            readonly_note = "Read-only value."
+            help_text = f"{help_text} {readonly_note}" if help_text else readonly_note
 
         if node_type == "boolean":
-            input_comp = BooleanField(
+            input_comp: Any = BooleanField(
                 name=name,
                 value=bool(value),
                 label=label,
+                disabled=readonly,
+                required=required,
+                error=errors.get(name),
             )
         elif node_type == "int":
-            input_comp = NumberInput(name=name, value=value, disabled=readonly)
+            input_comp = NumberInput(
+                name=name,
+                value=value,
+                min_value=node.get("min"),
+                max_value=node.get("max"),
+                step=1,
+                disabled=readonly,
+                required=required,
+            )
         elif node_type == "enum":
-            # Normalize options to list of (value, label) tuples if needed
-            choices = []
-            if isinstance(options, dict):
-                choices = list(options.items())
-            else:
-                choices = [(str(o), str(o)) for o in options]
-
+            choices = (
+                list(options.items())
+                if isinstance(options, dict)
+                else [(str(option), str(option)) for option in options]
+            )
             input_comp = Select(
                 name=name,
                 choices=choices,
                 value=str(value) if value is not None else "",
                 disabled=readonly,
+                required=required,
             )
         elif node_type == "secret":
             has_value = bool(value)
-            presence_note = "(currently set)" if has_value else "(not set)"
+            presence_note = (
+                "(currently set; leave blank to keep it)" if has_value else "(not set)"
+            )
             help_text = f"{help_text} {presence_note}" if help_text else presence_note
             input_comp = TextInput(
                 name=name,
@@ -302,6 +429,8 @@ class ConfigDashboardUI:
                 input_type="password",
                 placeholder="••••••••" if has_value else "",
                 disabled=readonly,
+                required=required and not has_value,
+                autocomplete="new-password",
             )
         elif node_type == "color":
             input_comp = TextInput(
@@ -309,17 +438,32 @@ class ConfigDashboardUI:
                 value=str(value) if value is not None else "",
                 input_type="color",
                 disabled=readonly,
+                required=required,
             )
-        else:  # string and others
+        elif node.get("extra", {}).get("multiline") or name in {"csp", "description"}:
+            input_comp = TextArea(
+                name=name,
+                value=str(value) if value is not None else "",
+                rows=7 if name == "csp" else 4,
+                disabled=readonly,
+                required=required,
+            )
+        else:
+            input_type = "url" if name.endswith("_url") else "text"
             input_comp = TextInput(
                 name=name,
                 value=str(value) if value is not None else "",
+                input_type=input_type,
                 disabled=readonly,
+                required=required,
             )
 
         return FieldSchema(
             input_component=input_comp,
             label=label if node_type != "boolean" else None,
             help_text=help_text,
+            error=errors.get(name),
+            required=required,
+            hint="Read only" if readonly else None,
             class_="mb-0",
         )

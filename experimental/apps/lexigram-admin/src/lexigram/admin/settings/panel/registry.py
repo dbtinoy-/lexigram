@@ -169,6 +169,17 @@ class ConfigRegistry:
         for key, node in spec.get_nodes().items():
             full_key = f"{namespace}.{key}"
             raw_val = await store.get(full_key, node.default, tenant_id=tenant_id)
+            # Deployment metadata historically used the namespaced key (for
+            # example ADMIN_DEPLOYMENT_ENVIRONMENT). Also honour an explicit
+            # environment name so standard ENVIRONMENT/LOG_LEVEL variables
+            # work without breaking existing deployments.
+            env_name = getattr(node, "extra", {}).get("env_name")
+            if store_name == "env" and env_name:
+                raw_val = await store.get(
+                    env_name,
+                    raw_val,
+                    tenant_id=tenant_id,
+                )
             values[key] = node.validate(raw_val)
         return values
 

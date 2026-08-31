@@ -91,3 +91,33 @@ class TestTypedFieldRendering:
         html = render_to_string(ConfigDashboardUI().render_field(node, {}))
         assert 'type="password" name="api_key"' in html
         assert "not set" in html
+
+
+def test_numeric_constraints_and_settings_form_metadata_are_rendered() -> None:
+    registry = ConfigRegistry.with_defaults()
+    spec = registry.get_spec("admin.cache")
+    assert spec is not None
+    html = render_to_string(
+        ConfigDashboardUI().render_config_form(
+            spec.to_dict(),
+            values={"enabled": True, "default_ttl": 60},
+            action="/admin/settings/admin.cache",
+        )
+    )
+    assert 'min="0"' in html
+    assert 'data-settings-form="true"' in html
+    assert html.count('type="submit"') == 1
+    assert "Source: Database" in html
+
+
+def test_csp_is_rendered_as_multiline_textarea() -> None:
+    registry = ConfigRegistry.with_defaults()
+    spec = registry.get_spec("admin.security")
+    assert spec is not None
+    html = render_to_string(
+        ConfigDashboardUI().render_config_form(
+            spec.to_dict(), values={}, action="/admin/settings/admin.security"
+        )
+    )
+    assert "<textarea" in html
+    assert 'name="csp"' in html
