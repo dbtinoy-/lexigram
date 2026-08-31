@@ -9,6 +9,7 @@ from typing import Any
 
 from lexigram.admin.exceptions import PermissionDeniedError
 from lexigram.admin.relations.manager import AbstractRelationManager
+from lexigram.admin.resources.urls import admin_prefix_from_request, admin_url
 from lexigram.result import Ok, Result
 from lexigram.ui import el, render_to_string
 
@@ -80,6 +81,7 @@ class RelationManager(AbstractRelationManager):
         items = await self.get_query()
         rel_name = self.get_relationship_name()
         parent_id = self.parent_id
+        admin_prefix = admin_prefix_from_request(request)
 
         rows: list[Any] = []
         for item in items:
@@ -95,7 +97,11 @@ class RelationManager(AbstractRelationManager):
 
             actions: list[Any] = []
             if self.inline_edit:
-                edit_url = f"/admin/{resource_name}/{parent_id}/relations/{rel_name}/{item_id}/edit"
+                edit_url = admin_url(
+                    admin_prefix,
+                    resource_name,
+                    f"{parent_id}/relations/{rel_name}/{item_id}/edit",
+                )
                 actions.append(
                     el(
                         "a",
@@ -108,8 +114,10 @@ class RelationManager(AbstractRelationManager):
                 )
                 actions.append(" ")
             if self.inline_delete:
-                delete_url = (
-                    f"/admin/{resource_name}/{parent_id}/relations/{rel_name}/{item_id}"
+                delete_url = admin_url(
+                    admin_prefix,
+                    resource_name,
+                    f"{parent_id}/relations/{rel_name}/{item_id}",
                 )
                 actions.append(
                     el(
@@ -129,7 +137,11 @@ class RelationManager(AbstractRelationManager):
 
         header: list[Any] = []
         if self.inline_create:
-            create_url = f"/admin/{resource_name}/{parent_id}/relations/{rel_name}/new"
+            create_url = admin_url(
+                admin_prefix,
+                resource_name,
+                f"{parent_id}/relations/{rel_name}/new",
+            )
             header.append(
                 el(
                     "div",

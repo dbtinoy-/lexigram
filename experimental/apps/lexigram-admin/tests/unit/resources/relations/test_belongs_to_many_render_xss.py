@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 from html import unescape
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -54,6 +55,17 @@ class _BenignBelongsToMany(_HostileBelongsToMany):
 
 
 class TestBelongsToManyRenderXss:
+    @pytest.mark.asyncio
+    @pytest.mark.asyncio
+    async def test_render_uses_request_admin_prefix(self) -> None:
+        mgr = _BenignBelongsToMany(parent_id="parent-1")
+        request = SimpleNamespace(scope={"admin_prefix": "/backoffice"})
+
+        html = await mgr.render(request=request, resource_name="users")
+
+        assert "/backoffice/users/parent-1/relations/roles/toggle" in html
+        assert "/admin/users/parent-1/relations/roles/toggle" not in html
+
     @pytest.mark.asyncio
     async def test_hostile_label_escaped_in_cell_text(self) -> None:
         mgr = _HostileBelongsToMany(parent_id="parent-1")

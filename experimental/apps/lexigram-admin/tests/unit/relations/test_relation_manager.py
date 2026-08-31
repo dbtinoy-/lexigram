@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from abc import ABC
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -293,6 +294,16 @@ class TestRelationManagerRender:
         mgr = NoCreateManager(parent_id=42)
         html = await mgr.render(request=None, resource_name="users")
         assert "+ Add" not in html
+
+    @pytest.mark.asyncio
+    async def test_render_uses_request_admin_prefix(self) -> None:
+        mgr = _PetRelationManager(parent_id=42)
+        request = SimpleNamespace(scope={"admin_prefix": "/backoffice"})
+
+        html = await mgr.render(request=request, resource_name="users")
+
+        assert "/backoffice/users/42/relations/pets/1/edit" in html
+        assert "/admin/users/42/relations/pets/1/edit" not in html
 
     @pytest.mark.asyncio
     async def test_render_includes_edit_links_when_inline_edit(self) -> None:

@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any
 from lexigram.admin.data.query import QuerySpec
 from lexigram.admin.relations.errors import RelationPersistenceError
 from lexigram.admin.relations.manager_ext import RelationManager
+from lexigram.admin.resources.urls import admin_prefix_from_request, admin_url
 from lexigram.serialization import dumps_str, loads_str
 from lexigram.ui import el, render_to_string
 
@@ -214,6 +215,7 @@ class BelongsToManyRelationManager(RelationManager):
         items = await self.get_query()
         attached_ids = await self.get_attached_ids()
         rel_name = self.get_relationship_name()
+        admin_prefix = admin_prefix_from_request(request)
 
         rows: list[Any] = []
         for item in items:
@@ -228,7 +230,13 @@ class BelongsToManyRelationManager(RelationManager):
                     item_id,
                     label,
                     is_attached,
-                    self._render_pivot_cells(item_id, pivot_data),
+                    self._render_pivot_cells(
+                        item_id,
+                        pivot_data,
+                        resource_name=resource_name,
+                        admin_prefix=admin_prefix,
+                    ),
+                    admin_prefix=admin_prefix,
                 )
             )
 
@@ -248,7 +256,11 @@ class BelongsToManyRelationManager(RelationManager):
                     placeholder="Search...",
                     id=f"search-{rel_name}",
                     hx_trigger="keyup changed delay:300ms",
-                    hx_get=f"/admin/{resource_name}/{self.parent_id}/relations/{rel_name}",
+                    hx_get=admin_url(
+                        admin_prefix,
+                        resource_name,
+                        f"{self.parent_id}/relations/{rel_name}",
+                    ),
                     hx_target=f"#relation-panel-{rel_name}",
                     hx_select=".relation-panel",
                 ),
@@ -296,7 +308,11 @@ class BelongsToManyRelationManager(RelationManager):
                     "Save",
                     type="button",
                     class_="px-3 py-1.5 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700",
-                    hx_post=f"/admin/{resource_name}/{self.parent_id}/relations/{rel_name}/sync",
+                    hx_post=admin_url(
+                        admin_prefix,
+                        resource_name,
+                        f"{self.parent_id}/relations/{rel_name}/sync",
+                    ),
                     hx_target=f"#relation-panel-{rel_name}",
                     hx_swap="outerHTML",
                 ),
@@ -327,6 +343,8 @@ class BelongsToManyRelationManager(RelationManager):
         label: str,
         is_attached: bool,
         pivot_cells: list[Any],
+        *,
+        admin_prefix: str = "/admin",
     ) -> Any:
         """Build a single belongs-to-many row element."""
         rel_name = self.get_relationship_name()
@@ -340,7 +358,11 @@ class BelongsToManyRelationManager(RelationManager):
                     class_="belongs-to-many-checkbox rounded border-border text-primary-600 focus:ring-primary-500",
                     data_related_id=item_id,
                     checked="checked" if is_attached else None,
-                    hx_post=f"/admin/{resource_name}/{self.parent_id}/relations/{rel_name}/toggle",
+                    hx_post=admin_url(
+                        admin_prefix,
+                        resource_name,
+                        f"{self.parent_id}/relations/{rel_name}/toggle",
+                    ),
                     hx_vals=dumps_str({"related_id": item_id}),
                     hx_target="closest tr",
                     hx_swap="outerHTML",
@@ -353,7 +375,12 @@ class BelongsToManyRelationManager(RelationManager):
         )
 
     def _render_pivot_cells(
-        self, related_id: str, pivot_data: dict[str, Any] | None
+        self,
+        related_id: str,
+        pivot_data: dict[str, Any] | None,
+        *,
+        resource_name: str = "",
+        admin_prefix: str = "/admin",
     ) -> list[Any]:
         """Return pivot cell elements for a single related record."""
         if not self.pivot_columns:
@@ -370,7 +397,11 @@ class BelongsToManyRelationManager(RelationManager):
                         class_="px-2 py-1 text-sm border rounded w-full",
                         value=value,
                         name=f"pivot_{col}_{related_id}",
-                        hx_post=f"/admin/{self.parent_id}/relations/{self.get_relationship_name()}/pivot/{related_id}",
+                        hx_post=admin_url(
+                            admin_prefix,
+                            resource_name,
+                            f"{self.parent_id}/relations/{self.get_relationship_name()}/pivot/{related_id}",
+                        ),
                         hx_trigger="change",
                         hx_swap="none",
                     ),
@@ -459,7 +490,13 @@ class BelongsToManyRelationManager(RelationManager):
                     related_id,
                     label,
                     is_attached,
-                    self._render_pivot_cells(related_id, pivot_data),
+                    self._render_pivot_cells(
+                        related_id,
+                        pivot_data,
+                        resource_name=resource_name,
+                        admin_prefix=admin_prefix_from_request(request),
+                    ),
+                    admin_prefix=admin_prefix_from_request(request),
                 )
             )
         )
