@@ -13,6 +13,7 @@ from lexigram.admin.integrations.features import FeaturesIntegration
 from lexigram.admin.integrations.resilience import ResilienceIntegration
 from lexigram.admin.integrations.storage import StorageIntegration
 from lexigram.admin.integrations.tasks import TasksIntegration
+from lexigram.contracts.infra.storage import StorageUnsupportedOperationError
 from lexigram.result import Ok
 
 
@@ -74,6 +75,21 @@ class TestStorageIntegration:
         backend.get_presigned_url.assert_awaited_once_with(
             "a.txt", expires_in=timedelta(seconds=90), method="GET"
         )
+
+    @pytest.mark.asyncio
+    async def test_presigned_url_falls_back_when_backend_does_not_support_it(
+        self,
+    ) -> None:
+        backend = MagicMock()
+        backend.get_presigned_url = AsyncMock(
+            side_effect=StorageUnsupportedOperationError("unsupported")
+        )
+        backend.get_url = AsyncMock(return_value="memory://a.txt")
+        integration = StorageIntegration(SimpleNamespace(presigned_url_expiry=60))
+        integration._store = backend
+
+        assert await integration.presigned_url("a.txt") == "memory://a.txt"
+        backend.get_url.assert_awaited_once_with("a.txt")
 
 
 class TestFeaturesIntegration:

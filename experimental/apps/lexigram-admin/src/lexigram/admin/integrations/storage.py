@@ -5,6 +5,8 @@ from __future__ import annotations
 from datetime import timedelta
 from typing import TYPE_CHECKING, Any
 
+from lexigram.contracts.infra.storage import StorageUnsupportedOperationError
+
 if TYPE_CHECKING:
     from lexigram.contracts.core.di import (
         ContainerRegistrarProtocol,
@@ -101,11 +103,16 @@ class StorageIntegration:
     async def presigned_url(self, path: str, expires_in: int | None = None) -> str:
         """Return a temporary GET URL using the blob-store contract's timedelta API."""
         ttl = expires_in or getattr(self._config, "presigned_url_expiry", 3600)
-        return await self._store.get_presigned_url(
-            path,
-            expires_in=timedelta(seconds=ttl),
-            method="GET",
-        )
+        try:
+            return await self._store.get_presigned_url(
+                path,
+                expires_in=timedelta(seconds=ttl),
+                method="GET",
+            )
+        except StorageUnsupportedOperationError:
+            # Memory/local drivers may not support presigned URLs but can
+            # still provide a deterministic URL for development and previews.
+            return await self._store.get_url(path)
 
 
 __all__ = ["StorageIntegration"]
