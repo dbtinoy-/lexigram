@@ -248,6 +248,38 @@ class TestSettingsControllerUpdate:
         ]
 
     @pytest.mark.asyncio
+    async def test_stale_settings_revision_rejects_overwrite(
+        self, renderer: MagicMock
+    ) -> None:
+        from lexigram.admin.settings.panel import CacheSpec
+
+        registry = ConfigRegistry.with_defaults()
+        controller = SettingsController(
+            renderer=renderer,
+            registry=registry,
+        )
+        before = await registry.get_values("admin.cache")
+        stale_revision = controller._settings_revision(CacheSpec, before)
+        await registry.save_values("admin.cache", {"enabled": False})
+
+        req = _mock_request(
+            method="POST",
+            form_data={
+                "settings_revision": stale_revision,
+                "enabled": "true",
+                "default_ttl": "120",
+            },
+            user=_FakeUser(),
+        )
+        req.path_params = {"namespace": "admin.cache"}
+
+        response = await controller.save_spec(req)
+
+        assert response.status_code == 409
+        current = await registry.get_values("admin.cache")
+        assert current["enabled"] is False
+
+    @pytest.mark.asyncio
     async def test_save_spec_int_and_bool_fields_not_flagged_invalid(
         self, renderer: MagicMock
     ) -> None:

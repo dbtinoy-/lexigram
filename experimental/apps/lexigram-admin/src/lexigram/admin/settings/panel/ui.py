@@ -263,6 +263,7 @@ class ConfigDashboardUI:
         csrf_token: str | None = None,
         errors: dict[str, str] | None = None,
         value_metadata: dict[str, dict[str, Any]] | None = None,
+        revision: str | None = None,
     ) -> Any:
         """Render a standalone configuration form.
 
@@ -318,6 +319,7 @@ class ConfigDashboardUI:
             class_="flex flex-wrap gap-2 mb-5",
         )
 
+        form_level_error = errors.get("__all__")
         body: list[Any] = [
             el(
                 "p",
@@ -327,6 +329,16 @@ class ConfigDashboardUI:
             if spec.get("description")
             else "",
             metadata,
+            (
+                el(
+                    "div",
+                    form_level_error,
+                    role="alert",
+                    class_="mb-5 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive",
+                )
+                if form_level_error
+                else ""
+            ),
         ]
         runtime_messages = {
             "restart_required": (
@@ -351,6 +363,15 @@ class ConfigDashboardUI:
         if csrf_token:
             hidden.append(
                 el("input", type="hidden", name="csrf_token", value=csrf_token)
+            )
+        if revision:
+            hidden.append(
+                el(
+                    "input",
+                    type="hidden",
+                    name="settings_revision",
+                    value=revision,
+                )
             )
         hidden.append(el("input", type="hidden", name="_ns", value=namespace))
 

@@ -6,6 +6,9 @@ the config panel UI and persists values to the DB-backed store.
 
 from __future__ import annotations
 
+import hashlib
+import hmac
+import json
 from typing import TYPE_CHECKING, Any
 
 from starlette.requests import Request
@@ -214,6 +217,37 @@ class SettingsController(AdminController):
                 )
         return changes
 
+    @staticmethod
+    def _settings_revision(spec: type[Any], values: dict[str, Any]) -> str:
+        """Return a non-reversible revision token for the rendered settings."""
+        revision_values: list[tuple[str, Any]] = []
+        for key, node in sorted(spec.get_nodes().items()):
+            value = values.get(key)
+            # Include only whether a secret is present. Hashing its content
+            # would still create an unnecessary secret-derived identifier.
+            if isinstance(node, SecretNode):
+                value = "<set>" if value else "<unset>"
+            revision_values.append((key, value))
+        payload = json.dumps(
+            revision_values,
+            sort_keys=True,
+            separators=(",", ":"),
+            default=str,
+        ).encode("utf-8")
+        return hashlib.sha256(payload).hexdigest()
+
+    @staticmethod
+    def _revision_matches(
+        expected: str | None,
+        spec: type[Any],
+        values: dict[str, Any],
+    ) -> bool:
+        """Compare a submitted revision without timing side channels."""
+        return not expected or hmac.compare_digest(
+            expected,
+            SettingsController._settings_revision(spec, values),
+        )
+
     async def _audit(
         self,
         request: Request,
@@ -293,6 +327,7 @@ class SettingsController(AdminController):
             values=values,
             errors=errors,
             value_metadata=value_metadata,
+            revision=self._settings_revision(spec, values),
             action=self._settings_url(request, namespace),
             csrf_token=self._get_csrf_token(request),
         )
@@ -416,6 +451,53 @@ class SettingsController(AdminController):
             namespace, self._store_name(spec), tenant_id=tenant_id
         )
 
+        submitted_revision = form.get("settings_revision")
+        if submitted_revision and not self._revision_matches(
+            str(submitted_revision), spec, existing_values
+        ):
+            await self._audit(
+                request,
+                success=False,
+                namespace=namespace,
+                reason="concurrent_update",
+            )
+            conflict_message = (
+                "These settings changed in another session. Review the current "
+                "values before saving again."
+            )
+            if request.headers.get("hx-request") == "true":
+                self._flash_messages.clear()
+                value_metadata = await self._registry.get_value_metadata(
+                    namespace,
+                    self._store_name(spec),
+                    tenant_id=tenant_id,
+                )
+                form_html = render_to_string(
+                    ConfigDashboardUI().render_config_form(
+                        spec=self._spec_ui_data(spec, can_edit=True),
+                        values=existing_values,
+                        errors={"__all__": conflict_message},
+                        value_metadata=value_metadata,
+                        revision=self._settings_revision(spec, existing_values),
+                        action=self._settings_url(request, namespace),
+                        csrf_token=self._get_csrf_token(request),
+                    )
+                )
+                toast_html = self._render_toast(conflict_message, "warning")
+                flash_oob = (
+                    f'<div id="flash-container" hx-swap-oob="true">{toast_html}</div>'
+                )
+                return HTMLResponse(flash_oob + form_html)
+
+            return await self._render_spec_page(
+                request,
+                spec,
+                existing_values,
+                errors={"__all__": conflict_message},
+                status_code=409,
+                tenant_id=tenant_id,
+            )
+
         # Missing unchecked checkboxes are equivalent to false even when a
         # client omits the hidden fallback. Required non-boolean fields are
         # reported rather than silently omitted.
@@ -491,6 +573,7 @@ class SettingsController(AdminController):
                     values=display_values,
                     errors=validation_errors,
                     value_metadata=value_metadata,
+                    revision=self._settings_revision(spec, existing_values),
                     action=self._settings_url(request, namespace),
                     csrf_token=self._get_csrf_token(request),
                 )
@@ -562,6 +645,7 @@ class SettingsController(AdminController):
                 spec=self._spec_ui_data(spec, can_edit=True),
                 values=values,
                 value_metadata=value_metadata,
+                revision=self._settings_revision(spec, values),
                 action=self._settings_url(request, namespace),
                 csrf_token=self._get_csrf_token(request),
             )

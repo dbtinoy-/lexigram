@@ -201,7 +201,9 @@ def test_effective_value_source_is_visible_on_the_field_metadata() -> None:
                     "source_label": "Application default",
                 }
             },
+            revision="revision-token",
         )
     )
 
     assert "Application default" in html
+    assert 'name="settings_revision" value="revision-token"' in html
