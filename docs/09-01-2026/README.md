@@ -23,6 +23,7 @@ deployment, the fixes shipped on this date, and the forward-looking roadmap.
 | [13-a11y-and-dead-handlers.md](13-a11y-and-dead-handlers.md) | Accessibility pass (R17) + B13: Alpine `x_on_*` kwargs rendered dead `x-on-*` attributes across lexigram-ui/admin (command palette nav, slide-over close, toggles, modals all silently dead); combobox pattern, unique ids, live regions, decorative-icon defaults. |
 | [14-csp-correctness.md](14-csp-correctness.md) | CSP correctness (R18) + B14: enforced CSP lacked `'unsafe-eval'`, which kills standard-build Alpine (and htmx `hx-on-*`) in real browsers; adds `object-src`/`base-uri`/`form-action` hardening and the CSP v2 (Alpine CSP-build) roadmap. |
 | [15-import-pipeline-correctness.md](15-import-pipeline-correctness.md) | Import pipeline correctness (R19), B15–B19: ragged-CSV crash, broken `.jsonl` support, JSON row-misalignment **data loss**, batch-abort on unexpected driver exceptions, undownloadable failed-import reports, and Content-Disposition filename sanitization. |
+| [16-export-lifecycle-correctness.md](16-export-lifecycle-correctness.md) | Export lifecycle correctness (R20), B20–B23: `schedule_export` raised TypeError on every call (silenced by `type: ignore`), cancellation clobbered by COMPLETED, uncancellable pending jobs, `stream_export` yielding mock bytes (now real CSV/JSON streaming), triple-logged callback failures. |
 
 ## Status at time of writing
 
