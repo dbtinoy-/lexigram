@@ -59,7 +59,7 @@ class TextColumn(Column):
         if self._mono:
             classes.append("font-mono")
 
-        return el("span", str(value), class_="".join(classes))
+        return el("span", str(value), class_=" ".join(classes))
 
 
 class BadgeColumn(Column):
@@ -313,7 +313,7 @@ class ImageColumn(Column):
             elif self._square:
                 classes.append("rounded-md")
 
-            return el("div", class_="".join(classes))
+            return el("div", class_=" ".join(classes))
 
         classes = [f"w-{self._size}", f"h-{self._size}", "object-cover"]
         if self._rounded:
@@ -321,7 +321,7 @@ class ImageColumn(Column):
         elif self._square:
             classes.append("rounded-md")
 
-        return el("img", src=value, alt="", class_="".join(classes))
+        return el("img", src=value, alt="", class_=" ".join(classes))
 
 
 class CurrencyColumn(Column):

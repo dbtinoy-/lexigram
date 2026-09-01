@@ -22,7 +22,9 @@ class PaginationLinks(Component):
         base_url: str = "",
         extra_query: str = "",
         hx_target: str | None = None,
-        hx_swap: str = "innerHTML",
+        # outerHTML: hx-select below extracts the #table-data wrapper,
+        # so an innerHTML swap would nest it inside itself.
+        hx_swap: str = "outerHTML",
         hx_push_url: str = "true",
         state: TableState | None = None,
         **props: Any,
@@ -85,6 +87,7 @@ class PaginationLinks(Component):
                 "hx-target": self.hx_target,
                 "hx-swap": self.hx_swap,
                 "hx-select": Zones.DATA.selector,
+                "hx-select-oob": Zones.data_refresh_oob_select(),
                 "hx-push-url": str(self.hx_push_url).lower(),
                 "hx-params": "none",
             }
@@ -105,6 +108,7 @@ class PaginationLinks(Component):
                 "hx_target",
                 "hx_swap",
                 "hx_select",
+                "hx_select_oob",
                 "hx_push_url",
                 "hx_params",
                 "preload",

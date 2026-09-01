@@ -170,13 +170,15 @@ class AdminStorageService:
                     **(upload_options.metadata or {}),
                     "sha256": sha256_hash,
                 }
-            result = await self._store.upload(path, data, upload_options)  # type: ignore[arg-type]
+            result = await self._store.upload(path, data, upload_options)
 
             # Convert to AdminFileInfo if needed
             file_info: AdminFileInfo
             if isinstance(result, AdminFileInfo):
                 file_info = result
-            elif FileInfo and isinstance(result, FileInfo):
+            # No truthiness guard on FileInfo: it is a hard import, so the
+            # check was always true and only obscured the isinstance test.
+            elif isinstance(result, FileInfo):
                 file_info = AdminFileInfo(
                     path=result.path,
                     size=result.size,

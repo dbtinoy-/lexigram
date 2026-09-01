@@ -46,7 +46,7 @@ class TestHTMXAttrsBuilder:
         assert "page=2" in attrs["hx-get"]
 
     def test_data_refresh_attrs(self, state):
-        """Data refresh should target DATA zone with innerHTML."""
+        """Data refresh replaces the DATA zone."""
         builder = HTMXAttrsBuilder(
             action="data_refresh",
             state=state,
@@ -55,7 +55,9 @@ class TestHTMXAttrsBuilder:
         attrs = builder.build()
 
         assert attrs["hx-target"] == Zones.DATA.selector
-        assert attrs["hx-swap"] == "innerHTML"
+        # outerHTML, not innerHTML: hx-select extracts #table-data itself,
+        # so an innerHTML swap nests the data zone inside itself.
+        assert attrs["hx-swap"] == "outerHTML"
         assert attrs["hx-select"] == Zones.DATA.selector  # Extract only DATA
         assert attrs["hx-params"] == "none"
         assert "hx-get" in attrs
@@ -268,7 +270,9 @@ class TestHTMXAttrs:
         attrs = HTMXAttrs.for_live_table_input(full_state, "/admin/users")
 
         assert attrs["hx-target"] == Zones.DATA.selector
-        assert attrs["hx-swap"] == "innerHTML"
+        # outerHTML, not innerHTML: hx-select extracts #table-data itself,
+        # so an innerHTML swap nests the data zone inside itself.
+        assert attrs["hx-swap"] == "outerHTML"
         assert attrs["hx-select"] == Zones.DATA.selector
 
     def test_for_live_table_input_uses_hx_include(self, full_state):
@@ -284,7 +288,7 @@ class TestHTMXAttrs:
         """for_live_table_input should use unpaged base URL."""
         attrs = HTMXAttrs.for_live_table_input(full_state, "/admin/users")
 
-        assert attrs["hx-get"] == "/admin/users/"
+        assert attrs["hx-get"] == "/admin/users"
         # Should NOT have page baked in since it resets
         assert "page=" not in attrs["hx-get"]
 
@@ -311,19 +315,19 @@ class TestHTMXAttrs:
         """for_live_table_input should work with search, filters, sort."""
         attrs = HTMXAttrs.for_live_table_input(full_state, "/admin/users")
 
-        assert attrs["hx-get"] == "/admin/users/"
+        assert attrs["hx-get"] == "/admin/users"
         assert attrs["hx-target"] == Zones.DATA.selector
         assert attrs["hx-params"] == "*"
 
     def test_for_live_table_input_custom_prefix_trailing_slash(self, full_state):
         """for_live_table_input should handle trailing-slash prefix."""
         attrs = HTMXAttrs.for_live_table_input(full_state, "/admin/users/")
-        assert attrs["hx-get"] == "/admin/users/"
+        assert attrs["hx-get"] == "/admin/users"
 
     def test_for_live_table_input_custom_prefix_no_slash(self, full_state):
         """for_live_table_input should handle prefix without trailing slash."""
         attrs = HTMXAttrs.for_live_table_input(full_state, "/admin/users")
-        assert attrs["hx-get"] == "/admin/users/"
+        assert attrs["hx-get"] == "/admin/users"
 
     def test_full_refresh_with_extra_params(self, state):
         """Extra params should be passed through."""

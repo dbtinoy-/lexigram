@@ -157,8 +157,6 @@ class MarkdownEditor(Component):
             f"{' opacity-50' if self.disabled else ''}"
         )
 
-        escaped_value = self.value.replace("\\", "\\\\").replace("'", "\\'")
-
         x_data = (
             "{ mode: 'edit', get rendered() { "
             "const el = document.createElement('div'); "

@@ -7,7 +7,7 @@ for managing users with date range filtering capabilities.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, ClassVar, cast
 
 from lexigram.admin.actions import (
     CreateAction,
@@ -147,21 +147,53 @@ class UserResource(Resource):
     bulk_actions: list[Any] = ["delete_selected", "export_csv"]
 
     # Permissions
+    #
+    # Checks go through has_role(), the one method common to every user
+    # type reaching this resource. AdminUserRecord (admin.auth.user) has
+    # roles: list[str] and has_role() but no is_admin, while AdminUser
+    # (admin.auth.integration) exposes is_admin and delegates has_role()
+    # to a wrapped framework user. Neither has a singular `role`.
+    #
+    # These previously read `user.is_admin or user.role in [...]`, which
+    # raised AttributeError for both types. The caller in resources/
+    # handler.py catches everything and fails closed, so the symptom was
+    # every authenticated user getting 403 on /admin/users, with the real
+    # cause only visible in the admin.resource_permission_check_failed log.
+    _MANAGE_ROLES: ClassVar[tuple[str, ...]] = ("admin", "moderator")
+
     def has_view_permission(self, user: Any) -> bool:
         """Check if user can view users."""
-        return user and (user.is_admin or user.role in ["admin", "moderator"])
+        return self._has_any_role(user, self._MANAGE_ROLES)
 
     def has_add_permission(self, user: Any) -> bool:
         """Check if user can add users."""
-        return user and user.is_admin
+        return self._has_any_role(user, ("admin",))
 
     def has_change_permission(self, user: Any) -> bool:
         """Check if user can change users."""
-        return user and (user.is_admin or user.role in ["admin", "moderator"])
+        return self._has_any_role(user, self._MANAGE_ROLES)
 
     def has_delete_permission(self, user: Any) -> bool:
         """Check if user can delete users."""
-        return user and user.is_admin
+        return self._has_any_role(user, ("admin",))
+
+    @staticmethod
+    def _has_any_role(user: Any, roles: tuple[str, ...]) -> bool:
+        """Return True when ``user`` holds any of ``roles``.
+
+        Returns a real bool rather than the user object: these feed an
+        ``if not allowed`` check, and returning None for an anonymous user
+        would make the contract depend on truthiness.
+        """
+        if user is None:
+            return False
+        has_role = getattr(user, "has_role", None)
+        if callable(has_role):
+            return any(bool(has_role(role)) for role in roles)
+        # Fall back to the roles list for user types that satisfy the
+        # protocol's attribute but not its method.
+        user_roles = getattr(user, "roles", ())
+        return any(role in user_roles for role in roles)
 
     # Custom methods
     async def get_queryset(self, request: Any) -> Any:

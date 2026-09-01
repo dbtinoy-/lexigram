@@ -127,14 +127,15 @@ class TestStateMode:
         ).render()
         link = el.children[1].children[2]
         assert link.tag == "a"
-        assert link.attrs["hx_get"] == "/users/?page=2"
+        # No trailing slash: list routes are registered as "/{name}".
+        assert link.attrs["hx_get"] == "/users?page=2"
         assert "hx_target" in link.attrs
 
     def test_state_mode_size_attrs(self) -> None:
         st = state(search="bob", per_page=20)
         p = TablePagination(total=100, per_page=20, base_url="/users", state=st)
         attrs = p._get_size_change_attrs()
-        assert attrs["hx_get"] == "/users/"
+        assert attrs["hx_get"] == "/users"
         assert attrs["hx_trigger"] == "change"
         assert attrs["hx_push_url"] == "true"
         assert "per_page" not in attrs["hx_vals"]

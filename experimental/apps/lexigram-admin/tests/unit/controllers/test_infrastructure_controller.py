@@ -85,7 +85,7 @@ class TestInfrastructureController:
         resp = await controller.index(_mock_request(groups={}))
         assert resp.status_code == 200
         html = render_to_string(resp._content)
-        assert "No Infrastructure Areas" in html
+        assert "No Infrastructure areas yet" in html
 
     @pytest.mark.asyncio
     async def test_index_wraps_content_with_secondary_nav_layout(

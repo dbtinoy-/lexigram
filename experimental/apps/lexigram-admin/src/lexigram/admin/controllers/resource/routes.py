@@ -27,6 +27,9 @@ class ResourceRouteMixin:
     delete_confirm: Any
     update: Any
     delete: Any
+    revision_history: Any
+    revision_diff: Any
+    revision_revert: Any
 
     def get_routes(self) -> list:
         """Get Starlette routes for this controller."""
@@ -60,6 +63,23 @@ class ResourceRouteMixin:
             Route(f"{prefix}/{{id}}/edit", self.edit_form, methods=["GET"]),
             Route(
                 f"{prefix}/{{id}}/delete-confirm", self.delete_confirm, methods=["GET"]
+            ),
+            # Registered before the bare "/{id}" mutation routes so the more
+            # specific revision paths are matched first.
+            Route(
+                f"{prefix}/{{id}}/revisions",
+                self.revision_history,
+                methods=["GET"],
+            ),
+            Route(
+                f"{prefix}/{{id}}/revisions/diff",
+                self.revision_diff,
+                methods=["GET"],
+            ),
+            Route(
+                f"{prefix}/{{id}}/revisions/{{revision_id}}/revert",
+                self.revision_revert,
+                methods=["POST"],
             ),
             Route(f"{prefix}/{{id}}", self.update, methods=["PUT", "POST"]),
             Route(f"{prefix}/{{id}}", self.delete, methods=["DELETE"]),

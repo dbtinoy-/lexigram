@@ -1114,7 +1114,10 @@ class InlineMutationActionHandler:
 
             return HTMLResponse(
                 '<td class="py-2 text-sm text-foreground">'
-                + editor.body.decode("utf-8")
+                # bytes(...) first: Response.body is bytes | memoryview, and
+                # memoryview has no .decode, so decoding directly would raise
+                # AttributeError for any response that carries one.
+                + bytes(editor.body).decode("utf-8")
                 + f'<button type="button" class="ml-2 text-xs text-muted-foreground" '
                 f'hx-get="{escape(request.url.path, quote=True)}" '
                 f'hx-target="closest td" hx-swap="outerHTML">Cancel</button></td>',

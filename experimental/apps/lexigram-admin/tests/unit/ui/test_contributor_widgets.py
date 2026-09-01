@@ -17,7 +17,9 @@ class TestWidgetRegistry:
         registry = WidgetRegistry()
         result = registry.render_contributor_widgets([])
         assert "widget-empty-state" in result
-        assert "No contributor widgets configured." in result
+        # Copy no longer asserts "none configured": the list is also emptied
+        # by the assembler's permission filter, so that wording can be false.
+        assert "No widgets to show" in result
 
     def test_render_contributor_widgets_unknown_widget(self) -> None:
         """Unregistered widget type renders placeholder card."""

@@ -279,7 +279,9 @@ def render_bulk_action_button(
         from lexigram.ui import ActionButton
 
         rendered = ActionButton(
-            label=getattr(action, "label", None) or getattr(action, "name", ""),
+            # str(...) because both attributes can be None, and ActionButton
+            # requires a str label.
+            label=str(getattr(action, "label", None) or getattr(action, "name", "")),
             variant=action._color_to_variant(),
             icon=getattr(action, "icon", None),
             size="md",
@@ -326,7 +328,7 @@ def render_bulk_action_button(
         color=variant,
         size="md",
         type="button",
-        **attrs,  # type: ignore[arg-type]
+        **attrs,
     )
     return btn.render()
 

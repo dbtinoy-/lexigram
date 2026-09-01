@@ -60,7 +60,7 @@ class TestCalendarView:
         assert "filter_month=2026-07" in html
         assert "filter_month=2026-09" in html
         assert "Today" in html
-        assert 'hx-get="/admin/events/?data_view=calendar' in html
+        assert 'hx-get="/admin/events?data_view=calendar' in html
 
     def test_respects_requested_month_from_state(self) -> None:
         data = [{"id": "1", "name": "Launch", "start_date": "2026-01-10"}]

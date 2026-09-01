@@ -5,6 +5,12 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
+# The data-source contract requires a method named `list`, which shadows the
+# builtin inside the class body -- every later `list[...]` annotation
+# resolved to the method instead of the type. Alias the builtin so those
+# annotations keep their meaning without renaming the public method.
+_List = list
+
 from lexigram.logging import get_logger
 
 logger = get_logger(__name__)
@@ -198,11 +204,11 @@ class TenantScopedDataSource:
         await self._check_write_scope(id)
         return await self._ds.delete(id)
 
-    async def bulk_create(self, items: list[dict[str, Any]]) -> list[Any]:
+    async def bulk_create(self, items: _List[dict[str, Any]]) -> _List[Any]:
         """Create multiple records with the active tenant stamped on each."""
         return [await self.create(dict(item)) for item in items]
 
-    async def bulk_update(self, ids: list[Any], data: dict[str, Any]) -> int:
+    async def bulk_update(self, ids: _List[Any], data: dict[str, Any]) -> int:
         """Update only records that remain inside the active tenant."""
         count = 0
         for item_id in ids:
@@ -213,7 +219,7 @@ class TenantScopedDataSource:
                 logger.warning("bulk_update: skipped out-of-scope id=%s", item_id)
         return count
 
-    async def bulk_delete(self, ids: list[Any]) -> int:
+    async def bulk_delete(self, ids: _List[Any]) -> int:
         """Delete only records that remain inside the active tenant."""
         count = 0
         for item_id in ids:

@@ -239,11 +239,22 @@ class ListRenderer:
     @staticmethod
     def _available_fields(source_columns, resource) -> set[str]:
         """Return fields that may safely be addressed by URL-driven state."""
-        fields = {
-            str(column.name)
-            for column in source_columns or []
-            if getattr(column, "name", None)
-        }
+        # Columns arrive in two shapes. Declarative resources get
+        # `cls.columns = list(cls.fields)` (base.py), which yields plain
+        # field-name strings, while hand-written resources use Column
+        # objects. Reading only `.name` returned an empty allowlist for the
+        # string form, so _sanitize_table_state rejected every sort field
+        # and quietly reset it to None -- sorting looked dead even though
+        # the URL updated.
+        fields = set()
+        for column in source_columns or []:
+            if isinstance(column, str):
+                if column:
+                    fields.add(column)
+                continue
+            name = getattr(column, "name", None)
+            if name:
+                fields.add(str(name))
         if fields:
             return fields
 

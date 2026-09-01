@@ -400,15 +400,58 @@ Known environment-limited checks from the audit baseline:
       secret fields remain excluded from audit metadata.
 - [x] Add a settings revision token so stale rendered forms are rejected rather
       than silently overwriting a newer saved state.
-- [ ] Add safe settings rollback and atomic optimistic concurrency where the
-      underlying store and audit contracts support it.
-- [ ] Resolve the current GitHub Actions startup failure: the latest run
-      `33359248227` still fails all jobs before any workflow step executes (the
-      test matrix is skipped), so the quality, integration, and coverage gates
-      have not produced actionable results yet.
+- [x] Make the settings revision token **mandatory** on writes. The check
+      previously ran only `if submitted_revision`, so a client that omitted the
+      field bypassed optimistic concurrency entirely; a missing token is now
+      rejected exactly like a stale one and audited as
+      `missing_settings_revision`. Token logic moved to
+      `admin/settings/revision.py`, which also fixes a latent `AttributeError`
+      on duplicate-preserving form payloads that expose `multi_items()` but not
+      `get()`.
+- [x] Add atomic multi-key settings writes. `ConfigRegistry.save_values` now
+      coerces the whole batch before writing and issues a single
+      `StoreBase.set_many`; `AdminSettingsDbProvider.set_config_many` wraps the
+      upserts in a database transaction when the provider exposes one.
+      `AdminSettingsService.set_all` no longer loops per key. Stores and
+      services predating the batch API fall back to sequential writes.
+- [ ] Add safe settings rollback (snapshot restore) and push the optimistic
+      revision check down into the persistence layer as a conditional write.
+      The remaining TOCTOU window is narrow but real: the comparison still runs
+      in Python between the read and the batched write.
+- [ ] Wire the existing `RevisionService.revert_data()` into a route. It is
+      currently referenced only in a docstring, so resource rollback is
+      unreachable from the UI.
+- [ ] Resolve the GitHub Actions startup failure. Note that CI is currently
+      **disabled by design** — both workflows have their `push`/`pull_request`
+      triggers commented out and expose only `workflow_dispatch` (commit
+      `3c144d5`). Re-enable the triggers before diagnosing run
+      `33359248227`; leaving them disabled is an intentional repository state,
+      not the underlying fault.
+- [x] Stop the shared form behavior layer reporting a rejected save as
+      successful. Settings validation and conflict fragments deliberately
+      return `200` so HTMX swaps them, but `htmx:afterRequest` branched on
+      `detail.successful` and announced "Form saved." over them. It now
+      inspects the response for `409`/`422` and for the
+      `data-admin-form-error` / `aria-invalid="true"` markers the server
+      renders. Form-level (`__all__`) errors carry the new marker.
+- [x] Fix the shared live-widget SSE stream. The connection was guarded by a
+      boolean `window` flag with only an `onmessage` handler, so it was never
+      re-established after an SPA body swap, never cleaned up when the browser
+      gave up, and never closed on unload. It now stores the handle, treats a
+      closed stream as absent, clears it on terminal error, and closes on
+      `pagehide`.
 - [ ] Run browser/live-preview QA for desktop/mobile shell behavior, dark mode,
-      dashboard reorder feedback, HTMX swaps, and resource/form flows.
+      dashboard reorder feedback, HTMX swaps, and resource/form flows. Note the
+      Playwright harness is not yet real: only two `importorskip`-guarded
+      sidebar smoke tests exist, and `playwright` ships in the `tooling`
+      dependency group rather than the admin test group.
 - [x] Resolve the local auth-provider test dependency by provisioning
       `argon2-cffi`; the complete admin unit suite now passes locally.
-- [ ] Resolve remaining CI/integration environment gaps when the missing AI
-      dependencies and PostgreSQL/Redis services are available.
+- [x] Stop the AI contributor discovery test hard-failing in lean
+      environments. `test_ai_llm_admin_contributor_importable` imported
+      `lexigram.ai.llm` unguarded while its `webhook`/`audit` neighbours used
+      `try/except ImportError -> pytest.skip`; it now matches them.
+- [ ] Resolve remaining integration environment gaps: the DB-backed suites need
+      the `core` compose profile, which publishes PostgreSQL on **15432** and
+      Redis on **16379** (deliberately non-standard) via
+      `LEX_TEST_POSTGRES_DSN` / `LEX_TEST_REDIS_URL`.

@@ -134,4 +134,4 @@ class TestFilterDrawerHTMXAttrs:
     def test_apply_targets_data_zone_swap(self) -> None:
         drawer = FilterDrawer(resource_prefix="/admin/users")
         html = str(drawer.render())
-        assert 'hx-swap="innerHTML"' in html
+        assert 'hx-swap="outerHTML"' in html

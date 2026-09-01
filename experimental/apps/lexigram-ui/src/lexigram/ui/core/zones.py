@@ -191,6 +191,23 @@ class Zones:
     )
 
     @classmethod
+    def data_refresh_oob_select(cls) -> str:
+        """Selectors an ``hx-select`` data swap must additionally preserve.
+
+        ``hx-select`` rebuilds the swap from ``querySelectorAll(select)``
+        alone, so any ``hx-swap-oob`` element sitting outside the selected
+        subtree is silently dropped. A data-zone refresh returns exactly
+        that shape -- ``#table-data`` plus sibling OOB fragments for the
+        toolbar switchers and the Active/Trash tabs -- so without pairing
+        ``hx-select`` with ``hx-select-oob`` the rows update while every
+        control around them keeps rendering the previous state.
+
+        Returns:
+            Comma-separated selector list for ``hx-select-oob``.
+        """
+        return f"#{cls.TOOLBAR.id}-switchers,#table-scope-tabs"
+
+    @classmethod
     def all_zones(cls) -> list[Zone]:
         """Return all registered zones."""
         return [

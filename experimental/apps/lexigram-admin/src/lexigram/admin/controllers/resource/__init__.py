@@ -18,6 +18,7 @@ from lexigram.admin.controllers.resource.list import ResourceListMixin
 from lexigram.admin.controllers.resource.meta import ResourceMeta, T
 from lexigram.admin.controllers.resource.mutation import ResourceMutationMixin
 from lexigram.admin.controllers.resource.render import ResourceRenderMixin
+from lexigram.admin.controllers.resource.revisions import ResourceRevisionMixin
 from lexigram.admin.controllers.resource.routes import ResourceRouteMixin
 from lexigram.di.decorators import inject
 
@@ -32,6 +33,7 @@ class ResourceController(
     ResourceMutationMixin,
     ResourceBulkMixin,
     ResourceImportMixin,
+    ResourceRevisionMixin,
     ResourceRenderMixin,
     ResourceRouteMixin,
     ABC,

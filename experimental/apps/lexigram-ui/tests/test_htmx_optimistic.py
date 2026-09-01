@@ -14,5 +14,7 @@ def test_hx_optimistic_swap_helper() -> None:
     result = hx_optimistic_swap("#target", "<b>!</b>")
     assert "hx-on-click" in result
     assert "#target" in result["hx-on-click"]
+    # Values are emitted as encoded JS literals, so an apostrophe needs no
+    # backslash: it sits inside a double-quoted string.
     result_escaped = hx_optimistic_swap("#x", "it's")
-    assert "\\'" in result_escaped["hx-on-click"]
+    assert '"it\'s"' in result_escaped["hx-on-click"]

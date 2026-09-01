@@ -481,17 +481,31 @@ def admin_form_ux_script() -> Any:
                 }
             }, true);
 
+            // A recoverable validation or conflict response is deliberately
+            // returned as 200 so HTMX swaps the re-rendered form. Treating
+            // every 2xx as success would announce "Form saved." over a form
+            // that was in fact rejected, so inspect the payload for the
+            // error markers the server renders alongside it.
+            function responseRejected(detail) {
+                var xhr = detail.xhr;
+                if (!xhr) return false;
+                if (xhr.status === 409 || xhr.status === 422) return true;
+                var body = xhr.responseText || '';
+                if (!body) return false;
+                return body.indexOf('data-admin-form-error') !== -1
+                    || body.indexOf('aria-invalid="true"') !== -1;
+            }
+
             document.addEventListener('htmx:afterRequest', function (event) {
                 var detail = event.detail || {};
                 var form = formFor(detail.elt);
                 if (!form) return;
-                if (detail.successful) {
-                    restoreSubmit(form);
+                restoreSubmit(form);
+                if (detail.successful && !responseRejected(detail)) {
                     form.dataset.dirty = 'false';
                     setStatus(form, 'Form saved.');
                     return;
                 }
-                restoreSubmit(form);
                 form.dataset.dirty = 'true';
                 setStatus(form, 'The form was not saved. Review the errors and try again.');
             });

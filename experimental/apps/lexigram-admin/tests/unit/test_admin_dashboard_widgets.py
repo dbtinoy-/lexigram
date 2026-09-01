@@ -452,8 +452,10 @@ class TestWidgetRegistry:
         ]
         html = registry.render_contributor_widgets(widgets)
         assert "every" not in html
-        # Should still have the load trigger with a stagger delay
-        assert 'hx-trigger="load delay:0ms"' in html
+        # Should still have the load trigger with a stagger delay. All
+        # widgets also listen for live-refresh so the post-failure retry
+        # button can re-fire the request.
+        assert 'hx-trigger="load delay:0ms, live-refresh"' in html
 
     def test_render_contributor_widgets_appends_page_filters(self) -> None:
         """Test widget fetch URLs carry the page-level filter state."""

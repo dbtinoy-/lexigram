@@ -64,6 +64,6 @@ def test_filter_bar_wires_declarative_schema_filters() -> None:
     html = render_to_string(fb)
 
     assert 'name="status"' in html
-    assert 'hx-get="/admin/items/"' in html
+    assert 'hx-get="/admin/items"' in html
     assert 'hx-target="#table-data"' in html
     assert 'hx-trigger="change"' in html

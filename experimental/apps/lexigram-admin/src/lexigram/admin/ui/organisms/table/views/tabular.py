@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 import copy
-from typing import Any
+from typing import Any, cast
 
 from lexigram.admin.ui.organisms.table.views.tabular_header import render_table_header
 from lexigram.admin.ui.organisms.table.views.tabular_rows import render_table_rows
@@ -69,11 +69,16 @@ class AbstractDataView(ABC):
             Checkbox(
                 name="select_all",
                 aria_label="Select all rows on this page",
-                **{
-                    ":checked": "allIds.length > 0 && selectedIds.length === allIds.length",
-                    "x-effect": "$el.indeterminate = selectedIds.length > 0 && selectedIds.length < allIds.length",
-                    "@change": "handleSelectAll($event)",
-                },
+                # Alpine bindings reach Checkbox through **kwargs; the cast
+                # keeps them from being matched against `checked: bool|None`.
+                **cast(
+                    "dict[str, Any]",
+                    {
+                        ":checked": "allIds.length > 0 && selectedIds.length === allIds.length",
+                        "x-effect": "$el.indeterminate = selectedIds.length > 0 && selectedIds.length < allIds.length",
+                        "@change": "handleSelectAll($event)",
+                    },
+                ),
             ),
             el(
                 "span",

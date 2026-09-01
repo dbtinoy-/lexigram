@@ -104,11 +104,15 @@ class ResourceHooksMixin:
         if form_class is not None:
             try:
                 form_instance = form_class(data=coerced)
-                declared_fields = getattr(form_instance, "fields", {})
-                if isinstance(declared_fields, dict):
+                # Distinct from the `declared_fields` set built above from
+                # self.fields: this is the form's own field mapping. Reusing
+                # the name rebound a set[str] to a dict and made the two
+                # meanings indistinguishable at the point of use.
+                form_fields = getattr(form_instance, "fields", {})
+                if isinstance(form_fields, dict):
                     protected_fields.update(
                         name
-                        for name, field in declared_fields.items()
+                        for name, field in form_fields.items()
                         if not getattr(field, "visible_in_form", True)
                         or getattr(field, "readonly", False)
                     )
@@ -133,7 +137,7 @@ class ResourceHooksMixin:
                         allow_extra_fields=allow_extra_fields,
                     )
             elif hasattr(form_result, "success") and not form_result.success:
-                errors = [
+                errors: list[FieldError] = [
                     FieldError(field=field, message=messages[0])
                     for field, messages in form_result.errors.items()
                     if messages
@@ -166,7 +170,7 @@ class ResourceHooksMixin:
             self.model.model_validate(coerced)
         except (ValueError, TypeError) as exc:
             msg = str(exc)
-            errors: list[FieldError] = []
+            errors = []
 
             is_pydantic = (
                 type(exc).__name__ == "ValidationError"

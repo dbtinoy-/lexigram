@@ -215,8 +215,10 @@ class TestRegistryTenantThreading:
         await registry.save_values(
             "admin.cache", {"enabled": "true"}, store_name="test", tenant_id="tenant-a"
         )
-        store.set.assert_awaited_once()
-        assert store.set.await_args.kwargs.get("tenant_id") == "tenant-a"
+        # Values are written as one batch so a partial save cannot commit.
+        store.set_many.assert_awaited_once()
+        assert store.set_many.await_args.kwargs.get("tenant_id") == "tenant-a"
+        assert store.set_many.await_args.args[0] == {"admin.cache.enabled": True}
 
 
 class TestSpecScope:

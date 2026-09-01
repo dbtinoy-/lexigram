@@ -125,7 +125,7 @@ class UserPermissionsActionHandler:
             if callable(getlist):
                 raw_permissions = getlist("permissions")
             else:
-                raw_value = form.get("permissions", [])
+                raw_value: Any = form.get("permissions", [])
                 raw_permissions = (
                     raw_value
                     if isinstance(raw_value, (list, tuple, set))

@@ -6,8 +6,6 @@ the config panel UI and persists values to the DB-backed store.
 
 from __future__ import annotations
 
-import hashlib
-import hmac
 from typing import TYPE_CHECKING, Any
 
 from starlette.requests import Request
@@ -16,17 +14,24 @@ from starlette.responses import HTMLResponse, RedirectResponse, Response
 from lexigram.admin.auth.types import AdminSecurityEventType
 from lexigram.admin.config import AdminRbacConfig
 from lexigram.admin.controllers.base import AdminController
+from lexigram.admin.controllers.settings_history import SettingsHistoryMixin
 from lexigram.admin.multitenancy.adapter import resolve_tenant_id
 from lexigram.admin.rbac.super_admin import is_super_admin
 from lexigram.admin.resources.urls import admin_prefix_from_request, admin_url
+from lexigram.admin.settings.conflict import SettingsConflictError
 from lexigram.admin.settings.panel import BooleanNode, SecretNode
 from lexigram.admin.settings.panel.layout import ConfigLayout
 from lexigram.admin.settings.panel.registry import ConfigRegistry
 from lexigram.admin.settings.panel.types import ConfigCategory
 from lexigram.admin.settings.panel.ui import ConfigDashboardUI
+from lexigram.admin.settings.revision import (
+    extract_submitted_revision,
+    revision_matches,
+    settings_revision,
+)
+from lexigram.admin.settings.snapshots import SettingsSnapshotService
 from lexigram.contracts.web import get, post
 from lexigram.logging import get_logger
-from lexigram.serialization import dumps_str
 from lexigram.ui import el, render_to_string
 
 if TYPE_CHECKING:
@@ -39,7 +44,7 @@ logger = get_logger(__name__)
 __all__ = ["SettingsController"]
 
 
-class SettingsController(AdminController):
+class SettingsController(SettingsHistoryMixin, AdminController):
     """Spec-driven settings controller.
 
     Routes:
@@ -58,12 +63,16 @@ class SettingsController(AdminController):
         audit_service: Any = None,
         registry: ConfigRegistry | None = None,
         rbac_config: AdminRbacConfig | None = None,
+        snapshot_service: SettingsSnapshotService | None = None,
     ) -> None:
         super().__init__(renderer=renderer, settings_service=settings_service)
         self._csrf_service = csrf_service
         self._audit_service = audit_service
         self._registry = registry or ConfigRegistry.with_defaults()
         self._rbac_config = rbac_config
+        # History is on by default so a mistaken save is always recoverable;
+        # pass an explicit store via DI to make it durable across restarts.
+        self._snapshots = snapshot_service or SettingsSnapshotService()
 
     # -- helpers --
 
@@ -220,19 +229,7 @@ class SettingsController(AdminController):
     @staticmethod
     def _settings_revision(spec: type[Any], values: dict[str, Any]) -> str:
         """Return a non-reversible revision token for the rendered settings."""
-        revision_values: list[tuple[str, Any]] = []
-        for key, node in sorted(spec.get_nodes().items()):
-            value = values.get(key)
-            # Include only whether a secret is present. Hashing its content
-            # would still create an unnecessary secret-derived identifier.
-            if isinstance(node, SecretNode):
-                value = "<set>" if value else "<unset>"
-            revision_values.append((key, value))
-        payload = dumps_str(
-            revision_values,
-            sort_keys=True,
-        ).encode("utf-8")
-        return hashlib.sha256(payload).hexdigest()
+        return settings_revision(spec, values)
 
     @staticmethod
     def _revision_matches(
@@ -240,10 +237,66 @@ class SettingsController(AdminController):
         spec: type[Any],
         values: dict[str, Any],
     ) -> bool:
-        """Compare a submitted revision without timing side channels."""
-        return not expected or hmac.compare_digest(
-            expected,
-            SettingsController._settings_revision(spec, values),
+        """Compare a submitted revision without timing side channels.
+
+        A missing token never matches: optimistic concurrency is mandatory on
+        writes, so omitting the field cannot be used to bypass the check.
+        """
+        return revision_matches(expected, spec, values)
+
+    async def _render_save_conflict(
+        self,
+        request: Request,
+        spec: type[Any],
+        namespace: str,
+        tenant_id: str | None,
+    ) -> Response:
+        """Re-render the settings form showing current values after a conflict.
+
+        Used both when the submitted revision is stale or missing and when a
+        store rejects the write itself, so the two paths stay consistent. The
+        form is rebuilt from freshly read values so the user reviews what is
+        actually stored and receives a usable revision token.
+        """
+        conflict_message = (
+            "These settings changed in another session. Review the current "
+            "values before saving again."
+        )
+        current_values = await self._registry.get_values(
+            namespace, self._store_name(spec), tenant_id=tenant_id
+        )
+
+        if request.headers.get("hx-request") == "true":
+            self._flash_messages.clear()
+            value_metadata = await self._registry.get_value_metadata(
+                namespace,
+                self._store_name(spec),
+                tenant_id=tenant_id,
+            )
+            form_html = render_to_string(
+                ConfigDashboardUI().render_config_form(
+                    spec=self._spec_ui_data(spec, can_edit=True),
+                    values=current_values,
+                    errors={"__all__": conflict_message},
+                    value_metadata=value_metadata,
+                    revision=self._settings_revision(spec, current_values),
+                    action=self._settings_url(request, namespace),
+                    csrf_token=self._get_csrf_token(request),
+                )
+            )
+            toast_html = self._render_toast(conflict_message, "warning")
+            flash_oob = (
+                f'<div id="flash-container" hx-swap-oob="true">{toast_html}</div>'
+            )
+            return HTMLResponse(flash_oob + form_html)
+
+        return await self._render_spec_page(
+            request,
+            spec,
+            current_values,
+            errors={"__all__": conflict_message},
+            status_code=409,
+            tenant_id=tenant_id,
         )
 
     async def _audit(
@@ -449,52 +502,32 @@ class SettingsController(AdminController):
             namespace, self._store_name(spec), tenant_id=tenant_id
         )
 
-        submitted_revision = form.get("settings_revision")
-        if submitted_revision and not self._revision_matches(
-            str(submitted_revision), spec, existing_values
-        ):
+        # A rollback submission replaces the posted values with a stored
+        # snapshot and then continues down the ordinary save path, so it is
+        # subject to the same validation, concurrency, and audit rules.
+        rollback_values = await self._resolve_rollback(form, spec, namespace, tenant_id)
+        is_rollback = rollback_values is not None
+        if rollback_values:
+            editable_updates = dict(rollback_values)
+            updates = dict(rollback_values)
+            ignored_readonly = []
+
+        # Optimistic concurrency is mandatory: a submission that omits the
+        # token is rejected exactly like a stale one, so dropping the field
+        # cannot bypass the check.
+        submitted_revision = extract_submitted_revision(form)
+        if not self._revision_matches(submitted_revision, spec, existing_values):
             await self._audit(
                 request,
                 success=False,
                 namespace=namespace,
-                reason="concurrent_update",
+                reason=(
+                    "concurrent_update"
+                    if submitted_revision
+                    else "missing_settings_revision"
+                ),
             )
-            conflict_message = (
-                "These settings changed in another session. Review the current "
-                "values before saving again."
-            )
-            if request.headers.get("hx-request") == "true":
-                self._flash_messages.clear()
-                value_metadata = await self._registry.get_value_metadata(
-                    namespace,
-                    self._store_name(spec),
-                    tenant_id=tenant_id,
-                )
-                form_html = render_to_string(
-                    ConfigDashboardUI().render_config_form(
-                        spec=self._spec_ui_data(spec, can_edit=True),
-                        values=existing_values,
-                        errors={"__all__": conflict_message},
-                        value_metadata=value_metadata,
-                        revision=self._settings_revision(spec, existing_values),
-                        action=self._settings_url(request, namespace),
-                        csrf_token=self._get_csrf_token(request),
-                    )
-                )
-                toast_html = self._render_toast(conflict_message, "warning")
-                flash_oob = (
-                    f'<div id="flash-container" hx-swap-oob="true">{toast_html}</div>'
-                )
-                return HTMLResponse(flash_oob + form_html)
-
-            return await self._render_spec_page(
-                request,
-                spec,
-                existing_values,
-                errors={"__all__": conflict_message},
-                status_code=409,
-                tenant_id=tenant_id,
-            )
+            return await self._render_save_conflict(request, spec, namespace, tenant_id)
 
         # Missing unchecked checkboxes are equivalent to false even when a
         # client omits the hidden fallback. Required non-boolean fields are
@@ -600,12 +633,43 @@ class SettingsController(AdminController):
                 tenant_id=tenant_id,
             )
 
-        await self._registry.save_values(
+        # Capture the outgoing state before it is replaced so this save can
+        # be rolled back. Recorded before the write because a snapshot taken
+        # afterwards would describe the new values, not the ones being lost.
+        await self._capture_snapshot(
+            request,
+            spec,
             namespace,
-            validated_updates,
-            self._store_name(spec),
-            tenant_id=tenant_id,
+            existing_values,
+            tenant_id,
+            comment="rollback" if is_rollback else "save",
         )
+
+        # The revision comparison above happened before this write, so a save
+        # committed in between would otherwise be silently overwritten. Pass
+        # the values the form was rendered from so stores that support it can
+        # re-check inside the write transaction and reject a late conflict.
+        try:
+            await self._registry.save_values(
+                namespace,
+                validated_updates,
+                self._store_name(spec),
+                tenant_id=tenant_id,
+                expected={
+                    key: existing_values[key]
+                    for key in validated_updates
+                    if key in existing_values
+                },
+            )
+        except SettingsConflictError:
+            await self._audit(
+                request,
+                success=False,
+                namespace=namespace,
+                reason="concurrent_update_at_write",
+                keys=sorted(validated_updates),
+            )
+            return await self._render_save_conflict(request, spec, namespace, tenant_id)
 
         await self._audit(
             request,
@@ -616,6 +680,7 @@ class SettingsController(AdminController):
             ignored_readonly=ignored_readonly,
             preserved_secrets=sorted(preserved_secrets),
             cleared_secrets=sorted(preserved_secrets),
+            rollback=is_rollback,
         )
 
         if request.headers.get("hx-request") == "true":

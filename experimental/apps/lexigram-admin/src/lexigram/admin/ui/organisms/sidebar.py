@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from lexigram.ui import Component, el
+from lexigram.ui import Badge, Component, el
 
 
 class SidebarItem(Component):
@@ -65,15 +65,15 @@ class SidebarItem(Component):
             )
 
         # Badge rendering
-        badge_node = ""
+        badge_node: Any = ""
         if self.badge is not None:
-            # Hide badge in mini mode or show small dot? For now, standard badge, hidden if no space?
-            # Let's keep it but it might wrap.
-            badge_node = el(
-                "span",
+            badge_node = Badge(
                 str(self.badge),
-                class_="ml-auto inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-800 dark:bg-primary-900/40 dark:text-primary-300",
-                x_show="!sidebarMini",  # Hide badge in mini mode to save space
+                variant="primary",
+                class_="ml-auto",
+                # Hidden in mini mode: there is no room for it beside the
+                # icon, and it would wrap the row.
+                x_show="!sidebarMini",
             )
 
         # Labels

@@ -9,7 +9,12 @@ from typing import TYPE_CHECKING, Any
 from markupsafe import Markup
 
 from lexigram.ui import HTMXAttrs, Zones, el
-from lexigram.ui.core.base import warn_html_string_render
+from lexigram.ui.core.base import (
+    html_string_notice,
+    looks_like_html,
+    warn_html_string_render,
+)
+from lexigram.ui.core.js import js_string
 
 if TYPE_CHECKING:
     from lexigram.ui.state import TableState
@@ -29,8 +34,19 @@ class ColumnRenderingMixin:
     _copyable: bool
     _sortable: bool
 
-    def is_visible(self, **kwargs: Any) -> bool:
-        """Check if column is visible — implemented by ColumnVisibilityMixin."""
+    def is_visible(
+        self,
+        user: Any = None,
+        resource_name: str | None = None,
+        record: dict | Any | None = None,
+        permission_service: Any = None,
+    ) -> bool:
+        """Check if column is visible — implemented by ColumnVisibilityMixin.
+
+        Mirrors that mixin's signature exactly. This stub previously took
+        **kwargs, so the two co-mixed declarations disagreed and any
+        subclass matching the real one was reported as an invalid override.
+        """
         return True
 
     def get_value(self, record: dict) -> Any:
@@ -83,15 +99,24 @@ class ColumnRenderingMixin:
         # show literal markup. Detect that and warn once so the developer
         # knows to return an el() tree or wrap the string in raw()/Markup.
         content = self.render(formatted_value, record)
-        if isinstance(content, str) and not isinstance(content, Markup):
+        if (
+            isinstance(content, str)
+            and not isinstance(content, Markup)
+            and looks_like_html(content)
+        ):
+            origin = f"Column.render() for column {self.name!r}"
             warn_html_string_render(
-                origin=f"Column.render() for column {self.name!r}",
+                origin=origin,
                 snippet=content,
                 fix=(
                     "return an element via el(...) (e.g. el('span', value)), "
                     "or wrap the string in raw()/Markup when HTML is intended"
                 ),
             )
+            # The log only reaches the developer. Present the value in the
+            # cell as literal text too, so the browser shows something
+            # legible instead of what looks like corrupted output.
+            content = html_string_notice(content, origin=f"column {self.name!r}")
 
         # Build CSS classes
         classes = [f"text-{self._alignment}", "px-6", "py-4"]
@@ -104,18 +129,22 @@ class ColumnRenderingMixin:
         # Add copyable functionality
         if self._copyable:
             classes.append("cursor-pointer hover:bg-muted dark:hover:bg-card")
-            escaped_value = str(value).replace("'", "\\'")
-            hx_on_click = f"navigator.clipboard.writeText('{escaped_value}')"
+            # js_string, not a hand-rolled quote escape. The previous
+            # .replace("'", "\\'") was bypassable: a backslash in the cell
+            # value escaped the backslash rather than the quote, so a record
+            # containing "\';alert(1);//" broke out and ran as code. Cell
+            # values come from the database, so this was reachable.
+            hx_on_click = f"navigator.clipboard.writeText({js_string(value)})"
             return el(
                 "td",
                 content,
-                class_="".join(classes),
+                class_=" ".join(classes),
                 hx_on_click=hx_on_click,
                 title="Click to copy",
                 aria_label=f"Copy {value}",
             )
 
-        return el("td", content, class_="".join(classes), **{"data-label": self.label})
+        return el("td", content, class_=" ".join(classes), **{"data-label": self.label})
 
     def render_header(
         self,
@@ -186,8 +215,9 @@ class ColumnRenderingMixin:
                 htmx_attrs = {
                     "hx-get": f"?{sort_params}",
                     "hx-target": Zones.DATA.selector,
-                    "hx-swap": Zones.DATA.swap_mode.value,
+                    "hx-swap": "outerHTML",
                     "hx-select": Zones.DATA.selector,
+                    "hx-select-oob": Zones.data_refresh_oob_select(),
                     "hx-params": "none",
                     "hx-push-url": "true",
                 }

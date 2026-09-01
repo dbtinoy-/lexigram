@@ -15,6 +15,7 @@ from lexigram.admin.settings.panel.nodes import (
     PydanticConfigSpec,
     StringNode,
 )
+from lexigram.admin.settings.panel.registry import ConfigRegistry
 from lexigram.domain import DomainModel
 from lexigram.validation import Field
 

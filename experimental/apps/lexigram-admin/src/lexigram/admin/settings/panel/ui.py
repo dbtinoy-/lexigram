@@ -7,6 +7,7 @@ from typing import Any
 
 from lexigram.admin.settings.panel.nodes import ConfigSpec
 from lexigram.ui import (
+    Badge,
     Card,
     Component,
     FieldSchema,
@@ -293,26 +294,17 @@ class ConfigDashboardUI:
             "dormant": "Stored, not active",
         }
         runtime_label = runtime_labels.get(runtime_status, "Runtime status unknown")
-        runtime_class = (
-            "inline-flex items-center rounded-full bg-warning/10 px-2.5 py-1 "
-            "text-xs font-medium text-warning"
-            if runtime_status != "active"
-            else "inline-flex items-center rounded-full bg-muted px-2.5 py-1 "
-            "text-xs font-medium text-muted-foreground"
-        )
         metadata = el(
             "div",
-            el(
-                "span",
-                scope_label,
-                class_="inline-flex items-center rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground",
+            Badge(scope_label, variant="gray"),
+            Badge(f"Source: {source_label}", variant="gray"),
+            # The runtime badge reports live state, so it is the one chip
+            # here that should be announced when it changes.
+            Badge(
+                runtime_label,
+                variant="gray" if runtime_status == "active" else "warning",
+                live=True,
             ),
-            el(
-                "span",
-                f"Source: {source_label}",
-                class_="inline-flex items-center rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground",
-            ),
-            el("span", runtime_label, class_=runtime_class),
             class_="flex flex-wrap gap-2 mb-5",
         )
 
@@ -331,6 +323,10 @@ class ConfigDashboardUI:
                     "div",
                     form_level_error,
                     role="alert",
+                    # Machine-readable marker so the shared form behavior
+                    # layer can tell a recoverable 200 error fragment from a
+                    # successful save and avoid announcing "Form saved."
+                    **{"data-admin-form-error": "true"},
                     class_="mb-5 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive",
                 )
                 if form_level_error
@@ -383,7 +379,7 @@ class ConfigDashboardUI:
                     class_="inline-flex items-center rounded-md border border-border bg-card px-4 py-2 text-sm font-medium text-foreground shadow-sm hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                 ),
                 FormActions(primary_text="Save changes", secondary_text=None),
-                data_admin_form_actions=True,
+                **{"data-admin-form-actions": "true"},
                 class_="sticky bottom-3 z-10 mt-6 flex items-center justify-between gap-3 rounded-lg border border-border bg-card/95 p-2 shadow-lg backdrop-blur",
             )
             body.append(
@@ -408,8 +404,14 @@ class ConfigDashboardUI:
                             "p",
                             "",
                             id=f"{form_id}-status",
-                            data_admin_form_status=True,
-                            data_settings_status=True,
+                            # Emit explicit "true" values so the marker
+                            # contract matches data-admin-form and the
+                            # documented [data-admin-form-status="true"]
+                            # selector, not just attribute presence.
+                            **{
+                                "data-admin-form-status": "true",
+                                "data-settings-status": "true",
+                            },
                             aria_live="polite",
                             class_="sr-only",
                         ),

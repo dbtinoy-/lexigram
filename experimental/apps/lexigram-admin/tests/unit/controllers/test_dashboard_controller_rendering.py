@@ -295,3 +295,79 @@ class TestDashboardControllerFilters:
         )
         await controller.index(mock_request)
         assert "admin_page_filters.dashboard" not in mock_request.session
+
+
+class TestDashboardHeroActions:
+    """Call-to-action and customize controls in the dashboard hero."""
+
+    @pytest.fixture
+    def renderer(self) -> MagicMock:
+        renderer = MagicMock()
+        renderer.render_page.side_effect = lambda content, **kwargs: HTMLResponse(
+            str(content)
+        )
+        return renderer
+
+    @pytest.fixture
+    def request_with(self) -> object:
+        def _make(resources: dict[str, object]) -> MagicMock:
+            request = MagicMock()
+            request.query_params = {"id": "default"}
+            request.app.state.admin_resources = resources
+            return request
+
+        return _make
+
+    async def _body(self, renderer: MagicMock, request: MagicMock) -> str:
+        controller = DashboardController(renderer=renderer, assembler=None)
+        response = await controller.index(request)
+        return response.body.decode()
+
+    @pytest.mark.asyncio
+    async def test_cta_links_to_the_first_resource(
+        self, renderer: MagicMock, request_with: object
+    ) -> None:
+        body = await self._body(renderer, request_with({"users": ..., "posts": ...}))
+
+        assert "Browse resources" in body
+        # Resources are sorted, so "posts" precedes "users".
+        assert 'href="/admin/posts"' in body
+
+    @pytest.mark.asyncio
+    async def test_no_cta_when_there_are_no_resources(
+        self, renderer: MagicMock, request_with: object
+    ) -> None:
+        """The link used to fall back to admin_prefix -- the page the user
+        is already on -- so it read as an action but went nowhere."""
+        body = await self._body(renderer, request_with({}))
+
+        assert "Browse resources" not in body
+        assert "Explore dashboard" not in body
+
+    @pytest.mark.asyncio
+    async def test_customize_button_is_rendered(
+        self, renderer: MagicMock, request_with: object
+    ) -> None:
+        """The button was constructed but never added to the tree, so the
+        customize panel had no way to be opened."""
+        body = await self._body(renderer, request_with({"users": ...}))
+
+        assert "Customize Dashboard" in body
+
+    @pytest.mark.asyncio
+    async def test_customize_button_targets_the_slide_over(
+        self, renderer: MagicMock, request_with: object
+    ) -> None:
+        body = await self._body(renderer, request_with({"users": ...}))
+
+        assert 'hx-get="/admin/core/widgets/customize"' in body
+        assert 'hx-target="#slide-over-container"' in body
+
+    @pytest.mark.asyncio
+    async def test_customize_button_shows_without_resources(
+        self, renderer: MagicMock, request_with: object
+    ) -> None:
+        """Widget customization does not depend on resources existing."""
+        body = await self._body(renderer, request_with({}))
+
+        assert "Customize Dashboard" in body

@@ -38,7 +38,7 @@ from lexigram.admin.ui.layouts.components import (
     UserInfo,
     flash_to_toast,
 )
-from lexigram.ui import BaseLayoutConfig, BaseLayoutContext, LayoutBase
+from lexigram.ui import BaseLayoutConfig, BaseLayoutContext, LayoutBase, js_string
 
 
 @dataclass
@@ -382,9 +382,13 @@ class AdminLayout(LayoutBase):
         if cfg.htmx_enabled:
             csrf_header = ""
             if ctx.csrf_token:
+                # js_string, not escape: this is script content, where the
+                # HTML parser does not decode entities. An escaped quote
+                # would reach JavaScript as the literal text "&#39;" and
+                # corrupt the token rather than protect it.
                 csrf_header = f"""
                 document.body.addEventListener('htmx:configRequest', function(evt) {{
-                    evt.detail.headers['X-CSRF-Token'] = '{escape(ctx.csrf_token)}';
+                    evt.detail.headers['X-CSRF-Token'] = {js_string(ctx.csrf_token)};
                 }});
                 """
 
@@ -397,7 +401,11 @@ class AdminLayout(LayoutBase):
             </script>
             """)
 
-        # Core admin JS (served from admin router's static mount)
+        # Core admin JS (served from admin router's static mount).
+        # Derived here rather than reused from render_head: that is a
+        # separate method, so referencing its local raised NameError and
+        # took down every page that reached this line.
+        asset_prefix = ctx.base_url.rstrip("/") or "/admin"
         parts.append(
             f'<script src="{escape(asset_prefix)}/static/js/admin.js"></script>'
         )

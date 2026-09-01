@@ -30,7 +30,9 @@ class Pagination(Component):
         show_jump_to_page: bool = True,
         extra_query: str = "",
         hx_target: str | None = None,
-        hx_swap: str = "innerHTML",
+        # outerHTML: the child controls select #table-data itself, so an
+        # innerHTML swap nests the data zone inside itself.
+        hx_swap: str = "outerHTML",
         hx_push_url: str = "true",
         next_cursor: str | None = None,
         state: Any | None = None,
@@ -187,7 +189,7 @@ class Pagination(Component):
                         " of ",
                         el("span", str(self.total), class_="font-bold"),
                         " results",
-                        class_="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold",
+                        class_="text-xs uppercase tracking-wider text-muted-foreground font-semibold",
                     ),
                 ),
                 # Pagination Controls

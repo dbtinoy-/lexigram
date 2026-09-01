@@ -274,7 +274,7 @@ class CalendarView(AbstractDataView):
 
                 params = self.state.to_query_params()
                 params[f"filter_{MONTH_FILTER_KEY}"] = target_month
-                url = prefix.rstrip("/") + "/"
+                url = prefix.rstrip("/")
                 return f"{url}?{urlencode(params, doseq=True)}" if params else url
             return f"?filter_{MONTH_FILTER_KEY}={target_month}"
 

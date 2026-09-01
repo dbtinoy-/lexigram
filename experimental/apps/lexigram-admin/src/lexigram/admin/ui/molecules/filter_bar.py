@@ -75,6 +75,7 @@ class FilterBar(Component):
 
         # If filters is a list, assume they are Filter objects
         if isinstance(self.filters, list):
+            f: Any
             for f in self.filters:
                 # Check visibility if context available
                 if hasattr(f, "is_visible") and not f.is_visible():
@@ -98,14 +99,15 @@ class FilterBar(Component):
                     rendered = f.render_filter(current_val)
                     if rendered is not None:
                         if self.resource_prefix and hasattr(rendered, "attrs"):
-                            base_url = self.resource_prefix.rstrip("/") + "/"
+                            base_url = self.resource_prefix.rstrip("/")
                             rendered.attrs.update(
                                 {
                                     "hx-get": base_url,
                                     "hx-trigger": "change",
                                     "hx-target": Zones.DATA.selector,
-                                    "hx-swap": Zones.DATA.swap_mode.value,
+                                    "hx-swap": "outerHTML",
                                     "hx-select": Zones.DATA.selector,
+                                    "hx-select-oob": Zones.data_refresh_oob_select(),
                                     "hx-push-url": "true",
                                     "hx-include": (
                                         f"{Zones.DATA.selector} [data-state='true'], "
@@ -173,7 +175,7 @@ class FilterBar(Component):
                             placeholder=filter_config.get("placeholder"),
                             input_type=f_type,
                             hx_get=(
-                                self.resource_prefix.rstrip("/") + "/"
+                                self.resource_prefix.rstrip("/")
                                 if self.resource_prefix
                                 else "/"
                             ),
@@ -260,7 +262,7 @@ class FilterBar(Component):
             badge = el(
                 "span",
                 str(active_count),
-                class_="absolute -top-1.5 -right-1.5 bg-primary text-primary-foreground text-[10px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1 leading-none",
+                class_="absolute -top-1.5 -right-1.5 bg-primary text-primary-foreground text-xs font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1 leading-none",
             )
 
         toggle_btn = el(

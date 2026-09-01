@@ -40,3 +40,48 @@ class TenantConfigStore(StoreBase):
     async def set(self, key: str, value: Any, tenant_id: str | None = None) -> None:
         """Persist a value by key."""
         await self._service.set(tenant_id or self._tenant, key, value)
+
+    async def set_many(
+        self, items: dict[str, Any], tenant_id: str | None = None
+    ) -> None:
+        """Persist several values atomically when the backend supports it.
+
+        Prefers :meth:`AdminSettingsService.set_many`, which wraps the writes
+        in a database transaction where one is available so a failure part-way
+        through rolls the whole batch back. Services predating that method
+        fall back to sequential writes, which are not atomic.
+        """
+        tenant = tenant_id or self._tenant
+        batch = getattr(self._service, "set_many", None)
+        if callable(batch):
+            await batch(tenant, items)
+            return
+        for key, value in items.items():
+            await self._service.set(tenant, key, value)
+
+    async def set_many_if_unchanged(
+        self,
+        items: dict[str, Any],
+        expected: dict[str, Any],
+        tenant_id: str | None = None,
+    ) -> None:
+        """Persist several values only if storage still matches *expected*.
+
+        Delegates to :meth:`AdminSettingsService.set_many_if_unchanged`, which
+        re-checks inside the write transaction so a concurrent update is
+        rejected instead of being overwritten.
+
+        Raises:
+            SettingsConflictError: If a concurrent change is detected.
+        """
+        tenant = tenant_id or self._tenant
+        conditional = getattr(self._service, "set_many_if_unchanged", None)
+        if callable(conditional):
+            await conditional(tenant, items, expected)
+            return
+        await self.set_many(items, tenant_id=tenant)
+
+    async def supports_conditional_write(self) -> bool:
+        """Report whether the backing service enforces conditional writes."""
+        probe = getattr(self._service, "supports_conditional_write", None)
+        return bool(probe()) if callable(probe) else False

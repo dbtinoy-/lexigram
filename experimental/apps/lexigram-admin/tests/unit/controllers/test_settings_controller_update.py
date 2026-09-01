@@ -10,6 +10,16 @@ from lexigram.admin.settings.panel import BooleanNode, ConfigSpec
 from lexigram.admin.settings.panel.registry import ConfigRegistry
 
 
+async def _revision_for(
+    registry: ConfigRegistry, namespace: str, store_name: str = "default"
+) -> str:
+    """Return the revision token a freshly rendered form would carry."""
+    spec = registry.get_spec(namespace)
+    assert spec is not None
+    values = await registry.get_values(namespace, store_name)
+    return SettingsController._settings_revision(spec, values)
+
+
 def _mock_request(
     method: str = "GET",
     form_data: dict[str, str] | None = None,
@@ -84,7 +94,11 @@ class TestSettingsControllerUpdate:
         registry.register_spec(GatedSpec3)
         req = _mock_request(
             method="POST",
-            form_data={"_csrf": "token", "flag": "true"},
+            form_data={
+                "_csrf": "token",
+                "flag": "true",
+                "settings_revision": await _revision_for(registry, "admin.gated3"),
+            },
             user=_FakeUser(permissions=frozenset(), roles=["superadmin"]),
         )
         req.path_params = {"namespace": "admin.gated3"}
@@ -106,6 +120,7 @@ class TestSettingsControllerUpdate:
                 "logo_url": "",
                 "favicon_url": "",
                 "dark_mode": "dark",
+                "settings_revision": await _revision_for(registry, "admin.branding"),
             },
             user=_FakeUser(),
         )
@@ -234,7 +249,13 @@ class TestSettingsControllerUpdate:
         )
         req = _mock_request(
             method="POST",
-            form_data={"name": "new", "api_key": "new-secret"},
+            form_data={
+                "name": "new",
+                "api_key": "new-secret",
+                "settings_revision": await _revision_for(
+                    registry, _AuditedSpec.namespace
+                ),
+            },
             user=_FakeUser(),
         )
         req.path_params = {"namespace": _AuditedSpec.namespace}
@@ -284,10 +305,11 @@ class TestSettingsControllerUpdate:
         self, renderer: MagicMock
     ) -> None:
         audit = AsyncMock()
+        registry = ConfigRegistry.with_defaults()
         controller = SettingsController(
             renderer=renderer,
             audit_service=audit,
-            registry=ConfigRegistry.with_defaults(),
+            registry=registry,
         )
         req = _mock_request(
             method="POST",
@@ -295,6 +317,7 @@ class TestSettingsControllerUpdate:
                 "csrf_token": "token",
                 "enabled": "true",
                 "default_ttl": "120",
+                "settings_revision": await _revision_for(registry, "admin.cache"),
             },
             user=_FakeUser(),
         )
@@ -321,6 +344,7 @@ class TestSettingsControllerUpdate:
                 "csrf_token": "token",
                 "enabled": "on",
                 "default_ttl": "120",
+                "settings_revision": await _revision_for(registry, "admin.cache"),
             },
             user=_FakeUser(),
         )
@@ -349,6 +373,7 @@ class TestSettingsControllerUpdate:
                 "csrf_token": "token",
                 "enabled": "false",
                 "default_ttl": "120",
+                "settings_revision": await _revision_for(registry, "admin.cache"),
             },
             user=_FakeUser(),
         )
@@ -376,9 +401,16 @@ class TestSettingsControllerUpdate:
             user=_FakeUser(),
         )
 
+        _revision = await _revision_for(registry, "admin.cache")
+
         async def _form() -> FormData:
             return FormData(
-                [("enabled", "on"), ("enabled", "false"), ("default_ttl", "120")]
+                [
+                    ("enabled", "on"),
+                    ("enabled", "false"),
+                    ("default_ttl", "120"),
+                    ("settings_revision", _revision),
+                ]
             )
 
         req.form = _form

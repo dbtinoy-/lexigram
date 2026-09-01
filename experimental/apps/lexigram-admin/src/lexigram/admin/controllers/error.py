@@ -5,11 +5,10 @@ Provides user-friendly error pages for common HTTP errors.
 
 from __future__ import annotations
 
-from urllib.parse import quote_plus
-
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, RedirectResponse
 
+from lexigram.admin.auth.next_url import build_login_redirect
 from lexigram.admin.controllers.base import AdminController
 from lexigram.admin.engine.renderer import AdminRenderer
 from lexigram.admin.lib.template import render_error_page
@@ -82,7 +81,10 @@ class ErrorController(AdminController):
         ):
             next_url = admin_home
         return RedirectResponse(
-            url=f"{self._admin_path(request, '/admin/login')}?next={quote_plus(next_url)}",
+            url=build_login_redirect(
+                self._admin_path(request, "/admin/login"),
+                next_url,
+            ),
             status_code=302,
         )
 

@@ -215,7 +215,11 @@ class AdminAuthorizationMiddleware(BaseHTTPMiddleware):
         if self._permission_authorizer is not None and is_known_resource:
             capabilities = await self._resource_capabilities(user, request)
             if capabilities is None:
-                resource = self._resource_action(path, self._admin_prefix)[0]
+                # Reuse `route` rather than recomputing: is_known_resource
+                # already proved it is not None, whereas a fresh call is
+                # typed Optional and indexing it is unguarded.
+                assert route is not None
+                resource = route[0]
                 logger.info(
                     "admin_authz.resource_denied",
                     user_id=getattr(user, "user_id", "unknown"),

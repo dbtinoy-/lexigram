@@ -229,7 +229,7 @@ class CommandPalette(Component):
                         el(
                             "span",
                             "esc",
-                            class_="rounded-md border border-border px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground",
+                            class_="rounded-md border border-border px-1.5 py-0.5 text-xs font-semibold text-muted-foreground",
                         ),
                         el(
                             "span",
@@ -243,7 +243,7 @@ class CommandPalette(Component):
                         el(
                             "span",
                             "enter",
-                            class_="rounded-md border border-border px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground",
+                            class_="rounded-md border border-border px-1.5 py-0.5 text-xs font-semibold text-muted-foreground",
                         ),
                         el(
                             "span",

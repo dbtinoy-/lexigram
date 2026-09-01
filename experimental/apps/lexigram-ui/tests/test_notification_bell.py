@@ -49,7 +49,9 @@ def test_bell_connects_to_sse_endpoint() -> None:
     bell = NotificationBell(sse_url="/custom/events")
     html = str(bell)
 
-    assert "new EventSource('/custom/events')" in html
+    # URLs are emitted as encoded JS literals (double-quoted by js_string),
+    # not hand-quoted, so that a URL cannot break out of the script.
+    assert 'new EventSource("/custom/events")' in html
     assert "addEventListener('message'" in html
     assert "addEventListener('notification'" in html
     assert "addEventListener('toast'" in html
@@ -62,7 +64,7 @@ def test_bell_loads_persisted_inbox() -> None:
     html = str(NotificationBell())
 
     assert "loadInbox()" in html
-    assert "fetch('/admin/notifications/inbox'" in html
+    assert 'fetch("/admin/notifications/inbox"' in html
     assert "'X-Requested-With': 'fetch'" in html
     assert "data.unread_count" in html
     assert "data.notifications" in html
@@ -78,9 +80,9 @@ def test_bell_posts_mark_read_to_inbox_endpoints() -> None:
     )
     html = str(bell)
 
-    assert "fetch('/custom/read/{message_id}'.replace('{message_id}', id)" in html
+    assert 'fetch("/custom/read/{message_id}".replace' in html
     assert "method: 'POST'" in html
-    assert "fetch('/custom/read-all'" in html
+    assert 'fetch("/custom/read-all"' in html
 
 
 def test_bell_sends_csrf_for_mutating_requests() -> None:

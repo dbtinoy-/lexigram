@@ -30,7 +30,13 @@ logger = get_logger(__name__)
 
 __all__ = ["ClusterCenterController"]
 
-_AREA_DESCRIPTIONS: dict[str, str] = {
+#: Fallback copy for the framework's own infrastructure areas, which predate
+#: ``NavigationContribution.description``. Contributors should set that field
+#: instead: this map is keyed on the lowercased label, so it cannot tell a
+#: "Web" area in the infrastructure cluster from one in any other cluster,
+#: and it silently goes stale as areas are added. It is consulted only when
+#: the contribution carries no description of its own.
+_LEGACY_INFRASTRUCTURE_DESCRIPTIONS: dict[str, str] = {
     "web": "HTTP routing, middleware, and web API endpoints.",
     "sql": "Database connections, queries, and schema management.",
     "cache": "Cache backends, keys, and TTL policies.",
@@ -38,8 +44,6 @@ _AREA_DESCRIPTIONS: dict[str, str] = {
     "queue": "Background job queue and worker management.",
     "tasks": "Scheduled tasks, cron jobs, and automation.",
 }
-
-_DEFAULT_AREA_DESCRIPTION = "Manage and monitor this infrastructure area."
 
 
 class ClusterCenterController(AdminController):
@@ -119,20 +123,28 @@ class ClusterCenterController(AdminController):
         self, items: list[Any], *, admin_prefix: str = "/admin"
     ) -> Any:
         if not items:
+            # An empty cluster is a configuration state, not a failure, so
+            # the copy says what produces areas here instead of leaving the
+            # operator on a dead end with nothing to act on.
             return el(
                 "div",
-                el("div", "⚙️", class_="text-5xl mb-4"),
+                el("div", "⚙️", class_="text-5xl mb-4", aria_hidden="true"),
                 el(
                     "h3",
-                    f"No {self._cluster.label} Areas",
+                    f"No {self._cluster.label} areas yet",
                     class_="text-lg font-semibold text-foreground",
                 ),
                 el(
                     "p",
-                    f"No areas are contributed to this {self._cluster.label.lower()} group yet.",
-                    class_="text-muted-foreground mt-2 max-w-sm",
+                    (
+                        "Areas appear here when a package contributes "
+                        f"navigation to the '{self._cluster.group}' group. "
+                        "Install or enable a package that provides one."
+                    ),
+                    class_="text-muted-foreground mt-2 max-w-md mx-auto",
                 ),
                 class_="text-center py-16",
+                role="status",
             )
 
         cards = [self._render_card(item, admin_prefix=admin_prefix) for item in items]
@@ -152,63 +164,108 @@ class ClusterCenterController(AdminController):
         cluster = self._cluster
         child_links = [
             el(
-                "a",
+                "li",
                 el(
-                    "span",
-                    child.label,
-                    class_="truncate",
+                    "a",
+                    el("span", child.label, class_="truncate"),
+                    href=cluster_child_href(
+                        child.url, cluster=cluster, admin_prefix=admin_prefix
+                    ),
+                    class_=(
+                        "block rounded px-3 py-1.5 text-sm text-muted-foreground "
+                        "hover:text-primary-600 hover:bg-muted "
+                        "dark:hover:text-primary-400 transition-colors "
+                        "focus-visible:outline-none focus-visible:ring-2 "
+                        "focus-visible:ring-ring"
+                    ),
                 ),
-                href=cluster_child_href(
-                    child.url, cluster=cluster, admin_prefix=admin_prefix
-                ),
-                class_="block px-3 py-1.5 text-sm text-muted-foreground hover:text-primary-600 dark:hover:text-primary-400 transition-colors",
             )
             for child in item.children
         ]
+        description = self._describe(item)
+        # The heading link is stretched over the whole card so the entire
+        # tile is a click target, which is what the card-wide hover style
+        # already implied. Child links sit above it in the stacking order so
+        # they stay independently clickable, and they remain real list items
+        # rather than being nested inside the card link, which is invalid
+        # markup and collapses keyboard navigation.
         return el(
             "div",
             el(
-                "a",
-                el(
-                    "div",
-                    self._render_icon(item.icon),
-                    class_="w-10 h-10 rounded-lg bg-primary-50 dark:bg-primary-900/30 flex items-center justify-center mb-3",
+                "div",
+                self._render_icon(item.icon),
+                class_=(
+                    "w-10 h-10 rounded-lg bg-primary-50 dark:bg-primary-900/30 "
+                    "flex items-center justify-center mb-3"
                 ),
+            ),
+            el(
+                "h3",
                 el(
-                    "h3",
+                    "a",
                     item.label,
-                    class_="text-base font-semibold text-foreground",
-                ),
-                el(
-                    "p",
-                    _AREA_DESCRIPTIONS.get(
-                        str(item.label).lower(), _DEFAULT_AREA_DESCRIPTION
+                    href=cluster_child_href(
+                        item.url, cluster=cluster, admin_prefix=admin_prefix
                     ),
-                    class_="text-sm text-muted-foreground mt-1",
+                    # `stretched-link` rather than Tailwind's
+                    # after:content-[''] arbitrary value: the quotes in that
+                    # class are HTML-escaped on render, so the emitted
+                    # attribute no longer matches the generated CSS.
+                    class_=(
+                        "stretched-link rounded focus-visible:outline-none "
+                        "focus-visible:ring-2 focus-visible:ring-ring"
+                    ),
                 ),
-                href=cluster_child_href(
-                    item.url, cluster=cluster, admin_prefix=admin_prefix
-                ),
-                class_="block",
+                class_="text-base font-semibold text-foreground",
             ),
+            el("p", description, class_="text-sm text-muted-foreground mt-1"),
             (
-                el("div", *child_links, class_="mt-3 space-y-1")
-                if child_links
-                else el(
-                    "p",
-                    "Open area",
-                    class_="mt-2 text-sm text-muted-foreground",
+                el(
+                    "ul",
+                    *child_links,
+                    class_="relative mt-3 space-y-1",
+                    aria_label=f"{item.label} sections",
                 )
+                if child_links
+                else ""
             ),
-            class_="block bg-card rounded-xl border border-border p-5 hover:border-primary/50 transition-colors",
+            class_=(
+                "cluster-card relative bg-card rounded-xl border border-border "
+                "p-5 hover:border-primary/50 hover:shadow-sm "
+                "focus-within:border-primary/50 transition-colors"
+            ),
         )
+
+    def _describe(self, item: Any) -> str:
+        """Return the description shown under an area's heading.
+
+        Prefers the description the contributing package supplied, since only
+        it knows what its area does. Falls back to the framework's legacy map
+        for the built-in infrastructure areas, and finally to copy that names
+        this cluster rather than asserting "infrastructure" on, say, a Content
+        landing page.
+        """
+        contributed = str(getattr(item, "description", "") or "").strip()
+        if contributed:
+            return contributed
+
+        if self._cluster.name == "infrastructure":
+            legacy = _LEGACY_INFRASTRUCTURE_DESCRIPTIONS.get(str(item.label).lower())
+            if legacy:
+                return legacy
+
+        return f"Manage and monitor this {self._cluster.label.lower()} area."
 
     def _render_icon(self, icon_name: str) -> Any:
         try:
             from lexigram.ui import get_icon
 
+            # get_icon already emits its own `size` classes; repeating them
+            # in class_name rendered a duplicated "w-5 h-5 w-5 h-5".
             return get_icon(
-                icon_name, class_name="w-5 h-5 text-primary-600 dark:text-primary-400"
+                icon_name,
+                class_name="text-primary-600 dark:text-primary-400",
+                **{"aria-hidden": "true", "focusable": "false"},
             )
         except (ImportError, ModuleNotFoundError, AttributeError):
-            return el("span", "●", class_="text-muted-foreground")
+            return el("span", "●", class_="text-muted-foreground", aria_hidden="true")

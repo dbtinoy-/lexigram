@@ -11,7 +11,8 @@ from datetime import date, datetime
 from enum import Enum
 from typing import Any
 
-from lexigram.ui import Component, Element, raw
+from lexigram.ui import Component, Element
+from lexigram.ui.atoms.icons import get_icon
 from lexigram.ui.core.url import is_safe_navigation_url
 
 
@@ -132,10 +133,17 @@ class InfolistWidget(Component):
     def _render_entry_card(self, entry: InfolistEntry) -> Element:
         rendered_value = self._render_value(entry)
 
+        # Resolve through the icon registry rather than embedding the value
+        # as raw markup. `icon` reaches this component from resource schemas
+        # and record data, so `raw(entry.icon)` made any caller that passed
+        # a stored value an injection point -- it renders whatever HTML the
+        # string contains. get_icon looks the name up in a fixed set and
+        # only emits trusted SVG, so an unknown or hostile value renders
+        # nothing instead of executing.
         icon_el = (
             Element(
                 "span",
-                raw(entry.icon),
+                get_icon(entry.icon, size="w-4 h-4"),
                 class_="w-4 h-4 mr-1.5 inline-block",
             )
             if entry.icon

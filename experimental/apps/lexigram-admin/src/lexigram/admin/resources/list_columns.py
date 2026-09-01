@@ -34,8 +34,19 @@ class SchemaFieldColumn(TextColumn):
         self._filterable = bool(getattr(field_schema, "filterable", False))
         self._toggleable = True
 
-    def is_visible(self, **kwargs: Any) -> bool:
-        """Honor declarative list visibility, including dynamic UI kwargs."""
+    def is_visible(
+        self,
+        user: Any = None,
+        resource_name: str | None = None,
+        record: dict | Any | None = None,
+        permission_service: Any = None,
+    ) -> bool:
+        """Honor declarative list visibility.
+
+        Mirrors the base signature rather than accepting **kwargs: callers
+        pass these positionally, which a kwargs-only override rejects.
+        Visibility here is schema-declared, so the arguments are unused.
+        """
         return bool(getattr(self.field_schema, "visible_in_list", True))
 
     def render(self, value: Any, record: dict) -> Any:

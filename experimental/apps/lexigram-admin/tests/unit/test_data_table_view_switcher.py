@@ -19,7 +19,7 @@ def test_view_switcher_singleton_and_htmx_attrs():
     # Exactly one switcher
     assert out.count('class="view-switcher') == 1
     # Items include data_view query param and target/swap attributes
-    assert 'hx-get="/admin/users/?data_view=' in out
+    assert 'hx-get="/admin/users?data_view=' in out
     assert 'hx-target="#lexigram-table"' in out
     assert 'hx-swap="outerHTML"' in out
     assert 'hx-push-url="true"' in out
@@ -35,7 +35,7 @@ def test_view_switcher_singleton_and_htmx_attrs():
     out2 = str(dt_sidebar.render())
 
     assert out2.count('class="view-switcher') == 1
-    assert 'hx-get="/admin/users/?data_view=' in out2
+    assert 'hx-get="/admin/users?data_view=' in out2
     assert 'hx-target="#lexigram-table"' in out2
 
 

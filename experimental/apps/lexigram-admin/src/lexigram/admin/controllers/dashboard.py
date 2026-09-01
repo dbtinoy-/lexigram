@@ -115,13 +115,14 @@ class DashboardController(AdminController):
             if dashboard_id == "default"
             else dashboard_id.replace("_", " ").replace("-", " ").title()
         )
+        # With no resources registered the call to action had nowhere to go:
+        # it linked to admin_prefix, the page already being viewed. Offer the
+        # link only when it leads somewhere else.
         resource_names = self._get_resource_list(request)
         primary_resource_url = (
-            f"{admin_prefix}/{resource_names[0]}" if resource_names else admin_prefix
+            f"{admin_prefix}/{resource_names[0]}" if resource_names else None
         )
-        primary_resource_label = (
-            "Browse resources" if resource_names else "Explore dashboard"
-        )
+        primary_resource_label = "Browse resources"
 
         # Page-level filter state: schema defaults → session → query params
         filter_state: dict[str, Any] = {}
@@ -383,19 +384,25 @@ class DashboardController(AdminController):
             ),
             el(
                 "div",
+                # Not a Badge: this chip carries a leading status dot, and
+                # Badge renders text only. No role="status" either -- the
+                # label is static, so announcing it would add noise without
+                # reporting any change.
                 el(
                     "span",
                     el("span", class_="h-2 w-2 rounded-full bg-success"),
                     "Live workspace",
                     class_="inline-flex items-center gap-2 rounded-full border border-success/20 bg-success/10 px-3 py-1.5 text-xs font-medium text-success",
-                    role="status",
                 ),
+                customize_btn,
                 el(
                     "a",
                     primary_resource_label,
                     href=primary_resource_url,
                     class_="inline-flex items-center justify-center rounded-lg bg-primary px-3.5 py-2 text-sm font-medium text-primary-foreground shadow-sm transition hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-                ),
+                )
+                if primary_resource_url
+                else None,
                 class_="flex flex-wrap items-center gap-3 sm:justify-end",
             ),
             class_="dashboard-hero flex flex-col gap-5 rounded-2xl border border-border/70 bg-card/80 p-5 shadow-sm backdrop-blur sm:flex-row sm:items-end sm:justify-between sm:p-7",
