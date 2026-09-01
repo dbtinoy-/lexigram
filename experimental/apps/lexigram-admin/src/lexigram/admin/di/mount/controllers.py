@@ -471,6 +471,38 @@ class AdminMountControllersMixin:
             if self._config.strict_resource_resolution:
                 raise
 
+        # Resolve built-in SavedViewsController (Saved views — R13,
+        # docs/09-01-2026/08-saved-views.md). Best-effort.
+        try:
+            from lexigram.admin.controllers.saved_views import SavedViewsController
+
+            saved_views_controller = await resolver.resolve(
+                SavedViewsController,
+                bypass_visibility=True,
+            )
+            ctx.controllers.append(saved_views_controller)
+            if getattr(saved_views_controller, "_csrf_service", None) is None:
+                try:
+                    saved_views_controller._csrf_service = (
+                        await self._get_csrf_service(resolver)
+                    )
+                except Exception:
+                    pass
+            if (
+                getattr(saved_views_controller, "_saved_view_service", None) is None
+                and ctx.saved_view_service is not None
+            ):
+                saved_views_controller._saved_view_service = ctx.saved_view_service
+        except Exception as exc:
+            _log.error(
+                "admin.saved_views_controller_resolution_failed",
+                error=str(exc),
+                strict=self._config.strict_resource_resolution,
+            )
+            self._mount_failures["controller:SavedViewsController"] = str(exc)
+            if self._config.strict_resource_resolution:
+                raise
+
         # Resolve built-in SetupController (first-run wizard)
         try:
             from lexigram.admin.controllers.setup import SetupController

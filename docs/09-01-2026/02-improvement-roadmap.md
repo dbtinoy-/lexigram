@@ -115,9 +115,13 @@ The first 15 minutes decide whether a team adopts an admin framework.
   active-sessions view with remote revoke, filterable audit-log browser,
   lockout lookup + manual unlock, all audited. Full plan and phase 2/3
   follow-ups in [05-security-center.md](05-security-center.md).
-- **R13. Saved views & filter presets.** Persist per-user list-view state
-  (filters, sort, columns, page size) via the existing
-  `tenant_configs`/settings service; shareable named views per resource.
+- **R13. Saved views & filter presets.** ✅ **Done 2026-09-02** — per-user
+  named list views (search, filters, sort, per-page, view/layout/density,
+  grouping, hidden columns) stored via the settings service (no
+  migration); views bar on every resource list page with one-click apply,
+  save-current-view, delete, and active-view highlighting. Full plan and
+  follow-ups (shared views, default view) in
+  [08-saved-views.md](08-saved-views.md).
 - **R14. Bulk-action UX hardening.** Progress feedback for long bulk
   operations via the existing task manager; per-row error reporting
   ("3 of 50 failed: …") instead of all-or-nothing toasts.

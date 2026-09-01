@@ -148,6 +148,19 @@
 
   // ========== Forms ==========
   function initForms() {
+    // Saved views (R13): the "save current view" form is rendered outside
+    // the HTMX swap zones, so its server-rendered `query` value goes stale
+    // after client-side filtering. Sync it with the live URL at submit time
+    // (delegated — survives any DOM swaps; the server re-sanitizes anyway).
+    document.addEventListener('submit', function(e) {
+      const form = e.target.closest ? e.target.closest('form[data-saved-view-save]') : null;
+      if (!form) return;
+      const queryInput = form.querySelector('input[name="query"]');
+      if (queryInput) {
+        queryInput.value = window.location.search.replace(/^\?/, '');
+      }
+    });
+
     // Form validation feedback
     document.querySelectorAll('form[data-validate]').forEach(function(form) {
       form.addEventListener('submit', function(e) {

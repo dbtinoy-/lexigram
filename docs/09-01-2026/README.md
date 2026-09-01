@@ -15,10 +15,11 @@ deployment, the fixes shipped on this date, and the forward-looking roadmap.
 | [05-security-center.md](05-security-center.md) | Security Center (R12): superadmin sessions/audit/lockout dashboard — design, phases, and verification. |
 | [06-access-control-ui.md](06-access-control-ui.md) | Roles & Permissions UI (R10): role CRUD + user role assignment with guard rails — design, phases, and verification. |
 | [07-mailer-onboarding.md](07-mailer-onboarding.md) | Mailer onboarding (R11): email delivery status page, test send, and debug-mode console fallback — design, phases, and verification. |
+| [08-saved-views.md](08-saved-views.md) | Saved views & filter presets (R13): per-user named list views over the settings service — design, sanitization rules, and verification. |
 
 ## Status at time of writing
 
-- Unit suite: **5209 passed, 8 skipped** (baseline before this work: 5027 / 8);
+- Unit suite: **5274 passed, 8 skipped** (baseline before this work: 5027 / 8);
   webhook package suite: 336 passed; lexigram-sql suite: 1395 passed / 48 skipped.
 - New first-run scenario e2e (`tests/e2e/test_first_run_scenario_e2e.py`)
   walks setup → login → dashboard → list → create → edit → logout against
@@ -43,6 +44,10 @@ deployment, the fixes shipped on this date, and the forward-looking roadmap.
   **R11 Mailer onboarding shipped** (doc 07) — Email delivery status page
   with self-only test send, and a debug-mode console mailer fallback so
   auth email flows work out of the box in development.
+  **R13 Saved views shipped** (doc 08) — per-user named list views
+  (filters, sort, per-page, density, hidden columns) stored via the
+  settings service with a whitelist-sanitized query pipeline, surfaced as
+  a views bar on every resource list page.
 
 ## Guiding principles (applies to all follow-up work)
 

@@ -11,8 +11,8 @@ verifying any future change to lexigram-admin. Auth/authz changes require
 uv run pytest experimental/apps/lexigram-admin/tests/unit -q
 ```
 
-- Baseline 2026-09-01 (end of day): **5209 passed, 8 skipped**, coverage
-  ≈ 75.6% (configured minimum 60%).
+- Baseline 2026-09-02: **5274 passed, 8 skipped**, coverage
+  ≈ 75.8% (configured minimum 60%).
 - The suite adds `--cov` flags from `pyproject.toml`; use `--no-cov` for
   quick single-file runs.
 - New regression tests added this date:
@@ -66,6 +66,15 @@ uv run pytest experimental/apps/lexigram-admin/tests/unit -q
     page: gate, status card states, CSRF, self-only test send (R11)
   - `tests/unit/di/test_mailer_fallback.py` — console fallback registers
     in debug only and never overrides a bound backend (R11)
+  - `tests/unit/services/test_saved_views.py` — query sanitization
+    (whitelist, legacy aliases, volatile-param drops), name/resource
+    validation, upsert, caps, corrupt-payload tolerance (R13, doc 08)
+  - `tests/unit/controllers/test_saved_views_controller.py` — auth guard
+    (any signed-in admin), CSRF session-id chain (`csrf_session_id` OR
+    `admin_user_id`), save/delete redirects (R13)
+  - `tests/unit/resources/test_list_renderer_saved_views.py` — views bar
+    visibility, escaping, default-aware active matching, never breaks the
+    list page (R13)
 
 ## 2. Live playground (for anything touching auth, authz, middleware, layouts)
 

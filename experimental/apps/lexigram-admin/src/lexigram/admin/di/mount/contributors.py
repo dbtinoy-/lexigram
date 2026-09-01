@@ -322,3 +322,12 @@ class AdminMountContributorsMixin:
         if admin_app is not None and hasattr(admin_app, "state"):
             admin_app.state.super_admin_role = super_admin_role
 
+        # Expose the saved-view service (R13) so ListRenderer — which has no
+        # DI access at render time — can read per-user saved views from
+        # request.app.state on both the outer and mounted apps.
+        if ctx.saved_view_service is not None:
+            if hasattr(app, "state"):
+                app.state.saved_view_service = ctx.saved_view_service
+            if admin_app is not None and hasattr(admin_app, "state"):
+                admin_app.state.saved_view_service = ctx.saved_view_service
+
