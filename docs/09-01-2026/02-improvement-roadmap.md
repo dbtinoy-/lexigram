@@ -146,9 +146,12 @@ The first 15 minutes decide whether a team adopts an admin framework.
   marker whenever store DDL changes. Verification also uncovered and fixed
   **B12** (lexigram-sql `DatabaseService.execute` never committed DML on
   SQLite). Full plan in [11-startup-cost.md](11-startup-cost.md).
-- **R16. Request-scoped caching.** P1 removed the per-request COUNT; apply
-  the same discipline to session→user loading (currently 2 queries per
-  request) with a short-TTL in-process cache, invalidated on logout/revoke.
+- **R16. Request-scoped caching.** ✅ Done — short-TTL in-process
+  `SessionUserCache` (default 5 s, `admin.auth.session_cache_ttl`, 0
+  disables) short-circuits the per-request session→user query pair; all
+  `AdminSessionService` revocation paths invalidate it, so same-process
+  revocation is immediate and the TTL only bounds cross-worker staleness.
+  Full plan in [12-session-user-cache.md](12-session-user-cache.md).
 - **R17. Accessibility pass.** Keyboard navigation through sidebar/tables/
   modals, `aria-*` on Alpine components, focus traps in slide-overs,
   color-contrast check of the token palette in both themes.

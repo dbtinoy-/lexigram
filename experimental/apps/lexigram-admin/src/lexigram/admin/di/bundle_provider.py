@@ -318,6 +318,25 @@ class AdminProvider(
         # Dependencies resolved in boot(); a missing binding fails startup.
         from lexigram.admin.middleware.auth import AdminAuthMiddleware
 
+        # R16: session→user cache is an optimization, never a boot blocker —
+        # resolve best-effort and degrade to uncached on any failure.
+        session_user_cache = None
+        try:
+            from lexigram.admin.auth.services.session_user_cache import (
+                SessionUserCache,
+            )
+
+            session_user_cache = await admin_resolver.resolve(
+                SessionUserCache,
+                bypass_visibility=True,
+            )
+            if session_user_cache is not None and session_user_cache.enabled:
+                _log.debug("admin.session_user_cache_wired")
+            else:
+                _log.debug("admin.session_user_cache_disabled")
+        except Exception as exc:  # noqa: BLE001 — cache is optional
+            _log.debug("admin.session_user_cache_unavailable", reason=str(exc))
+
         middleware_stack.append(
             (
                 AdminAuthMiddleware,
@@ -328,6 +347,7 @@ class AdminProvider(
                     "super_admin_role": (
                         self._config.rbac or AdminRbacConfig()
                     ).super_admin_role,
+                    "session_cache": session_user_cache,
                 },
             )
         )

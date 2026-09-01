@@ -22,6 +22,7 @@ from lexigram.primitives import clock
 
 if TYPE_CHECKING:
     from lexigram.admin.auth.protocols import AdminSessionServiceProtocol
+    from lexigram.admin.auth.services.session_user_cache import SessionUserCache
 
 logger = get_logger(__name__)
 
@@ -50,6 +51,7 @@ class AdminAuthMiddleware:
         require_auth: bool = False,
         excluded_paths: list[str] | None = None,
         super_admin_role: str | None = None,
+        session_cache: SessionUserCache | None = None,
     ):
         """Initialize auth middleware.
 
@@ -64,6 +66,11 @@ class AdminAuthMiddleware:
                 role are marked ``is_superuser`` so every downstream
                 permission check (authorization middleware, nav filtering,
                 lexigram-auth bypass) recognizes them consistently.
+            session_cache: Optional short-TTL in-process cache for the
+                session→user pair (R16). A cache hit skips both per-request
+                DB lookups; revocation paths invalidate it (see
+                docs/09-01-2026/12-session-user-cache.md). ``None`` keeps
+                the uncached behaviour.
         """
         self.app = app
         self.user_store = user_store
@@ -71,6 +78,7 @@ class AdminAuthMiddleware:
         self.require_auth = require_auth
         self.excluded_paths = excluded_paths or []
         self._super_admin_role = super_admin_role
+        self._session_cache = session_cache
 
     def _is_path_excluded(self, path: str) -> bool:
         """Check if path is excluded from auth requirements.
@@ -197,15 +205,29 @@ class AdminAuthMiddleware:
                     # Service-bound deployment without a service-managed
                     # session: never consult the legacy fallback.
                     return GUEST_USER
+
+                # R16: short-TTL in-process cache — a hit skips both the
+                # session and the user SELECT for this request. Revocation
+                # paths invalidate the entry, so a dead session is never
+                # re-served from cache in this process.
+                if self._session_cache is not None:
+                    cached = self._session_cache.get(session_id)
+                    if cached is not None:
+                        return cached
+
                 session_data = await self._session_service.get_session(session_id)
                 if session_data is None:
                     # Session expired or revoked — clear cookie
+                    if self._session_cache is not None:
+                        self._session_cache.invalidate(session_id)
                     request.session.clear()
                     logger.debug("session.expired_or_revoked", session_id=session_id)
                     return GUEST_USER
 
                 admin_id = session_data.get("admin_id")
                 if admin_id is None:
+                    if self._session_cache is not None:
+                        self._session_cache.invalidate(session_id)
                     request.session.clear()
                     return GUEST_USER
 
@@ -216,8 +238,13 @@ class AdminAuthMiddleware:
                 )
                 if user is None or not user.is_active:
                     await self._session_service.revoke_session(session_id)
+                    if self._session_cache is not None:
+                        self._session_cache.invalidate(session_id)
                     request.session.clear()
                     return GUEST_USER
+
+                if self._session_cache is not None:
+                    self._session_cache.put(session_id, user)
 
                 logger.debug(
                     "Successfully loaded user %s from session (TTL-validated)",

@@ -19,10 +19,11 @@ deployment, the fixes shipped on this date, and the forward-looking roadmap.
 | [09-bulk-ux.md](09-bulk-ux.md) | Bulk-action UX hardening (R14): per-row outcome reporting, honest toast severities, failure isolation — design and verification. |
 | [10-security-headers.md](10-security-headers.md) | Security headers wired: the orphaned `SecurityHeadersMiddleware` now outermost in the admin stack, plus fixes for duplicate-header collapse and a runtime `frame_options` override. |
 | [11-startup-cost.md](11-startup-cost.md) | Startup cost audit (R15): schema-fingerprint marker skips warm-boot DDL, plus the B12 discovery — lexigram-sql `DatabaseService.execute` never committed DML on SQLite (fixed at the source). |
+| [12-session-user-cache.md](12-session-user-cache.md) | Request-scoped session→user cache (R16): short-TTL in-process cache removes the per-request 2-query auth pair; revocation-invalidated. |
 
 ## Status at time of writing
 
-- Unit suite: **5335 passed, 8 skipped** (baseline before this work: 5027 / 8);
+- Unit suite: **5357 passed, 8 skipped** (baseline before this work: 5027 / 8);
   webhook package suite: 336 passed; lexigram-sql suite: 1403 passed / 48 skipped.
 - New first-run scenario e2e (`tests/e2e/test_first_run_scenario_e2e.py`)
   walks setup → login → dashboard → list → create → edit → logout against
@@ -67,6 +68,10 @@ deployment, the fixes shipped on this date, and the forward-looking roadmap.
   marker on any DDL change; its verification uncovered and fixed **B12**,
   a lexigram-sql data-loss bug (`DatabaseService.execute` never committed
   DML on SQLite — see doc 01).
+  **R16 Session→user cache shipped** (doc 12) — a short-TTL (5 s,
+  configurable, 0 disables) in-process cache removes the two per-request
+  auth queries on burst navigation; every revocation path invalidates it,
+  so same-process revocation stays immediate.
 
 ## Guiding principles (applies to all follow-up work)
 

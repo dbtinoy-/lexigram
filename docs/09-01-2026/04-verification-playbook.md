@@ -11,8 +11,8 @@ verifying any future change to lexigram-admin. Auth/authz changes require
 uv run pytest experimental/apps/lexigram-admin/tests/unit -q
 ```
 
-- Baseline 2026-09-02: **5335 passed, 8 skipped**, coverage
-  ≈ 75.9% (configured minimum 60%). lexigram-sql package suite baseline:
+- Baseline 2026-09-02: **5357 passed, 8 skipped**, coverage
+  ≈ 76.0% (configured minimum 60%). lexigram-sql package suite baseline:
   **1403 passed, 48 skipped** (`cd packages/lexigram-sql && uv run pytest tests -q`).
 - The suite adds `--cov` flags from `pyproject.toml`; use `--no-cov` for
   quick single-file runs.

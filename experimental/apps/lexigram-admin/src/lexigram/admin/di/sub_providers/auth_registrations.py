@@ -246,6 +246,17 @@ def register_new_auth_services(
     if isinstance(_fingerprint_secret, SecretStr):
         _fingerprint_secret = _fingerprint_secret.get_secret_value()
 
+    # ── SessionUserCache (R16) — one shared instance ──────────────────
+    # Registered as a singleton so AdminAuthMiddleware (read path, wired at
+    # mount) and AdminSessionService (revocation invalidation) share it.
+    # admin.auth.session_cache_ttl = 0 disables caching entirely.
+    from lexigram.admin.auth.services.session_user_cache import SessionUserCache
+
+    _session_cache = SessionUserCache(
+        ttl_seconds=float(getattr(_auth_cfg, "session_cache_ttl", 5) or 0)
+    )
+    container.singleton(SessionUserCache, _session_cache)
+
     @inject
     class _AdminSessionServiceConfigured(AdminSessionService):
         """Admin-scoped SessionService with config-driven lifetimes."""
@@ -259,6 +270,7 @@ def register_new_auth_services(
                 session_lifetime=_session_lifetime,
                 idle_timeout=_idle_timeout,
                 fingerprint_secret=_fingerprint_secret,
+                session_cache=_session_cache,
             )
 
     container.singleton(AdminSessionServiceProtocol, _AdminSessionServiceConfigured)
