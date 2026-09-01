@@ -44,6 +44,11 @@ def register_relation_routes(
         The list of Starlette routes for the relation manager.
     """
     prefix = f"/{resource_name}"
+    # B25: embed the manager's concrete relationship name in the paths.
+    # A `{rel_name}` wildcard made every relation manager mount at the
+    # SAME path — the first one served requests for every relation and
+    # the rest were unreachable.
+    rel = manager_class.get_relationship_name()
 
     async def _handle_list(request: Request) -> HTMLResponse:
         parent_id = request.path_params.get("parent_id", "")
@@ -154,38 +159,102 @@ def register_relation_routes(
             return check
         return HTMLResponse("")
 
-    return [
+    async def _run_pivot_handler(
+        request: Request,
+        handler_name: str,
+    ) -> HTMLResponse:
+        """Shared gate + dispatch for the pivot POST handlers (B27)."""
+        from lexigram.admin.relations.errors import RelationPersistenceError
+
+        parent_id = request.path_params.get("parent_id", "")
+        denied = await _require_user(request, audit_service)
+        if denied:
+            return denied
+        mgr = _create_manager(manager_class, parent_id)
+        parent, denied = await _require_parent(mgr, parent_data_source)
+        if denied:
+            return denied
+        if parent is not None:
+            check = await _check(mgr.can_view_parent, request, audit_service, parent)
+            if check:
+                return check
+        try:
+            return await getattr(mgr, handler_name)(request, resource_name)
+        except RelationPersistenceError as exc:
+            return HTMLResponse(str(exc), status_code=400)
+
+    async def _handle_toggle(request: Request) -> HTMLResponse:
+        return await _run_pivot_handler(request, "handle_toggle")
+
+    async def _handle_sync(request: Request) -> HTMLResponse:
+        return await _run_pivot_handler(request, "handle_sync")
+
+    async def _handle_pivot_update(request: Request) -> HTMLResponse:
+        return await _run_pivot_handler(request, "handle_pivot_update")
+
+    routes = [
         Route(
-            path=f"{prefix}/{{parent_id}}/relations/{{rel_name}}",
+            path=f"{prefix}/{{parent_id}}/relations/{rel}",
             endpoint=_handle_list,
             methods=["GET"],
         ),
         Route(
-            path=f"{prefix}/{{parent_id}}/relations/{{rel_name}}/new",
+            path=f"{prefix}/{{parent_id}}/relations/{rel}/new",
             endpoint=_handle_create_form,
             methods=["GET"],
         ),
         Route(
-            path=f"{prefix}/{{parent_id}}/relations/{{rel_name}}",
+            path=f"{prefix}/{{parent_id}}/relations/{rel}",
             endpoint=_handle_create,
             methods=["POST"],
         ),
         Route(
-            path=f"{prefix}/{{parent_id}}/relations/{{rel_name}}/{{record_id}}/edit",
+            path=f"{prefix}/{{parent_id}}/relations/{rel}/{{record_id}}/edit",
             endpoint=_handle_edit_form,
             methods=["GET"],
         ),
         Route(
-            path=f"{prefix}/{{parent_id}}/relations/{{rel_name}}/{{record_id}}",
+            path=f"{prefix}/{{parent_id}}/relations/{rel}/{{record_id}}",
             endpoint=_handle_update,
             methods=["PUT"],
         ),
         Route(
-            path=f"{prefix}/{{parent_id}}/relations/{{rel_name}}/{{record_id}}",
+            path=f"{prefix}/{{parent_id}}/relations/{rel}/{{record_id}}",
             endpoint=_handle_delete,
             methods=["DELETE"],
         ),
     ]
+
+    # B27: mount the pivot surface (attach/detach toggle, bulk sync,
+    # inline pivot edits) for managers that provide it. These handlers
+    # previously existed only inside get_pivot_routes(), which nothing
+    # mounted — the rendered checkboxes/Save button/pivot inputs all
+    # posted into 404s.
+    if all(
+        hasattr(manager_class, name)
+        for name in ("handle_toggle", "handle_sync", "handle_pivot_update")
+    ):
+        routes.extend(
+            [
+                Route(
+                    path=f"{prefix}/{{parent_id}}/relations/{rel}/toggle",
+                    endpoint=_handle_toggle,
+                    methods=["POST"],
+                ),
+                Route(
+                    path=f"{prefix}/{{parent_id}}/relations/{rel}/sync",
+                    endpoint=_handle_sync,
+                    methods=["POST"],
+                ),
+                Route(
+                    path=f"{prefix}/{{parent_id}}/relations/{rel}/pivot/{{related_id}}",
+                    endpoint=_handle_pivot_update,
+                    methods=["POST"],
+                ),
+            ]
+        )
+
+    return routes
 
 
 def _create_manager(
@@ -197,7 +266,9 @@ def _create_manager(
 async def _get_record(mgr: RelationManager, record_id: str) -> Any:
     items = await mgr.get_query()
     for item in items:
-        if str(getattr(item, "id", "")) == record_id:
+        # B26: dict-aware — SQL data sources return dict rows.
+        rid = mgr._row_id(item)
+        if rid is not None and str(rid) == record_id:
             return item
     return None
 

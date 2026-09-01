@@ -24,6 +24,7 @@ deployment, the fixes shipped on this date, and the forward-looking roadmap.
 | [14-csp-correctness.md](14-csp-correctness.md) | CSP correctness (R18) + B14: enforced CSP lacked `'unsafe-eval'`, which kills standard-build Alpine (and htmx `hx-on-*`) in real browsers; adds `object-src`/`base-uri`/`form-action` hardening and the CSP v2 (Alpine CSP-build) roadmap. |
 | [15-import-pipeline-correctness.md](15-import-pipeline-correctness.md) | Import pipeline correctness (R19), B15–B19: ragged-CSV crash, broken `.jsonl` support, JSON row-misalignment **data loss**, batch-abort on unexpected driver exceptions, undownloadable failed-import reports, and Content-Disposition filename sanitization. |
 | [16-export-lifecycle-correctness.md](16-export-lifecycle-correctness.md) | Export lifecycle correctness (R20), B20–B23: `schedule_export` raised TypeError on every call (silenced by `type: ignore`), cancellation clobbered by COMPLETED, uncancellable pending jobs, `stream_export` yielding mock bytes (now real CSV/JSON streaming), triple-logged callback failures. |
+| [17-relations-correctness.md](17-relations-correctness.md) | Relations layer correctness (R21), B24–B27: pivot-edit form-key mismatch (silent no-op + `csrf_token` mass-assignment), `{rel_name}` wildcard route collision between relation managers, dict rows rendered with empty ids/labels, and the attach/detach/sync/pivot POST routes never being mounted (whole belongs-to-many UI posted into 404s). |
 
 ## Status at time of writing
 

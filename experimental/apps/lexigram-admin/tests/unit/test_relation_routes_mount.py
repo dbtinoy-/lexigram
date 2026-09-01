@@ -26,6 +26,8 @@ def test_relation_routes_are_mounted_for_resource() -> None:
     router = AdminRouter(config=AdminConfig(prefix="/admin"))
     routes = router._build_resource_routes("users", _Resource())
     paths = [route.path for route in routes]
-    assert "/users/{parent_id}/relations/{rel_name}" in paths
-    assert "/users/{parent_id}/relations/{rel_name}/new" in paths
-    assert "/users/{parent_id}/relations/{rel_name}/{record_id}/edit" in paths
+    # B25: paths embed the concrete relationship name — a `{rel_name}`
+    # wildcard made every relation manager collide on the same route.
+    assert "/users/{parent_id}/relations/pets" in paths
+    assert "/users/{parent_id}/relations/pets/new" in paths
+    assert "/users/{parent_id}/relations/pets/{record_id}/edit" in paths

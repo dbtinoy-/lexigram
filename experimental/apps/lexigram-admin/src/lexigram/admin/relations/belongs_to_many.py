@@ -58,18 +58,6 @@ class BelongsToManyRelationManager(RelationManager):
                 "pass data_source to the constructor or call set_data_source()"
             )
 
-    def _row_id(self, row: Any) -> Any:
-        """Extract a row's primary key."""
-        if isinstance(row, dict):
-            return row.get("id") or row.get("pk")
-        return getattr(row, "id", None) or getattr(row, "pk", None)
-
-    def _row_value(self, row: Any, field: str) -> Any:
-        """Extract a field value from a record."""
-        if isinstance(row, dict):
-            return row.get(field)
-        return getattr(row, field, None)
-
     async def _find_pivot_rows(self) -> list[Any]:
         """Look up pivot rows for the current parent through the data source."""
         query = QuerySpec().with_where_eq(self.related_key_local, self.parent_id)
@@ -219,9 +207,12 @@ class BelongsToManyRelationManager(RelationManager):
 
         rows: list[Any] = []
         for item in items:
-            item_id = str(getattr(item, "id", ""))
+            # B26: SQL data sources return dict rows — use the
+            # dict-aware helpers, not getattr.
+            raw_id = self._row_id(item)
+            item_id = "" if raw_id is None else str(raw_id)
             is_attached = item_id in attached_ids
-            label = str(getattr(item, "name", item_id))
+            label = str(self._row_value(item, "name") or item_id)
 
             pivot_data = await self.get_pivot_data(item_id) if is_attached else None
             rows.append(
@@ -410,56 +401,147 @@ class BelongsToManyRelationManager(RelationManager):
             )
         return cells
 
-    def get_pivot_routes(self, resource_name: str) -> list[Any]:
-        """Return additional routes for pivot operations."""
+    def _extract_pivot_form_data(self, form: Any, related_id: str) -> dict[str, Any]:
+        """Map submitted form keys to pivot column values.
+
+        B24: rendered pivot inputs are named ``pivot_{col}_{related_id}``,
+        but the old handler passed the raw form straight to
+        :meth:`update_pivot` — configured columns never matched (silent
+        no-op) and, with no configured columns, the whole form (including
+        ``csrf_token``) was written to the pivot row.
+
+        Args:
+            form: Mapping of submitted form fields.
+            related_id: The related record whose pivot row is edited.
+
+        Returns:
+            ``{column: value}`` for recognized pivot fields only.
+        """
+        suffix = f"_{related_id}"
+        extracted: dict[str, Any] = {}
+        for key, value in dict(form).items():
+            if key.startswith("pivot_") and key.endswith(suffix):
+                column = key[len("pivot_") : len(key) - len(suffix)]
+                if column:
+                    extracted[column] = value
+            elif self.pivot_columns and key in self.pivot_columns:
+                # Plain column names remain accepted for API callers.
+                extracted[key] = value
+        return extracted
+
+    async def handle_toggle(self, request: Any, resource_name: str) -> Response:
+        """Attach/detach the posted ``related_id`` and re-render its row.
+
+        Args:
+            request: The incoming POST request.
+            resource_name: Registered resource name for URL building.
+
+        Returns:
+            The refreshed row HTML.
+
+        Raises:
+            RelationPersistenceError: When pivot persistence is not
+                configured.
+        """
+        body = await self._read_body(request)
+        related_id = str(body.get("related_id", ""))
+        attached = await self.get_attached_ids()
+        if related_id in attached:
+            await self.detach(related_id)
+        else:
+            await self.attach(related_id)
+        return await self._render_single_row(request, resource_name, related_id)
+
+    async def handle_sync(self, request: Any, resource_name: str) -> Response:
+        """Sync attachments to the posted ``related_ids`` and re-render.
+
+        Args:
+            request: The incoming POST request.
+            resource_name: Registered resource name for URL building.
+
+        Returns:
+            The refreshed relation panel HTML.
+
+        Raises:
+            RelationPersistenceError: When pivot persistence is not
+                configured.
+        """
         from starlette.responses import HTMLResponse
+
+        body = await self._read_body(request)
+        raw_ids = body.get("related_ids", "")
+        if isinstance(raw_ids, str):
+            ids = (
+                loads_str(raw_ids)
+                if raw_ids.startswith("[")
+                else [i for i in raw_ids.split(",") if i]
+            )
+        else:
+            ids = list(raw_ids or [])
+        await self.sync(ids)
+        html = await self.render(request, resource_name)
+        return HTMLResponse(html)
+
+    async def handle_pivot_update(
+        self, request: Any, resource_name: str = ""
+    ) -> Response:
+        """Update pivot data for the ``related_id`` path parameter.
+
+        Args:
+            request: The incoming POST request.
+            resource_name: Unused; kept for handler-signature symmetry.
+
+        Returns:
+            An empty 200 response (the inputs swap nothing).
+
+        Raises:
+            RelationPersistenceError: When pivot persistence is not
+                configured.
+        """
+        from starlette.responses import HTMLResponse
+
+        related_id = str(request.path_params.get("related_id", ""))
+        form = request.scope.get("admin_form_data")
+        if form is None:
+            form = await request.form()
+        pivot_data = self._extract_pivot_form_data(form, related_id)
+        if pivot_data:
+            await self.update_pivot(related_id, pivot_data)
+        return HTMLResponse("")
+
+    @staticmethod
+    async def _read_body(request: Any) -> Any:
+        """Read a JSON or form body, honouring pre-parsed form data."""
+        content_type = request.headers.get("content-type", "") or ""
+        if content_type.startswith("application/json"):
+            return await request.json()
+        body = request.scope.get("admin_form_data")
+        if body is None:
+            body = await request.form()
+        return body
+
+    def get_pivot_routes(self, resource_name: str) -> list[Any]:
+        """Return additional routes for pivot operations.
+
+        .. deprecated::
+            These per-instance routes bake ``self.parent_id`` into the
+            path; prefer the parameterized routes mounted by
+            ``register_relation_routes``. Paths are relative to the admin
+            sub-app (previously they carried a hardcoded ``/admin`` prefix
+            that double-prefixed when mounted).
+        """
         from starlette.routing import Route
 
-        prefix = f"/admin/{resource_name}/{self.parent_id}/relations/{self.get_relationship_name()}"
+        prefix = f"/{resource_name}/{self.parent_id}/relations/{self.get_relationship_name()}"
 
         async def _handle_toggle(request: Any) -> Response:
-            if request.headers.get("content-type") == "application/json":
-                body = await request.json()
-            else:
-                body = request.scope.get("admin_form_data")
-                if body is None:
-                    body = await request.form()
-            related_id = body.get("related_id", "")
-            attached = await self.get_attached_ids()
-            if related_id in attached:
-                await self.detach(related_id)
-            else:
-                await self.attach(related_id)
-            return await self._render_single_row(request, resource_name, related_id)
+            return await self.handle_toggle(request, resource_name)
 
         async def _handle_sync(request: Any) -> Response:
-            if request.headers.get("content-type") == "application/json":
-                body = await request.json()
-            else:
-                body = request.scope.get("admin_form_data")
-                if body is None:
-                    body = await request.form()
-            raw_ids = body.get("related_ids", "")
-            if isinstance(raw_ids, str):
-                ids = (
-                    loads_str(raw_ids)
-                    if raw_ids.startswith("[")
-                    else raw_ids.split(",")
-                )
-            else:
-                ids = raw_ids or []
-            await self.sync(ids)
-            html = await self.render(request, resource_name)
-            return HTMLResponse(html)
+            return await self.handle_sync(request, resource_name)
 
         async def _handle_pivot_update(request: Any) -> Response:
-            related_id = request.path_params.get("related_id", "")
-            form = request.scope.get("admin_form_data")
-            if form is None:
-                form = await request.form()
-            pivot_data = dict(form)
-            await self.update_pivot(related_id, pivot_data)
-            return HTMLResponse("")
+            return await self.handle_pivot_update(request, resource_name)
 
         return [
             Route(f"{prefix}/toggle", _handle_toggle, methods=["POST"]),
@@ -476,12 +558,21 @@ class BelongsToManyRelationManager(RelationManager):
 
         items = await self.get_query()
         attached_ids = await self.get_attached_ids()
-        item = next((i for i in items if str(getattr(i, "id", "")) == related_id), None)
+        # B26: dict-aware lookup — getattr on dict rows never matched.
+        item = next(
+            (
+                i
+                for i in items
+                if str(self._row_id(i) if self._row_id(i) is not None else "")
+                == related_id
+            ),
+            None,
+        )
         if item is None:
             return HTMLResponse("")
 
         is_attached = related_id in attached_ids
-        label = str(getattr(item, "name", related_id))
+        label = str(self._row_value(item, "name") or related_id)
         pivot_data = await self.get_pivot_data(related_id) if is_attached else None
         return HTMLResponse(
             render_to_string(

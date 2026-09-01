@@ -85,13 +85,17 @@ class RelationManager(AbstractRelationManager):
 
         rows: list[Any] = []
         for item in items:
-            item_id = getattr(item, "id", str(id(item)))
+            # B26: dict-aware row access — SQL data sources return dicts.
+            raw_id = self._row_id(item)
+            item_id = str(raw_id) if raw_id is not None else str(id(item))
             cells: list[Any] = []
             cols = self.table()
             if cols:
                 for col in cols:
-                    value = getattr(item, col.name, "") if hasattr(col, "name") else ""
-                    cells.append(el("td", value))
+                    value = (
+                        self._row_value(item, col.name) if hasattr(col, "name") else ""
+                    )
+                    cells.append(el("td", "" if value is None else value))
             else:
                 cells.append(el("td", item))
 
