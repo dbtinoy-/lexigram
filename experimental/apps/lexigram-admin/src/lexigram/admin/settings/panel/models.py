@@ -19,17 +19,31 @@ __all__ = [
 
 # Strict-by-default CSP: every first-party asset (htmx, Alpine, lucide,
 # Sortable, Trix, Tailwind build) is vendored under the admin static mount,
-# so no third-party origins are needed. ``'unsafe-inline'`` remains until the
-# inline <style>/<script> blocks move into the token/stylesheet pipeline
-# (roadmap R18). Operators using external chart CDNs (services/charts.py)
-# must extend ``script-src`` via the security settings panel.
+# so no third-party origins are needed.
+#
+# ``'unsafe-eval'`` is REQUIRED (B14): the vendored ``alpine.min.js`` is the
+# standard Alpine build, which compiles every directive expression through
+# the ``AsyncFunction`` constructor; htmx ``hx-on-*`` handlers use
+# ``new Function``. Browsers classify both as eval, so without this source
+# every Alpine/htmx expression throws ``EvalError`` and the admin UI is
+# dead. Removing it requires the Alpine CSP-build migration (docs
+# 09-01-2026/14, "CSP v2").
+#
+# ``'unsafe-inline'`` remains until the inline <style>/<script> blocks move
+# into the token/stylesheet pipeline (same CSP v2 roadmap).
+#
+# Operators using external chart CDNs (services/charts.py) must extend
+# ``script-src`` via the security settings panel.
 DEFAULT_CSP = (
     "default-src 'self'; "
-    "script-src 'self' 'unsafe-inline'; "
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
     "style-src 'self' 'unsafe-inline'; "
     "img-src 'self' data:; "
     "font-src 'self'; "
     "connect-src 'self'; "
+    "object-src 'none'; "
+    "base-uri 'self'; "
+    "form-action 'self'; "
     "frame-ancestors 'none';"
 )
 
