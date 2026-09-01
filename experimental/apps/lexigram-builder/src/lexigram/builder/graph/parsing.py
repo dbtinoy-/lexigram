@@ -40,6 +40,9 @@ from lexigram.builder.graph.models import (
     JobConfig,
     MetricConfig,
     SagaConfig,
+    InterceptorConfig,
+    DataLoaderConfig,
+    AuthPolicyConfig,
     ApiClientConfig,
     StorageDriverConfig,
     MiddlewareConfig,
@@ -165,6 +168,7 @@ def document_to_dict(document: GraphDocument) -> dict[str, Any]:
             entry["config"] = {
                 "ops": list(node.config.ops),
                 "path_prefix": node.config.path_prefix,
+                "style": node.config.style,
             }
         elif isinstance(node.config, MiddlewareConfig):
             entry["config"] = {
@@ -188,7 +192,14 @@ def document_to_dict(document: GraphDocument) -> dict[str, Any]:
                 "enabled": node.config.enabled,
                 "description": node.config.description,
             }
-        elif isinstance(node.config, JobConfig | ServiceConfig | SeederConfig):
+        elif isinstance(node.config, DataLoaderConfig):
+            entry["config"] = {
+                "name": node.config.name,
+                "key_type": node.config.key_type,
+                "enabled": node.config.enabled,
+                "description": node.config.description,
+            }
+        elif isinstance(node.config, JobConfig | ServiceConfig | SeederConfig | SagaConfig | InterceptorConfig | AuthPolicyConfig):
             entry["config"] = {
                 "name": node.config.name,
                 "enabled": node.config.enabled,
@@ -253,12 +264,6 @@ def document_to_dict(document: GraphDocument) -> dict[str, Any]:
             entry["config"] = {
                 "name": node.config.name,
                 "unit": node.config.unit,
-                "enabled": node.config.enabled,
-                "description": node.config.description,
-            }
-        elif isinstance(node.config, SagaConfig):
-            entry["config"] = {
-                "name": node.config.name,
                 "enabled": node.config.enabled,
                 "description": node.config.description,
             }
@@ -479,6 +484,9 @@ def parse_document(data: dict[str, Any]) -> Result[GraphDocument, GraphValidatio
                 | ProjectionConfig
                 | MetricConfig
                 | SagaConfig
+                | InterceptorConfig
+                | DataLoaderConfig
+                | AuthPolicyConfig
                 | ApiClientConfig
                 | StorageDriverConfig
                 | ChannelConfig
@@ -532,9 +540,13 @@ def parse_document(data: dict[str, Any]) -> Result[GraphDocument, GraphValidatio
             elif kind == "route":
                 ops_raw = raw_cfg.get("ops", [])
                 prefix = raw_cfg.get("path_prefix")
+                if prefix is None:
+                    prefix = raw_cfg.get("pathPrefix")
+                style = str(raw_cfg.get("style") or "controller")
                 config = RouteConfig(
                     ops=tuple(str(o) for o in ops_raw),
                     path_prefix=None if prefix is None else str(prefix),
+                    style=style,
                 )
             elif kind == "middleware":
                 if raw_cfg is None:
@@ -730,6 +742,33 @@ def parse_document(data: dict[str, Any]) -> Result[GraphDocument, GraphValidatio
                     raw_cfg = {}
                 config = SagaConfig(
                     name=str(raw_cfg.get("name", "saga")),
+                    enabled=bool(raw_cfg.get("enabled", True)),
+                    description=str(raw_cfg.get("description", "")),
+                )
+            elif kind == "interceptor":
+                if raw_cfg is None:
+                    raw_cfg = {}
+                config = InterceptorConfig(
+                    name=str(raw_cfg.get("name", "interceptor")),
+                    enabled=bool(raw_cfg.get("enabled", True)),
+                    description=str(raw_cfg.get("description", "")),
+                )
+            elif kind == "dataloader":
+                if raw_cfg is None:
+                    raw_cfg = {}
+                config = DataLoaderConfig(
+                    name=str(raw_cfg.get("name", "dataloader")),
+                    key_type=str(
+                        raw_cfg.get("key_type") or raw_cfg.get("keyType") or "str"
+                    ),
+                    enabled=bool(raw_cfg.get("enabled", True)),
+                    description=str(raw_cfg.get("description", "")),
+                )
+            elif kind == "auth_policy":
+                if raw_cfg is None:
+                    raw_cfg = {}
+                config = AuthPolicyConfig(
+                    name=str(raw_cfg.get("name", "auth_policy")),
                     enabled=bool(raw_cfg.get("enabled", True)),
                     description=str(raw_cfg.get("description", "")),
                 )

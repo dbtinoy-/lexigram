@@ -252,6 +252,10 @@ VERB_SPECS: dict[str, VerbSpec] = {
             "controller", "controllers", "src/app/controllers",
             reconcile=_reconcile_controller,
         ),
+        VerbSpec(
+            "resource", "controllers", "src/app/controllers",
+            reconcile=_reconcile_controller,
+        ),
         VerbSpec("middleware", "middleware", "src/app/middleware"),
         VerbSpec("task", "tasks", "src/app/tasks", reconcile=_reconcile_task),
         VerbSpec("webhook", "webhooks", "src/app/webhooks", reconcile=_reconcile_webhook),
@@ -292,6 +296,9 @@ VERB_SPECS: dict[str, VerbSpec] = {
         ),
         VerbSpec("metric", "metrics", "src/app/metrics"),
         VerbSpec("saga", "sagas", "src/app/sagas"),
+        VerbSpec("interceptor", "interceptors", "src/app/interceptors"),
+        VerbSpec("dataloader", "dataloaders", "src/app/graphql/dataloaders"),
+        VerbSpec("auth_policy", "auth_policies", "src/app/policies"),
         VerbSpec("api_client", "clients", "src/app/clients"),
         VerbSpec("storage_driver", "storage", "src/app/storage/backends"),
         VerbSpec(

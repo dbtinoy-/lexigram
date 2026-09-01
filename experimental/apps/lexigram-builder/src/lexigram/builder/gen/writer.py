@@ -96,6 +96,9 @@ from lexigram.builder.graph.models import (
     JobConfig,
     MetricConfig,
     SagaConfig,
+    InterceptorConfig,
+    DataLoaderConfig,
+    AuthPolicyConfig,
     MiddlewareConfig,
     ProjectionConfig,
     RateLimitConfig,
@@ -235,6 +238,24 @@ class ProjectWriter(GeneratorBase):
                 sagas.append(node.config)
         sagas.sort(key=lambda s: s.name)
         enabled_sagas = [s for s in sagas if s.enabled]
+        interceptors: list[InterceptorConfig] = []
+        for node in graph.document.nodes:
+            if node.kind == "interceptor" and isinstance(node.config, InterceptorConfig):
+                interceptors.append(node.config)
+        interceptors.sort(key=lambda s: s.name)
+        enabled_interceptors = [s for s in interceptors if s.enabled]
+        dataloaders: list[DataLoaderConfig] = []
+        for node in graph.document.nodes:
+            if node.kind == "dataloader" and isinstance(node.config, DataLoaderConfig):
+                dataloaders.append(node.config)
+        dataloaders.sort(key=lambda s: s.name)
+        enabled_dataloaders = [s for s in dataloaders if s.enabled]
+        auth_policies: list[AuthPolicyConfig] = []
+        for node in graph.document.nodes:
+            if node.kind == "auth_policy" and isinstance(node.config, AuthPolicyConfig):
+                auth_policies.append(node.config)
+        auth_policies.sort(key=lambda s: s.name)
+        enabled_auth_policies = [s for s in auth_policies if s.enabled]
         api_clients: list[ApiClientConfig] = []
         for node in graph.document.nodes:
             if node.kind == "api_client" and isinstance(node.config, ApiClientConfig):
@@ -364,6 +385,7 @@ class ProjectWriter(GeneratorBase):
             ):
                 jobs_by_trigger.setdefault(src.config.name, []).append(dst.config.name)
         ops_by_entity: dict[str, list[str]] = {}
+        style_by_entity: dict[str, str] = {}
         path_by_entity: dict[str, str] = {}
         entity_by_name: dict[str, EntityConfig] = {}
         # Guard wiring: route node id -> the guard nodes its edges target.
@@ -435,6 +457,8 @@ class ProjectWriter(GeneratorBase):
             bucket = ops_by_entity.setdefault(dst_config.name, [])
             bucket.extend(op for op in route_node.config.ops if op not in bucket)
             entity_by_name[dst_config.name] = dst_config
+            if route_node.config.style == "resource":
+                style_by_entity[dst_config.name] = "resource"
             # First explicit path prefix wins; blank/None falls back to the
             # table name below.
             prefix = (route_node.config.path_prefix or "").strip()
@@ -1036,6 +1060,24 @@ class ProjectWriter(GeneratorBase):
                 force=True,
             )
 
+        for interceptor in enabled_interceptors:
+            load_generator(
+                "interceptor", output_dir=gen_dirs["interceptor"]
+            ).generate(
+                interceptor.name,
+                doc=interceptor.description or None,
+                force=True,
+            )
+
+        for loader in enabled_dataloaders:
+            load_generator(
+                "dataloader", output_dir=gen_dirs["dataloader"]
+            ).generate(
+                loader.name,
+                key_type=loader.key_type,
+                force=True,
+            )
+
         for client in enabled_api_clients:
             load_generator("api_client", output_dir=gen_dirs["api_client"]).generate(
                 client.name,
@@ -1074,6 +1116,13 @@ class ProjectWriter(GeneratorBase):
             load_generator("guard", output_dir=gen_dirs["guard"]).generate(
                 role.name,
                 type="role",
+                force=True,
+            )
+        for policy in enabled_auth_policies:
+            load_generator(
+                "auth_policy", output_dir=gen_dirs["auth_policy"]
+            ).generate(
+                policy.name,
                 force=True,
             )
 
@@ -1131,12 +1180,22 @@ class ProjectWriter(GeneratorBase):
         for entity_name in sorted(ops_by_entity):
             entity_cfg = entity_by_name[entity_name]
             route_path = self._route_path(entity_name, path_by_entity)
-            load_generator("controller", output_dir=gen_dirs["controller"]).generate(
-                entity_name,
-                fields_str=_fields_str(entity_cfg),
-                path=route_path,
-                force=True,
-            )
+            if style_by_entity.get(entity_name) == "resource":
+                # ResourceGenerator writes output_dir/controllers/*.py
+                load_generator(
+                    "resource", output_dir=gen_dirs["controller"].parent
+                ).generate(
+                    entity_name,
+                    fields_str=_fields_str(entity_cfg),
+                    force=True,
+                )
+            else:
+                load_generator("controller", output_dir=gen_dirs["controller"]).generate(
+                    entity_name,
+                    fields_str=_fields_str(entity_cfg),
+                    path=route_path,
+                    force=True,
+                )
 
         # Stage → destination mapping and per-file reconciliation are entirely
         # data-driven from VERB_SPECS (see gen/node_generators.py). Adding a
@@ -1513,6 +1572,7 @@ def _prune_stale_generated(project_dir: Path, *, keep: set[str]) -> None:
         project_dir / "src" / "app" / "projections",
         project_dir / "src" / "app" / "metrics",
         project_dir / "src" / "app" / "sagas",
+        project_dir / "src" / "app" / "interceptors",
         project_dir / "src" / "app" / "clients",
         project_dir / "src" / "app" / "storage" / "backends",
         project_dir / "src" / "app" / "features",

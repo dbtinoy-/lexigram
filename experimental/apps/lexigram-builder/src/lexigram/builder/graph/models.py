@@ -61,10 +61,16 @@ class EntityConfig:
 
 @dataclass(frozen=True, slots=True)
 class RouteConfig:
-    """A route node bound to an entity via an edge."""
+    """A route node bound to an entity via an edge.
+
+    ``style`` selects the lexigram-web HTTP generator: ``controller`` (CRUD
+    handlers, default) or ``resource`` (thin controller wrapper that only
+    forwards ``fields_str`` — no custom path/ops). Not a separate canvas kind.
+    """
 
     ops: tuple[str, ...]
     path_prefix: str | None = None
+    style: str = "controller"
 
 
 @dataclass(frozen=True, slots=True)
@@ -403,6 +409,52 @@ class ProjectionConfig:
 @dataclass(frozen=True, slots=True)
 class SagaConfig:
     """A saga orchestrator node (lexigram-events ``saga`` generator)."""
+
+    name: str
+    enabled: bool = True
+    description: str = ""
+
+
+@dataclass(frozen=True, slots=True)
+class InterceptorConfig:
+    """A web interceptor node (lexigram-web ``interceptor`` generator).
+
+    Emits ``src/app/interceptors/<name>_interceptor.py`` — a
+    ``WebInterceptorBase`` subclass. Route edges document which endpoints
+    the interceptor is intended for; v1 emits the class (usage is
+    documented in the generated module).
+    """
+
+    name: str
+    enabled: bool = True
+    description: str = ""
+
+
+@dataclass(frozen=True, slots=True)
+class DataLoaderConfig:
+    """A GraphQL DataLoader node (lexigram-graphql ``dataloader`` generator).
+
+    Emits ``src/app/graphql/dataloaders/<name>.py`` — a batch/cache loader
+    (``DataLoaderProtocol`` / ``create_loader``). A ``graphql → dataloader``
+    edge documents which schema the loader is for; v1 does **not** call
+    ``SchemaBuilder.add_dataloader`` (resolvers import the loader).
+    """
+
+    name: str
+    key_type: str = "str"
+    enabled: bool = True
+    description: str = ""
+
+
+@dataclass(frozen=True, slots=True)
+class AuthPolicyConfig:
+    """An authorization policy node (lexigram-auth ``auth_policy`` generator).
+
+    Emits ``src/app/policies/<name>_policy.py`` — a ``<Pascal>Policy``
+    scaffold with ``evaluate(principal, resource) -> PolicyDecision``.
+    Route edges document intended endpoints; v1 does **not** register the
+    class on AuthModule / PolicyEngine (call ``evaluate`` from guards).
+    """
 
     name: str
     enabled: bool = True
@@ -1037,6 +1089,9 @@ NodeConfig = (
     | ProjectionConfig
     | MetricConfig
     | SagaConfig
+    | InterceptorConfig
+    | DataLoaderConfig
+    | AuthPolicyConfig
     | ApiClientConfig
     | StorageDriverConfig
     | ChannelConfig

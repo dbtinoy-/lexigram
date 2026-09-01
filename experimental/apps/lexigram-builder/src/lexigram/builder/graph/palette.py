@@ -41,6 +41,9 @@ KIND_QUERY = "query"
 KIND_PROJECTION = "projection"
 KIND_METRIC = "metric"
 KIND_SAGA = "saga"
+KIND_INTERCEPTOR = "interceptor"
+KIND_DATALOADER = "dataloader"
+KIND_AUTH_POLICY = "auth_policy"
 KIND_API_CLIENT = "api_client"
 KIND_STORAGE_DRIVER = "storage_driver"
 KIND_FEATURE_FLAG = "feature_flag"
@@ -57,7 +60,7 @@ KNOWN_KINDS: frozenset[str] = frozenset(
         KIND_RATE_LIMIT, KIND_CRON, KIND_SERVICE, KIND_SEEDER,
         KIND_EXCEPTION_FILTER, KIND_ERROR, KIND_GRAPHQL, KIND_HEALTH,
         KIND_EVENT_HANDLER, KIND_COMMAND, KIND_QUERY,
-        KIND_PROJECTION, KIND_METRIC, KIND_SAGA, KIND_API_CLIENT, KIND_STORAGE_DRIVER,
+        KIND_PROJECTION, KIND_METRIC, KIND_SAGA, KIND_INTERCEPTOR, KIND_DATALOADER, KIND_AUTH_POLICY, KIND_API_CLIENT, KIND_STORAGE_DRIVER,
         KIND_FEATURE_FLAG, KIND_CONTRACT,
     }
 )
@@ -252,7 +255,9 @@ NODE_PORTS: dict[str, dict[str, list[dict[str, object]]]] = {
         "inputs": [
             {"id": "input_entity", "side": "left", "type": PORT_TYPE_ENTITY_REF, "label": "Entity", "max": None},
         ],
-        "outputs": [],
+        "outputs": [
+            {"id": "output_loaders", "side": "right", "type": PORT_TYPE_DATA_REF, "label": "DataLoaders", "max": None},
+        ],
     },
     KIND_HEALTH: {
         "inputs": [
@@ -291,6 +296,24 @@ NODE_PORTS: dict[str, dict[str, list[dict[str, object]]]] = {
     KIND_SAGA: {
         "inputs": [
             {"id": "input_events", "side": "left", "type": PORT_TYPE_EVENT_REF, "label": "Events", "max": None},
+        ],
+        "outputs": [],
+    },
+    KIND_INTERCEPTOR: {
+        "inputs": [
+            {"id": "input_pipeline", "side": "left", "type": PORT_TYPE_CONFIG_REF, "label": "Routes", "max": None},
+        ],
+        "outputs": [],
+    },
+    KIND_DATALOADER: {
+        "inputs": [
+            {"id": "input_schema", "side": "left", "type": PORT_TYPE_DATA_REF, "label": "GraphQL", "max": None},
+        ],
+        "outputs": [],
+    },
+    KIND_AUTH_POLICY: {
+        "inputs": [
+            {"id": "input_policy", "side": "left", "type": PORT_TYPE_CONFIG_REF, "label": "Routes", "max": None},
         ],
         "outputs": [],
     },
@@ -439,10 +462,12 @@ ALLOWED_EDGES: frozenset[tuple[str, str]] = frozenset(
         # Auth
         (KIND_ROUTE, KIND_AUTH),
         (KIND_ROUTE, KIND_ROLE),
+        (KIND_ROUTE, KIND_AUTH_POLICY),
         (KIND_ROLE, KIND_AUTH),
         # Middleware
         (KIND_ENTITY, KIND_MIDDLEWARE),
         (KIND_ROUTE, KIND_MIDDLEWARE),
+        (KIND_ROUTE, KIND_INTERCEPTOR),
         # Rate Limiting
         (KIND_ROUTE, KIND_RATE_LIMIT),
         # Exception filters (global; edges annotate scope)
@@ -473,6 +498,7 @@ ALLOWED_EDGES: frozenset[tuple[str, str]] = frozenset(
         (KIND_ENTITY, KIND_CACHE),
         # GraphQL schema + observability health checks for an entity
         (KIND_ENTITY, KIND_GRAPHQL),
+        (KIND_GRAPHQL, KIND_DATALOADER),
         (KIND_ENTITY, KIND_HEALTH),
         (KIND_ENTITY, KIND_SEARCH_INDEX),
         (KIND_ENTITY, KIND_AUDIT_LOG),
@@ -516,9 +542,11 @@ EDGE_KIND_MAP: dict[tuple[str, str], str] = {
     (KIND_ENTITY, KIND_VALIDATOR): "entity_to_validator",
     (KIND_ROUTE, KIND_AUTH): "route_to_auth",
     (KIND_ROUTE, KIND_ROLE): "route_to_role",
+    (KIND_ROUTE, KIND_AUTH_POLICY): "route_to_auth_policy",
     (KIND_ROLE, KIND_AUTH): "route_to_auth",
     (KIND_ENTITY, KIND_MIDDLEWARE): "entity_to_middleware",
     (KIND_ROUTE, KIND_MIDDLEWARE): "route_to_middleware",
+    (KIND_ROUTE, KIND_INTERCEPTOR): "route_to_interceptor",
     (KIND_ROUTE, KIND_RATE_LIMIT): "route_to_rate_limit",
     (KIND_ROUTE, KIND_EXCEPTION_FILTER): "route_to_exception_filter",
     (KIND_EXCEPTION_FILTER, KIND_EXCEPTION_FILTER): "filter_chain",
@@ -539,6 +567,7 @@ EDGE_KIND_MAP: dict[tuple[str, str], str] = {
     (KIND_CRON, KIND_REALTIME_CHANNEL): "cron_to_channel",
     (KIND_ENTITY, KIND_CACHE): "entity_to_cache",
     (KIND_ENTITY, KIND_GRAPHQL): "entity_to_graphql",
+    (KIND_GRAPHQL, KIND_DATALOADER): "graphql_to_dataloader",
     (KIND_ENTITY, KIND_HEALTH): "entity_to_health",
     (KIND_ENTITY, KIND_SEARCH_INDEX): "entity_to_search",
     (KIND_ENTITY, KIND_AUDIT_LOG): "entity_to_audit",
@@ -655,6 +684,15 @@ NODE_DEFAULTS: dict[str, dict[str, object]] = {
     },
     KIND_SAGA: {
         "name": "", "enabled": True, "description": "",
+    },
+    KIND_INTERCEPTOR: {
+        "name": "timing", "enabled": True, "description": "",
+    },
+    KIND_DATALOADER: {
+        "name": "user_loader", "keyType": "str", "enabled": True, "description": "",
+    },
+    KIND_AUTH_POLICY: {
+        "name": "project_access", "enabled": True, "description": "",
     },
     KIND_API_CLIENT: {
         "name": "client", "baseUrl": "https://api.example.com",
@@ -788,6 +826,9 @@ NODE_COLORS: dict[str, str] = {
     KIND_PROJECTION: "#4f46e5",
     KIND_METRIC: "#b45309",
     KIND_SAGA: "#7c3aed",
+    KIND_INTERCEPTOR: "#c2410c",
+    KIND_DATALOADER: "#a21caf",
+    KIND_AUTH_POLICY: "#6d28d9",
     KIND_API_CLIENT: "#0284c7",
     KIND_STORAGE_DRIVER: "#0f766e",
     KIND_FEATURE_FLAG: "#f43f5e",
@@ -821,12 +862,14 @@ PALETTE_CATEGORIES: list[dict[str, object]] = [
             {"kind": KIND_ROUTE, "label": "Route", "description": "API endpoint group (CRUD)", "icon": "globe", "color": NODE_COLORS[KIND_ROUTE], "maxCount": None, "required": False},
             {"kind": KIND_SERVICE, "label": "Service", "description": "Business-logic service for an entity", "icon": "workflow", "color": NODE_COLORS[KIND_SERVICE], "maxCount": None, "required": False},
             {"kind": KIND_GRAPHQL, "label": "GraphQL", "description": "Strawberry GraphQL schema for an entity", "icon": "share-2", "color": NODE_COLORS[KIND_GRAPHQL], "maxCount": None, "required": False},
+            {"kind": KIND_DATALOADER, "label": "DataLoader", "description": "GraphQL DataLoaderProtocol batch/cache loader (lexigram-graphql)", "icon": "layers", "color": NODE_COLORS[KIND_DATALOADER], "maxCount": None, "required": False},
         ],
     },
     {
         "id": "processing", "label": "Processing", "icon": "cpu", "color": "#f59e0b",
         "nodes": [
             {"kind": KIND_MIDDLEWARE, "label": "Middleware", "description": "Request/response pipeline", "icon": "filter", "color": NODE_COLORS[KIND_MIDDLEWARE], "maxCount": None, "required": False},
+            {"kind": KIND_INTERCEPTOR, "label": "Interceptor", "description": "WebInterceptorBase around handlers (lexigram-web)", "icon": "filter", "color": NODE_COLORS[KIND_INTERCEPTOR], "maxCount": None, "required": False},
             {"kind": KIND_JOB, "label": "Background Job", "description": "Async task processor", "icon": "clock", "color": NODE_COLORS[KIND_JOB], "maxCount": None, "required": False},
             {"kind": KIND_CRON, "label": "Cron", "description": "Scheduled trigger", "icon": "calendar", "color": NODE_COLORS[KIND_CRON], "maxCount": None, "required": False},
             {"kind": KIND_EXCEPTION_FILTER, "label": "Exception Filter", "description": "Map exceptions to HTTP responses", "icon": "shield-alert", "color": NODE_COLORS[KIND_EXCEPTION_FILTER], "maxCount": None, "required": False},
@@ -862,6 +905,7 @@ PALETTE_CATEGORIES: list[dict[str, object]] = [
         "nodes": [
             {"kind": KIND_AUTH, "label": "Auth Provider", "description": "JWT / session / OAuth2 auth — guards wired routes with require_auth", "icon": "key", "color": NODE_COLORS[KIND_AUTH], "maxCount": None, "required": False},
             {"kind": KIND_ROLE, "label": "Role", "description": "Role with permissions — guards wired routes with require_roles", "icon": "users", "color": NODE_COLORS[KIND_ROLE], "maxCount": None, "required": False},
+            {"kind": KIND_AUTH_POLICY, "label": "Auth Policy", "description": "Authorization policy scaffold (lexigram-auth auth_policy)", "icon": "shield", "color": NODE_COLORS[KIND_AUTH_POLICY], "maxCount": None, "required": False},
             {"kind": KIND_RATE_LIMIT, "label": "Rate Limit", "description": "API throttling policy; emits constants + enforcement middleware so wired routes 429 when exhausted", "icon": "shield-off", "color": NODE_COLORS[KIND_RATE_LIMIT], "maxCount": None, "required": False},
         ],
     },

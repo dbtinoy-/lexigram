@@ -61,6 +61,9 @@ from lexigram.builder.gen.emitters.validator_emitter import (
 )
 from lexigram.builder.gen.emitters.http_client_emitter import emit_api_client_module
 from lexigram.builder.gen.emitters.saga_emitter import emit_saga_module
+from lexigram.builder.gen.emitters.interceptor_emitter import emit_interceptor_module
+from lexigram.builder.gen.emitters.dataloader_emitter import emit_dataloader_module
+from lexigram.builder.gen.emitters.auth_policy_emitter import emit_auth_policy_module
 from lexigram.builder.gen.emitters.storage_driver_emitter import (
     emit_storage_driver_module,
 )
@@ -68,6 +71,9 @@ from lexigram.builder.graph.models import (
     ApiKeyGroupConfig,
     ApiClientConfig,
     SagaConfig,
+    InterceptorConfig,
+    DataLoaderConfig,
+    AuthPolicyConfig,
     AppSettingsConfig,
     AuditLogConfig,
     AuthConfig,
@@ -132,6 +138,27 @@ def emit_code_preview(document: GraphDocument) -> list[dict[str, str]]:
             sagas.append(node.config)
     sagas.sort(key=lambda s: s.name)
     enabled_sagas = [s for s in sagas if s.enabled]
+
+    interceptors: list[InterceptorConfig] = []
+    for node in document.nodes:
+        if node.kind == "interceptor" and isinstance(node.config, InterceptorConfig):
+            interceptors.append(node.config)
+    interceptors.sort(key=lambda s: s.name)
+    enabled_interceptors = [s for s in interceptors if s.enabled]
+
+    dataloaders: list[DataLoaderConfig] = []
+    for node in document.nodes:
+        if node.kind == "dataloader" and isinstance(node.config, DataLoaderConfig):
+            dataloaders.append(node.config)
+    dataloaders.sort(key=lambda s: s.name)
+    enabled_dataloaders = [s for s in dataloaders if s.enabled]
+
+    auth_policies: list[AuthPolicyConfig] = []
+    for node in document.nodes:
+        if node.kind == "auth_policy" and isinstance(node.config, AuthPolicyConfig):
+            auth_policies.append(node.config)
+    auth_policies.sort(key=lambda s: s.name)
+    enabled_auth_policies = [s for s in auth_policies if s.enabled]
 
     storage_drivers: list[StorageDriverConfig] = []
     for node in document.nodes:
@@ -750,6 +777,36 @@ def emit_code_preview(document: GraphDocument) -> list[dict[str, str]]:
             "language": "python",
             "content": emit_saga_module(saga),
         })
+    for interceptor in enabled_interceptors:
+        files.append({
+            "path": (
+                f"src/app/interceptors/{snake_case(interceptor.name)}_interceptor.py"
+            ),
+            "language": "python",
+            "content": emit_interceptor_module(interceptor),
+        })
+    for loader in enabled_dataloaders:
+        files.append(
+            {
+                "path": (
+                    f"src/app/graphql/dataloaders/{snake_case(loader.name)}.py"
+                ),
+                "language": "python",
+                "content": emit_dataloader_module(loader),
+            }
+        )
+
+    for policy in enabled_auth_policies:
+        files.append(
+            {
+                "path": (
+                    f"src/app/policies/{snake_case(policy.name)}_policy.py"
+                ),
+                "language": "python",
+                "content": emit_auth_policy_module(policy),
+            }
+        )
+
     for client in enabled_api_clients:
         files.append({
             "path": f"src/app/clients/{snake_case(client.name)}_client.py",

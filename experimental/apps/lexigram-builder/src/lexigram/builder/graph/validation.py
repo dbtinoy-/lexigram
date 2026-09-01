@@ -196,6 +196,12 @@ def _check_node(node: GraphNode, entity_names: dict[str, str]) -> list[Diagnosti
         return _check_email_template(node)
     if node.kind == "saga":
         return _check_saga(node)
+    if node.kind == "interceptor":
+        return _check_interceptor(node)
+    if node.kind == "dataloader":
+        return _check_dataloader(node)
+    if node.kind == "auth_policy":
+        return _check_auth_policy(node)
     if node.kind == "api_client":
         return _check_api_client(node)
     if node.kind == "storage_driver":
@@ -759,6 +765,10 @@ def _check_route(node: GraphNode) -> list[Diagnostic]:
     prefix = config.path_prefix
     if prefix is not None and (not prefix or any(c.isspace() for c in prefix)):
         out.append(_diag(node, "invalid-path-prefix", "path_prefix must be non-blank"))
+    if config.style not in ("controller", "resource"):
+        out.append(
+            _diag(node, "invalid-route-style", "route style must be controller or resource")
+        )
     return out
 
 
@@ -974,6 +984,45 @@ def _check_saga(node: GraphNode) -> list[Diagnostic]:
     if not is_snake_case_identifier(str(name)):
         out.append(_diag(node, "invalid-saga-name", "saga name must be snake_case"))
     return out
+
+
+def _check_interceptor(node: GraphNode) -> list[Diagnostic]:
+    config = node.config
+    out: list[Diagnostic] = []
+    name = getattr(config, "name", "")
+    if not is_snake_case_identifier(str(name)):
+        out.append(
+            _diag(node, "invalid-interceptor-name", "interceptor name must be snake_case")
+        )
+    return out
+
+
+def _check_dataloader(node: GraphNode) -> list[Diagnostic]:
+    config = node.config
+    out: list[Diagnostic] = []
+    name = getattr(config, "name", "")
+    if not is_snake_case_identifier(str(name)):
+        out.append(
+            _diag(node, "invalid-dataloader-name", "dataloader name must be snake_case")
+        )
+    key_type = str(getattr(config, "key_type", "str"))
+    if key_type not in ("str", "int", "uuid"):
+        out.append(
+            _diag(node, "invalid-dataloader-key-type", "dataloader key_type must be str, int, or uuid")
+        )
+    return out
+
+
+def _check_auth_policy(node: GraphNode) -> list[Diagnostic]:
+    config = node.config
+    out: list[Diagnostic] = []
+    name = getattr(config, "name", "")
+    if not is_snake_case_identifier(str(name)):
+        out.append(
+            _diag(node, "invalid-auth-policy-name", "auth policy name must be snake_case")
+        )
+    return out
+
 
 
 def _check_api_client(node: GraphNode) -> list[Diagnostic]:
