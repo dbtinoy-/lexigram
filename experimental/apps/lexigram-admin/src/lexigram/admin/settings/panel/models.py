@@ -17,13 +17,19 @@ __all__ = [
     "SecuritySettings",
 ]
 
+# Strict-by-default CSP: every first-party asset (htmx, Alpine, lucide,
+# Sortable, Trix, Tailwind build) is vendored under the admin static mount,
+# so no third-party origins are needed. ``'unsafe-inline'`` remains until the
+# inline <style>/<script> blocks move into the token/stylesheet pipeline
+# (roadmap R18). Operators using external chart CDNs (services/charts.py)
+# must extend ``script-src`` via the security settings panel.
 DEFAULT_CSP = (
     "default-src 'self'; "
-    "script-src 'self' 'unsafe-inline' https://unpkg.com; "
-    "style-src 'self' 'unsafe-inline' https://unpkg.com; "
+    "script-src 'self' 'unsafe-inline'; "
+    "style-src 'self' 'unsafe-inline'; "
     "img-src 'self' data:; "
     "font-src 'self'; "
-    "connect-src 'self' https://unpkg.com; "
+    "connect-src 'self'; "
     "frame-ancestors 'none';"
 )
 

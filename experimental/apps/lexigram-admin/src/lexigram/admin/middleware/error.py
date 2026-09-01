@@ -50,12 +50,53 @@ class AdminErrorMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next) -> Any:
         """Dispatch method that wraps request processing and catches exceptions."""
         try:
-            return await call_next(request)
+            response = await call_next(request)
         except Exception as exc:  # noqa: BLE001 — last-resort error middleware must catch all
             logger.exception(
                 "AdminErrorMiddleware caught exception: %s", type(exc).__name__
             )
             return await self.handle(request, exc)
+        return await self._negotiate_response(request, response)
+
+    async def _negotiate_response(self, request: Request, response: Any) -> Any:
+        """Upgrade bare error responses to styled pages for browser navigations.
+
+        Routers and inner middleware can produce plain-text or JSON error
+        responses without raising (e.g. Starlette's default 404 ``Not Found``
+        and 405). An operator navigating in a browser should always see the
+        styled error page instead — while API and HTMX callers keep the
+        original machine-readable response untouched (roadmap R7).
+        """
+        from lexigram.admin.middleware._negotiation import (
+            NEGOTIABLE_STATUS_CODES,
+            prefers_html,
+            styled_error_response,
+        )
+
+        if response.status_code not in NEGOTIABLE_STATUS_CODES:
+            return response
+        content_type = response.headers.get("content-type", "")
+        if content_type.startswith("text/html"):
+            return response  # already a page — nothing to upgrade
+        if (
+            not prefers_html(request)
+            or self._is_htmx(request)
+            or self._should_return_json(request)
+        ):
+            return response
+
+        # Discard the original body stream before replacing the response.
+        body_iterator = getattr(response, "body_iterator", None)
+        if body_iterator is not None:
+            async for _ in body_iterator:
+                pass
+
+        logger.debug(
+            "admin_error.negotiated_html_page",
+            status_code=response.status_code,
+            path=request.url.path,
+        )
+        return styled_error_response(response.status_code, self._admin_prefix)
 
     def _should_return_json(self, request: Request) -> bool:
         """Determine if JSON response is preferred."""
@@ -222,22 +263,15 @@ class AdminErrorMiddleware(BaseHTTPMiddleware):
 
         # 3. Handle Other Errors (403, 404, 500 production) - Show Styled Page
         from lexigram.admin.lib.template import render_error_page
+        from lexigram.admin.middleware._negotiation import (
+            ERROR_PAGE_META,
+            error_page_meta,
+        )
 
-        title = "Error"
-        icon = "⚠️"
-
-        if status_code == 403:
-            title = "Access Denied"
-            message = "You don't have permission to access this resource."
-            icon = "🔒"
-        elif status_code == 404:
-            title = "Page Not Found"
-            message = "The page you're looking for could not be found."
-            icon = "🔍"
-        elif status_code == 500:
-            title = "Internal Server Error"
-            message = "Something went wrong on our end."
-            icon = "💥"
+        if status_code in ERROR_PAGE_META:
+            title, message, icon = error_page_meta(status_code)
+        else:
+            title, _default_message, icon = error_page_meta(status_code)
 
         html = render_error_page(
             status_code=status_code,

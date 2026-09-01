@@ -229,11 +229,16 @@ class ListRenderer:
                 "can_delete": False,
             }
 
+        from lexigram.admin.auth.permission_scheme import candidate_permissions
+
+        def _granted(action: str) -> bool:
+            return any(has(perm) for perm in candidate_permissions(resource, action))
+
         return {
-            "can_view": bool(has(f"{resource}.view") or has(f"{resource}.list")),
-            "can_create": bool(has(f"{resource}.create")),
-            "can_update": bool(has(f"{resource}.edit") or has(f"{resource}.update")),
-            "can_delete": bool(has(f"{resource}.delete")),
+            "can_view": _granted("view"),
+            "can_create": _granted("create"),
+            "can_update": _granted("update"),
+            "can_delete": _granted("delete"),
         }
 
     @staticmethod

@@ -7,6 +7,7 @@ layer depends only on ``AdminAccountLockoutStoreProtocol`` from
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 import uuid
 
@@ -16,8 +17,6 @@ from lexigram.di.decorators import inject
 from lexigram.logging import get_logger
 
 if TYPE_CHECKING:
-    from datetime import datetime
-
     from lexigram.admin.auth.types import AdminLockoutInfo
 
 from lexigram.admin.auth.types import AdminLockoutStatus
@@ -179,8 +178,8 @@ class AdminAccountLockoutSqlStore:
         lockout = AdminLockoutInfo(
             status=status,
             consecutive_failures=int(row.get("consecutive_failures", 0)),
-            locked_at=row.get("locked_at"),
-            unlock_at=unlock_at,
+            locked_at=_coerce_dt(row.get("locked_at")),
+            unlock_at=_coerce_dt(unlock_at),
             is_permanent=is_permanent,
         )
         logger.debug(
@@ -283,6 +282,38 @@ class AdminAccountLockoutSqlStore:
         if isinstance(result, list):
             return result
         return []
+
+
+def _coerce_dt(value: Any) -> datetime | None:
+    """Coerce a driver timestamp value into an aware ``datetime``.
+
+    SQLite returns TIMESTAMP columns as strings (naive
+    ``"2026-09-01 15:11:02"`` or offset-aware ISO text), while Postgres
+    returns real ``datetime`` objects. Downstream code does datetime
+    arithmetic on ``unlock_at`` (e.g. retry-after computation in
+    ``AdminLoginAttemptService.check_account_lockout``), so string
+    passthrough caused a 500 on login while an account was locked.
+
+    Args:
+        value: Raw column value (``datetime``, ISO-ish string, or ``None``).
+
+    Returns:
+        A timezone-aware ``datetime`` (naive values are assumed UTC),
+        or ``None`` when the value is missing or unparseable.
+    """
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value if value.tzinfo else value.replace(tzinfo=UTC)
+    text = str(value).strip()
+    if not text:
+        return None
+    try:
+        parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError:
+        logger.warning("lockout.timestamp_unparseable", value=text)
+        return None
+    return parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)
 
 
 __all__ = ["AdminAccountLockoutSqlStore"]

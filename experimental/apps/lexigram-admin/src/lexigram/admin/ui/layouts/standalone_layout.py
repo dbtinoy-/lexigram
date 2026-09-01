@@ -108,20 +108,47 @@ class StandaloneLayout(LayoutBase):
             ),
         )
 
+    def render(  # type: ignore[override]
+        self,
+        content: str | Markup = "",
+        title: str | None = None,
+        **extra_context: Any,
+    ) -> Markup:
+        """Render the standalone document with a single, composed title.
+
+        The base document already emits ``<title>`` from the ``title``
+        argument; composing the full ``"Page | App"`` string here (instead
+        of appending a second ``<title>`` in :meth:`render_head_content`)
+        keeps exactly one title tag in the head.
+
+        Args:
+            content: Main page content.
+            title: Optional explicit page title (overrides context).
+            **extra_context: Additional rendering context.
+
+        Returns:
+            Complete HTML document as Markup.
+        """
+        from lexigram.ui.layouts import HTMLDocument
+
+        cfg = self.standalone_config
+        ctx = self.standalone_context
+        page_title = title or ctx.page_title
+        full_title = (
+            f"{page_title} | {cfg.app_name}" if page_title else cfg.app_name
+        )
+        merged = {
+            "content": content,
+            "context": self.context,
+            **extra_context,
+        }
+        return HTMLDocument.render(self, title=full_title, **merged)
+
     def render_head_content(self, **kwargs: Any) -> str:
         """Render additional head content."""
-        cfg = self.standalone_config
         ctx = self.standalone_context
 
         parts: list[str] = []
-
-        # Title
-        if ctx.page_title:
-            parts.append(
-                f"<title>{escape(ctx.page_title)} | {escape(cfg.app_name)}</title>",
-            )
-        else:
-            parts.append(f"<title>{escape(cfg.app_name)}</title>")
 
         if ctx.page_description:
             parts.append(
@@ -140,8 +167,10 @@ class StandaloneLayout(LayoutBase):
         parts.append(DARK_BOOTSTRAP_SCRIPT)
         parts.append(THEME_BRIDGE_SCRIPT)
 
-        # Lucide icons
-        parts.append('<script src="https://unpkg.com/lucide@latest"></script>')
+        # Lucide icons — vendored locally (no third-party CDN, pinned version)
+        parts.append(
+            f'<script src="{escape(asset_prefix)}/static/js/lucide.min.js" defer></script>'
+        )
 
         # Extra head content
         if ctx.extra_head:

@@ -280,7 +280,31 @@ class NavigationManager:
             )
             for cluster in self._cluster_registry.all()
         )
+        if self._is_super_admin():
+            entries.append(_menu_entry("Users", prefix, "users", "users"))
+            entries.append(_menu_entry("Roles", prefix, "roles", "shield-check"))
+            entries.append(_menu_entry("Security", prefix, "security", "shield"))
         if include_plugins:
             entries.append(_menu_entry("Plugins", prefix, "plugins", "plugins"))
         entries.append(_menu_entry("Settings", prefix, "settings", "settings"))
         return [entry.to_dict() for entry in entries]
+
+    def _is_super_admin(self) -> bool:
+        """True when the request user may see superadmin-only menu entries.
+
+        Mirrors the authorization middleware's superadmin test: the literal
+        ``is_superuser`` flag or the configured super-admin role (exposed on
+        app state by the mount pipeline). Fail-closed: no user, no entry.
+        """
+        user = getattr(getattr(self._request, "state", None), "user", None)
+        if user is None:
+            return False
+        if getattr(user, "is_superuser", False) is True:
+            return True
+        role = str(
+            getattr(self._state, "super_admin_role", "") if self._state else ""
+        )
+        if not role:
+            return False
+        roles = getattr(user, "roles", None) or ()
+        return role in roles

@@ -69,6 +69,18 @@ class AdminEmailVerificationStoreProtocol(Protocol):
         """
         ...
 
+    async def mark_verified(self, user_id: str) -> None:
+        """Mark a user's email verified without a token round-trip.
+
+        Used for accounts whose email ownership is proven out-of-band —
+        e.g. the first admin created through the setup wizard, who already
+        presented the deployment's setup token.
+
+        Args:
+            user_id: Admin user UUID.
+        """
+        ...
+
     async def clear_token(self, user_id: str) -> None:
         """Remove the pending verification token for a user.
 
@@ -116,6 +128,17 @@ class AdminEmailVerificationServiceProtocol(Protocol):
         Returns:
             ``Ok(True)`` on success; ``Err(EmailVerificationTokenInvalidError)``
             for unknown/used/expired tokens.
+        """
+        ...
+
+    async def mark_verified(self, user_id: str) -> None:
+        """Mark a user's email verified without sending a verification link.
+
+        Used when ownership is proven out-of-band (e.g. the setup wizard's
+        first admin, authenticated by the deployment setup token).
+
+        Args:
+            user_id: Admin user UUID.
         """
         ...
 

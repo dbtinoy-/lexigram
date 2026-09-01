@@ -62,6 +62,7 @@ class ProfileController(AdminController):
         self._csrf_service = csrf_service
         self._mfa_service = mfa_service
         self._user_store: AdminUserStoreProtocol | None = None
+        self._audit_service: Any = None  # wired best-effort at mount time
 
     # -- helpers --
 
@@ -109,14 +110,26 @@ class ProfileController(AdminController):
         success: bool,
         **metadata: Any,
     ) -> None:
-        """Append a security audit event, best-effort."""
+        """Append a security audit event, best-effort.
+
+        Prefers the mount-time-wired audit service; falls back to a
+        container lookup for embedders that wire the controller manually.
+        """
         try:
-            container = getattr(request.state, "container", None)
-            if container is None:
-                return
-            audit_service = await container.resolve(
-                AdminAuditLogServiceProtocol,
-            )
+            audit_service = self._audit_service
+            if audit_service is None:
+                container = getattr(request.state, "container", None) or getattr(
+                    request.app.state, "container", None
+                )
+                if container is None:
+                    logger.warning(
+                        "profile.audit_skipped_no_container",
+                        event_type=event_type.value,
+                    )
+                    return
+                audit_service = await container.resolve(
+                    AdminAuditLogServiceProtocol,
+                )
             client = getattr(request, "client", None)
             await audit_service.log_event(
                 event_type=event_type,

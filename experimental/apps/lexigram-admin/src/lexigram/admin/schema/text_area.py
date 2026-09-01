@@ -114,26 +114,37 @@ class RichTextField(TextAreaField):
     toolbar: str | None = None
     min_height: int = 300
 
-    _trix_css_url: str = "https://unpkg.com/trix@2.0.8/dist/trix.css"
-    _trix_js_url: str = "https://unpkg.com/trix@2.0.8/dist/trix.umd.min.js"
+    # Asset URL templates. ``{prefix}`` (when present) is replaced with the
+    # admin mount prefix by :meth:`render_assets`. The defaults point at the
+    # vendored copies under the admin static mount — no CDN, no external
+    # network dependency (see docs/09-01-2026/03-frontend-asset-policy.md).
+    # Override with absolute URLs to serve Trix from elsewhere.
+    _trix_css_url: str = "{prefix}/static/css/trix.css"
+    _trix_js_url: str = "{prefix}/static/js/trix.umd.min.js"
 
     @classmethod
-    def render_assets(cls) -> Element:
+    def render_assets(cls, asset_prefix: str = "/admin") -> Element:
         """Render the Trix.js CSS and  ``<script>`` tags.
 
         Include the result in ``<head>`` once per page to enable
         RichEditor instances.
+
+        Args:
+            asset_prefix: The admin mount prefix used to resolve the
+                vendored static assets (default ``/admin``). Ignored when
+                the URL templates are overridden with absolute URLs.
         """
+        prefix = (asset_prefix or "/admin").rstrip("/")
         return Element(
             "div",
             Element(
                 "link",
                 rel="stylesheet",
-                href=cls._trix_css_url,
+                href=cls._trix_css_url.format(prefix=prefix),
             ),
             Element(
                 "script",
-                src=cls._trix_js_url,
+                src=cls._trix_js_url.format(prefix=prefix),
                 defer="",
             ),
         )

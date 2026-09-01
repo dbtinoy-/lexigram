@@ -45,6 +45,7 @@ class AdminSecurityEventType(str, Enum):
     ROLE_UPDATED = "role_updated"
     ROLE_DELETED = "role_deleted"
     USER_REGISTERED = "user_registered"
+    USER_ROLES_UPDATED = "user_roles_updated"
     TENANT_SWITCHED = "tenant_switched"
 
 

@@ -256,6 +256,29 @@ class AdminSessionService:
         await self._repo.revoke_all(user_id)
         logger.info("session.revoked_all", user_id=user_id)
 
+    async def list_active_sessions(self, limit: int = 100) -> list[dict[str, Any]]:
+        """Return active, non-expired sessions across ALL users.
+
+        Powers the Security Center fleet view
+        (docs/09-01-2026/05-security-center.md). Not part of
+        ``AdminSessionServiceProtocol`` — the protocol is runtime-checkable
+        and extending it would break third-party implementations; callers
+        duck-type via ``getattr`` and degrade gracefully when absent.
+
+        Args:
+            limit: Maximum number of sessions to return.
+
+        Returns:
+            Raw session row dicts ordered by ``last_active_at`` descending;
+            empty list when the repository does not support fleet listing.
+        """
+        list_active = getattr(self._repo, "list_active", None)
+        if list_active is None:
+            logger.debug("session.list_active_unsupported")
+            return []
+        now = datetime.now(UTC)
+        return list(await list_active(now, limit))
+
 
 # ---------------------------------------------------------------------------
 # Module-level helpers

@@ -11,7 +11,9 @@ from lexigram.ui import el
 def _user_has_permission(user: Any, permission: str) -> bool:
     """Check a permission against the shell ``user`` (dict or record).
 
-    Supports the ``has_permission`` protocol (e.g.
+    Superusers (``is_superuser`` — set for holders of the configured
+    super-admin role by ``AdminAuthMiddleware``) always pass. Otherwise
+    supports the ``has_permission`` protocol (e.g.
     :class:`~lexigram.admin.auth.user.AdminUserRecord`) and plain
     dicts with a ``permissions`` list (or a list passed as ``user``).
     """
@@ -19,10 +21,15 @@ def _user_has_permission(user: Any, permission: str) -> bool:
         return False
 
     if isinstance(user, dict):
+        if user.get("is_superuser"):
+            return True
         perms = user.get("permissions") or []
         return permission in perms or (
             "*" in perms if isinstance(perms, list) else False
         )
+
+    if getattr(user, "is_superuser", False):
+        return True
 
     has_perm = getattr(user, "has_permission", None)
     if callable(has_perm):
@@ -92,8 +99,12 @@ def prepare_navigation(
 
         # If no explicit permission, try to infer from resource URL.
         # Resource nav links are ``{admin_prefix}/{resource}`` — derive the
-        # ``{resource}.read`` permission from the first path segment after
-        # the configured admin prefix (works for any mount prefix).
+        # resource permission from the first path segment after the
+        # configured admin prefix (works for any mount prefix). The
+        # canonical ``.view`` scheme and its legacy aliases are accepted
+        # (see lexigram.admin.auth.permission_scheme) so a user granted
+        # either sees the link.
+        inferred_permissions: list[str] = []
         if (
             not required_permission
             and href
@@ -102,17 +113,23 @@ def prepare_navigation(
             remainder = href[len(admin_prefix.rstrip("/")) + 1 :]
             resource = remainder.split("/", 1)[0].split("?")[0]
             if resource:
-                required_permission = f"{resource}.read"
+                from lexigram.admin.auth.permission_scheme import (
+                    candidate_permissions,
+                )
+
+                inferred_permissions = list(candidate_permissions(resource, "view"))
 
         # Check permission if required. The user record (or dict) carries its
         # own permission list; legacy RBACChecker was removed — authorization
         # is provided by the request/session user object.
-        if (
-            required_permission
-            and user
-            and not _user_has_permission(user, required_permission)
-        ):
-            continue
+        if required_permission:
+            if user and not _user_has_permission(user, required_permission):
+                continue
+        elif inferred_permissions:
+            if user and not any(
+                _user_has_permission(user, perm) for perm in inferred_permissions
+            ):
+                continue
 
         # Build SidebarItem
         sidebar_item = SidebarItem(

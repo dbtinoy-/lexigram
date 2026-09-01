@@ -71,6 +71,7 @@ class AdminAuthorizationMiddleware(BaseHTTPMiddleware):
         admin_prefix: str | None = None,
         permission_authorizer: Any | None = None,
         resource_names: Collection[str] | None = None,
+        super_admin_role: str | None = None,
     ) -> None:
         super().__init__(app)
         self._authorizer = authorizer
@@ -79,6 +80,25 @@ class AdminAuthorizationMiddleware(BaseHTTPMiddleware):
         self._metrics = metrics or AdminMetrics(None)
         self._admin_prefix = (admin_prefix or "/admin").rstrip("/")
         self._public_paths = _public_paths(self._admin_prefix)
+        self._super_admin_role = super_admin_role
+
+    def _is_super_admin(self, user: object) -> bool:
+        """Return True for superusers and holders of the super-admin role.
+
+        The permission engine only recognizes ``is_superuser`` and the
+        hardcoded ``admin``/``superuser`` roles; the configured
+        ``AdminRbacConfig.super_admin_role`` (default ``"superadmin"`` — the
+        role the setup wizard grants the first account) must also bypass
+        per-resource capability checks, otherwise a fresh install's only
+        account is denied every resource route.
+        """
+        if getattr(user, "is_superuser", False) is True:
+            return True
+        if not self._super_admin_role:
+            return False
+        from lexigram.admin.rbac.super_admin import is_super_admin
+
+        return is_super_admin(user, self._super_admin_role)
 
     @staticmethod
     def _resource_action(path: str, admin_prefix: str) -> tuple[str, str] | None:
@@ -140,6 +160,16 @@ class AdminAuthorizationMiddleware(BaseHTTPMiddleware):
             return None
         resource, action = route
 
+        # Super admins hold every capability — never consult the permission
+        # engine (which has no knowledge of the configured super-admin role).
+        if self._is_super_admin(user):
+            return {
+                "can_view": True,
+                "can_create": True,
+                "can_update": True,
+                "can_delete": True,
+            }
+
         async def check(name: str, fallback: str | None = None) -> bool:
             method = getattr(service, name, None)
             if method is None and fallback:
@@ -147,7 +177,8 @@ class AdminAuthorizationMiddleware(BaseHTTPMiddleware):
             if method is None:
                 return False
             try:
-                return bool(await method(user, resource))
+                if await method(user, resource):
+                    return True
             except Exception:  # noqa: BLE001 — authorization must fail closed
                 logger.exception(
                     "admin_authz.permission_check_failed",
@@ -155,6 +186,12 @@ class AdminAuthorizationMiddleware(BaseHTTPMiddleware):
                     action=name,
                 )
                 return False
+            # Canonical permission denied — honour deprecated aliases
+            # (e.g. ``{resource}.read`` for view) during the migration
+            # window, with a one-line deprecation warning (roadmap R6).
+            return await self._legacy_alias_grant(
+                service, user, resource, name.removeprefix("can_")
+            )
 
         capabilities = {
             "can_view": await check("can_view"),
@@ -173,6 +210,47 @@ class AdminAuthorizationMiddleware(BaseHTTPMiddleware):
         ):
             return None
         return capabilities
+
+    @staticmethod
+    async def _legacy_alias_grant(
+        service: object,
+        user: object,
+        resource: str,
+        action: str,
+    ) -> bool:
+        """Return True when a deprecated permission alias grants *action*.
+
+        Consults ``lexigram.admin.auth.permission_scheme`` for the aliases
+        (``read``/``list`` → view, ``edit`` → update) and checks each via the
+        service's generic ``can_execute_action`` when available. A grant via
+        an alias logs a one-line ``admin_authz.legacy_permission_grant``
+        deprecation warning (deduplicated per process). Fails closed.
+        """
+        from lexigram.admin.auth.permission_scheme import (
+            legacy_aliases_for,
+            warn_legacy_grant,
+        )
+
+        aliases = legacy_aliases_for(action)
+        if not aliases:
+            return False
+        check_action = getattr(service, "can_execute_action", None)
+        if check_action is None:
+            return False
+        for alias in aliases:
+            try:
+                granted = bool(await check_action(user, resource, alias))
+            except Exception:  # noqa: BLE001 — authorization must fail closed
+                logger.exception(
+                    "admin_authz.legacy_alias_check_failed",
+                    resource=resource,
+                    alias=alias,
+                )
+                continue
+            if granted:
+                warn_legacy_grant(resource, alias)
+                return True
+        return False
 
     def _is_public_path(self, path: str) -> bool:
         """Match public endpoints exactly or beneath their path boundary."""
@@ -249,9 +327,31 @@ class AdminAuthorizationMiddleware(BaseHTTPMiddleware):
             return response
         return RedirectResponse(url=login_url, status_code=302)
 
-    @staticmethod
-    def _forbidden(request: Request) -> JSONResponse:
-        """Return 403 with user context."""
+    def _forbidden(self, request: Request) -> Response:
+        """Return 403, content-negotiated for the caller (roadmap R7).
+
+        - Browser navigations get the styled "Access Denied" page.
+        - HTMX requests get an empty 403 with an ``HX-Trigger`` toast so the
+          denial is visible without swapping raw JSON into the page.
+        - API callers keep the machine-readable JSON body.
+        """
+        from lexigram.admin.middleware._negotiation import (
+            error_page_meta,
+            prefers_html,
+            styled_error_response,
+        )
+
+        if request.headers.get("HX-Request") == "true":
+            from lexigram.serialization import dumps_str
+
+            title, message, _icon = error_page_meta(403)
+            response = Response(status_code=403)
+            response.headers["HX-Trigger"] = dumps_str(
+                {"showMessage": {"message": f"{title}: {message}", "type": "error"}},
+            )
+            return response
+        if prefers_html(request):
+            return styled_error_response(403, self._admin_prefix)
         return JSONResponse(
             {"error": "forbidden", "path": request.url.path},
             status_code=403,

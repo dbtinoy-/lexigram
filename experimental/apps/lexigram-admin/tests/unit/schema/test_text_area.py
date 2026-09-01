@@ -204,6 +204,28 @@ class TestRichTextField:
         assert "trix" in output
         assert "<script" in output
 
+    def test_render_assets_uses_vendored_static_paths(self) -> None:
+        """Trix loads from the admin static mount, never a CDN (doc 03)."""
+        output = str(RichTextField.render_assets())
+        assert "/admin/static/css/trix.css" in output
+        assert "/admin/static/js/trix.umd.min.js" in output
+        assert "unpkg.com" not in output
+        assert "cdn.jsdelivr.net" not in output
+
+    def test_render_assets_honours_custom_prefix(self) -> None:
+        output = str(RichTextField.render_assets(asset_prefix="/panel"))
+        assert "/panel/static/css/trix.css" in output
+        assert "/panel/static/js/trix.umd.min.js" in output
+
+    def test_vendored_trix_assets_exist(self) -> None:
+        """The static files referenced by render_assets are shipped."""
+        import lexigram.admin as admin_pkg
+        from pathlib import Path
+
+        static = Path(admin_pkg.__file__).parent / "static"
+        assert (static / "css" / "trix.css").is_file()
+        assert (static / "js" / "trix.umd.min.js").is_file()
+
     def test_render_column_renders_html(self) -> None:
         pytest.importorskip("nh3", reason="HTML sanitization requires nh3")
         field = RichTextField(name="content")

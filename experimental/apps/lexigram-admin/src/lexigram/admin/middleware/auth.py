@@ -49,6 +49,7 @@ class AdminAuthMiddleware:
         session_service: AdminSessionServiceProtocol | None = None,
         require_auth: bool = False,
         excluded_paths: list[str] | None = None,
+        super_admin_role: str | None = None,
     ):
         """Initialize auth middleware.
 
@@ -58,12 +59,18 @@ class AdminAuthMiddleware:
             session_service: AdminSessionServiceProtocol for TTL enforcement
             require_auth: If True, redirect unauthenticated users
             excluded_paths: Paths that don't require authentication
+            super_admin_role: Configured super-admin role name
+                (``AdminRbacConfig.super_admin_role``). Users holding this
+                role are marked ``is_superuser`` so every downstream
+                permission check (authorization middleware, nav filtering,
+                lexigram-auth bypass) recognizes them consistently.
         """
         self.app = app
         self.user_store = user_store
         self._session_service = session_service
         self.require_auth = require_auth
         self.excluded_paths = excluded_paths or []
+        self._super_admin_role = super_admin_role
 
     def _is_path_excluded(self, path: str) -> bool:
         """Check if path is excluded from auth requirements.
@@ -108,6 +115,7 @@ class AdminAuthMiddleware:
 
         # Load user from session
         user = await self._load_user(request)
+        self._mark_super_admin(user)
 
         # Check if authentication is required
         if self.require_auth and (
@@ -130,6 +138,37 @@ class AdminAuthMiddleware:
             await self.app(scope, receive, send)
         finally:
             pass
+
+    def _mark_super_admin(self, user: AuthenticatedUserProtocol | None) -> None:
+        """Flag users holding the configured super-admin role as superusers.
+
+        The setup wizard grants the first account
+        ``AdminRbacConfig.super_admin_role`` (default ``"superadmin"``), but
+        permission engines only bypass for ``is_superuser`` / ``admin`` /
+        ``superuser``.  Marking the record here — the single place every
+        authenticated request passes through — keeps the authorization
+        middleware, sidebar filtering, and lexigram-auth checks consistent.
+
+        Guest users and users without the role are left untouched.
+
+        Args:
+            user: The user record loaded for this request (may be ``None``
+                or the shared guest sentinel).
+        """
+        if user is None or user is GUEST_USER or not self._super_admin_role:
+            return
+        if getattr(user, "user_id", "guest") in (None, "guest"):
+            return
+        from lexigram.admin.rbac.super_admin import is_super_admin
+
+        if is_super_admin(user, self._super_admin_role):
+            try:
+                user.is_superuser = True  # type: ignore[attr-defined]
+            except AttributeError:
+                logger.debug(
+                    "auth.super_admin_mark_unsupported",
+                    user_type=type(user).__name__,
+                )
 
     async def _load_user(self, request: Request) -> AuthenticatedUserProtocol | None:
         """Load user from request session or return guest user.

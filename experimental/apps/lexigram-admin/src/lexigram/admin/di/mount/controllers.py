@@ -255,6 +255,17 @@ class AdminMountControllersMixin:
                 )
             except Exception:
                 profile_controller._user_store = None
+            try:
+                from lexigram.admin.auth.protocols import (
+                    AdminAuditLogServiceProtocol,
+                )
+
+                profile_controller._audit_service = await resolver.resolve(
+                    AdminAuditLogServiceProtocol,
+                    bypass_visibility=True,
+                )
+            except Exception:
+                profile_controller._audit_service = None
         except Exception as exc:
             _log.error(
                 "admin.profile_controller_resolution_failed",
@@ -262,6 +273,155 @@ class AdminMountControllersMixin:
                 strict=self._config.strict_resource_resolution,
             )
             self._mount_failures["controller:ProfileController"] = str(exc)
+            if self._config.strict_resource_resolution:
+                raise
+
+        # Resolve built-in SecurityController (Security Center — R12,
+        # docs/09-01-2026/05-security-center.md). Best-effort like every
+        # other built-in controller; optional stores attach individually.
+        try:
+            from lexigram.admin.controllers.security import SecurityController
+
+            security_controller = await resolver.resolve(
+                SecurityController,
+                bypass_visibility=True,
+            )
+            ctx.controllers.append(security_controller)
+            security_controller._super_admin_role = str(
+                getattr(self._config.rbac, "super_admin_role", "superadmin")
+                or "superadmin"
+            )
+            try:
+                from lexigram.admin.auth.protocols import (
+                    AdminAuditLogServiceProtocol,
+                    AdminAuditLogStoreProtocol,
+                )
+
+                security_controller._audit_store = await resolver.resolve(
+                    AdminAuditLogStoreProtocol,
+                    bypass_visibility=True,
+                )
+                security_controller._audit_service = await resolver.resolve(
+                    AdminAuditLogServiceProtocol,
+                    bypass_visibility=True,
+                )
+            except Exception:
+                pass
+            try:
+                from lexigram.admin.auth.protocols import (
+                    AdminAccountLockoutStoreProtocol,
+                )
+
+                security_controller._lockout_store = await resolver.resolve(
+                    AdminAccountLockoutStoreProtocol,
+                    bypass_visibility=True,
+                )
+            except Exception:
+                security_controller._lockout_store = None
+            try:
+                from lexigram.admin.auth.store.protocols import (
+                    AdminUserStoreProtocol,
+                )
+
+                security_controller._user_store = await resolver.resolve(
+                    AdminUserStoreProtocol,
+                    bypass_visibility=True,
+                )
+            except Exception:
+                security_controller._user_store = None
+        except Exception as exc:
+            _log.error(
+                "admin.security_controller_resolution_failed",
+                error=str(exc),
+                strict=self._config.strict_resource_resolution,
+            )
+            self._mount_failures["controller:SecurityController"] = str(exc)
+            if self._config.strict_resource_resolution:
+                raise
+
+        # Resolve built-in access-control controllers (Roles & Users — R10,
+        # docs/09-01-2026/06-access-control-ui.md). Best-effort like every
+        # other built-in controller; optional services attach individually.
+        try:
+            from lexigram.admin.controllers.access_control import (
+                RolesController,
+                UsersController,
+            )
+
+            super_admin_role = str(
+                getattr(self._config.rbac, "super_admin_role", "superadmin")
+                or "superadmin"
+            )
+            for ac_cls in (RolesController, UsersController):
+                try:
+                    ac_controller = await resolver.resolve(
+                        ac_cls,
+                        bypass_visibility=True,
+                    )
+                    ctx.controllers.append(ac_controller)
+                    ac_controller._super_admin_role = super_admin_role
+                    if getattr(ac_controller, "_csrf_service", None) is None:
+                        try:
+                            ac_controller._csrf_service = await self._get_csrf_service(
+                                resolver
+                            )
+                        except Exception:
+                            pass
+                    if getattr(ac_controller, "_role_service", None) is None:
+                        try:
+                            from lexigram.admin.rbac.protocols import (
+                                AdminRoleServiceProtocol,
+                            )
+
+                            ac_controller._role_service = await resolver.resolve(
+                                AdminRoleServiceProtocol,
+                                bypass_visibility=True,
+                            )
+                        except Exception:
+                            pass
+                    if getattr(ac_controller, "_inventory", ...) is None:
+                        try:
+                            from lexigram.admin.rbac.inventory import (
+                                PermissionInventoryService,
+                            )
+
+                            ac_controller._inventory = await resolver.resolve(
+                                PermissionInventoryService,
+                                bypass_visibility=True,
+                            )
+                        except Exception:
+                            pass
+                    try:
+                        from lexigram.admin.auth.store.protocols import (
+                            AdminUserStoreProtocol,
+                        )
+
+                        ac_controller._user_store = await resolver.resolve(
+                            AdminUserStoreProtocol,
+                            bypass_visibility=True,
+                        )
+                    except Exception:
+                        ac_controller._user_store = None
+                    audit_service = await self._resolve_audit_service(resolver)
+                    if audit_service is not None:
+                        ac_controller._audit_service = audit_service
+                except Exception as exc:
+                    _log.error(
+                        "admin.access_control_controller_resolution_failed",
+                        controller=ac_cls.__name__,
+                        error=str(exc),
+                        strict=self._config.strict_resource_resolution,
+                    )
+                    self._mount_failures[f"controller:{ac_cls.__name__}"] = str(exc)
+                    if self._config.strict_resource_resolution:
+                        raise
+        except Exception as exc:
+            _log.error(
+                "admin.access_control_controllers_failed",
+                error=str(exc),
+                strict=self._config.strict_resource_resolution,
+            )
+            self._mount_failures["controller:AccessControl"] = str(exc)
             if self._config.strict_resource_resolution:
                 raise
 

@@ -325,6 +325,9 @@ class AdminProvider(
                     "user_store": self._user_store,
                     "session_service": self._session_service,
                     "require_auth": False,
+                    "super_admin_role": (
+                        self._config.rbac or AdminRbacConfig()
+                    ).super_admin_role,
                 },
             )
         )
@@ -349,6 +352,9 @@ class AdminProvider(
                     # later in the mount pipeline receive the same boundary
                     # authorization as built-in resources.
                     "resource_names": ctx.resources.keys(),
+                    "super_admin_role": (
+                        self._config.rbac or AdminRbacConfig()
+                    ).super_admin_role,
                 },
             )
         )

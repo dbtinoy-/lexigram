@@ -26,13 +26,19 @@ def collect_instance_routes(controller: Any) -> list[Any]:
 
             # Let's create a compatible Starlette handler
             async def starlette_handler(request: Request, m=method) -> Any:
-                # We need to handle parameters like Router does
-                # For simplicity, we can reuse Router._create_endpoint logic
-                # Or just call the method if signature allows
+                # Forward the request plus any matched path parameters the
+                # handler declares (e.g. `role_name` for "/{role_name}/edit").
+                # Starlette has already applied path convertors, so values
+                # arrive with the declared types.
                 sig = inspect.signature(m)
+                kwargs: dict[str, Any] = {}
                 if "request" in sig.parameters:
-                    return await m(request=request)
-                return await m()
+                    kwargs["request"] = request
+                path_params = getattr(request, "path_params", None) or {}
+                for param_name in sig.parameters:
+                    if param_name != "request" and param_name in path_params:
+                        kwargs[param_name] = path_params[param_name]
+                return await m(**kwargs)
 
             # Prepend controller prefix to the route path
             base_path = getattr(controller, "prefix", "").rstrip("/")

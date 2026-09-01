@@ -12,14 +12,25 @@ from lexigram.admin.ui.layouts.admin_layout import (
 class TestAdminLayoutHead:
     """Tests for AdminLayout.render_head_content()."""
 
-    def test_sortablejs_cdn_included(self) -> None:
-        """Verify SortableJS CDN script tag is in head content."""
+    def test_sortablejs_vendored_script_included(self) -> None:
+        """Verify the vendored SortableJS script tag is in head content."""
         layout = AdminLayout(
             config=AdminLayoutConfig(),
             context=AdminLayoutContext(),
         )
         head = layout.render_head_content()
-        assert 'src="https://unpkg.com/sortablejs@1.15.0/Sortable.min.js"' in head
+        assert 'src="/admin/static/js/sortable.min.js"' in head
+        # No third-party CDN scripts — assets are served locally.
+        assert "unpkg.com" not in head
+
+    def test_lucide_vendored_script_included(self) -> None:
+        """Verify the vendored Lucide script tag is in head content."""
+        layout = AdminLayout(
+            config=AdminLayoutConfig(),
+            context=AdminLayoutContext(),
+        )
+        head = layout.render_head_content()
+        assert 'src="/admin/static/js/lucide.min.js"' in head
 
 
 class TestAdminLayoutBody:

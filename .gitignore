@@ -150,6 +150,12 @@ demos/*/.ipynb_checkpoints/
 !dev/
 !dev/**
 
+# Admin dev playground (committed dev asset; local SQLite files stay ignored)
+!experimental/*/lexigram*/playground/
+!experimental/*/lexigram*/playground/**
+experimental/*/lexigram*/playground/*.db
+experimental/*/lexigram*/playground/*.db-*
+
 # Re-exclude private content under the tiered paths.
 # MUST come after the !...docs/** negations above — last match wins.
 core/lexigram*/docs/plans/

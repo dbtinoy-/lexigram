@@ -343,3 +343,36 @@ async def test_resend_verification_passes_ip_to_send() -> None:
 
     assert result.is_ok()
     notifier.notify_email_verification.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_mark_verified_delegates_to_store() -> None:
+    store = _make_store()
+    store.mark_verified = AsyncMock()
+    svc = AdminEmailVerificationService(
+        config=AdminEmailVerificationConfig(), store=store
+    )
+
+    await svc.mark_verified("user-001")
+
+    store.mark_verified.assert_awaited_once_with("user-001")
+
+
+@pytest.mark.asyncio
+async def test_mark_verified_audits_out_of_band_verification() -> None:
+    store = _make_store()
+    store.mark_verified = AsyncMock()
+    audit = _make_audit()
+    svc = AdminEmailVerificationService(
+        config=AdminEmailVerificationConfig(),
+        store=store,
+        audit_service=audit,
+    )
+
+    await svc.mark_verified("user-001")
+
+    audit.log_event.assert_awaited_once()
+    kwargs = audit.log_event.await_args.kwargs
+    assert kwargs["event_type"] == AdminSecurityEventType.EMAIL_VERIFIED
+    assert kwargs["success"] is True
+    assert kwargs["admin_user_id"] == "user-001"

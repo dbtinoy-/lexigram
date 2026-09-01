@@ -289,12 +289,14 @@ class AdminLayout(LayoutBase):
         parts.append(DARK_BOOTSTRAP_SCRIPT)
         parts.append(THEME_BRIDGE_SCRIPT)
 
-        # Lucide icons
-        parts.append('<script src="https://unpkg.com/lucide@latest"></script>')
-
-        # SortableJS for dashboard widget drag-and-drop
+        # Lucide icons — vendored locally (no third-party CDN, pinned version)
         parts.append(
-            '<script src="https://unpkg.com/sortablejs@1.15.0/Sortable.min.js"></script>'
+            f'<script src="{escape(asset_prefix)}/static/js/lucide.min.js"></script>'
+        )
+
+        # SortableJS for dashboard widget drag-and-drop (vendored locally)
+        parts.append(
+            f'<script src="{escape(asset_prefix)}/static/js/sortable.min.js"></script>'
         )
 
         # Alpine.js plugins (loaded before Alpine core)

@@ -84,12 +84,20 @@ class ResourceListMixin:
         state: URLState,
     ) -> str:
         """Render full list page. Override in subclass."""
+        # Serve htmx from the vendored static mount — derive the admin
+        # prefix from the mount's root_path (works for any mount prefix).
+        root_path = "/admin"
+        request = getattr(ctx, "request", None)
+        if request is not None:
+            scope = getattr(request, "scope", None)
+            if isinstance(scope, dict) and scope.get("root_path"):
+                root_path = str(scope["root_path"]).rstrip("/")
         return f"""
 <!DOCTYPE html>
 <html>
 <head>
     <title>{self.meta.label_plural}</title>
-    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script src="{root_path}/static/js/htmx.min.js"></script>
 </head>
 <body>
     <h1>{self.meta.label_plural}</h1>

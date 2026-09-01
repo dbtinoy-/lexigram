@@ -95,3 +95,45 @@ class TestImpersonationBanner:
 
     def test_banner_inactive(self) -> None:
         assert build_impersonation_banner(False, "", "") == ""
+
+
+class TestInferredPermissionSchemes:
+    """Sidebar inference must accept both ``.view`` and ``.read`` grants.
+
+    The authorization middleware checks ``{resource}.view`` while older
+    permission sets grant ``{resource}.read`` — a user holding either must
+    see the nav link.
+    """
+
+    def test_view_permission_shows_resource_link(self) -> None:
+        items = [{"label": "Products", "href": "/admin/products"}]
+        user = AdminUser(
+            id=1, email="a@example.com", name="A", permissions={"products.view"}
+        )
+        assert len(prepare_navigation(items, {}, user)) == 1
+
+    def test_read_permission_shows_resource_link(self) -> None:
+        items = [{"label": "Products", "href": "/admin/products"}]
+        user = AdminUser(
+            id=1, email="a@example.com", name="A", permissions={"products.read"}
+        )
+        assert len(prepare_navigation(items, {}, user)) == 1
+
+    def test_no_permission_hides_resource_link(self) -> None:
+        items = [{"label": "Products", "href": "/admin/products"}]
+        user = AdminUser(id=1, email="a@example.com", name="A", permissions=set())
+        assert prepare_navigation(items, {}, user) == []
+
+    def test_superuser_sees_all_resource_links(self) -> None:
+        items = [
+            {"label": "Products", "href": "/admin/products"},
+            {"label": "Customers", "href": "/admin/customers"},
+        ]
+        user = AdminUser(
+            id=1,
+            email="a@example.com",
+            name="A",
+            is_superuser=True,
+            permissions=set(),
+        )
+        assert len(prepare_navigation(items, {}, user)) == 2

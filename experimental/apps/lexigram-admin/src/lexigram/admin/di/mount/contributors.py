@@ -310,3 +310,15 @@ class AdminMountContributorsMixin:
                 app.state.cluster_registry = ctx.cluster_registry
             if admin_app is not None and hasattr(admin_app, "state"):
                 admin_app.state.cluster_registry = ctx.cluster_registry
+
+        # Expose the configured super-admin role so the shell user menu can
+        # gate superadmin-only entries (Security Center — R12).
+        super_admin_role = str(
+            getattr(self._config.rbac, "super_admin_role", "superadmin")
+            or "superadmin"
+        )
+        if hasattr(app, "state"):
+            app.state.super_admin_role = super_admin_role
+        if admin_app is not None and hasattr(admin_app, "state"):
+            admin_app.state.super_admin_role = super_admin_role
+

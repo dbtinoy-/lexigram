@@ -237,3 +237,27 @@ def test_role_service_uses_contracts_role_definition() -> None:
     for method in ("create_role", "update_role"):
         sig = inspect.signature(getattr(AdminRoleService, method))
         assert "RoleDefinition" in str(sig.return_annotation)
+
+
+@pytest.mark.asyncio
+async def test_audit_attributes_actor_when_provided() -> None:
+    """R10: controller-passed actor_id lands on the audit row."""
+    svc, _store, _authz, audit = _make_service()
+
+    await svc.create_role("editor", "Editors", [], [], actor_id="admin-9")
+    kwargs = audit.log_event.await_args.kwargs
+    assert kwargs["admin_user_id"] == "admin-9"
+
+    await svc.update_role("editor", "Editors", ["users.list"], [], actor_id="admin-9")
+    assert audit.log_event.await_args.kwargs["admin_user_id"] == "admin-9"
+
+    await svc.delete_role("editor", actor_id="admin-9")
+    assert audit.log_event.await_args.kwargs["admin_user_id"] == "admin-9"
+
+
+@pytest.mark.asyncio
+async def test_audit_actor_defaults_to_none() -> None:
+    """Callers without request context stay backwards compatible."""
+    svc, _store, _authz, audit = _make_service()
+    await svc.create_role("editor", "Editors", [], [])
+    assert audit.log_event.await_args.kwargs["admin_user_id"] is None

@@ -118,11 +118,28 @@ class AdminContributorSubProvider:
 
     async def boot(self, container: ContainerResolverProtocol) -> None:
         """Boot all discovered contributors, sorted by dependency order."""
+        from lexigram.contracts.exceptions.container import (
+            UnresolvableDependencyError,
+        )
+
         contributors = sort_contributors(self._registry.get_all())  # type: ignore[type-var]
         for contributor in contributors:
             if self._is_enabled(contributor.name):
                 try:
                     await contributor.on_admin_boot(container)
+                except UnresolvableDependencyError as exc:
+                    # Expected for optional contributors whose backing
+                    # services are simply not registered in this deployment:
+                    # the feature is disabled, not broken. One readable line
+                    # — boot output is the operator's first impression;
+                    # tracebacks are reserved for genuine faults below.
+                    logger.info(
+                        "admin.contributor_disabled",
+                        contributor=contributor.name,
+                        reason="required service not registered",
+                        missing=str(exc).split(".", 1)[0][:120],
+                    )
+                    self._boot_failures[contributor.name] = str(exc)
                 except Exception as exc:  # noqa: BLE001 — continue booting other contributors
                     logger.warning(
                         "admin.contributor_on_boot_failed",

@@ -153,6 +153,132 @@ class TestUserMenuItems:
         assert [m["label"] for m in menu] == ["Profile", "Infrastructure", "Settings"]
 
 
+class TestSecurityMenuEntry:
+    """The Security Center entry is superadmin-only (R12)."""
+
+    def _request_with_user(
+        self,
+        is_superuser: bool = False,
+        roles: list[str] | None = None,
+        super_admin_role: str | None = "superadmin",
+    ) -> MagicMock:
+        request = _request()
+        user = MagicMock()
+        user.is_superuser = is_superuser
+        user.roles = roles or []
+        request.state.user = user
+        request.app.state.super_admin_role = super_admin_role
+        return request
+
+    def test_superuser_flag_shows_security(self) -> None:
+        menu = NavigationManager(
+            self._request_with_user(is_superuser=True)
+        ).user_menu_items()
+        labels = [m["label"] for m in menu]
+        assert "Security" in labels
+        entry = next(m for m in menu if m["label"] == "Security")
+        assert entry["href"] == "/admin/security"
+
+    def test_configured_role_shows_security(self) -> None:
+        menu = NavigationManager(
+            self._request_with_user(roles=["root"], super_admin_role="root")
+        ).user_menu_items()
+        assert "Security" in [m["label"] for m in menu]
+
+    def test_regular_admin_does_not_see_security(self) -> None:
+        menu = NavigationManager(
+            self._request_with_user(roles=["admin"])
+        ).user_menu_items()
+        assert "Security" not in [m["label"] for m in menu]
+
+    def test_no_user_fail_closed(self) -> None:
+        request = _request()
+        request.state.user = None
+        request.app.state.super_admin_role = "superadmin"
+        menu = NavigationManager(request).user_menu_items()
+        assert "Security" not in [m["label"] for m in menu]
+
+    def test_missing_state_role_fail_closed_for_role_holders(self) -> None:
+        request = _request()
+        user = MagicMock()
+        user.is_superuser = False
+        user.roles = ["superadmin"]
+        request.state.user = user
+        request.app.state.super_admin_role = ""
+        menu = NavigationManager(request).user_menu_items()
+        assert "Security" not in [m["label"] for m in menu]
+
+    def test_security_appears_before_plugins_and_settings(self) -> None:
+        menu = NavigationManager(
+            self._request_with_user(is_superuser=True)
+        ).user_menu_items()
+        labels = [m["label"] for m in menu]
+        assert labels.index("Security") < labels.index("Plugins")
+        assert labels.index("Plugins") < labels.index("Settings")
+
+
+class TestAccessControlMenuEntries:
+    """Users and Roles entries are superadmin-only (R10)."""
+
+    def _request_with_user(
+        self,
+        is_superuser: bool = False,
+        roles: list[str] | None = None,
+        super_admin_role: str | None = "superadmin",
+    ) -> MagicMock:
+        request = _request()
+        user = MagicMock()
+        user.is_superuser = is_superuser
+        user.roles = roles or []
+        request.state.user = user
+        request.app.state.super_admin_role = super_admin_role
+        return request
+
+    def test_superuser_sees_users_and_roles(self) -> None:
+        menu = NavigationManager(
+            self._request_with_user(is_superuser=True)
+        ).user_menu_items()
+        labels = [m["label"] for m in menu]
+        assert "Users" in labels
+        assert "Roles" in labels
+        users = next(m for m in menu if m["label"] == "Users")
+        roles = next(m for m in menu if m["label"] == "Roles")
+        assert users["href"] == "/admin/users"
+        assert roles["href"] == "/admin/roles"
+
+    def test_configured_role_sees_users_and_roles(self) -> None:
+        menu = NavigationManager(
+            self._request_with_user(roles=["root"], super_admin_role="root")
+        ).user_menu_items()
+        labels = [m["label"] for m in menu]
+        assert "Users" in labels
+        assert "Roles" in labels
+
+    def test_regular_admin_sees_neither(self) -> None:
+        menu = NavigationManager(
+            self._request_with_user(roles=["admin"])
+        ).user_menu_items()
+        labels = [m["label"] for m in menu]
+        assert "Users" not in labels
+        assert "Roles" not in labels
+
+    def test_no_user_fail_closed(self) -> None:
+        request = _request()
+        request.state.user = None
+        request.app.state.super_admin_role = "superadmin"
+        labels = [m["label"] for m in NavigationManager(request).user_menu_items()]
+        assert "Users" not in labels
+        assert "Roles" not in labels
+
+    def test_entries_precede_security(self) -> None:
+        menu = NavigationManager(
+            self._request_with_user(is_superuser=True)
+        ).user_menu_items()
+        labels = [m["label"] for m in menu]
+        assert labels.index("Users") < labels.index("Roles")
+        assert labels.index("Roles") < labels.index("Security")
+
+
 @pytest.mark.parametrize(
     ("label", "action"),
     [

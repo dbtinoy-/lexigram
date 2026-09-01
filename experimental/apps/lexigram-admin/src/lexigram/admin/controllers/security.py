@@ -1,0 +1,694 @@
+"""Security Center controller — sessions, audit log, lockouts (roadmap R12).
+
+Superadmin-only operational visibility over the security data the admin
+already captures: fleet-wide active sessions with remote revoke, a
+filterable audit-log browser, and account-lockout lookup with manual
+unlock. Design: docs/09-01-2026/05-security-center.md.
+"""
+
+from __future__ import annotations
+
+from html import escape
+from secrets import token_hex
+from typing import Any
+from urllib.parse import quote_plus
+
+from starlette.exceptions import HTTPException
+from starlette.requests import Request
+from starlette.responses import RedirectResponse, Response
+
+from lexigram.admin.auth.models import AdminUser
+from lexigram.admin.auth.next_url import build_login_redirect
+from lexigram.admin.auth.protocols import (
+    AdminAuditLogServiceProtocol,
+    AdminCsrfServiceProtocol,
+    AdminSessionServiceProtocol,
+)
+from lexigram.admin.auth.types import AdminSecurityEventType
+from lexigram.admin.controllers.base import AdminController
+from lexigram.admin.engine.renderer import AdminRenderer
+from lexigram.contracts.web import get, post
+from lexigram.logging import get_logger
+
+logger = get_logger(__name__)
+
+__all__ = ["SecurityController"]
+
+_WINDOWS: dict[str, tuple[str, int]] = {
+    "1h": ("Last hour", 3600),
+    "24h": ("Last 24 hours", 86400),
+    "7d": ("Last 7 days", 604800),
+    "30d": ("Last 30 days", 2592000),
+}
+_LIMITS = (50, 100, 250)
+
+
+def _fmt_ts(value: Any) -> str:
+    """Best-effort compact timestamp rendering for table cells."""
+    if value is None:
+        return "—"
+    text = str(value)
+    # Trim microseconds/timezone noise: "2026-09-01 14:20:33.123456+00:00"
+    return text.split(".")[0].replace("T", " ")
+
+
+def _short_id(value: Any, length: int = 8) -> str:
+    """Truncate an identifier for display — never render full tokens."""
+    text = str(value or "")
+    return f"{text[:length]}…" if len(text) > length else text
+
+
+class SecurityController(AdminController):
+    """Security Center: sessions, audit browser, lockouts.
+
+    Routes:
+        GET  /admin/security                  - Overview
+        GET  /admin/security/sessions         - Active sessions (all users)
+        POST /admin/security/sessions/revoke  - Revoke a session
+        GET  /admin/security/audit            - Audit-log browser
+        GET  /admin/security/lockouts         - Lockout lookup
+        POST /admin/security/lockouts/clear   - Manual unlock
+    """
+
+    prefix = "/security"
+
+    def __init__(
+        self,
+        renderer: AdminRenderer,
+        csrf_service: AdminCsrfServiceProtocol | None = None,
+        session_service: AdminSessionServiceProtocol | None = None,
+        super_admin_role: str = "superadmin",
+    ) -> None:
+        """Initialise the Security Center controller.
+
+        Args:
+            renderer: AdminRenderer for shell page rendering.
+            csrf_service: CSRF token service (POST protection).
+            session_service: Session lifecycle service (list/revoke).
+            super_admin_role: Configured super-admin role name.
+        """
+        super().__init__(renderer=renderer)
+        self._csrf_service = csrf_service
+        self._session_service = session_service
+        self._super_admin_role = super_admin_role
+        # Wired best-effort at mount time (di/mount/controllers.py):
+        self._audit_store: Any = None  # AdminAuditLogStoreProtocol
+        self._audit_service: Any = None  # AdminAuditLogServiceProtocol
+        self._lockout_store: Any = None  # AdminAccountLockoutStoreProtocol
+        self._user_store: Any = None  # AdminUserStoreProtocol
+
+    # -- access control -----------------------------------------------------
+
+    def _is_super_admin(self, user: Any) -> bool:
+        """Literal superuser flag OR the configured super-admin role (B1)."""
+        if getattr(user, "is_superuser", False) is True:
+            return True
+        from lexigram.admin.rbac.super_admin import is_super_admin
+
+        return bool(
+            self._super_admin_role and is_super_admin(user, self._super_admin_role)
+        )
+
+    def _guard(self, request: Request) -> Response | None:
+        """Redirect anonymous users to login; 403 non-superadmins."""
+        user: AdminUser = self.current_user(request)
+        if not user or getattr(user, "user_id", "guest") == "guest":
+            return RedirectResponse(
+                url=build_login_redirect(
+                    self._admin_path(request, "/admin/login"),
+                    str(request.url.path),
+                ),
+                status_code=302,
+            )
+        if not self._is_super_admin(user):
+            logger.info(
+                "security_center.denied",
+                user_id=str(getattr(user, "user_id", "unknown")),
+                path=request.url.path,
+            )
+            # R7: rendered as the styled Access Denied page for browsers.
+            raise HTTPException(status_code=403, detail="Super admin required")
+        return None
+
+    # -- helpers ------------------------------------------------------------
+
+    def _csrf_token(self, request: Request) -> str:
+        """Return a CSRF token, creating and persisting the session id."""
+        csrf_session_id = str(request.session.get("csrf_session_id", ""))
+        if not csrf_session_id:
+            csrf_session_id = token_hex(16)
+            request.session["csrf_session_id"] = csrf_session_id
+        if self._csrf_service is None:
+            return ""
+        return self._csrf_service.generate_token(csrf_session_id)
+
+    def _csrf_ok(self, request: Request, csrf_token: str) -> bool:
+        """Validate the submitted CSRF token against the session id."""
+        if self._csrf_service is None:
+            return True
+        csrf_session_id = str(request.session.get("csrf_session_id", ""))
+        return bool(
+            csrf_session_id
+            and self._csrf_service.validate_token(csrf_session_id, csrf_token)
+        )
+
+    @staticmethod
+    def _redirect(url: str, message: str, is_error: bool = False) -> Response:
+        """Return a 302 redirect carrying an error or notice flash param."""
+        key = "error" if is_error else "notice"
+        sep = "&" if "?" in url else "?"
+        return RedirectResponse(
+            url=f"{url}{sep}{key}={quote_plus(message)}", status_code=302
+        )
+
+    async def _audit(
+        self,
+        request: Request,
+        event_type: AdminSecurityEventType,
+        success: bool,
+        **metadata: Any,
+    ) -> None:
+        """Append a security audit event attributed to the acting admin.
+
+        Prefers the mount-time-wired audit service; falls back to a
+        container lookup (request scope, then app state) for embedders
+        that wire the controller manually.
+        """
+        try:
+            audit_service = self._audit_service
+            if audit_service is None:
+                container = getattr(request.state, "container", None) or getattr(
+                    request.app.state, "container", None
+                )
+                if container is None:
+                    logger.warning(
+                        "security_center.audit_skipped_no_container",
+                        event_type=event_type.value,
+                    )
+                    return
+                audit_service = await container.resolve(AdminAuditLogServiceProtocol)
+            client = getattr(request, "client", None)
+            user = self.current_user(request)
+            acting_id = str(getattr(user, "user_id", "") or "") or None
+            await audit_service.log_event(
+                event_type=event_type,
+                ip_address=getattr(client, "host", "unknown"),
+                user_agent=request.headers.get("user-agent", "") or "",
+                success=success,
+                admin_user_id=acting_id,
+                metadata=metadata,
+            )
+        except Exception:  # noqa: BLE001 — audit failures must not break requests
+            logger.warning("security_center.audit_failed", event_type=event_type.value)
+
+    async def _email_by_user_id(self) -> dict[str, str]:
+        """Map admin user ids to emails for display, best-effort."""
+        if self._user_store is None:
+            return {}
+        list_users = getattr(self._user_store, "list_users", None) or getattr(
+            self._user_store, "get_all_users", None
+        )
+        if list_users is None:
+            return {}
+        try:
+            users = await list_users()
+        except Exception:  # noqa: BLE001 — display sugar only, never fatal
+            logger.debug("security_center.user_listing_failed")
+            return {}
+        mapping: dict[str, str] = {}
+        for u in users or []:
+            if isinstance(u, dict):
+                uid = str(u.get("user_id") or u.get("id") or "")
+                email = str(u.get("email") or "")
+            else:
+                uid = str(getattr(u, "user_id", "") or getattr(u, "id", "") or "")
+                email = str(getattr(u, "email", "") or "")
+            if uid and email:
+                mapping[uid] = email
+        return mapping
+
+    def _flash_from_query(self, request: Request, ctx: Any) -> None:
+        """Surface ?notice=/?error= redirect params as flash messages."""
+        error = request.query_params.get("error", "")
+        notice = request.query_params.get("notice", "")
+        if error:
+            ctx.add_flash(error, "error")
+        if notice:
+            ctx.add_flash(notice, "success")
+
+    async def _page(
+        self, request: Request, html: str, title: str, crumb: str
+    ) -> Response:
+        """Render *html* in the admin shell with Security breadcrumbs."""
+        from lexigram.admin.state.context import AdminContextManager
+
+        async with AdminContextManager(request) as ctx:
+            self._flash_from_query(request, ctx)
+            crumbs = [("Home", self._admin_path(request))]
+            if crumb != "Security":
+                crumbs.append(
+                    ("Security", self._admin_path(request, "/admin/security"))
+                )
+            return await self.render_admin(
+                request,
+                html,
+                title=title,
+                breadcrumbs=self.generate_breadcrumbs(*crumbs, current=crumb),
+            )
+
+    # -- shared page chrome ---------------------------------------------
+
+    def _tabs(self, request: Request, active: str) -> str:
+        """Sub-navigation tabs shared by all Security Center pages."""
+        base = self._admin_path(request, "/admin/security")
+        entries = (
+            ("Overview", base, "overview"),
+            ("Sessions", f"{base}/sessions", "sessions"),
+            ("Audit log", f"{base}/audit", "audit"),
+            ("Lockouts", f"{base}/lockouts", "lockouts"),
+        )
+        links = "".join(
+            f'<a href="{escape(href)}" class="px-3 py-2 text-sm font-medium '
+            + (
+                "border-b-2 border-primary text-foreground"
+                if key == active
+                else "text-muted-foreground hover:text-foreground"
+            )
+            + f'">{escape(label)}</a>'
+            for label, href, key in entries
+        )
+        return (
+            '<div class="flex gap-1 border-b border-border mb-6">' + links + "</div>"
+        )
+
+    @staticmethod
+    def _card(title: str, value: str, note: str = "") -> str:
+        note_html = (
+            f'<p class="text-xs text-muted-foreground mt-1">{escape(note)}</p>'
+            if note
+            else ""
+        )
+        return (
+            '<div class="bg-card border border-border rounded-xl p-5">'
+            f'<p class="text-sm text-muted-foreground">{escape(title)}</p>'
+            f'<p class="text-2xl font-bold text-foreground mt-1">{escape(value)}</p>'
+            f"{note_html}</div>"
+        )
+
+    @staticmethod
+    def _table(headers: list[str], rows: list[str], empty: str) -> str:
+        if not rows:
+            return (
+                '<div class="bg-card border border-border rounded-xl p-8 '
+                'text-center text-muted-foreground">' + escape(empty) + "</div>"
+            )
+        head = "".join(
+            '<th class="px-4 py-3 text-left text-xs font-medium '
+            f'text-muted-foreground uppercase tracking-wider">{escape(h)}</th>'
+            for h in headers
+        )
+        return (
+            '<div class="bg-card border border-border rounded-xl overflow-x-auto">'
+            '<table class="min-w-full divide-y divide-border">'
+            f"<thead><tr>{head}</tr></thead>"
+            '<tbody class="divide-y divide-border">' + "".join(rows) + "</tbody>"
+            "</table></div>"
+        )
+
+    # -- routes -------------------------------------------------------------
+
+    @get("/")
+    async def overview(self, request: Request) -> Response:
+        """Security Center landing page: live counts and quick links."""
+        denied = self._guard(request)
+        if denied is not None:
+            return denied
+
+        sessions: list[dict[str, Any]] = []
+        list_sessions = getattr(self._session_service, "list_active_sessions", None)
+        if list_sessions is not None:
+            try:
+                sessions = await list_sessions(limit=250)
+            except Exception:  # noqa: BLE001 — overview must render regardless
+                logger.warning("security_center.session_listing_failed")
+
+        events: list[Any] = []
+        if self._audit_store is not None:
+            try:
+                events = await self._audit_store.query_recent(
+                    since_seconds=86400, limit=250
+                )
+            except Exception:  # noqa: BLE001 — overview must render regardless
+                logger.warning("security_center.audit_query_failed")
+
+        failures = sum(
+            1
+            for e in events
+            if getattr(e, "event_type", None) == AdminSecurityEventType.LOGIN_FAILURE
+        )
+        unique_users = len(
+            {str(s.get("admin_id", "")) for s in sessions if s.get("admin_id")}
+        )
+
+        cards = (
+            self._card("Active sessions", str(len(sessions)), "across all admins")
+            + self._card("Signed-in admins", str(unique_users), "distinct accounts")
+            + self._card(
+                "Failed logins (24h)",
+                str(failures),
+                "see the audit log for details",
+            )
+            + self._card("Audit events (24h)", str(len(events)), "all event types")
+        )
+        html = (
+            self._tabs(request, "overview")
+            + '<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">'
+            + cards
+            + "</div>"
+        )
+        return await self._page(request, html, "Security", "Security")
+
+    @get("/sessions")
+    async def sessions_page(self, request: Request) -> Response:
+        """Fleet-wide active session list with remote revoke."""
+        denied = self._guard(request)
+        if denied is not None:
+            return denied
+
+        sessions: list[dict[str, Any]] = []
+        supported = False
+        list_sessions = getattr(self._session_service, "list_active_sessions", None)
+        if list_sessions is not None:
+            supported = True
+            try:
+                sessions = await list_sessions(limit=250)
+            except Exception:  # noqa: BLE001 — page must render regardless
+                logger.warning("security_center.session_listing_failed")
+
+        emails = await self._email_by_user_id()
+        current_session_id = str(request.session.get("session_id", ""))
+        csrf = self._csrf_token(request)
+        revoke_url = self._admin_path(request, "/admin/security/sessions/revoke")
+
+        rows = []
+        for s in sessions:
+            sid = str(s.get("session_id", ""))
+            admin_id = str(s.get("admin_id", ""))
+            who = emails.get(admin_id) or _short_id(admin_id)
+            is_current = sid == current_session_id
+            action = (
+                '<span class="text-xs text-muted-foreground">this session</span>'
+                if is_current
+                else (
+                    f'<form method="post" action="{escape(revoke_url)}" class="inline">'
+                    f'<input type="hidden" name="csrf_token" value="{escape(csrf)}">'
+                    f'<input type="hidden" name="session_id" value="{escape(sid)}">'
+                    '<button type="submit" class="text-sm font-medium '
+                    'text-destructive hover:underline">Revoke</button></form>'
+                )
+            )
+            rows.append(
+                "<tr>"
+                f'<td class="px-4 py-3 text-sm font-mono">{escape(_short_id(sid))}</td>'
+                f'<td class="px-4 py-3 text-sm">{escape(who)}'
+                + (
+                    ' <span class="text-xs text-primary font-medium">(you)</span>'
+                    if is_current
+                    else ""
+                )
+                + "</td>"
+                f'<td class="px-4 py-3 text-sm">{escape(str(s.get("ip_address") or "—"))}</td>'
+                f'<td class="px-4 py-3 text-sm text-muted-foreground max-w-[16rem] truncate">{escape(str(s.get("user_agent") or "—"))}</td>'
+                f'<td class="px-4 py-3 text-sm">{escape(_fmt_ts(s.get("last_active_at")))}</td>'
+                f'<td class="px-4 py-3 text-sm">{escape(_fmt_ts(s.get("expires_at")))}</td>'
+                f'<td class="px-4 py-3 text-sm">{action}</td>'
+                "</tr>"
+            )
+
+        empty = (
+            "No active sessions."
+            if supported
+            else "The configured session service does not support fleet listing."
+        )
+        html = self._tabs(request, "sessions") + self._table(
+            ["Session", "Admin", "IP", "User agent", "Last active", "Expires", ""],
+            rows,
+            empty,
+        )
+        return await self._page(request, html, "Sessions — Security", "Sessions")
+
+    @post("/sessions/revoke")
+    async def revoke_session(self, request: Request) -> Response:
+        """Revoke a session remotely (CSRF-protected, audited)."""
+        denied = self._guard(request)
+        if denied is not None:
+            return denied
+        back = self._admin_path(request, "/admin/security/sessions")
+
+        # The CSRF middleware already consumed the body and cached the form.
+        form = request.scope.get("admin_form_data") or await request.form()
+        if not self._csrf_ok(request, str(form.get("csrf_token", ""))):
+            return self._redirect(back, "Invalid or expired form token.", True)
+        session_id = str(form.get("session_id", "")).strip()
+        if not session_id:
+            return self._redirect(back, "Missing session id.", True)
+        if session_id == str(request.session.get("session_id", "")):
+            return self._redirect(
+                back, "Use Logout to end your own session.", True
+            )
+        if self._session_service is None:
+            return self._redirect(back, "Session service unavailable.", True)
+
+        user = self.current_user(request)
+        try:
+            await self._session_service.revoke_session(session_id)
+        except Exception:  # noqa: BLE001 — surface a friendly error, log the rest
+            logger.exception("security_center.revoke_failed")
+            return self._redirect(back, "Could not revoke the session.", True)
+
+        await self._audit(
+            request,
+            AdminSecurityEventType.SESSION_REVOKED,
+            True,
+            revoked_session_id=_short_id(session_id),
+            acting_admin_id=str(getattr(user, "user_id", "")),
+            source="security_center",
+        )
+        logger.info(
+            "security_center.session_revoked",
+            session_id=_short_id(session_id),
+            acting_admin_id=str(getattr(user, "user_id", "")),
+        )
+        return self._redirect(back, "Session revoked.")
+
+    @get("/audit")
+    async def audit_page(self, request: Request) -> Response:
+        """Filterable audit-log browser."""
+        denied = self._guard(request)
+        if denied is not None:
+            return denied
+
+        q = request.query_params
+        window_key = q.get("window", "24h")
+        if window_key not in _WINDOWS:
+            window_key = "24h"
+        try:
+            limit = int(q.get("limit", "100"))
+        except ValueError:
+            limit = 100
+        if limit not in _LIMITS:
+            limit = 100
+        raw_type = q.get("event_type", "")
+        event_type: AdminSecurityEventType | None = None
+        if raw_type:
+            try:
+                event_type = AdminSecurityEventType(raw_type)
+            except ValueError:
+                event_type = None
+        user_filter = q.get("user_id", "").strip() or None
+
+        events: list[Any] = []
+        if self._audit_store is not None:
+            try:
+                events = await self._audit_store.query_recent(
+                    admin_user_id=user_filter,
+                    event_type=event_type,
+                    since_seconds=_WINDOWS[window_key][1],
+                    limit=limit,
+                )
+            except Exception:  # noqa: BLE001 — page must render regardless
+                logger.warning("security_center.audit_query_failed")
+
+        emails = await self._email_by_user_id()
+        type_options = '<option value="">All events</option>' + "".join(
+            f'<option value="{escape(t.value)}"'
+            + (" selected" if event_type is not None and t is event_type else "")
+            + f">{escape(t.value)}</option>"
+            for t in AdminSecurityEventType
+        )
+        window_options = "".join(
+            f'<option value="{escape(key)}"'
+            + (" selected" if key == window_key else "")
+            + f">{escape(label)}</option>"
+            for key, (label, _) in _WINDOWS.items()
+        )
+        limit_options = "".join(
+            f'<option value="{n}"' + (" selected" if n == limit else "") + f">{n}</option>"
+            for n in _LIMITS
+        )
+        select_cls = (
+            "rounded-lg border border-border bg-background px-3 py-2 text-sm"
+        )
+        filters = (
+            f'<form method="get" class="flex flex-wrap items-end gap-3 mb-4">'
+            f'<label class="text-sm text-muted-foreground">Event'
+            f'<select name="event_type" class="{select_cls} block mt-1">{type_options}</select></label>'
+            f'<label class="text-sm text-muted-foreground">Window'
+            f'<select name="window" class="{select_cls} block mt-1">{window_options}</select></label>'
+            f'<label class="text-sm text-muted-foreground">Limit'
+            f'<select name="limit" class="{select_cls} block mt-1">{limit_options}</select></label>'
+            f'<label class="text-sm text-muted-foreground">User id'
+            f'<input type="text" name="user_id" value="{escape(user_filter or "")}" '
+            f'placeholder="all users" class="{select_cls} block mt-1"></label>'
+            '<button type="submit" class="rounded-lg bg-primary text-primary-foreground '
+            'px-4 py-2 text-sm font-medium">Filter</button></form>'
+        )
+
+        rows = []
+        for e in events:
+            ok = getattr(e, "success", False) is True
+            badge = (
+                '<span class="text-xs font-medium text-green-600">ok</span>'
+                if ok
+                else '<span class="text-xs font-medium text-destructive">fail</span>'
+            )
+            uid = str(getattr(e, "admin_user_id", "") or "")
+            who = emails.get(uid) or (_short_id(uid) if uid else "—")
+            etype = getattr(e, "event_type", None)
+            rows.append(
+                "<tr>"
+                f'<td class="px-4 py-3 text-sm">{escape(_fmt_ts(getattr(e, "created_at", None)))}</td>'
+                f'<td class="px-4 py-3 text-sm font-medium">{escape(getattr(etype, "value", str(etype)))}</td>'
+                f'<td class="px-4 py-3 text-sm">{badge}</td>'
+                f'<td class="px-4 py-3 text-sm">{escape(who)}</td>'
+                f'<td class="px-4 py-3 text-sm">{escape(str(getattr(e, "ip_address", "") or "—"))}</td>'
+                "</tr>"
+            )
+
+        html = (
+            self._tabs(request, "audit")
+            + filters
+            + self._table(
+                ["Time", "Event", "Result", "Admin", "IP"],
+                rows,
+                "No audit events match the current filters.",
+            )
+        )
+        return await self._page(request, html, "Audit log — Security", "Audit log")
+
+    @get("/lockouts")
+    async def lockouts_page(self, request: Request) -> Response:
+        """Lockout lookup by email, with manual unlock."""
+        denied = self._guard(request)
+        if denied is not None:
+            return denied
+
+        email = request.query_params.get("email", "").strip()
+        result_html = ""
+        if email and self._lockout_store is not None:
+            info = None
+            try:
+                info = await self._lockout_store.get_active_lockout(email)
+            except Exception:  # noqa: BLE001 — page must render regardless
+                logger.warning("security_center.lockout_lookup_failed")
+            if info is None:
+                result_html = (
+                    '<div class="bg-card border border-border rounded-xl p-5 '
+                    'text-sm text-muted-foreground">No active lockout for '
+                    f"<strong>{escape(email)}</strong>.</div>"
+                )
+            else:
+                csrf = self._csrf_token(request)
+                clear_url = self._admin_path(
+                    request, "/admin/security/lockouts/clear"
+                )
+                kind = (
+                    "Permanent — manual unlock required"
+                    if getattr(info, "is_permanent", False) is True
+                    else f"Temporary — auto-unlocks at {_fmt_ts(getattr(info, 'unlock_at', None))}"
+                )
+                result_html = (
+                    '<div class="bg-card border border-destructive/30 rounded-xl p-5">'
+                    f'<p class="text-sm font-medium text-foreground">'
+                    f"{escape(email)} is locked out</p>"
+                    f'<p class="text-sm text-muted-foreground mt-1">{escape(kind)}</p>'
+                    f'<p class="text-sm text-muted-foreground">Consecutive failures: '
+                    f"{int(getattr(info, 'consecutive_failures', 0) or 0)} · Locked at: "
+                    f"{escape(_fmt_ts(getattr(info, 'locked_at', None)))}</p>"
+                    f'<form method="post" action="{escape(clear_url)}" class="mt-3">'
+                    f'<input type="hidden" name="csrf_token" value="{escape(csrf)}">'
+                    f'<input type="hidden" name="email" value="{escape(email)}">'
+                    '<button type="submit" class="rounded-lg bg-primary '
+                    'text-primary-foreground px-4 py-2 text-sm font-medium">'
+                    "Unlock account</button></form></div>"
+                )
+        elif email:
+            result_html = (
+                '<div class="bg-card border border-border rounded-xl p-5 '
+                'text-sm text-muted-foreground">Lockout store unavailable.</div>'
+            )
+
+        lookup_url = self._admin_path(request, "/admin/security/lockouts")
+        form = (
+            f'<form method="get" action="{escape(lookup_url)}" '
+            'class="flex items-end gap-3 mb-4">'
+            '<label class="text-sm text-muted-foreground">Account email'
+            f'<input type="email" name="email" value="{escape(email)}" required '
+            'placeholder="admin@example.com" class="rounded-lg border border-border '
+            'bg-background px-3 py-2 text-sm block mt-1 min-w-[18rem]"></label>'
+            '<button type="submit" class="rounded-lg bg-primary '
+            'text-primary-foreground px-4 py-2 text-sm font-medium">'
+            "Check</button></form>"
+        )
+        html = self._tabs(request, "lockouts") + form + result_html
+        return await self._page(request, html, "Lockouts — Security", "Lockouts")
+
+    @post("/lockouts/clear")
+    async def clear_lockout(self, request: Request) -> Response:
+        """Manually unlock an account (CSRF-protected, audited)."""
+        denied = self._guard(request)
+        if denied is not None:
+            return denied
+        back = self._admin_path(request, "/admin/security/lockouts")
+
+        # The CSRF middleware already consumed the body and cached the form.
+        form = request.scope.get("admin_form_data") or await request.form()
+        if not self._csrf_ok(request, str(form.get("csrf_token", ""))):
+            return self._redirect(back, "Invalid or expired form token.", True)
+        email = str(form.get("email", "")).strip()
+        if not email:
+            return self._redirect(back, "Missing account email.", True)
+        if self._lockout_store is None:
+            return self._redirect(back, "Lockout store unavailable.", True)
+
+        user = self.current_user(request)
+        try:
+            await self._lockout_store.clear_lockout(email)
+        except Exception:  # noqa: BLE001 — surface a friendly error, log the rest
+            logger.exception("security_center.unlock_failed")
+            return self._redirect(back, "Could not unlock the account.", True)
+
+        await self._audit(
+            request,
+            AdminSecurityEventType.ACCOUNT_UNLOCKED,
+            True,
+            email=email,
+            acting_admin_id=str(getattr(user, "user_id", "")),
+            source="security_center",
+        )
+        logger.info(
+            "security_center.account_unlocked",
+            email=email,
+            acting_admin_id=str(getattr(user, "user_id", "")),
+        )
+        return self._redirect(f"{back}?email={quote_plus(email)}", "Account unlocked.")
