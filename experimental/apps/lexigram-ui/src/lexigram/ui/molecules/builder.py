@@ -134,14 +134,14 @@ class Builder(Component):
                                     "button",
                                     el("i", class_="fas fa-chevron-up"),
                                     type="button",
-                                    x_on_click="moveBlock(item.id, 'up')",
+                                    **{"x-on:click": "moveBlock(item.id, 'up')"},
                                     class_="p-1 hover:bg-accent rounded",
                                 ),
                                 el(
                                     "button",
                                     el("i", class_="fas fa-chevron-down"),
                                     type="button",
-                                    x_on_click="moveBlock(item.id, 'down')",
+                                    **{"x-on:click": "moveBlock(item.id, 'down')"},
                                     class_="p-1 hover:bg-accent rounded",
                                 ),
                                 el(
@@ -151,7 +151,7 @@ class Builder(Component):
                                         class_="fas fa-trash text-destructive",
                                     ),
                                     type="button",
-                                    x_on_click="removeBlock(item.id)",
+                                    **{"x-on:click": "removeBlock(item.id)"},
                                     class_="p-1 hover:bg-accent rounded ml-2",
                                 ),
                                 class_="flex items-center gap-1",
@@ -184,7 +184,7 @@ class Builder(Component):
                             el("i", class_=f"fas fa-{b.icon or 'cube'} mr-2"),
                             b.label,
                             type="button",
-                            x_on_click=f"addBlock('{b.name}')",
+                            **{"x-on:click": f"addBlock('{b.name}')"},
                             class_="inline-flex items-center px-4 py-2 border border-dashed border-border rounded-md shadow-sm text-sm font-medium text-foreground bg-card hover:bg-accent",
                         )
                         for b in self.blocks

@@ -355,6 +355,8 @@ class TopBar(Component):
                         fill="none",
                         viewBox="0 0 24 24",
                         stroke="currentColor",
+                        aria_hidden="true",
+                        focusable="false",
                     ),
                     el(
                         "span",

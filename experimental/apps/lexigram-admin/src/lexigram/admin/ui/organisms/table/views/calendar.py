@@ -420,6 +420,7 @@ class CalendarView(AbstractDataView):
         if prefix and self.config.bulk_actions and rid:
             select_node = Checkbox(
                 name="ids",
+                id=f"calendar-select-{rid}",
                 value=rid,
                 x_model="selectedIds",
                 class_="flex-shrink-0 mt-0.5",

@@ -93,7 +93,7 @@ class Modal(Component):
             if isinstance(self.trigger, str):
                 trigger_node = Button(
                     self.trigger,
-                    x_on_click="open = true",
+                    **{"x-on:click": "open = true"},
                 )
             else:
                 trigger_node = el(
@@ -171,7 +171,7 @@ class Modal(Component):
                 cancel_btn = Button(
                     "Cancel",
                     variant=self.DEFAULT_CANCEL_VARIANT,
-                    x_on_click="open = false",
+                    **{"x-on:click": "open = false"},
                 )
                 save_btn = SubmitButton(
                     label=getattr(form_obj, "submit_label", "Save"),

@@ -196,6 +196,9 @@ def _render_single_row(
                 "td",
                 Checkbox(
                     name="ids",
+                    # Unique per-row id: every row sharing id="ids" produced
+                    # duplicate DOM ids across the table (invalid + confuses AT).
+                    id=f"row-select-{rid}",
                     value=rid,
                     x_model="selectedIds",
                     aria_label=f"Select row {rid}",

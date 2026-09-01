@@ -67,7 +67,7 @@ class Tabs(Component):
                         {"x_model": "activeTab"}
                         if self.client_side
                         else {
-                            "x_on_change": "window.location.href = $event.target.value",
+                            "x-on:change": "window.location.href = $event.target.value",
                         }
                     ),
                 ),

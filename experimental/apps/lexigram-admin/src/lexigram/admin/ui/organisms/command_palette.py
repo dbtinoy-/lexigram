@@ -96,6 +96,10 @@ class CommandPalette(Component):
                 "class": "fixed inset-0 z-50 overflow-y-auto p-4 sm:p-6 md:p-20",
                 "role": "dialog",
                 "aria-modal": "true",
+                "aria-label": "Command palette",
+                # Trap focus inside the palette while open (Alpine Focus
+                # plugin — vendored as alpine-focus.min.js in the shell).
+                "x-trap.noscroll": "open",
                 "x-cloak": True,
             },
             # Backdrop
@@ -136,13 +140,25 @@ class CommandPalette(Component):
                     ),
                     el(
                         "input",
-                        type="text",
-                        class_="h-12 w-full border-0 bg-transparent pl-11 pr-4 text-foreground placeholder:text-muted-foreground focus:ring-0 sm:text-sm",
-                        placeholder="Search commands or navigation...",
-                        x_model="search",
-                        x_on_keydown_down="next()",
-                        x_on_keydown_up="prev()",
-                        x_on_keydown_enter="execute()",
+                        {
+                            "type": "text",
+                            "class": "h-12 w-full border-0 bg-transparent pl-11 pr-4 text-foreground placeholder:text-muted-foreground focus:ring-0 sm:text-sm",
+                            "placeholder": "Search commands or navigation...",
+                            # Combobox pattern: the input drives the listbox
+                            # below and exposes the active option to AT.
+                            "role": "combobox",
+                            "aria-expanded": "true",
+                            "aria-controls": "command-palette-options",
+                            "aria-autocomplete": "list",
+                            "aria-label": "Search commands and navigation",
+                            ":aria-activedescendant": "'command-palette-option-' + selectedIndex",
+                            "x-model": "search",
+                            # B13: kwarg underscores render dead `x-on-*`
+                            # attributes — Alpine needs the canonical form.
+                            "x-on:keydown.down.prevent": "next()",
+                            "x-on:keydown.up.prevent": "prev()",
+                            "x-on:keydown.enter.prevent": "execute()",
+                        },
                     ),
                     class_="relative",
                 ),
@@ -151,8 +167,9 @@ class CommandPalette(Component):
                     "ul",
                     {
                         "class": "max-h-96 scroll-py-3 overflow-y-auto p-3",
-                        "id": "options",
+                        "id": "command-palette-options",
                         "role": "listbox",
+                        "aria-label": "Commands",
                     },
                     el(
                         "template",
@@ -165,11 +182,14 @@ class CommandPalette(Component):
                             {
                                 "class": "group flex cursor-default select-none items-center rounded-xl p-3",
                                 ":class": "selectedIndex === index ? 'bg-primary-600 text-white' : 'text-foreground hover:bg-muted dark:hover:bg-card'",
-                                "id": "option-1",
+                                ":id": "'command-palette-option-' + index",
+                                ":aria-selected": "selectedIndex === index ? 'true' : 'false'",
                                 "role": "option",
                                 "tabindex": "-1",
-                                "x_on_click": "execute(index)",
-                                "x_on_mouseenter": "selectedIndex = index",
+                                # B13: `x_on_*` rendered dead `x-on-*` attrs —
+                                # option click/hover never worked before.
+                                "x-on:click": "execute(index)",
+                                "x-on:mouseenter": "selectedIndex = index",
                             },
                             # Icon
                             el(

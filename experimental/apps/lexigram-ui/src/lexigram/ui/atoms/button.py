@@ -171,8 +171,12 @@ class SubmitButton(Component):
             class_=cls,
             disabled=self.disabled,
             x_data="{ loading: false }",
-            x_on_click="loading = true",
-            x_on_htmx_after_request="loading = false",
+            **{
+                # B13: kwarg underscores render as dead `x-on-*` attributes;
+                # Alpine only binds the canonical `x-on:` form.
+                "x-on:click": "loading = true",
+                "x-on:htmx:after-request": "loading = false",
+            },
             # Footer buttons bind to a sibling form via the ``form``
             # attribute, so the request lifecycle events never bubble
             # through the button — listen at window scope instead.

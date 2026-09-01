@@ -20,6 +20,7 @@ deployment, the fixes shipped on this date, and the forward-looking roadmap.
 | [10-security-headers.md](10-security-headers.md) | Security headers wired: the orphaned `SecurityHeadersMiddleware` now outermost in the admin stack, plus fixes for duplicate-header collapse and a runtime `frame_options` override. |
 | [11-startup-cost.md](11-startup-cost.md) | Startup cost audit (R15): schema-fingerprint marker skips warm-boot DDL, plus the B12 discovery — lexigram-sql `DatabaseService.execute` never committed DML on SQLite (fixed at the source). |
 | [12-session-user-cache.md](12-session-user-cache.md) | Request-scoped session→user cache (R16): short-TTL in-process cache removes the per-request 2-query auth pair; revocation-invalidated. |
+| [13-a11y-and-dead-handlers.md](13-a11y-and-dead-handlers.md) | Accessibility pass (R17) + B13: Alpine `x_on_*` kwargs rendered dead `x-on-*` attributes across lexigram-ui/admin (command palette nav, slide-over close, toggles, modals all silently dead); combobox pattern, unique ids, live regions, decorative-icon defaults. |
 
 ## Status at time of writing
 

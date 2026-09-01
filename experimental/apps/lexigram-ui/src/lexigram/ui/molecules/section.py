@@ -90,7 +90,7 @@ class Section(Component):
                 type="button",
                 class_="ml-2 text-muted-foreground hover:text-foreground",
                 aria_expanded=str(not self.collapsed).lower(),
-                x_on_click="collapsed = !collapsed",
+                **{"x-on:click": "collapsed = !collapsed"},
                 x_text="collapsed ? '▶' : '▼'",
             )
 

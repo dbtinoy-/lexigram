@@ -33,5 +33,6 @@ def test_submit_button_renders_loading_and_disabled():
     assert "disabled" in html
     # Alpine attributes should be present
     assert 'x-data="{ loading: false }"' in html
-    assert 'x-on-click="loading = true"' in html
-    assert 'x-on-htmx-after-request="loading = false"' in html
+    # B13: canonical Alpine syntax — `x-on-click` was a dead attribute.
+    assert 'x-on:click="loading = true"' in html
+    assert 'x-on:htmx:after-request="loading = false"' in html

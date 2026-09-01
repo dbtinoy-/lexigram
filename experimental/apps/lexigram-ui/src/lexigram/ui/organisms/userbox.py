@@ -77,6 +77,8 @@ class UserBox(Component):
                 viewBox="0 0 24 24",
                 stroke="currentColor",
                 x_show="!sidebarMini",
+                aria_hidden="true",
+                focusable="false",
             ),
             class_="flex items-center space-x-3 p-2 hover:bg-card transition-colors cursor-pointer w-full border border-transparent hover:border-border",
             **{"x-bind:class": "sidebarMini ? 'justify-center' : ''"},

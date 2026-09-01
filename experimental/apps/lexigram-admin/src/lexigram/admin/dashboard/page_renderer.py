@@ -34,6 +34,10 @@ def _render_pagination(pagination: PaginationContent) -> str:
             el(
                 "p",
                 {
+                    # Announce result-count changes after HTMX swaps
+                    # (filter/sort/pagination) to screen readers.
+                    "role": "status",
+                    "aria-live": "polite",
                     "class": (
                         "text-xs uppercase tracking-wider "
                         "text-muted-foreground font-semibold"

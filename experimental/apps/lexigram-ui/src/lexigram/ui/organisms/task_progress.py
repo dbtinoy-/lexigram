@@ -289,6 +289,6 @@ class TaskProgress(Component):
             ),
             x_data=alpine_data,
             x_init="init()",
-            x_on_before_unload_window="destroy()",
+            **{"x-on:beforeunload.window": "destroy()"},
             class_="fixed inset-0 bg-muted/75 dark:bg-background/75 backdrop-blur-sm z-50",
         )

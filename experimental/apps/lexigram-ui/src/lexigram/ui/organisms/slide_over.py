@@ -151,7 +151,7 @@ class SlideOver(Component):
                 cancel_btn = Button(
                     "Cancel",
                     variant="outline",
-                    x_on_click="open = false",
+                    **{"x-on:click": "open = false"},
                 )
                 save_btn = SubmitButton(
                     label=save_label,
