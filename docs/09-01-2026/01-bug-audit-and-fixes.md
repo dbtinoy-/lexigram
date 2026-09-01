@@ -237,6 +237,39 @@ none on subsequent requests.
 
 ---
 
+## B12 (critical, lexigram-sql, found during R15 verification) — `DatabaseService.execute` never committed DML on SQLite
+
+**Symptom.** During R15's live verification, boot #1's schema-marker
+`INSERT` logged `Query SUCCESS`, yet after a clean shutdown a fresh
+connection saw no row. Reproduced with a standalone probe: any
+`service.execute("INSERT/UPDATE/DELETE ...")` on the sqlite driver reported
+success with `rowcount=0` and its effects vanished at connection close.
+
+**Root cause.** `DatabaseService.execute`
+(`packages/lexigram-sql/src/lexigram/sql/providers/_query_mixin.py`) routed
+*all* SQL through the read path (`execute_query` → sqlite `fetchall`, no
+commit). Under python-sqlite3's legacy isolation, DML opened an implicit
+transaction that was silently rolled back on close; DDL (autocommit) always
+persisted, which masked the bug. Historically data survived only because a
+later query-builder write (e.g. the session `INSERT` at login) committed the
+connection and flushed pending rows with it. Every admin store writing via
+`db.execute` — audit log, login attempts, lockouts, settings — was exposed.
+Postgres (asyncpg autocommit) was unaffected.
+
+**Fix (in lexigram-sql, at the source).** `execute` now classifies the
+statement: reads (`SELECT/PRAGMA/EXPLAIN/WITH/SHOW` prefix or `RETURNING`)
+keep the read path; writes go through a new `_execute_write` →
+`db_provider.execute` → `execute_modify`, which commits (and still respects
+explicit `transaction()` blocks). Rowcounts are now real. Full design and
+verification in [11-startup-cost.md](11-startup-cost.md) §6.
+
+**Tests.** `packages/lexigram-sql/tests/unit/test_execute_commit_regression.py`
+(8 tests: persistence across shutdown for INSERT/UPSERT/UPDATE/DELETE, real
+rowcount, read-path preservation, failed-write semantics, explicit-transaction
+rollback).
+
+---
+
 ## Known issues deliberately deferred (tracked in doc 02)
 
 | Item | Reason deferred |

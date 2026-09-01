@@ -150,9 +150,14 @@ class TestAlembicManager:
             yield Path(tmpdir)
 
     @pytest.fixture
-    def connection_string(self):
-        """SQLite connection string for testing"""
-        return "sqlite+aiosqlite:///test.db"
+    def connection_string(self, tmp_path):
+        """SQLite connection string for testing.
+
+        Uses an absolute tmp_path-backed file: a bare ``test.db`` resolves
+        against the process CWD and leaks a stray file at the package root
+        (tripping test_package_structure_p0) once anything commits to it.
+        """
+        return f"sqlite+aiosqlite:///{tmp_path / 'migrations_test.db'}"
 
     @pytest.mark.asyncio
     async def test_manager_initialization(self, connection_string, temp_dir):
@@ -235,7 +240,7 @@ class TestMigrationUtilities:
         """Test init_migrations utility function"""
         from lexigram.sql.migrations import init_migrations
 
-        connection_string = "sqlite:///test.db"
+        connection_string = f"sqlite:///{tmp_path}.db"  # sibling of tmp_path: the migrations dir must stay empty for alembic init
         manager = await init_migrations(connection_string, tmp_path)
 
         assert isinstance(manager, AlembicManager)
@@ -246,7 +251,7 @@ class TestMigrationUtilities:
         """Test create_migration utility function"""
         from lexigram.sql.migrations import create_migration
 
-        connection_string = "sqlite+aiosqlite:///test.db"
+        connection_string = f"sqlite+aiosqlite:///{tmp_path}.db"  # sibling of tmp_path: the migrations dir must stay empty for alembic init
         # Initialize migrations first
         manager = AlembicManager(connection_string, tmp_path)
         await manager.initialize()

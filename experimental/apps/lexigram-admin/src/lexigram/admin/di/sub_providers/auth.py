@@ -92,6 +92,32 @@ class AdminAuthSubProvider:
         )
         from lexigram.admin.rbac.protocols import AdminRoleStoreProtocol
 
+        # ── Schema-version marker (R15) ────────────────────────────────────
+        # When the stored fingerprint matches this build, the ensure pass
+        # below is skipped (16 DDL statements → 1 SELECT) and each store is
+        # marked ready. Every marker failure falls back to the full ensure
+        # pass — the marker can never make boot worse.
+        marker = None
+        schema_current = False
+        try:
+            from lexigram.admin.auth.store.schema_marker import (
+                ADMIN_AUTH_SCHEMA_FINGERPRINT,
+                AUTH_STORES_COMPONENT,
+                AdminSchemaMarker,
+            )
+            from lexigram.contracts.data import DatabaseProviderProtocol
+
+            _db = await container.resolve(
+                DatabaseProviderProtocol, bypass_visibility=True
+            )
+            marker = AdminSchemaMarker(_db)
+            schema_current = await marker.is_current(
+                AUTH_STORES_COMPONENT, ADMIN_AUTH_SCHEMA_FINGERPRINT
+            )
+        except Exception:  # noqa: BLE001 — marker is best-effort; fall back to ensures
+            logger.debug("admin_auth.schema_marker_unavailable")
+
+        all_schemas_ok = True
         for _store_protocol in (
             AdminLoginAttemptStoreProtocol,
             AdminAccountLockoutStoreProtocol,
@@ -106,13 +132,42 @@ class AdminAuthSubProvider:
                 _store = await container.resolve(
                     _store_protocol, bypass_visibility=True
                 )
+                if schema_current:
+                    # Skip the probe entirely; stores keep their lazy
+                    # per-call ensure as a fallback when the attribute is
+                    # missing (custom store implementations).
+                    if hasattr(_store, "_initialized"):
+                        _store._initialized = True
+                    continue
                 await _store.ensure_schema()  # type: ignore[attr-defined]
             except Exception as e:
+                all_schemas_ok = False
                 logger.exception(f"admin_auth.schema_init_failed: {e}")  # noqa: BLE001
                 logger.warning(
                     "admin_auth.schema_init_failed",
                     protocol=str(_store_protocol),
                 )
+
+        if schema_current:
+            logger.info(
+                "admin_auth.schema_current",
+                component="admin.auth_stores",
+                note=(
+                    "ensure pass skipped; if the schema was mutated by hand, "
+                    "delete the admin_schema_markers row and restart"
+                ),
+            )
+        elif all_schemas_ok and marker is not None:
+            try:
+                await marker.mark_current(
+                    AUTH_STORES_COMPONENT, ADMIN_AUTH_SCHEMA_FINGERPRINT
+                )
+                logger.info(
+                    "admin_auth.schema_marker_written",
+                    component="admin.auth_stores",
+                )
+            except Exception:  # noqa: BLE001 — marker write is best-effort
+                logger.debug("admin_auth.schema_marker_write_failed")
 
         # ── Wire cache into AdminLoginAttemptService (optional) ───────────
         try:

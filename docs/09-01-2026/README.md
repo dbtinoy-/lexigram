@@ -18,11 +18,12 @@ deployment, the fixes shipped on this date, and the forward-looking roadmap.
 | [08-saved-views.md](08-saved-views.md) | Saved views & filter presets (R13): per-user named list views over the settings service — design, sanitization rules, and verification. |
 | [09-bulk-ux.md](09-bulk-ux.md) | Bulk-action UX hardening (R14): per-row outcome reporting, honest toast severities, failure isolation — design and verification. |
 | [10-security-headers.md](10-security-headers.md) | Security headers wired: the orphaned `SecurityHeadersMiddleware` now outermost in the admin stack, plus fixes for duplicate-header collapse and a runtime `frame_options` override. |
+| [11-startup-cost.md](11-startup-cost.md) | Startup cost audit (R15): schema-fingerprint marker skips warm-boot DDL, plus the B12 discovery — lexigram-sql `DatabaseService.execute` never committed DML on SQLite (fixed at the source). |
 
 ## Status at time of writing
 
-- Unit suite: **5317 passed, 8 skipped** (baseline before this work: 5027 / 8);
-  webhook package suite: 336 passed; lexigram-sql suite: 1395 passed / 48 skipped.
+- Unit suite: **5335 passed, 8 skipped** (baseline before this work: 5027 / 8);
+  webhook package suite: 336 passed; lexigram-sql suite: 1403 passed / 48 skipped.
 - New first-run scenario e2e (`tests/e2e/test_first_run_scenario_e2e.py`)
   walks setup → login → dashboard → list → create → edit → logout against
   **real SQL stores** via `create_app()` — the single test that guards every
@@ -60,6 +61,12 @@ deployment, the fixes shipped on this date, and the forward-looking roadmap.
   `SecurityHeadersMiddleware`, with runtime overrides on the Security
   Headers settings page and two latent middleware defects fixed
   (duplicate `Set-Cookie` collapse, case-sensitive merge).
+  **R15 Startup cost audit shipped** (doc 11) — schema-fingerprint marker
+  skips the eight sequential auth-store ensures on warm boots (~18 DDL
+  statements → 3), with a staleness-guard test that auto-invalidates the
+  marker on any DDL change; its verification uncovered and fixed **B12**,
+  a lexigram-sql data-loss bug (`DatabaseService.execute` never committed
+  DML on SQLite — see doc 01).
 
 ## Guiding principles (applies to all follow-up work)
 

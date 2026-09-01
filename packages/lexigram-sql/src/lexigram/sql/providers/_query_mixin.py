@@ -239,22 +239,36 @@ class _QueryMixin:
             )
 
     async def execute(self, sql: str, params: Any = None) -> QueryResult:
-        """Execute a raw SQL query and return a structured QueryResult.
+        """Execute a raw SQL statement and return a structured QueryResult.
 
-        Delegates to :meth:`execute_query` which normalises the raw driver
-        response.  Exceptions from the driver are caught and returned as a
-        failed QueryResult so callers can inspect ``result.success`` instead
-        of handling exceptions.
+        Reads (``SELECT``/``PRAGMA``/``EXPLAIN``/``WITH``/anything with
+        ``RETURNING``) delegate to :meth:`execute_query`. Writes are routed
+        through the driver's dispatching ``execute`` so DML is **committed**
+        — previously every statement went through the read path, which on
+        SQLite left INSERT/UPDATE/DELETE in an open implicit transaction
+        that was silently rolled back when the connection closed unless a
+        later statement happened to commit it.
+
+        Exceptions from the driver are caught and returned as a failed
+        QueryResult so callers can inspect ``result.success`` instead of
+        handling exceptions.
 
         Args:
-            sql: The SQL query string.
+            sql: The SQL statement string.
             params: Optional query parameters.
 
         Returns:
             QueryResult with rows, row_count, execution_time and success flag.
         """
+        sql_upper = sql.strip().upper() if isinstance(sql, str) else ""
+        is_read = (
+            sql_upper.startswith(("SELECT", "PRAGMA", "EXPLAIN", "WITH", "SHOW"))
+            or "RETURNING" in sql_upper
+        )
         try:
-            return await self.execute_query(sql, params)
+            if is_read:
+                return await self.execute_query(sql, params)
+            return await self._execute_write(sql, params)
         except (
             DatabaseError,
             QueryError,
@@ -268,3 +282,42 @@ class _QueryMixin:
                 success=False,
                 error_message=str(exc),
             )
+
+    async def _execute_write(self, sql: str, params: Any = None) -> QueryResult:
+        """Execute a mutating statement via the driver's committing path.
+
+        Mirrors :meth:`execute_query`'s resilience/metrics handling but
+        delegates to ``db_provider.execute``, whose CRUD dispatcher commits
+        DML (and creates/commits DDL) instead of treating it as a SELECT.
+
+        Args:
+            sql: The SQL statement string.
+            params: Optional query parameters.
+
+        Returns:
+            QueryResult normalised from the driver response.
+        """
+        if not self.db_provider:  # type: ignore[attr-defined]
+            await self.boot()  # type: ignore[attr-defined]
+        start_counter = time.perf_counter()
+        pipeline = self._ensure_resilience_pipeline()  # type: ignore[attr-defined]
+
+        if pipeline:
+            res = await pipeline.execute(
+                lambda: self.db_provider.execute(sql, params),  # type: ignore[attr-defined]
+            )
+        else:
+            res = await self.db_provider.execute(sql, params)  # type: ignore[attr-defined]
+
+        duration = (time.perf_counter() - start_counter) * 1000
+        metrics = getattr(self, "metrics", None)
+        if metrics:
+            histogram = getattr(metrics, "histogram", None)
+            counter = getattr(metrics, "counter", None)
+            if callable(histogram) and callable(counter):
+                try:
+                    await metrics.histogram("db.query.latency", duration)
+                    await metrics.counter("db.query.count", 1)
+                except Exception as e:  # noqa: BLE001 — metrics must never break queries
+                    logger.debug("metrics_recording_failed", error=str(e))
+        return self._to_query_result(res, duration)

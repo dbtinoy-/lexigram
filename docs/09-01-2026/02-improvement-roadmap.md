@@ -140,10 +140,12 @@ The first 15 minutes decide whether a team adopts an admin framework.
 
 ## Phase 4 — Scale & polish
 
-- **R15. Startup cost audit.** Boot currently runs many sequential DDL
-  probes (`CREATE TABLE IF NOT EXISTS` per store). Add a schema-version
-  marker to skip probing when current; target sub-second warm boot on
-  Postgres.
+- **R15. Startup cost audit.** ✅ Done — schema-fingerprint marker
+  (`admin_schema_markers`) skips the eight sequential store ensures on warm
+  boots (~18 DDL statements → 3); staleness-guard test auto-invalidates the
+  marker whenever store DDL changes. Verification also uncovered and fixed
+  **B12** (lexigram-sql `DatabaseService.execute` never committed DML on
+  SQLite). Full plan in [11-startup-cost.md](11-startup-cost.md).
 - **R16. Request-scoped caching.** P1 removed the per-request COUNT; apply
   the same discipline to session→user loading (currently 2 queries per
   request) with a short-TTL in-process cache, invalidated on logout/revoke.
