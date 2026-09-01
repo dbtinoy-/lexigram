@@ -126,6 +126,9 @@ class HTMXAttrsBuilder:
             "hx-target": Zones.DATA.selector,
             "hx-swap": Zones.DATA.swap_mode.value,
             "hx-select": Zones.DATA.selector,  # Extract only DATA from response
+            # hx-select discards anything outside the selected subtree, which
+            # would drop the toolbar/tab OOB fragments the server sends.
+            "hx-select-oob": Zones.data_refresh_oob_select(),
             "hx-params": "none",
             "hx-push-url": "true" if push else "false",
         }
@@ -422,6 +425,7 @@ class HTMXAttrs:
             "hx-target": Zones.DATA.selector,
             "hx-swap": Zones.DATA.swap_mode.value,
             "hx-select": Zones.DATA.selector,
+            "hx-select-oob": Zones.data_refresh_oob_select(),
             "hx-include": (
                 f"{Zones.DATA.selector} [data-state='true'], {search_selector}"
             ),

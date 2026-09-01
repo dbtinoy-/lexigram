@@ -159,6 +159,7 @@ class FilterDrawer(Component):
             "hx-target": Zones.DATA.selector,
             "hx-swap": Zones.DATA.swap_mode.value,
             "hx-select": Zones.DATA.selector,
+            "hx-select-oob": Zones.data_refresh_oob_select(),
             "hx-push-url": "true",
             "hx-include": f"{Zones.DATA.selector} [data-state='true'], [data-filter-field]",
             # Close the drawer and persist current filter values to localStorage
@@ -238,6 +239,7 @@ class FilterDrawer(Component):
                         "hx-target": Zones.DATA.selector,
                         "hx-swap": Zones.DATA.swap_mode.value,
                         "hx-select": Zones.DATA.selector,
+                        "hx-select-oob": Zones.data_refresh_oob_select(),
                         "hx-push-url": "true",
                         "@click": "filterDrawerOpen = false",
                     },

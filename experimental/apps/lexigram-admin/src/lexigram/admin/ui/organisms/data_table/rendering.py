@@ -402,7 +402,9 @@ class DataTableRenderer:
             table_content,
             id=Zones.TABLE.id + "-inner",
             hx_trigger="refreshTable from:body",
-            hx_disinherit="hx-select",
+            # hx-select-oob travels with hx-select; children that inherit one
+            # without the other would swap OOB fragments they never asked for.
+            hx_disinherit="hx-select hx-select-oob",
             **htmx_attrs,
         )
 

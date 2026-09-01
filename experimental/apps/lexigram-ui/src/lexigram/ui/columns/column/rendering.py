@@ -217,6 +217,7 @@ class ColumnRenderingMixin:
                     "hx-target": Zones.DATA.selector,
                     "hx-swap": Zones.DATA.swap_mode.value,
                     "hx-select": Zones.DATA.selector,
+                    "hx-select-oob": Zones.data_refresh_oob_select(),
                     "hx-params": "none",
                     "hx-push-url": "true",
                 }

@@ -166,6 +166,7 @@ class TablePagination(Component):
                 "hx_target": Zones.DATA.selector,
                 "hx_swap": "outerHTML",
                 "hx_select": Zones.DATA.selector,
+                "hx_select_oob": Zones.data_refresh_oob_select(),
                 "hx_push_url": "true",
             }
 
@@ -188,6 +189,7 @@ class TablePagination(Component):
                 "hx_get": base_url,
                 "hx_target": Zones.DATA.selector,
                 "hx_select": Zones.DATA.selector,
+                "hx_select_oob": Zones.data_refresh_oob_select(),
                 "hx_swap": "outerHTML",
                 "hx_trigger": "change",
                 "hx_vals": dumps_str(params),

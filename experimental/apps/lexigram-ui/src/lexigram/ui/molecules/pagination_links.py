@@ -85,6 +85,7 @@ class PaginationLinks(Component):
                 "hx-target": self.hx_target,
                 "hx-swap": self.hx_swap,
                 "hx-select": Zones.DATA.selector,
+                "hx-select-oob": Zones.data_refresh_oob_select(),
                 "hx-push-url": str(self.hx_push_url).lower(),
                 "hx-params": "none",
             }
@@ -105,6 +106,7 @@ class PaginationLinks(Component):
                 "hx_target",
                 "hx_swap",
                 "hx_select",
+                "hx_select_oob",
                 "hx_push_url",
                 "hx_params",
                 "preload",

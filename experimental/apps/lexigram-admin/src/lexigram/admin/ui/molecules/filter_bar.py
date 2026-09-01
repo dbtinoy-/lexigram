@@ -107,6 +107,7 @@ class FilterBar(Component):
                                     "hx-target": Zones.DATA.selector,
                                     "hx-swap": Zones.DATA.swap_mode.value,
                                     "hx-select": Zones.DATA.selector,
+                                    "hx-select-oob": Zones.data_refresh_oob_select(),
                                     "hx-push-url": "true",
                                     "hx-include": (
                                         f"{Zones.DATA.selector} [data-state='true'], "
