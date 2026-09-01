@@ -124,7 +124,7 @@ def emit_email_module(config: EmailTemplateConfig) -> str:
         lines.append(f"        {name}: str = {defaults[name]!r},")
     lines += [
         "    ) -> None:",
-        "        \"\"\"Store the recipient and merge variables.\"\"\"",
+        '        """Store the recipient and merge variables."""',
         "        self.to = to",
     ]
     for name in var_names:
@@ -194,8 +194,10 @@ def emit_mailer_helper() -> str:
         "",
         '"""Delivery backend for this app\'s email templates.',
         "",
-        "``build_mailer()`` returns the framework's zero-config"
-        " ``ConsoleMailer``",
+        (
+            "``build_mailer()`` returns the framework's zero-config"
+            " ``ConsoleMailer``"
+        ),
         "(every message is logged, never sent) unless ``LEX_EMAIL_HOST`` is",
         "set, in which case an ``SMTPMailer`` is configured from the",
         "``LEX_EMAIL_*`` environment variables.",

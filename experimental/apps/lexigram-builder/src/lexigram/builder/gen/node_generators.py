@@ -25,8 +25,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from lexigram.contracts.cli.generators import pascal_case
-
 from lexigram.builder.gen.emitters.audit_postprocess import (
     ControllerAuditHooks,
     apply_audit,
@@ -69,6 +67,7 @@ from lexigram.builder.graph.models import (
     EventHandlerConfig,
     ProjectionConfig,
 )
+from lexigram.contracts.cli.generators import pascal_case
 
 
 @dataclass(frozen=True, slots=True)

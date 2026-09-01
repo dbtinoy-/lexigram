@@ -260,14 +260,14 @@ def resolve_output_dir(
             target = f"src/{app_package}"
             return f"{target}/{suffix}" if suffix else target
         # modular
-        component = _COMPONENTS_BY_PATH.get(suffix)
-        if component is not None and not component.shared and module is None:
+        matched_component: ComponentDir | None = _COMPONENTS_BY_PATH.get(suffix)
+        if matched_component is not None and not matched_component.shared and module is None:
             raise ValueError(
                 f"'{suffix}' is module-local in the modular structure; "
                 "re-run with --module <feature> (or pick src/<app>/shared "
                 "for cross-cutting generators)."
             )
-        if component is not None and component.shared:
+        if matched_component is not None and matched_component.shared:
             return f"src/{app_package}/shared/{suffix}"
         if module is None:
             return f"src/{app_package}/shared/{suffix}"

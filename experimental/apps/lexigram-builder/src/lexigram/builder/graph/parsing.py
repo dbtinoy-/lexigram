@@ -3,25 +3,25 @@
 from __future__ import annotations
 
 from dataclasses import asdict
-import json
 import re
 from typing import Any
-
-from lexigram.result import Err, Ok, Result
 
 from lexigram.builder.exceptions import GraphValidationError
 from lexigram.builder.graph.models import (
     APP_FEATURE_KEYS,
+    ApiClientConfig,
     ApiKeyGroupConfig,
     ApiKeyPermission,
     AppSettingsConfig,
     AuditLogConfig,
     AuthConfig,
+    AuthPolicyConfig,
     CacheConfig,
     ChannelConfig,
     ContractConfig,
     CqrsMessageConfig,
     CronConfig,
+    DataLoaderConfig,
     EmailTemplateConfig,
     EmailVariable,
     EntityConfig,
@@ -37,28 +37,28 @@ from lexigram.builder.graph.models import (
     GraphNode,
     GraphQLConfig,
     HealthConfig,
+    InterceptorConfig,
     JobConfig,
     MetricConfig,
-    SagaConfig,
-    InterceptorConfig,
-    DataLoaderConfig,
-    AuthPolicyConfig,
-    ApiClientConfig,
-    StorageDriverConfig,
     MiddlewareConfig,
     Position,
     ProjectionConfig,
     RateLimitConfig,
     RoleConfig,
     RouteConfig,
+    SagaConfig,
     SearchIndexConfig,
     SeederConfig,
     ServiceConfig,
+    StorageDriverConfig,
     ThumbnailSize,
     ValidatorConfig,
     WebhookConfig,
 )
 from lexigram.builder.graph.palette import KNOWN_KINDS, normalize_structure
+from lexigram.result import Err, Ok, Result
+from lexigram.serialization import dumps_str, loads_str
+from lexigram.serialization.backends.json import JSONDecodeError
 
 _TTL_UNIT_SECONDS = {"s": 1, "m": 60, "h": 3600, "d": 86400}
 
@@ -96,12 +96,12 @@ def _seed_rows(raw_cfg: dict[str, Any]) -> tuple[str, ...]:
     for item in raw:
         if isinstance(item, str):
             try:
-                json.loads(item)
-            except json.JSONDecodeError:
+                loads_str(item)
+            except JSONDecodeError:
                 continue
             out.append(item)
         elif isinstance(item, dict):
-            out.append(json.dumps(item, default=str, sort_keys=True))
+            out.append(dumps_str(item, sort_keys=True))
     return tuple(out)
 
 
@@ -160,7 +160,7 @@ def document_to_dict(document: GraphDocument) -> dict[str, Any]:
             cfg = asdict(node.config)
             cfg["fields"] = [asdict(f) for f in node.config.fields]
             cfg["seedData"] = [
-                json.loads(row) for row in node.config.seed_data
+                loads_str(row) for row in node.config.seed_data
             ]
             cfg.pop("seed_data", None)
             entry["config"] = cfg
@@ -862,7 +862,7 @@ def parse_document(data: dict[str, Any]) -> Result[GraphDocument, GraphValidatio
                 if isinstance(boost_raw, dict):
                     for key, value in boost_raw.items():
                         try:
-                            boost[str(key)] = float(value)  # type: ignore[arg-type]
+                            boost[str(key)] = float(value)
                         except (TypeError, ValueError):
                             continue
                 engine = str(raw_cfg.get("engine", "fts"))

@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from lexigram.contracts.exceptions.domain import DomainError
-
 from lexigram.builder.types import Diagnostic
+from lexigram.contracts.exceptions.domain import DomainError
 
 
 class BuilderError(DomainError):

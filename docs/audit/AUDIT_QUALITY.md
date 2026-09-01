@@ -7,24 +7,24 @@
 ## Summary
 
 - Tool checks run: 2
-- Passing tools: 1
-- Failing tools: 1
-- Packages counted: 54
-- Total mypy errors: 11
-- Packages with errors: 4
+- Passing tools: 2
+- Failing tools: 0
+- Packages counted: 55
+- Total mypy errors: 0
+- Packages with errors: 0
 
 ## Tool Results
 
 | Tool | Status | Exit Code | Duration | Command |
 |------|--------|-----------|----------|---------|
-| `Ruff` | **PASS** | 0 | 232 ms | `uv run ruff check .` |
-| `Mypy` | **FAIL** | 1 | 78689 ms | `uv run mypy src/ (per-package across 54 packages)` |
+| `Ruff` | **PASS** | 0 | 236 ms | `uv run ruff check .` |
+| `Mypy` | **PASS** | 0 | 57116 ms | `uv run mypy src/ (per-package across 55 packages)` |
 
 ### Ruff
 
 - Status: **PASS**
 - Exit code: `0`
-- Duration: `232 ms`
+- Duration: `236 ms`
 - Command: `uv run ruff check .`
 - Output snippet:
 
@@ -34,47 +34,22 @@ All checks passed!
 
 ### Mypy
 
-- Status: **FAIL**
-- Exit code: `1`
-- Duration: `78689 ms`
-- Command: `uv run mypy src/ (per-package across 54 packages)`
+- Status: **PASS**
+- Exit code: `0`
+- Duration: `57116 ms`
+- Command: `uv run mypy src/ (per-package across 55 packages)`
 - Output snippet:
 
 ```text
-[lexigram] 1 errors
-[lexigram-admin] 2 errors
-[lexigram-cli] 6 errors
-[lexigram-tasks] 2 errors
+All per-package mypy checks passed.
 ```
-
-### Mypy Error Breakdown
-
-#### By Error Code
-
-| Code | Count | Description |
-|------|-------|-------------|
-| `unused-ignore` | 2 | Unused type: ignore comment |
-| `assignment` | 2 | Type checking error |
-| `str-unpack` | 2 | Type checking error |
-| `arg-type` | 2 | Argument type mismatch |
-| `attr-defined` | 2 | Attribute not defined on type |
-| `truthy-function` | 1 | Type checking error |
-
-#### By Package (Top 10)
-
-| Package | Errors |
-|---------|--------|
-| `lexigram-cli` | 6 |
-| `lexigram-admin` | 2 |
-| `lexigram-tasks` | 2 |
-| `lexigram` | 1 |
 
 ## Package Metrics
 
 | Package | Source Files | Test Files |
 |---------|--------------|------------|
 | `lexigram` | 311 | 282 |
-| `lexigram-admin` | 568 | 478 |
+| `lexigram-admin` | 575 | 531 |
 | `lexigram-ai` | 24 | 101 |
 | `lexigram-ai-agents` | 59 | 44 |
 | `lexigram-ai-evaluation` | 22 | 24 |
@@ -94,6 +69,7 @@ All checks passed!
 | `lexigram-ai-workers` | 34 | 34 |
 | `lexigram-audit` | 46 | 38 |
 | `lexigram-auth` | 136 | 91 |
+| `lexigram-builder` | 51 | 1 |
 | `lexigram-cache` | 93 | 73 |
 | `lexigram-cli` | 97 | 80 |
 | `lexigram-contracts` | 346 | 168 |
@@ -117,14 +93,14 @@ All checks passed!
 | `lexigram-resilience` | 55 | 38 |
 | `lexigram-search` | 97 | 62 |
 | `lexigram-secrets` | 25 | 15 |
-| `lexigram-sql` | 196 | 154 |
+| `lexigram-sql` | 197 | 157 |
 | `lexigram-storage` | 38 | 38 |
-| `lexigram-tasks` | 90 | 62 |
+| `lexigram-tasks` | 92 | 64 |
 | `lexigram-tenancy` | 63 | 44 |
 | `lexigram-testing` | 170 | 41 |
-| `lexigram-ui` | 164 | 79 |
+| `lexigram-ui` | 169 | 90 |
 | `lexigram-vector` | 65 | 43 |
-| `lexigram-web` | 202 | 170 |
+| `lexigram-web` | 202 | 176 |
 | `lexigram-webhook` | 41 | 36 |
 | `lexigram-workflow` | 68 | 54 |
 

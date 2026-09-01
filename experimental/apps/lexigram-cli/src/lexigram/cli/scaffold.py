@@ -563,7 +563,7 @@ def infrastructure_modules() -> list[DynamicModule]:
 '''
 
 
-def _modules_init(package_name: str, names: tuple[str, ...]) -> str:
+def _modules_init(package_name: str, names: tuple[tuple[str, str], ...]) -> str:
     """Modular ``modules/__init__.py`` with the module registry."""
     imports = "\n".join(
         f"from {package_name}.modules.{slug} import {name}" for slug, name in names

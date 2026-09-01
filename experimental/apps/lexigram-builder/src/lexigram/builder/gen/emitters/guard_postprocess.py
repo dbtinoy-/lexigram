@@ -225,7 +225,7 @@ def emit_rate_limit_middleware(
         "def _client_key(key_by: str, scope: dict) -> str:\n"
         '    """Derive the throttle key per the policy\'s ``key_by``."""\n'
         '    headers = {\n'
-        "        k.decode(\"latin-1\").lower(): v.decode(\"latin-1\")\n"
+        '        k.decode("latin-1").lower(): v.decode("latin-1")\n'
         '        for k, v in scope.get("headers", ())\n'
         "    }\n"
         '    if key_by == "api_key" and headers.get("x-api-key"):\n'

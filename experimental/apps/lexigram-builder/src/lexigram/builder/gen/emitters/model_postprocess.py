@@ -26,9 +26,8 @@ from dataclasses import dataclass
 from dataclasses import field as dc_field
 import re
 
-from lexigram.logging import get_logger
-
 from lexigram.builder.graph.models import EntityConfig, FieldConfig
+from lexigram.logging import get_logger
 
 _logger = get_logger(__name__)
 
@@ -211,7 +210,7 @@ def _insert_import(source: str, statement: str) -> str:
     in_docstring = False
     for idx, line in enumerate(lines):
         stripped = line.strip()
-        if idx == 0 and (stripped.startswith('"""') or stripped.startswith("'''")):
+        if idx == 0 and stripped.startswith(('"""', "'''")):
             if stripped.count('"""') >= 2 or stripped.count("'''") >= 2:
                 insert_at = idx + 1
                 continue
@@ -222,7 +221,7 @@ def _insert_import(source: str, statement: str) -> str:
                 in_docstring = False
                 insert_at = idx + 1
             continue
-        if stripped.startswith("from ") or stripped.startswith("import "):
+        if stripped.startswith(("from ", "import ")):
             insert_at = idx + 1
         elif stripped == "":
             continue

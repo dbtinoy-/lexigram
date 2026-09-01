@@ -24,9 +24,8 @@ from importlib.metadata import entry_points
 from pathlib import Path
 from typing import Any
 
-from lexigram.logging import get_logger
-
 from lexigram.builder.exceptions import GenerationError
+from lexigram.logging import get_logger
 
 _logger = get_logger(__name__)
 

@@ -80,10 +80,10 @@ def emit_api_keys_migration(
         ")"
     )
     prefix_index_sql = (
-        "CREATE INDEX IF NOT EXISTS ix_api_keys_prefix ON api_keys (\"prefix\")"
+        'CREATE INDEX IF NOT EXISTS ix_api_keys_prefix ON api_keys ("prefix")'
     )
     user_index_sql = (
-        "CREATE INDEX IF NOT EXISTS ix_api_keys_user_id ON api_keys (\"user_id\")"
+        'CREATE INDEX IF NOT EXISTS ix_api_keys_user_id ON api_keys ("user_id")'
     )
 
     lines: list[str] = [
@@ -147,7 +147,7 @@ def emit_api_key_repository() -> str:
             "",
             "",
             "def _now() -> str:",
-            '    return _datetime.now(_timezone.utc).isoformat()',
+            "    return _datetime.now(_timezone.utc).isoformat()",
             "",
             "",
             "class SqliteApiKeyRepository:",
@@ -175,7 +175,7 @@ def emit_api_key_repository() -> str:
             '        expires = row.get("expires_at")',
             "        if expires is not None and not isinstance(expires, str):",
             '            row["expires_at"] = expires.isoformat()',
-            "        await self._provider.execute_insert(\"api_keys\", row)",
+            '        await self._provider.execute_insert("api_keys", row)',
             '        return str(row["id"])',
             "",
             "    async def find_by_prefix(self, prefix: str) -> list[dict[str, Any]]:",
@@ -292,7 +292,7 @@ def emit_api_keys_auth_module(config: ApiKeyGroupConfig, scopes: list[str]) -> s
         "def build_authenticator(",
         "    lookup: dict[str, Any] | Awaitable[Any] | Any,",
         "    *,",
-        "    query_param: str = \"api_key\",",
+        '    query_param: str = "api_key",',
         ") -> APIKeyAuthenticator:",
         '    """Authenticator reading keys from API_KEY_HEADER.',
         "",

@@ -32,7 +32,7 @@ def reconcile_error(text: str) -> ErrorReconcileResult:
     # when the template omits it (closing ``"""`` immediately followed by
     # ``from __future__``).
     text = text.replace(
-        "domain.\n\"\"\"\nfrom __future__",
-        "domain.\n\"\"\"\n\nfrom __future__",
+        'domain.\n"""\nfrom __future__',
+        'domain.\n"""\n\nfrom __future__',
     )
     return ErrorReconcileResult(text=text)

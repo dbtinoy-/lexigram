@@ -33,13 +33,13 @@ if TYPE_CHECKING:
 
 logger = get_logger(__name__)
 
-# ---------------------------------------------------------------------------
-# Module-level helpers (no self; keep them small and testable)
-# ---------------------------------------------------------------------------
-
 
 class _TaskLifecycleMixin(_TaskAttrsMixin):
     """See TaskProvider."""
+
+    if TYPE_CHECKING:
+        def register_scheduled_task(self, task_func: Any) -> None: ...
+        def register_handler(self, task_name: str, handler: Any) -> None: ...
 
     async def boot(self, container: ContainerResolverProtocol) -> None:
         """Start the task provider.

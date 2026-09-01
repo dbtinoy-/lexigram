@@ -59,10 +59,12 @@ def main(
     selected_template = template
 
     if interactive:
+        import click
+
         selected_template = typer.prompt(
             "Select a template",
             default="web-api",
-            type=typer.Choice(template_names()),
+            type=click.Choice(template_names()),
         )
 
     if structure not in STRUCTURES:

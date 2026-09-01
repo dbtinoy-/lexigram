@@ -14,8 +14,10 @@ the Seed Data screen), the generator's sample ``SEED_DATA`` list is replaced.
 from __future__ import annotations
 
 from dataclasses import dataclass
-import json
 import re
+
+from lexigram.serialization import loads_str
+from lexigram.serialization.backends.json import JSONDecodeError
 
 
 @dataclass(frozen=True, slots=True)
@@ -38,7 +40,7 @@ def _py_literal(value: object) -> str:
         inner = ", ".join(_py_literal(v) for v in value)
         return f"[{inner}]"
     if isinstance(value, dict):
-        parts = [f"{repr(str(k))}: {_py_literal(v)}" for k, v in value.items()]
+        parts = [f"{str(k)!r}: {_py_literal(v)}" for k, v in value.items()]
         return "{" + ", ".join(parts) + "}"
     return repr(str(value))
 
@@ -47,8 +49,8 @@ def _render_seed_data(rows: tuple[str, ...]) -> str:
     dicts: list[str] = []
     for raw in rows:
         try:
-            parsed = json.loads(raw)
-        except json.JSONDecodeError:
+            parsed = loads_str(raw)
+        except JSONDecodeError:
             continue
         if not isinstance(parsed, dict):
             continue

@@ -110,7 +110,7 @@ def _audit_insertion_lines(
             return None
         return [
             "        _audit_row = _to_dict(created)",
-            '        await self._audit.record_created(',
+            "        await self._audit.record_created(",
             '            str(_audit_row.get("id", "")), _audit_row,',
             "        )",
         ]
@@ -251,7 +251,7 @@ def _synthesize_ctor(text: str, hooks: ControllerAuditHooks) -> str:
     lines = text.split("\n")
     insert_at: int | None = None
     for i, line in enumerate(lines):
-        if line.startswith("    @") or line.startswith("    async def "):
+        if line.startswith(("    @", "    async def ")):
             insert_at = i
             break
     if insert_at is None:

@@ -86,17 +86,17 @@ def emit_search_migration(
     )
     rebuild_sql = f"INSERT INTO {fts_table}({fts_table}) VALUES('rebuild')"
     ai_sql = (
-        f"CREATE TRIGGER {fts_table}_ai AFTER INSERT ON \"{table}\" BEGIN "
+        f'CREATE TRIGGER {fts_table}_ai AFTER INSERT ON "{table}" BEGIN '
         f"INSERT INTO {fts_table}(rowid, {col_list}) "
         f"VALUES (NEW.rowid, {new_cols}); END"
     )
     ad_sql = (
-        f"CREATE TRIGGER {fts_table}_ad AFTER DELETE ON \"{table}\" BEGIN "
+        f'CREATE TRIGGER {fts_table}_ad AFTER DELETE ON "{table}" BEGIN '
         f"INSERT INTO {fts_table}({fts_table}, rowid, {col_list}) "
         f"VALUES ('delete', OLD.rowid, {old_cols}); END"
     )
     au_sql = (
-        f"CREATE TRIGGER {fts_table}_au AFTER UPDATE ON \"{table}\" BEGIN "
+        f'CREATE TRIGGER {fts_table}_au AFTER UPDATE ON "{table}" BEGIN '
         f"INSERT INTO {fts_table}({fts_table}, rowid, {col_list}) "
         f"VALUES ('delete', OLD.rowid, {old_cols}); "
         f"INSERT INTO {fts_table}(rowid, {col_list}) "
@@ -224,7 +224,7 @@ def emit_search_repository(entity_name: str, config: SearchIndexConfig) -> str:
             "",
             "    Injected like any other repository; runs raw SQL through the",
             "    database provider (no ORM entities involved).",
-            "    \"\"\"",
+            '    """',
             "",
             "    def __init__(self, provider: DatabaseProviderProtocol) -> None:",
             "        self._provider = provider",

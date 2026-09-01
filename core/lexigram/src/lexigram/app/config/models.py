@@ -24,7 +24,7 @@ class AppConfig:
     # supported for compatibility with the original flat configuration.
     name: str | None = None
     # consumed by: OTEL resource attribute, logger context, AppProvider
-    debug: bool = False
+    debug: bool | str = False
     # consumed by: Application — verbose startup/teardown logging
     env: str = "production"
     # consumed by: Application — environment name surfaced in health checks

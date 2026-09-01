@@ -24,3 +24,8 @@ packages = ["src/lexigram"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
+
+[tool.mypy]
+# Override root workspace mypy_path to avoid "Source file found twice" error
+# when running `mypy src` from within this package directory.
+mypy_path = ["src"]

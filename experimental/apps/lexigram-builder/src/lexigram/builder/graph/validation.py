@@ -4,12 +4,10 @@ from __future__ import annotations
 
 import re
 
-from lexigram.result import Err, Ok, Result
-
 from lexigram.builder.exceptions import GraphValidationError
 from lexigram.builder.graph.models import (
-    ApiKeyGroupConfig,
     ApiClientConfig,
+    ApiKeyGroupConfig,
     AppSettingsConfig,
     AuditLogConfig,
     AuthConfig,
@@ -47,6 +45,7 @@ from lexigram.builder.graph.palette import (
     is_valid_port,
 )
 from lexigram.builder.types import Diagnostic, DiagnosticSeverity
+from lexigram.result import Err, Ok, Result
 
 
 def validate(document: GraphDocument) -> Result[ValidatedGraph, GraphValidationError]:
@@ -513,7 +512,7 @@ def _check_file_upload(node: GraphNode) -> list[Diagnostic]:
             (":" in allowed or "/" in allowed or "*" in allowed)
             or allowed.startswith(".")
         )
-        if not kind_ok or "*" in allowed and not allowed.endswith("/*"):
+        if not kind_ok or ("*" in allowed and not allowed.endswith("/*")):
             out.append(
                 _diag(
                     node,

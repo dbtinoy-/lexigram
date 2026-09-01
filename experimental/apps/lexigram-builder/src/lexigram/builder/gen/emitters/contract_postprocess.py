@@ -108,7 +108,7 @@ def emit_contract_module(config: ContractConfig) -> str:
                 datetime_members.add(stmt)
             elif kind == "pydantic":
                 pydantic_names.add(stmt.rsplit(" ", 1)[-1])
-            elif kind == "std" or kind == "typing":
+            elif kind in {"std", "typing"}:
                 std_lines.add(stmt)
         field_blocks.append(f"    {field_name}: {base}")
 

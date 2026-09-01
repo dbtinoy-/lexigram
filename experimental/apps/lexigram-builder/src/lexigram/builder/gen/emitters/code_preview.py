@@ -19,6 +19,7 @@ from lexigram.builder.gen.emitters.audit_postprocess import (
     ControllerAuditHooks,
     apply_audit,
 )
+from lexigram.builder.gen.emitters.auth_policy_emitter import emit_auth_policy_module
 from lexigram.builder.gen.emitters.context import (
     pascal_entity,
     snake_case,
@@ -30,6 +31,7 @@ from lexigram.builder.gen.emitters.contract_postprocess import (
     apply_contract,
     emit_contract_module,
 )
+from lexigram.builder.gen.emitters.dataloader_emitter import emit_dataloader_module
 from lexigram.builder.gen.emitters.email_emitter import (
     emit_email_module,
     emit_emails_init,
@@ -49,6 +51,9 @@ from lexigram.builder.gen.emitters.guard_postprocess import (
     emit_rate_limit_middleware,
     emit_rate_limit_module,
 )
+from lexigram.builder.gen.emitters.http_client_emitter import emit_api_client_module
+from lexigram.builder.gen.emitters.interceptor_emitter import emit_interceptor_module
+from lexigram.builder.gen.emitters.saga_emitter import emit_saga_module
 from lexigram.builder.gen.emitters.scaffold import emit_scaffold_files
 from lexigram.builder.gen.emitters.search_emitter import (
     effective_engine,
@@ -56,37 +61,32 @@ from lexigram.builder.gen.emitters.search_emitter import (
     emit_search_migration,
     emit_search_repository,
 )
-from lexigram.builder.gen.emitters.validator_emitter import (
-    emit_validator_module,
-)
-from lexigram.builder.gen.emitters.http_client_emitter import emit_api_client_module
-from lexigram.builder.gen.emitters.saga_emitter import emit_saga_module
-from lexigram.builder.gen.emitters.interceptor_emitter import emit_interceptor_module
-from lexigram.builder.gen.emitters.dataloader_emitter import emit_dataloader_module
-from lexigram.builder.gen.emitters.auth_policy_emitter import emit_auth_policy_module
 from lexigram.builder.gen.emitters.storage_driver_emitter import (
     emit_storage_driver_module,
 )
+from lexigram.builder.gen.emitters.validator_emitter import (
+    emit_validator_module,
+)
 from lexigram.builder.graph.models import (
-    ApiKeyGroupConfig,
     ApiClientConfig,
-    SagaConfig,
-    InterceptorConfig,
-    DataLoaderConfig,
-    AuthPolicyConfig,
+    ApiKeyGroupConfig,
     AppSettingsConfig,
     AuditLogConfig,
     AuthConfig,
+    AuthPolicyConfig,
     ContractConfig,
+    DataLoaderConfig,
     EmailTemplateConfig,
     EntityConfig,
     FeatureFlagConfig,
     FileUploadConfig,
     GraphDocument,
     GraphNode,
+    InterceptorConfig,
     RateLimitConfig,
     RoleConfig,
     RouteConfig,
+    SagaConfig,
     SearchIndexConfig,
     StorageDriverConfig,
     ValidatorConfig,
@@ -410,8 +410,7 @@ def emit_code_preview(document: GraphDocument) -> list[dict[str, str]]:
             upload_cfg_by_route[src_node.id] = dst_node.config
     upload_entities: dict[str, FileUploadConfig] = {}
     upload_route_paths: dict[str, str] = {}
-    for route_id in upload_cfg_by_route:
-        upload_cfg = upload_cfg_by_route[route_id]
+    for route_id, upload_cfg in upload_cfg_by_route.items():
         up_route_node = by_id[route_id]
         up_route_cfg = up_route_node.config
         assert isinstance(up_route_cfg, RouteConfig)
@@ -865,7 +864,7 @@ def _flag_preview(flag: FeatureFlagConfig) -> str:
         "\n"
         "    @classmethod\n"
         "    def is_enabled(cls, context: dict[str, object] | None = None) -> bool:\n"
-        "        \"\"\"Return whether the flag is enabled for *context*.\"\"\"\n"
+        '        """Return whether the flag is enabled for *context*."""\n'
         "        # TODO: consult your FlagManager / provider here.\n"
         "        return cls.default_enabled\n"
     )
@@ -907,7 +906,7 @@ def _controller_preview(
                 f"            raise BadRequestError(\n"
                 f'                f"Invalid {pascal} payload: {{exc}}"\n'
                 f"            ) from exc\n"
-                f"        created = await self.repo.create(payload.model_dump(mode=\"json\"))\n"
+                f'        created = await self.repo.create(payload.model_dump(mode="json"))\n'
                 f"        return _to_dict(created)"
             )
         elif op == "get":
@@ -970,7 +969,7 @@ def _controller_preview(
         "        return item\n"
         '    if hasattr(item, "to_dict"):\n'
         "        return item.to_dict()\n"
-        "    return {\"value\": item}\n"
+        '    return {"value": item}\n'
         "\n"
         "\n"
         "async def _read_body(request: Request) -> dict[str, Any]:\n"
@@ -992,8 +991,8 @@ def _controller_preview(
         f"class {pascal}Controller(Controller):\n"
         f'    """CRUD controller for {pascal}."""\n'
         "\n"
-        f"    path = \"{path}\"\n"
-        f"    tags = [\"{pascal}\"]\n"
+        f'    path = "{path}"\n'
+        f'    tags = ["{pascal}"]\n'
         "\n"
         + (
             "    def __init__(\n"
