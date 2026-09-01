@@ -215,7 +215,7 @@ class ColumnRenderingMixin:
                 htmx_attrs = {
                     "hx-get": f"?{sort_params}",
                     "hx-target": Zones.DATA.selector,
-                    "hx-swap": Zones.DATA.swap_mode.value,
+                    "hx-swap": "outerHTML",
                     "hx-select": Zones.DATA.selector,
                     "hx-select-oob": Zones.data_refresh_oob_select(),
                     "hx-params": "none",

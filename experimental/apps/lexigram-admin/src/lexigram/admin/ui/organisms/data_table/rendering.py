@@ -345,7 +345,9 @@ class DataTableRenderer:
         params.pop("per_page", None)
         base_query = "&" + urlencode(params, doseq=True) if params else ""
         base_url = (
-            f"{self.config.resource_prefix}/" if self.config.resource_prefix else ""
+            # No trailing slash: resource list routes are registered as
+            # "/{name}", so "/{name}/" 307-redirects every pagination click.
+            self.config.resource_prefix if self.config.resource_prefix else ""
         )
 
         return Pagination(
@@ -355,7 +357,9 @@ class DataTableRenderer:
             base_url=base_url,
             extra_query=base_query,
             hx_target=Zones.DATA.selector,
-            hx_swap="innerHTML",
+            # outerHTML: the pagination controls select #table-data, so an
+            # innerHTML swap would nest the data zone inside itself.
+            hx_swap="outerHTML",
             show_size_selector=True,
             next_cursor=self.next_cursor,
             state=self.state,

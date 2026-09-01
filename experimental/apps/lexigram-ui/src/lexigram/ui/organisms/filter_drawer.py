@@ -157,7 +157,7 @@ class FilterDrawer(Component):
         apply_attrs: dict[str, Any] = {
             "hx-get": apply_url,
             "hx-target": Zones.DATA.selector,
-            "hx-swap": Zones.DATA.swap_mode.value,
+            "hx-swap": "outerHTML",
             "hx-select": Zones.DATA.selector,
             "hx-select-oob": Zones.data_refresh_oob_select(),
             "hx-push-url": "true",
@@ -237,7 +237,7 @@ class FilterDrawer(Component):
                     **{
                         "hx-get": reset_href,
                         "hx-target": Zones.DATA.selector,
-                        "hx-swap": Zones.DATA.swap_mode.value,
+                        "hx-swap": "outerHTML",
                         "hx-select": Zones.DATA.selector,
                         "hx-select-oob": Zones.data_refresh_oob_select(),
                         "hx-push-url": "true",

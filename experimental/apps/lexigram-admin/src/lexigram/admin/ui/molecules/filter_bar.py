@@ -99,13 +99,13 @@ class FilterBar(Component):
                     rendered = f.render_filter(current_val)
                     if rendered is not None:
                         if self.resource_prefix and hasattr(rendered, "attrs"):
-                            base_url = self.resource_prefix.rstrip("/") + "/"
+                            base_url = self.resource_prefix.rstrip("/")
                             rendered.attrs.update(
                                 {
                                     "hx-get": base_url,
                                     "hx-trigger": "change",
                                     "hx-target": Zones.DATA.selector,
-                                    "hx-swap": Zones.DATA.swap_mode.value,
+                                    "hx-swap": "outerHTML",
                                     "hx-select": Zones.DATA.selector,
                                     "hx-select-oob": Zones.data_refresh_oob_select(),
                                     "hx-push-url": "true",
@@ -175,7 +175,7 @@ class FilterBar(Component):
                             placeholder=filter_config.get("placeholder"),
                             input_type=f_type,
                             hx_get=(
-                                self.resource_prefix.rstrip("/") + "/"
+                                self.resource_prefix.rstrip("/")
                                 if self.resource_prefix
                                 else "/"
                             ),

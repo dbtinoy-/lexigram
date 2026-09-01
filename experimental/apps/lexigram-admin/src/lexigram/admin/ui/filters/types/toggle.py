@@ -80,7 +80,7 @@ class ToggleFilter(Filter):
                 "hx-get": f"{base_url}/",
                 "hx-trigger": "change",
                 "hx-target": Zones.DATA.selector,
-                "hx-swap": Zones.DATA.swap_mode.value,
+                "hx-swap": "outerHTML",
                 "hx-select": Zones.DATA.selector,
                 "hx-select-oob": Zones.data_refresh_oob_select(),
                 "hx-push-url": "true",

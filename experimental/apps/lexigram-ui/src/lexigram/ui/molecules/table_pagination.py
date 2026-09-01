@@ -184,7 +184,7 @@ class TablePagination(Component):
             params.pop("per_page", None)
             params.pop("page", None)
             params.pop("cursor", None)
-            base_url = self.base_url.rstrip("/") + "/"
+            base_url = self.base_url.rstrip("/")
             return {
                 "hx_get": base_url,
                 "hx_target": Zones.DATA.selector,

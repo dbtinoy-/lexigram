@@ -174,7 +174,7 @@ class SortSwitcher(Component):
                 {
                     "hx_get": f"{prefix}/{query}",
                     "hx_target": Zones.DATA.selector,
-                    "hx_swap": Zones.DATA.swap_mode.value,
+                    "hx_swap": "outerHTML",
                     "hx_select": Zones.DATA.selector,
                     "hx_select_oob": Zones.data_refresh_oob_select(),
                     "hx_params": "none",

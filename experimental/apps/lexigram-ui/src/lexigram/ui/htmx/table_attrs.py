@@ -97,7 +97,9 @@ class HTMXAttrsBuilder:
     def _build_full_refresh(self, base_url: str, params: dict) -> dict[str, str]:
         """Full refresh: Replace entire table zone with outerHTML."""
         query = urlencode(params, doseq=True) if params else ""
-        url = f"{base_url}/?{query}" if query else f"{base_url}/"
+        # No trailing slash: resource routes are registered as "/{name}"
+        # (core/routing.py), so "/{name}/" 307-redirects on every request.
+        url = f"{base_url}?{query}" if query else base_url
 
         push = self.push_url if self.push_url is not None else True
 
@@ -117,14 +119,22 @@ class HTMXAttrsBuilder:
     def _build_data_refresh(self, base_url: str, params: dict) -> dict[str, str]:
         """Data refresh: Replace data zone, extract from full response."""
         query = urlencode(params, doseq=True) if params else ""
-        url = f"{base_url}/?{query}" if query else f"{base_url}/"
+        # No trailing slash: resource routes are registered as "/{name}"
+        # (core/routing.py), so "/{name}/" 307-redirects on every request.
+        url = f"{base_url}?{query}" if query else base_url
 
         push = self.push_url if self.push_url is not None else True
 
         attrs = {
             "hx-get": url,
             "hx-target": Zones.DATA.selector,
-            "hx-swap": Zones.DATA.swap_mode.value,
+            # outerHTML, not the zone's innerHTML default: hx-select extracts
+            # the #table-data wrapper itself, so an innerHTML swap nested a
+            # second #table-data inside the live one. getElementById then
+            # resolved to the outer node and the next swap replaced the
+            # subtree the user was looking at -- the URL changed and the view
+            # did not.
+            "hx-swap": "outerHTML",
             "hx-select": Zones.DATA.selector,  # Extract only DATA from response
             # hx-select discards anything outside the selected subtree, which
             # would drop the toolbar/tab OOB fragments the server sends.
@@ -159,7 +169,9 @@ class HTMXAttrsBuilder:
     def _build_oob(self, base_url: str, params: dict) -> dict[str, str]:
         """OOB: Request that returns out-of-band fragments."""
         query = urlencode(params, doseq=True) if params else ""
-        url = f"{base_url}/?{query}" if query else f"{base_url}/"
+        # No trailing slash: resource routes are registered as "/{name}"
+        # (core/routing.py), so "/{name}/" 307-redirects on every request.
+        url = f"{base_url}?{query}" if query else base_url
 
         # OOB requests typically don't need a primary target
         # The server response includes hx-swap-oob fragments
@@ -413,7 +425,7 @@ class HTMXAttrs:
         Returns:
             Dict of hx-* attributes for a live table input.
         """
-        base_url = resource_prefix.rstrip("/") + "/"
+        base_url = resource_prefix.rstrip("/")
 
         if input_name:
             search_selector = f'[name="{input_name}"]'
@@ -423,7 +435,8 @@ class HTMXAttrs:
         return {
             "hx-get": base_url,
             "hx-target": Zones.DATA.selector,
-            "hx-swap": Zones.DATA.swap_mode.value,
+            # outerHTML: hx-select extracts #table-data itself.
+            "hx-swap": "outerHTML",
             "hx-select": Zones.DATA.selector,
             "hx-select-oob": Zones.data_refresh_oob_select(),
             "hx-include": (

@@ -19,7 +19,9 @@ class JumpToPage(Component):
         base_url: str = "",
         extra_query: str = "",
         hx_target: str | None = None,
-        hx_swap: str = "innerHTML",
+        # outerHTML: hx-select below extracts the #table-data wrapper,
+        # so an innerHTML swap would nest it inside itself.
+        hx_swap: str = "outerHTML",
         hx_push_url: str = "true",
         state: Any | None = None,
         **props: Any,
