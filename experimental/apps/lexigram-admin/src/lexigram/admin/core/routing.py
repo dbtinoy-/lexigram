@@ -315,6 +315,14 @@ class AdminRouter:
                 name=f"admin_{name}_import_report",
                 methods=["GET"],
             ),
+            # Import upload (B31). POST-only: imports create records and
+            # must stay off GET. Fixed path before the {id} catch-all.
+            Route(
+                f"{prefix}/import",
+                ResourceHandler(self._config, name, "import", resources=resources_dict),
+                name=f"admin_{name}_import",
+                methods=["POST"],
+            ),
             # Fixed-path route before the {id} catch-all below.
             Route(
                 f"{prefix}/relation-options",

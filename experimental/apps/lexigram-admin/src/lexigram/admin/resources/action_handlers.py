@@ -1525,14 +1525,18 @@ class RelationOptionsActionHandler:
 
 
 class ImportActionHandler:
-    """Handler for import download routes (example CSV, failed-import report).
+    """Handler for import routes (upload, example CSV, failed-import report).
 
-    Serves GET ``import-example`` (the resource's declared
-    :class:`~lexigram.admin.actions.standard.ImportAction` template) and
+    Serves POST ``import`` (runs the resource's declared
+    :class:`~lexigram.admin.actions.standard.ImportAction` on an uploaded
+    file — B31), GET ``import-example`` (the action's template) and
     GET ``import-report`` (a stored failed-import report as CSV).
     """
 
-    _ACTIONS = ("import-example", "import-report")
+    _ACTIONS = ("import", "import-example", "import-report")
+
+    #: Default upload cap; override per resource via ``import_max_bytes``.
+    DEFAULT_MAX_BYTES = 10 * 1024 * 1024
 
     def can_handle(self, action: str) -> bool:
         """Whether this handler serves the given route action."""
@@ -1571,10 +1575,15 @@ class ImportActionHandler:
                 "<h1>Import not configured for this resource</h1>",
                 status_code=404,
             )
+
+        requested = request.scope.get("admin_action", "")
+        if requested == "import":
+            if request.method != "POST":
+                return HTMLResponse("Method not allowed", status_code=405)
+            return await self._handle_upload(request, resource, action)
         if request.method != "GET":
             return HTMLResponse("Method not allowed", status_code=405)
 
-        requested = request.scope.get("admin_action", "")
         if requested == "import-example":
             content = action.example_csv()
             if not content:
@@ -1589,6 +1598,88 @@ class ImportActionHandler:
             return HTMLResponse("<h1>Report not found</h1>", status_code=404)
         filename = action.report_filename(report_id) or "import-errors.csv"
         return self._csv_response(content, filename)
+
+    async def _handle_upload(
+        self, request: StarletteRequest, resource: Any, action: Any
+    ) -> Any:
+        """Run the declared ImportAction on an uploaded file (B31)."""
+        from markupsafe import escape
+        from starlette.responses import HTMLResponse, RedirectResponse
+
+        from lexigram.admin.actions.types import ActionContext
+        from lexigram.serialization import dumps_str
+
+        form = request.scope.get("admin_form_data")
+        if form is None:
+            form = await request.form()
+        upload = form.get("file")
+        if upload is None or not hasattr(upload, "read"):
+            return HTMLResponse("No file uploaded", status_code=400)
+
+        content = await upload.read()
+        if not content:
+            return HTMLResponse("Uploaded file is empty", status_code=400)
+        max_bytes = (
+            getattr(resource, "import_max_bytes", None) or self.DEFAULT_MAX_BYTES
+        )
+        if len(content) > max_bytes:
+            return HTMLResponse(
+                f"Uploaded file exceeds the {max_bytes} byte import limit",
+                status_code=413,
+            )
+
+        filename = getattr(upload, "filename", "") or "import.csv"
+        admin_prefix = request.scope.get("admin_prefix", "") or ""
+        resource_name = str(
+            getattr(resource, "name", "")
+            or request.scope.get("admin_resource_prefix", "")
+        )
+        resource_prefix = f"{admin_prefix}/{resource_name}".rstrip("/")
+        ctx = ActionContext(
+            request=request,
+            user=getattr(getattr(request, "state", None), "user", None),
+            resource_name=resource_name,
+            resource_prefix=resource_prefix,
+            data_source=get_resource_data_source(resource),
+            metadata={"file_content": content, "filename": str(filename)},
+        )
+
+        try:
+            result = await action.execute(None, ctx)
+        except Exception as exc:  # noqa: BLE001 — parser/storage details stay private
+            logger.exception("admin.import_upload_failed", error=str(exc))
+            return HTMLResponse("Import failed", status_code=500)
+        if result.is_err():
+            error = result.unwrap_err()
+            message = str(getattr(error, "message", None) or error)
+            return HTMLResponse(str(escape(message)), status_code=400)
+
+        payload = result.unwrap()
+        message = str(payload.get("message", "Import complete"))
+        parts = [f"<p>{escape(message)}</p>"]
+        report_id = payload.get("report_id")
+        if report_id:
+            report_url = (
+                f"{resource_prefix}/import-report?report_id={escape(str(report_id))}"
+            )
+            parts.append(
+                f'<a href="{report_url}" download>Download failed-row report</a>'
+            )
+
+        is_fragment = bool(request.headers.get("hx-request"))
+        if is_fragment:
+            response = HTMLResponse("".join(parts))
+            response.headers["HX-Trigger"] = dumps_str(
+                {
+                    "refresh-list": True,
+                    "show-toast": {
+                        "message": message,
+                        "type": "success" if not payload.get("failed") else "warning",
+                    },
+                }
+            )
+            return response
+        return RedirectResponse(url=resource_prefix or "/", status_code=302)
 
 
 class DeleteActionHandler:

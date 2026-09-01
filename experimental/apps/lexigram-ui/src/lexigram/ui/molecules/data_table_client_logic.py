@@ -49,6 +49,63 @@ class DataTableScriptRenderer:
                 return false;
             }};
 
+            // Import uploads (B31): the Import header action button carries
+            // data-import-upload-url / data-import-accept. Open a file
+            // picker, then POST the file with the CSRF token. fetch (not a
+            // native form) so the JSON/HTML fragment response can surface a
+            // toast instead of navigating away from the list.
+            window.LexigramImportUpload = window.LexigramImportUpload || function(button) {{
+                const url = button.dataset.importUploadUrl || '';
+                if (!url) return false;
+                const notify = function(message, type) {{
+                    if (window.showToast) window.showToast(message, type);
+                    else if (window.alert) window.alert(message);
+                }};
+                const picker = document.createElement('input');
+                picker.type = 'file';
+                picker.accept = button.dataset.importAccept || '.csv,.json,.jsonl';
+                picker.style.display = 'none';
+                picker.addEventListener('change', async function() {{
+                    const file = picker.files && picker.files[0];
+                    picker.remove();
+                    if (!file) return;
+                    try {{
+                        const body = new FormData();
+                        body.append('file', file, file.name);
+                        const table = document.querySelector('{Zones.TABLE.selector}');
+                        const csrfInput = table && table.querySelector('input[name="csrf_token"]');
+                        const csrfEl = document.querySelector('[data-csrf-token]');
+                        const csrf = (csrfInput && csrfInput.value) ||
+                            window.__lexigramCsrfToken ||
+                            (csrfEl && csrfEl.getAttribute('data-csrf-token'));
+                        const headers = {{ 'HX-Request': 'true' }};
+                        if (csrf) {{
+                            headers['X-CSRF-Token'] = csrf;
+                            body.append('csrf_token', csrf);
+                        }}
+                        const response = await fetch(url, {{
+                            method: 'POST',
+                            body: body,
+                            headers: headers,
+                            credentials: 'same-origin'
+                        }});
+                        const text = await response.text();
+                        if (!response.ok) {{
+                            const detail = text.replace(/<[^>]*>/g, ' ').trim().slice(0, 200);
+                            notify('Import failed: ' + (detail || response.status), 'error');
+                            return;
+                        }}
+                        notify('Import finished. Reloading…', 'success');
+                        setTimeout(function() {{ window.location.reload(); }}, 600);
+                    }} catch (err) {{
+                        notify('Import failed.', 'error');
+                    }}
+                }});
+                document.body.appendChild(picker);
+                picker.click();
+                return false;
+            }};
+
             if (window.LexigramTableInitialized) return;
             window.LexigramTableInitialized = true;
 

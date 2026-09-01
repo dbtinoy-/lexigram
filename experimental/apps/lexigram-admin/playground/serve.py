@@ -27,6 +27,7 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from lexigram.admin.actions.standard.header import CreateAction
+from lexigram.admin.actions.standard.imports import ImportAction
 from lexigram.admin.actions.standard.row import DeleteAction, EditAction
 from lexigram.admin.config import AdminConfig
 from lexigram.admin.data.data_source import QueryResult
@@ -160,7 +161,10 @@ class ProductResource(Resource):
     page_size = 10
     default_sort = "name"
     actions = [EditAction(), DeleteAction()]
-    header_actions = [CreateAction()]
+    header_actions = [
+        CreateAction(),
+        ImportAction(example_columns=["name", "sku", "price"]),
+    ]
     permissions = None
 
 

@@ -124,6 +124,9 @@ class _ImportReportMixin:
 class ImportAction(_ImportReportMixin, HeaderAction):
     """Import records into a resource through the admin import service."""
 
+    #: File extensions the admin import service can parse.
+    DEFAULT_ACCEPT_EXTENSIONS = (".csv", ".json", ".jsonl")
+
     def __init__(
         self,
         name: str = "import",
@@ -134,6 +137,7 @@ class ImportAction(_ImportReportMixin, HeaderAction):
         filename: str | None = None,
         example_columns: list[str] | None = None,
         example_filename: str = "import-example.csv",
+        accept_extensions: list[str] | None = None,
     ) -> None:
         super().__init__(
             name=name,
@@ -147,6 +151,28 @@ class ImportAction(_ImportReportMixin, HeaderAction):
         self._filename = filename
         self._example_columns = example_columns or []
         self._example_filename = example_filename
+        self._accept_extensions = list(
+            accept_extensions or self.DEFAULT_ACCEPT_EXTENSIONS
+        )
+
+    def _get_htmx_attrs(
+        self, url: str, record: None, ctx: ActionContext
+    ) -> dict[str, str]:
+        """Render as a file-upload trigger instead of an htmx GET.
+
+        B31: the inherited default rendered ``hx-get {prefix}/import``
+        into the data zone — a route that did not exist, so clicking
+        Import swapped a 404 into the table. Both the toolbar and the
+        default :meth:`render_button` consume these attributes, handing
+        off to the shared ``LexigramImportUpload`` script, which opens a
+        file picker and POSTs the file to the upload route.
+        """
+        return {
+            "type": "button",
+            "data_import_upload_url": url,
+            "data_import_accept": ",".join(self._accept_extensions),
+            "onclick": "return window.LexigramImportUpload(this);",
+        }
 
     def example_csv(self) -> str:
         """Build a header-only example CSV from ``example_columns``.

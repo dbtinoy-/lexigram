@@ -988,6 +988,7 @@ class ResourceHandler:
                 "inline": "has_change_permission",
                 "inline-edit": "has_change_permission",
                 "create": "has_add_permission",
+                "import": "has_add_permission",
                 "import-example": "has_add_permission",
                 "import-report": "has_view_permission",
                 "clone": "has_add_permission",
