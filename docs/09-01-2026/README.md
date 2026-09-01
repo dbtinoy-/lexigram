@@ -16,10 +16,11 @@ deployment, the fixes shipped on this date, and the forward-looking roadmap.
 | [06-access-control-ui.md](06-access-control-ui.md) | Roles & Permissions UI (R10): role CRUD + user role assignment with guard rails — design, phases, and verification. |
 | [07-mailer-onboarding.md](07-mailer-onboarding.md) | Mailer onboarding (R11): email delivery status page, test send, and debug-mode console fallback — design, phases, and verification. |
 | [08-saved-views.md](08-saved-views.md) | Saved views & filter presets (R13): per-user named list views over the settings service — design, sanitization rules, and verification. |
+| [09-bulk-ux.md](09-bulk-ux.md) | Bulk-action UX hardening (R14): per-row outcome reporting, honest toast severities, failure isolation — design and verification. |
 
 ## Status at time of writing
 
-- Unit suite: **5274 passed, 8 skipped** (baseline before this work: 5027 / 8);
+- Unit suite: **5305 passed, 8 skipped** (baseline before this work: 5027 / 8);
   webhook package suite: 336 passed; lexigram-sql suite: 1395 passed / 48 skipped.
 - New first-run scenario e2e (`tests/e2e/test_first_run_scenario_e2e.py`)
   walks setup → login → dashboard → list → create → edit → logout against
@@ -48,6 +49,10 @@ deployment, the fixes shipped on this date, and the forward-looking roadmap.
   (filters, sort, per-page, density, hidden columns) stored via the
   settings service with a whitelist-sanitized query pipeline, surfaced as
   a views bar on every resource list page.
+  **R14 Bulk-action UX hardening shipped** (doc 09) — per-row outcome
+  accounting for bulk delete/purge/restore with honest toast severities
+  and failure isolation, plus fixes for the silent bulk-purge no-op and
+  a latent non-ASCII `HX-Trigger` header crash.
 
 ## Guiding principles (applies to all follow-up work)
 

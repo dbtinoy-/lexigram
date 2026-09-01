@@ -307,7 +307,7 @@ def loading_bar_script(flash_zone_id: str) -> Any:
             // Listen for show-toast custom event (fired via HX-Trigger)
             document.body.addEventListener('show-toast', function(evt) {{
                 var detail = evt.detail;
-                showToast(detail.message || 'Success', detail.type || 'success');
+                showToast(detail.message || 'Success', detail.type || 'success', detail.duration);
             }});
 
             // Network error handling

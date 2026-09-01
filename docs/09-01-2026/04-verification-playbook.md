@@ -11,8 +11,8 @@ verifying any future change to lexigram-admin. Auth/authz changes require
 uv run pytest experimental/apps/lexigram-admin/tests/unit -q
 ```
 
-- Baseline 2026-09-02: **5274 passed, 8 skipped**, coverage
-  ≈ 75.8% (configured minimum 60%).
+- Baseline 2026-09-02: **5305 passed, 8 skipped**, coverage
+  ≈ 75.9% (configured minimum 60%).
 - The suite adds `--cov` flags from `pyproject.toml`; use `--no-cov` for
   quick single-file runs.
 - New regression tests added this date:
@@ -75,6 +75,13 @@ uv run pytest experimental/apps/lexigram-admin/tests/unit -q
   - `tests/unit/resources/test_list_renderer_saved_views.py` — views bar
     visibility, escaping, default-aware active matching, never breaks the
     list page (R13)
+  - `tests/unit/resources/test_bulk_outcome.py` — bulk outcome messages
+    (legacy-identical happy path, partial/total failure, "and N more"
+    caps, ASCII header safety incl. non-ASCII record ids) (R14, doc 09)
+  - `tests/unit/resources/test_bulk_handler_outcomes.py` — per-row
+    failure isolation, storage rejections/missing rows reported with
+    reasons, purge-without-hook → 503, warning/error toasts with
+    duration in HX-Trigger (R14)
 
 ## 2. Live playground (for anything touching auth, authz, middleware, layouts)
 

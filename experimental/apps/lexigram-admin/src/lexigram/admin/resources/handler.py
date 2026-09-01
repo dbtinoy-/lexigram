@@ -34,6 +34,7 @@ from lexigram.admin.resources.action_handlers import (
     ResourceActionHandler,
     RestoreActionHandler,
 )
+from lexigram.admin.resources.bulk_outcome import BulkOutcome
 from lexigram.admin.resources.data_access import get_resource_data_source
 from lexigram.admin.resources.urls import (
     admin_prefix_from_request,
@@ -313,24 +314,48 @@ class BulkActionHandler:
         item_ids: list[str],
         *,
         purge: bool,
-    ) -> int:
-        """Delete selected records while preserving resource lifecycle hooks."""
-        count = 0
-        for item_id in item_ids:
-            if purge:
-                operation = getattr(resource, "purge", None)
-                if callable(operation):
-                    try:
-                        await _maybe_await(operation(item_id))
-                    except LookupError:
-                        continue
-                    count += 1
-                    continue
+    ) -> BulkOutcome:
+        """Delete selected records with per-row failure isolation (R14).
 
-            item = await data_source.find_one(item_id)
-            if item is None:
-                continue
-            if not purge:
+        Every id ends as a success or a failure with a reason; one bad row
+        never aborts the rest of the batch. ``NotImplementedError`` still
+        propagates — it means the operation is structurally unavailable and
+        the caller maps it to a 503.
+        """
+        outcome = BulkOutcome(
+            verb="Purged" if purge else "Deleted", total=len(item_ids)
+        )
+        if purge:
+            operation = getattr(resource, "purge", None)
+            if not callable(operation):
+                # Mirrors the single-record purge path: without a purge hook
+                # the operation is unavailable — never a silent no-op that
+                # reports "Purged 0 item(s)" as success.
+                raise NotImplementedError("purge is not supported")
+            for item_id in item_ids:
+                try:
+                    await _maybe_await(operation(item_id))
+                except LookupError:
+                    outcome.record_failure(item_id, "not found")
+                except NotImplementedError:
+                    raise
+                except (PermissionError, PermissionDeniedError):
+                    outcome.record_failure(item_id, "forbidden")
+                except Exception:  # noqa: BLE001 — row isolation; details stay private
+                    logger.exception(
+                        "admin.bulk_purge_row_failed", item_id=str(item_id)
+                    )
+                    outcome.record_failure(item_id, "error")
+                else:
+                    outcome.record_success()
+            return outcome
+
+        for item_id in item_ids:
+            try:
+                item = await data_source.find_one(item_id)
+                if item is None:
+                    outcome.record_failure(item_id, "not found")
+                    continue
                 before_delete = getattr(resource, "before_delete", None)
                 if callable(before_delete):
                     await _maybe_await(before_delete(item_id))
@@ -344,35 +369,63 @@ class BulkActionHandler:
                 else:
                     success = bool(await data_source.delete(item_id))
                 if not success:
+                    outcome.record_failure(item_id, "rejected by storage")
                     continue
                 after_delete = getattr(resource, "after_delete", None)
                 if callable(after_delete):
                     await _maybe_await(after_delete(item_id))
-                count += 1
-        return count
+            except LookupError:
+                outcome.record_failure(item_id, "not found")
+            except NotImplementedError:
+                raise
+            except (PermissionError, PermissionDeniedError):
+                outcome.record_failure(item_id, "forbidden")
+            except Exception:  # noqa: BLE001 — row isolation; details stay private
+                logger.exception(
+                    "admin.bulk_delete_row_failed", item_id=str(item_id)
+                )
+                outcome.record_failure(item_id, "error")
+            else:
+                outcome.record_success()
+        return outcome
 
     @staticmethod
     async def _bulk_restore(
         resource: Any,
         data_source: Any,
         item_ids: list[str],
-    ) -> int:
-        """Restore selected records through the resource lifecycle contract."""
+    ) -> BulkOutcome:
+        """Restore selected records with per-row failure isolation (R14)."""
         operation = getattr(resource, "restore", None)
-        count = 0
+        outcome = BulkOutcome(verb="Restored", total=len(item_ids))
         for item_id in item_ids:
-            if callable(operation):
-                try:
+            try:
+                if callable(operation):
                     restored = await _maybe_await(operation(item_id))
-                except LookupError:
-                    continue
-                if restored is not None:
-                    count += 1
-                continue
-            updated = await data_source.update(item_id, {"deleted_at": None})
-            if updated is not None:
-                count += 1
-        return count
+                    if restored is None:
+                        outcome.record_failure(item_id, "restore rejected")
+                        continue
+                else:
+                    updated = await data_source.update(
+                        item_id, {"deleted_at": None}
+                    )
+                    if updated is None:
+                        outcome.record_failure(item_id, "not found")
+                        continue
+            except LookupError:
+                outcome.record_failure(item_id, "not found")
+            except NotImplementedError:
+                raise
+            except (PermissionError, PermissionDeniedError):
+                outcome.record_failure(item_id, "forbidden")
+            except Exception:  # noqa: BLE001 — row isolation; details stay private
+                logger.exception(
+                    "admin.bulk_restore_row_failed", item_id=str(item_id)
+                )
+                outcome.record_failure(item_id, "error")
+            else:
+                outcome.record_success()
+        return outcome
 
     @staticmethod
     def _declared_bulk_action(resource: Any, action_name: str) -> Any | None:
@@ -678,13 +731,11 @@ class BulkActionHandler:
 
         if execution_action == "delete":
             try:
-                count = await self._bulk_delete(
+                outcome = await self._bulk_delete(
                     resource, data_source, form_ids, purge=False
                 )
             except (PermissionError, PermissionDeniedError):
                 return HTMLResponse("Forbidden", status_code=403)
-            except LookupError:
-                return HTMLResponse("Not found", status_code=404)
             except NotImplementedError:
                 return HTMLResponse("Delete is unavailable", status_code=503)
             except Exception as exc:  # noqa: BLE001 — storage/hook details stay private
@@ -692,22 +743,18 @@ class BulkActionHandler:
                 return HTMLResponse(
                     "Unable to delete selected records", status_code=503
                 )
-            message = f"Deleted {count} item(s)"
         elif execution_action == "purge":
             try:
-                count = await self._bulk_delete(
+                outcome = await self._bulk_delete(
                     resource, data_source, form_ids, purge=True
                 )
             except (PermissionError, PermissionDeniedError):
                 return HTMLResponse("Forbidden", status_code=403)
-            except LookupError:
-                return HTMLResponse("Not found", status_code=404)
             except NotImplementedError:
                 return HTMLResponse("Purge is unavailable", status_code=503)
             except Exception as exc:  # noqa: BLE001 — storage/hook details stay private
                 logger.exception("admin.bulk_purge_failed", error=str(exc))
                 return HTMLResponse("Unable to purge selected records", status_code=503)
-            message = f"Purged {count} item(s)"
         elif execution_action in {"export", "export_csv"}:
             import csv
             from io import StringIO
@@ -789,11 +836,9 @@ class BulkActionHandler:
                             return response
                         return HTMLResponse(message, status_code=409)
             try:
-                count = await self._bulk_restore(resource, data_source, form_ids)
+                outcome = await self._bulk_restore(resource, data_source, form_ids)
             except (PermissionError, PermissionDeniedError):
                 return HTMLResponse("Forbidden", status_code=403)
-            except LookupError:
-                return HTMLResponse("Not found", status_code=404)
             except NotImplementedError:
                 return HTMLResponse("Restore is unavailable", status_code=503)
             except Exception as exc:  # noqa: BLE001 — storage/hook details stay private
@@ -801,19 +846,36 @@ class BulkActionHandler:
                 return HTMLResponse(
                     "Unable to restore selected records", status_code=503
                 )
-            message = f"Restored {count} item(s)"
         else:
             return HTMLResponse(
                 render_to_string(el("p", f"Unknown action: {action_name}")),
                 status_code=400,
             )
 
+        # Per-row outcome reporting (R14, doc 09): one structured log line
+        # per batch with the full failure list, and an honest toast whose
+        # severity reflects reality (success / warning / error).
+        logger.info(
+            "admin.bulk_outcome",
+            resource=str(resource.name or ""),
+            action=execution_action,
+            **outcome.log_fields(),
+        )
+        message = outcome.message()
+
         if is_htmx:
             response = HTMLResponse(render_to_string(el("p", message)))
+            toast: dict[str, Any] = {
+                "message": message,
+                "type": outcome.toast_type(),
+            }
+            if not outcome.all_ok:
+                # Failure lists need more reading time than the 3s default.
+                toast["duration"] = 8000
             response.headers["HX-Trigger"] = dumps_str(
                 {
                     "refresh-list": True,
-                    "show-toast": {"message": message, "type": "success"},
+                    "show-toast": toast,
                 }
             )
             return response

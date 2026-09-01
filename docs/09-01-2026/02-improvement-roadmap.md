@@ -122,9 +122,13 @@ The first 15 minutes decide whether a team adopts an admin framework.
   save-current-view, delete, and active-view highlighting. Full plan and
   follow-ups (shared views, default view) in
   [08-saved-views.md](08-saved-views.md).
-- **R14. Bulk-action UX hardening.** Progress feedback for long bulk
-  operations via the existing task manager; per-row error reporting
-  ("3 of 50 failed: …") instead of all-or-nothing toasts.
+- **R14. Bulk-action UX hardening.** ✅ **Done 2026-09-02** — per-row
+  outcome accounting for bulk delete/purge/restore: honest toasts
+  ("Deleted 47 of 50 item(s) - 3 failed: …") with severity
+  success/warning/error, row-failure isolation (one bad row no longer
+  aborts the batch or mis-reports completed work), and the silent
+  bulk-purge no-op fixed to a proper 503. Progress-bar SSE wiring is the
+  documented phase 2. Full plan in [09-bulk-ux.md](09-bulk-ux.md).
 
 ## Phase 4 — Scale & polish
 
