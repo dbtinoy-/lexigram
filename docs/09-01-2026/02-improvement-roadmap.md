@@ -101,10 +101,15 @@ The first 15 minutes decide whether a team adopts an admin framework.
   attributed `role_created/updated/deleted`). Fixed framework bug B11
   (route path params dropped) en route. Full plan and phase 2/3 follow-ups
   in [06-access-control-ui.md](06-access-control-ui.md).
-- **R11. Mailer onboarding.** Verification/reset emails fail with a wall of
-  text when no mailer is bound. Add a settings-panel health card
-  ("Email delivery: not configured — docs link"), a `console` mailer
-  default in debug mode, and a "send test email" button.
+- **R11. Mailer onboarding.** ✅ **Done 2026-09-01** — shipped as the
+  Email delivery page (`/admin/email`, superadmin-only): runtime status
+  card (backend, sender identity, remediation guidance when unbound) and
+  a one-click test email to the acting admin's own address. Debug mode
+  now auto-registers a log-only `AdminConsoleMailer` fallback when no
+  `MailerProtocol` is bound (never in production, never overriding a real
+  backend), so verification/reset/OTP flows are completable from the
+  server log in development. Full plan and phase 2/3 follow-ups in
+  [07-mailer-onboarding.md](07-mailer-onboarding.md).
 - **R12. Session & security dashboard.** ✅ **Done 2026-09-01** — shipped
   as the Security Center (`/admin/security`, superadmin-only): fleet-wide
   active-sessions view with remote revoke, filterable audit-log browser,

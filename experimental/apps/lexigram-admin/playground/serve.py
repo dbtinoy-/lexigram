@@ -218,6 +218,9 @@ async def build_app():
         {
             "prefix": "/admin",
             "title": "Lexigram Admin Playground",
+            # Debug on: exercises the R11 console-mailer fallback so
+            # verification/reset emails land in the server log.
+            "debug": True,
             "auth": {
                 "session_secret": "playground-session-secret-not-for-prod",
                 "security": {"setup_token": SETUP_TOKEN},

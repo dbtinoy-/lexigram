@@ -278,6 +278,21 @@ class TestAccessControlMenuEntries:
         assert labels.index("Users") < labels.index("Roles")
         assert labels.index("Roles") < labels.index("Security")
 
+    def test_email_entry_superadmin_only(self) -> None:
+        """R11: the Email delivery entry follows the same gate."""
+        superadmin_menu = NavigationManager(
+            self._request_with_user(is_superuser=True)
+        ).user_menu_items()
+        labels = [m["label"] for m in superadmin_menu]
+        assert "Email" in labels
+        entry = next(m for m in superadmin_menu if m["label"] == "Email")
+        assert entry["href"] == "/admin/email"
+
+        regular_menu = NavigationManager(
+            self._request_with_user(roles=["admin"])
+        ).user_menu_items()
+        assert "Email" not in [m["label"] for m in regular_menu]
+
 
 @pytest.mark.parametrize(
     ("label", "action"),

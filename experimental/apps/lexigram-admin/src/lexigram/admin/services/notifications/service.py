@@ -479,5 +479,66 @@ class AdminNotificationService:
 
         return await self.send(notification)
 
+    # ------------------------------------------------------------------
+    # Diagnostics (roadmap R11 — docs/09-01-2026/07-mailer-onboarding.md)
+    # ------------------------------------------------------------------
+
+    @property
+    def mailer_bound(self) -> bool:
+        """True when a ``MailerProtocol`` backend is wired for delivery."""
+        return self.email_sender.mailer is not None
+
+    @property
+    def mailer_backend_name(self) -> str | None:
+        """Class name of the bound mailer backend, or ``None``."""
+        mailer = self.email_sender.mailer
+        return type(mailer).__name__ if mailer is not None else None
+
+    @property
+    def mailer_is_debug_fallback(self) -> bool:
+        """True when the bound backend is the automatic debug console mailer."""
+        return getattr(self.email_sender.mailer, "is_debug_fallback", False) is True
+
+    async def notify_test_email(
+        self,
+        recipient: NotificationRecipient,
+    ) -> Result[NotificationResult, NotificationError]:
+        """Send a diagnostics test email straight through the mailer.
+
+        Deliberately bypasses recipient preferences and ``enabled_types``
+        gating so configuration filters can never mask a delivery problem
+        — this is an operator diagnostics path, not a product notification.
+
+        Args:
+            recipient: The recipient (the acting admin's own address).
+
+        Returns:
+            ``Ok(NotificationResult)`` when the backend accepted the send;
+            ``Err(NotificationError)`` when no mailer is bound or the
+            backend rejected/failed the delivery.
+        """
+        if not self.mailer_bound:
+            return Err(
+                NotificationError(
+                    "No mailer backend is configured. Bind a MailerProtocol "
+                    "(or enable debug mode for the console fallback)."
+                )
+            )
+        subject = "Test email from Lexigram Admin"
+        body = (
+            "This is a test email sent from the Email delivery page.\n\n"
+            "If you are reading this, outbound email delivery works."
+        )
+        try:
+            await self.email_sender.send_email(
+                recipient=recipient,
+                subject=subject,
+                body=body,
+            )
+        except (RuntimeError, OSError, ConnectionError) as exc:
+            return Err(NotificationError(f"Test email failed: {exc}"))
+        self._sent_count += 1
+        return Ok(NotificationResult(recipients_sent=1))
+
 
 __all__ = ["AdminNotificationService"]

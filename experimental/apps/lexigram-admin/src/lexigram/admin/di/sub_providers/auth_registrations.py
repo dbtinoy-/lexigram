@@ -362,6 +362,26 @@ def register_new_auth_services(
         AdminEmailVerificationConfig,
     )
 
+    # ── Console mailer fallback (debug only — R11, doc 07) ────────────
+    # A fresh install has no MailerProtocol bound, which breaks the
+    # verification/reset/OTP flows silently. In debug mode, fall back to
+    # a log-only console mailer so those flows are completable from the
+    # server log. Never overrides an explicitly bound backend, and never
+    # registers outside debug — production must stay explicit.
+    from lexigram.contracts.mailer.protocols import MailerProtocol
+
+    if getattr(config, "debug", False) is True and not container.has(MailerProtocol):
+        from lexigram.admin.services.notifications.console_mailer import (
+            AdminConsoleMailer,
+        )
+
+        container.singleton(MailerProtocol, AdminConsoleMailer())
+        logger.info(
+            "admin.mailer_console_fallback",
+            reason="debug mode and no MailerProtocol bound",
+            backend="AdminConsoleMailer",
+        )
+
     container.singleton(AdminNotificationService, AdminNotificationService)
 
     container.singleton(

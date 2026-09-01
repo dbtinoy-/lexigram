@@ -425,6 +425,52 @@ class AdminMountControllersMixin:
             if self._config.strict_resource_resolution:
                 raise
 
+        # Resolve built-in EmailDeliveryController (Mailer onboarding — R11,
+        # docs/09-01-2026/07-mailer-onboarding.md). Best-effort.
+        try:
+            from lexigram.admin.controllers.email import EmailDeliveryController
+
+            email_controller = await resolver.resolve(
+                EmailDeliveryController,
+                bypass_visibility=True,
+            )
+            ctx.controllers.append(email_controller)
+            email_controller._super_admin_role = str(
+                getattr(self._config.rbac, "super_admin_role", "superadmin")
+                or "superadmin"
+            )
+            if getattr(email_controller, "_csrf_service", None) is None:
+                try:
+                    email_controller._csrf_service = await self._get_csrf_service(
+                        resolver
+                    )
+                except Exception:
+                    pass
+            if getattr(email_controller, "_notification_service", None) is None:
+                try:
+                    from lexigram.admin.services.notifications import (
+                        AdminNotificationService,
+                    )
+
+                    email_controller._notification_service = await resolver.resolve(
+                        AdminNotificationService,
+                        bypass_visibility=True,
+                    )
+                except Exception:
+                    pass
+            audit_service = await self._resolve_audit_service(resolver)
+            if audit_service is not None:
+                email_controller._audit_service = audit_service
+        except Exception as exc:
+            _log.error(
+                "admin.email_controller_resolution_failed",
+                error=str(exc),
+                strict=self._config.strict_resource_resolution,
+            )
+            self._mount_failures["controller:EmailDeliveryController"] = str(exc)
+            if self._config.strict_resource_resolution:
+                raise
+
         # Resolve built-in SetupController (first-run wizard)
         try:
             from lexigram.admin.controllers.setup import SetupController

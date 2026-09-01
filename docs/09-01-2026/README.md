@@ -14,10 +14,11 @@ deployment, the fixes shipped on this date, and the forward-looking roadmap.
 | [04-verification-playbook.md](04-verification-playbook.md) | How every change was (and future changes should be) verified: playground boot recipe, end-to-end smoke flow, test suite baselines. |
 | [05-security-center.md](05-security-center.md) | Security Center (R12): superadmin sessions/audit/lockout dashboard — design, phases, and verification. |
 | [06-access-control-ui.md](06-access-control-ui.md) | Roles & Permissions UI (R10): role CRUD + user role assignment with guard rails — design, phases, and verification. |
+| [07-mailer-onboarding.md](07-mailer-onboarding.md) | Mailer onboarding (R11): email delivery status page, test send, and debug-mode console fallback — design, phases, and verification. |
 
 ## Status at time of writing
 
-- Unit suite: **5182 passed, 8 skipped** (baseline before this work: 5027 / 8);
+- Unit suite: **5209 passed, 8 skipped** (baseline before this work: 5027 / 8);
   webhook package suite: 336 passed; lexigram-sql suite: 1395 passed / 48 skipped.
 - New first-run scenario e2e (`tests/e2e/test_first_run_scenario_e2e.py`)
   walks setup → login → dashboard → list → create → edit → logout against
@@ -39,6 +40,9 @@ deployment, the fixes shipped on this date, and the forward-looking roadmap.
   UI shipped** (doc 06) — role CRUD with a permission matrix, user role
   assignment with a last-superadmin guard, actor-attributed audit for all
   role/assignment changes, plus the B11 route-path-param framework fix.
+  **R11 Mailer onboarding shipped** (doc 07) — Email delivery status page
+  with self-only test send, and a debug-mode console mailer fallback so
+  auth email flows work out of the box in development.
 
 ## Guiding principles (applies to all follow-up work)
 

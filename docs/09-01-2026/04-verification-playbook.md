@@ -11,7 +11,7 @@ verifying any future change to lexigram-admin. Auth/authz changes require
 uv run pytest experimental/apps/lexigram-admin/tests/unit -q
 ```
 
-- Baseline 2026-09-01 (end of day): **5182 passed, 8 skipped**, coverage
+- Baseline 2026-09-01 (end of day): **5209 passed, 8 skipped**, coverage
   ≈ 75.6% (configured minimum 60%).
 - The suite adds `--cov` flags from `pyproject.toml`; use `--no-cov` for
   quick single-file runs.
@@ -58,6 +58,14 @@ uv run pytest experimental/apps/lexigram-admin/tests/unit -q
     `actor_id` attribution (R10)
   - `tests/unit/navigation/test_navigation_manager.py::TestAccessControlMenuEntries`
     — superadmin-only Users/Roles menu entries, fail-closed (R10)
+  - `tests/unit/services/test_console_mailer.py` — protocol conformance,
+    receipts, health (R11, doc 07)
+  - `tests/unit/services/test_notification_diagnostics.py` — mailer
+    introspection + `notify_test_email` Ok/Err paths (R11)
+  - `tests/unit/controllers/test_email_controller.py` — Email delivery
+    page: gate, status card states, CSRF, self-only test send (R11)
+  - `tests/unit/di/test_mailer_fallback.py` — console fallback registers
+    in debug only and never overrides a bound backend (R11)
 
 ## 2. Live playground (for anything touching auth, authz, middleware, layouts)
 
