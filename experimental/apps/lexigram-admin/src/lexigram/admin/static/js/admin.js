@@ -13,6 +13,68 @@
     initKeyboardShortcuts();
   });
 
+  // ========== Bulk export download (B28) ==========
+  // Export buttons render onclick="return window.LexigramDownloadBulk(this)"
+  // with data-bulk-download-url / data-bulk-action attributes. CSV/JSON
+  // responses carry Content-Disposition and must bypass HTMX (whose swap
+  // would inject the file into the page), so we fetch and download a blob.
+  window.LexigramDownloadBulk = function(btn) {
+    downloadBulk(btn);
+    return false;
+  };
+
+  async function downloadBulk(btn) {
+    function toast(message, type) {
+      if (window.showToast) window.showToast(message, type);
+    }
+    try {
+      const url = btn.getAttribute('data-bulk-download-url');
+      if (!url) return;
+      const action = btn.getAttribute('data-bulk-action') || 'export';
+      const checked = document.querySelectorAll('input[name="ids"]:checked');
+      if (!checked.length) {
+        toast('Select at least one row to export.', 'warning');
+        return;
+      }
+      const body = new FormData();
+      body.append('action', action);
+      checked.forEach(function(box) { body.append('ids', box.value); });
+      const csrfInput = document.querySelector('input[name="csrf_token"]');
+      const csrfEl = document.querySelector('[data-csrf-token]');
+      const csrf = window.__lexigramCsrfToken ||
+        (csrfInput && csrfInput.value) ||
+        (csrfEl && csrfEl.getAttribute('data-csrf-token'));
+      if (csrf) body.append('csrf_token', csrf);
+      const headers = {};
+      if (csrf) headers['X-CSRF-Token'] = csrf;
+
+      const response = await fetch(url, {
+        method: 'POST',
+        body: body,
+        headers: headers,
+        credentials: 'same-origin'
+      });
+      if (!response.ok) {
+        toast('Export failed (' + response.status + ').', 'error');
+        return;
+      }
+      const blob = await response.blob();
+      const disposition = response.headers.get('Content-Disposition') || '';
+      const match = disposition.match(/filename="?([^";]+)"?/i);
+      const filename = match ? match[1] : 'export.csv';
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(function() { URL.revokeObjectURL(link.href); }, 4000);
+      toast('Exported ' + checked.length + ' record' + (checked.length === 1 ? '' : 's') + '.', 'success');
+    } catch (err) {
+      toast('Export failed.', 'error');
+    }
+  }
+
   // ========== Sidebar ==========
   function initSidebar() {
     const sidebar = document.querySelector('.admin-sidebar');

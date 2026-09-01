@@ -14,6 +14,14 @@ from lexigram.admin.ui.molecules.toast_notification import ToastNotification
 from lexigram.admin.ui.organisms.admin_slide_over import render_bulk_delete_confirm
 from lexigram.ui import el, render_to_string
 
+#: Bulk action names that produce a direct file download instead of a
+#: toast, mapped to their default file format (B29).
+_EXPORT_BULK_ACTIONS: dict[str, str] = {
+    "export": "csv",
+    "export_csv": "csv",
+    "export_json": "json",
+}
+
 
 class ResourceBulkMixin:
     """Bulk action confirmations and execution."""
@@ -127,6 +135,8 @@ class ResourceBulkMixin:
                 "delete": "can_delete",
                 "purge": "can_delete",
                 "restore": "can_update",
+                # Exports read data — gate on view capability (B29).
+                **dict.fromkeys(_EXPORT_BULK_ACTIONS, "can_view"),
             }.get(str(action))
             capabilities = getattr(getattr(request, "state", None), "permissions", None)
             if (
@@ -135,6 +145,15 @@ class ResourceBulkMixin:
                 and not capabilities.get(required_capability, False)
             ):
                 return HTMLResponse("Forbidden", status_code=403)
+
+            if str(action) in _EXPORT_BULK_ACTIONS:
+                # B29: export used to fall through to "Unknown action:
+                # export" wrapped in a *success* toast. It now returns a
+                # real file download of the selected rows.
+                file_format = str(
+                    form_data.get("format") or _EXPORT_BULK_ACTIONS[str(action)]
+                )
+                return await self.bulk_export(list(ids), file_format)
 
             result = await self.execute_bulk_action(str(action), ids)  # type: ignore[arg-type]
             message = str(result)
@@ -153,6 +172,141 @@ class ResourceBulkMixin:
                 url=f"{self.meta.prefix}/{self.meta.name}",
                 status_code=302,
             )
+
+    async def bulk_export(self, ids: list[str], file_format: str = "csv") -> Response:
+        """Stream the selected records as a downloadable CSV/JSON file.
+
+        B29: the toolbar export buttons post ``action=export`` to the bulk
+        route, which previously had no export branch at all.
+
+        Args:
+            ids: Selected record ids, in selection order.
+            file_format: ``csv`` (default) or ``json``.
+
+        Returns:
+            An attachment response, or an error response when the format
+            is unsupported / export is disabled for the resource.
+        """
+        from datetime import UTC, datetime
+        import re
+
+        if not getattr(self.meta, "enable_export", True):
+            return HTMLResponse("Export is disabled for this resource", status_code=403)
+
+        fmt = (file_format or "csv").strip().lower()
+        if fmt not in ("csv", "json"):
+            return HTMLResponse(f"Unsupported export format: {fmt}", status_code=400)
+
+        rows = [self._export_row(item) for item in await self._fetch_export_rows(ids)]
+        rows = self._order_rows_by_selection(rows, ids)
+
+        if fmt == "csv":
+            payload = self._encode_export_csv(rows)
+            media_type = "text/csv; charset=utf-8"
+        else:
+            from lexigram.serialization import dumps_str
+
+            payload = dumps_str(rows).encode("utf-8")
+            media_type = "application/json"
+
+        stem = re.sub(r"[^A-Za-z0-9._-]", "_", str(self.meta.name)) or "export"
+        timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
+        filename = f"{stem}_export_{timestamp}.{fmt}"
+        return Response(
+            content=payload,
+            media_type=media_type,
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}"',
+                # Exports may contain sensitive data — never cache.
+                "Cache-Control": "no-store",
+            },
+        )
+
+    async def _fetch_export_rows(self, ids: list[str]) -> list[Any]:
+        """Fetch the selected records, preferring one batched query."""
+        data_source = self.get_data_source()
+        try:
+            from lexigram.admin.data.query import QuerySpec
+
+            qs = (
+                QuerySpec()
+                .with_where_in("id", list(ids))
+                .with_page(1)
+                .with_per_page(max(len(ids), 1))
+            )
+            result = await data_source.find_many(qs)
+            items = list(result.items)
+            if items:
+                return items
+        except Exception:  # noqa: BLE001 — duck-typed data sources may not speak QuerySpec
+            pass
+        # Fallback: per-id lookups (mirrors the other bulk branches).
+        items = []
+        for item_id in ids:
+            item = await data_source.find_one(item_id)
+            if item is not None:
+                items.append(item)
+        return items
+
+    @staticmethod
+    def _export_row(item: Any) -> dict[str, Any]:
+        """Normalize a record (mapping or object) to a plain dict."""
+        if isinstance(item, dict):
+            return dict(item)
+        try:
+            return dict(item)
+        except (TypeError, ValueError):
+            attrs = getattr(item, "__dict__", None)
+            if isinstance(attrs, dict):
+                return {k: v for k, v in attrs.items() if not k.startswith("_")}
+            return {"value": str(item)}
+
+    @staticmethod
+    def _order_rows_by_selection(
+        rows: list[dict[str, Any]], ids: list[str]
+    ) -> list[dict[str, Any]]:
+        """Return rows in the user's selection order when ids allow it."""
+        by_id: dict[str, dict[str, Any]] = {}
+        for row in rows:
+            rid = row.get("id")
+            if rid is None or str(rid) in by_id:
+                return rows  # ambiguous — keep data-source order
+            by_id[str(rid)] = row
+        if len(by_id) != len(rows):
+            return rows
+        ordered = [by_id[str(i)] for i in ids if str(i) in by_id]
+        ordered.extend(row for row in rows if row not in ordered)
+        return ordered
+
+    @staticmethod
+    def _encode_export_csv(rows: list[dict[str, Any]]) -> bytes:
+        """Encode rows as sanitized CSV bytes.
+
+        Cells pass through :func:`sanitize_cell_value` — the same
+        formula-injection guard used by the export file backends.
+        """
+        import csv
+        import io
+
+        from lexigram.admin.services.export.sanitize import sanitize_cell_value
+
+        fieldnames: list[str] = []
+        for row in rows:
+            for key in row:
+                if key not in fieldnames:
+                    fieldnames.append(key)
+
+        buffer = io.StringIO()
+        if fieldnames:
+            writer = csv.DictWriter(
+                buffer, fieldnames=fieldnames, extrasaction="ignore", restval=""
+            )
+            writer.writeheader()
+            for row in rows:
+                writer.writerow(
+                    {k: sanitize_cell_value(row.get(k)) for k in fieldnames}
+                )
+        return buffer.getvalue().encode("utf-8")
 
     async def execute_bulk_action(self, action: str, ids: list[str]) -> str:
         """Execute bulk action. Override to add custom actions.

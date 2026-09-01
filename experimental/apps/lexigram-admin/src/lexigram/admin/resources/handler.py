@@ -798,6 +798,9 @@ class BulkActionHandler:
             response.headers["Content-Disposition"] = (
                 f'attachment; filename="{filename}"'
             )
+            # Exports may contain sensitive data — never cache (parity with
+            # the controller-stack bulk_export path).
+            response.headers["Cache-Control"] = "no-store"
             if is_htmx:
                 # An HTMX swap must not put CSV bytes into the table. A
                 # non-HTMX submission downloads normally; callers using HTMX

@@ -389,6 +389,7 @@ class AdminLayout(LayoutBase):
                 # would reach JavaScript as the literal text "&#39;" and
                 # corrupt the token rather than protect it.
                 csrf_header = f"""
+                window.__lexigramCsrfToken = {js_string(ctx.csrf_token)};
                 document.body.addEventListener('htmx:configRequest', function(evt) {{
                     evt.detail.headers['X-CSRF-Token'] = {js_string(ctx.csrf_token)};
                 }});
