@@ -33,6 +33,10 @@ class AdminUserRecord:
     is_active: bool = True
     is_verified: bool = True
 
+    def __post_init__(self) -> None:
+        self.role: str = self.roles[0] if self.roles else ""
+        self.status: str = "active" if self.is_active else "inactive"
+
     def has_role(self, role: str) -> bool:
         """Return True if the user has the given role.
 
