@@ -56,7 +56,9 @@ class ImportJob:
     """Parsed import batch ready for validation or commit.
 
     Attributes:
-        rows: Parsed rows as dicts keyed by mapped field names.
+        rows: Parsed rows as dicts keyed by mapped field names. Rows that
+            failed to parse are empty placeholders so that error ``row``
+            numbers always match 1-based positions in this list.
         errors: Per-row validation errors collected during :meth:`AdminImportService.parse`.
         column_map: Mapping from source file header → target resource field name.
         source_filename: Original uploaded filename.
@@ -167,8 +169,14 @@ def _parse_csv(
     for _row_num, raw_row in enumerate(reader, start=1):
         mapped: dict[str, Any] = {}
         for src, dst in effective_map.items():
-            val = raw_row.get(src, "").strip()
-            mapped[dst] = val or None
+            # B15: csv.DictReader fills missing trailing cells with None
+            # (restval), so ragged rows must not assume str values.
+            raw_val = raw_row.get(src)
+            if isinstance(raw_val, str):
+                stripped = raw_val.strip()
+                mapped[dst] = stripped or None
+            else:
+                mapped[dst] = raw_val
         rows.append(mapped)
 
     return rows, effective_map, errors
@@ -210,6 +218,72 @@ def _parse_json(
 
     for row_num, item in enumerate(data, start=1):
         if not isinstance(item, dict):
+            # B16: append a placeholder so error row numbers stay aligned
+            # with positions in ``rows`` — commit()/valid_rows skip rows by
+            # index, and a compacted list made them skip the WRONG rows
+            # (silent data loss for valid neighbours).
+            rows.append({})
+            errors.append(
+                ImportRowError(
+                    row=row_num, field="__row__", message="Expected a JSON object"
+                )
+            )
+            continue
+        if effective_map:
+            mapped: dict[str, Any] = {
+                dst: item.get(src) for src, dst in effective_map.items()
+            }
+        else:
+            mapped = dict(item)
+        rows.append(mapped)
+
+    return rows, effective_map, errors
+
+
+def _parse_jsonl(
+    content: bytes,
+    *,
+    column_map: dict[str, str] | None = None,
+) -> tuple[list[dict[str, Any]], dict[str, str], list[ImportRowError]]:
+    """Parse JSON Lines bytes (one JSON object per line) into rows.
+
+    B15b: ``.jsonl`` uploads were previously routed to the JSON-array
+    parser and always failed with "Invalid JSON". Real JSONL is one
+    object per non-empty line.
+
+    Error ``row`` numbers refer to 1-based positions in the returned
+    ``rows`` list (unparseable lines append an empty placeholder row so
+    positions stay aligned).
+
+    Args:
+        content: Raw file bytes in JSON Lines format.
+        column_map: Optional key remapping (source_key → target_field).
+
+    Returns:
+        Tuple of (rows, effective_column_map, parse_errors).
+    """
+    errors: list[ImportRowError] = []
+    effective_map: dict[str, str] = column_map or {}
+    rows: list[dict[str, Any]] = []
+    text = content.decode("utf-8-sig", errors="replace")
+
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+        row_num = len(rows) + 1
+        try:
+            item = json.loads(stripped)
+        except json.JSONDecodeError as exc:
+            rows.append({})
+            errors.append(
+                ImportRowError(
+                    row=row_num, field="__row__", message=f"Invalid JSON: {exc}"
+                )
+            )
+            continue
+        if not isinstance(item, dict):
+            rows.append({})
             errors.append(
                 ImportRowError(
                     row=row_num, field="__row__", message="Expected a JSON object"
@@ -353,7 +427,11 @@ class AdminImportService:
             rows, effective_map, parse_errors = _parse_csv(
                 content, column_map=column_map
             )
-        elif lower.endswith((".json", ".jsonl")):
+        elif lower.endswith(".jsonl"):
+            rows, effective_map, parse_errors = _parse_jsonl(
+                content, column_map=column_map
+            )
+        elif lower.endswith(".json"):
             rows, effective_map, parse_errors = _parse_json(
                 content, column_map=column_map
             )
@@ -374,9 +452,14 @@ class AdminImportService:
                 )
             )
 
-        # Row-level validation
+        # Row-level validation. Rows that already failed at parse time are
+        # placeholders — skip them so operators don't see cascading
+        # "field required" noise on top of the parse error.
         validation_errors = list(parse_errors)
-        validation_errors.extend(self._validate_rows(rows))
+        parse_error_rows = {e.row for e in parse_errors}
+        validation_errors.extend(
+            self._validate_rows(rows, skip_rows=parse_error_rows)
+        )
 
         job = ImportJob(
             rows=rows,
@@ -419,7 +502,7 @@ class AdminImportService:
             try:
                 await self._data_source.create(row)
                 created += 1
-            except (ValueError, TypeError, KeyError, RuntimeError) as exc:
+            except Exception as exc:  # noqa: BLE001 — B17: the documented contract is that a single bad row never aborts the batch; DB drivers raise arbitrary exception types (CancelledError still propagates: it derives from BaseException).
                 failed += 1
                 commit_errors.append(
                     ImportRowError(row=row_num, field="__row__", message=str(exc))
@@ -441,17 +524,27 @@ class AdminImportService:
     # Internal helpers
     # ------------------------------------------------------------------
 
-    def _validate_rows(self, rows: list[dict[str, Any]]) -> list[ImportRowError]:
+    def _validate_rows(
+        self,
+        rows: list[dict[str, Any]],
+        *,
+        skip_rows: set[int] | None = None,
+    ) -> list[ImportRowError]:
         """Run required-field validation over all rows.
 
         Args:
             rows: Parsed rows to validate.
+            skip_rows: 1-based row numbers to skip (rows that already
+                failed during parse and only hold placeholder data).
 
         Returns:
             List of ImportRowError for any violations found.
         """
         errors: list[ImportRowError] = []
+        skip = skip_rows or set()
         for row_num, row in enumerate(rows, start=1):
+            if row_num in skip:
+                continue
             if self._allowed_fields is not None:
                 for key in row:
                     if key not in self._allowed_fields:

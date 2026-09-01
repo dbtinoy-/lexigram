@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import csv
 import io
+import re
 from typing import TYPE_CHECKING, Any
 
 from lexigram.admin.actions.base import BulkAction, HeaderAction
@@ -20,6 +21,28 @@ from lexigram.result import Err, Ok, Result
 
 if TYPE_CHECKING:
     from lexigram.admin.services.import_ import AdminImportService
+
+_SAFE_FILENAME_CHARS = re.compile(r"[^A-Za-z0-9._-]+")
+_MAX_FILENAME_STEM = 100
+
+
+def _safe_filename_stem(source_filename: str) -> str:
+    """Derive a header-safe filename stem from an uploaded filename.
+
+    B18: upload filenames are attacker-influencable and end up inside
+    ``Content-Disposition: attachment; filename="…"``. Quotes, CR/LF, or
+    path separators there mean header breakage/injection. Allowlist to
+    ``[A-Za-z0-9._-]``, cap the length, and fall back to ``"import"``.
+
+    Args:
+        source_filename: Original uploaded filename (may be hostile).
+
+    Returns:
+        A safe, non-empty stem without the file extension.
+    """
+    stem = source_filename.rpartition(".")[0] or source_filename
+    cleaned = _SAFE_FILENAME_CHARS.sub("_", stem).strip("._") or "import"
+    return cleaned[:_MAX_FILENAME_STEM]
 
 
 async def _run_import(
@@ -45,7 +68,7 @@ async def _run_import(
         reports = service.reports()
         if reports:
             report = reports[-1]
-            stem = report.source_filename.rpartition(".")[0] or "import"
+            stem = _safe_filename_stem(report.source_filename)
             payload["report_id"] = report.id
             payload["report_filename"] = f"{stem}-import-errors.csv"
     return Ok(payload)
@@ -94,7 +117,7 @@ class _ImportReportMixin:
         report = service.get_report(report_id)
         if report is None:
             return None
-        stem = report.source_filename.rpartition(".")[0] or "import"
+        stem = _safe_filename_stem(report.source_filename)
         return f"{stem}-import-errors.csv"
 
 
@@ -165,6 +188,10 @@ class ImportAction(_ImportReportMixin, HeaderAction):
             from lexigram.admin.services.import_ import AdminImportService
 
             service = AdminImportService(data_source=data_source)
+            # B19: keep the lazily created service so failed-import
+            # reports advertised via report_id stay downloadable through
+            # report_csv()/report_filename() after this request.
+            self._import_service = service
         return await _run_import(service, content, filename)
 
 
@@ -214,4 +241,8 @@ class ImportBulkAction(_ImportReportMixin, BulkAction):
             from lexigram.admin.services.import_ import AdminImportService
 
             service = AdminImportService(data_source=data_source)
+            # B19: keep the lazily created service so failed-import
+            # reports advertised via report_id stay downloadable through
+            # report_csv()/report_filename() after this request.
+            self._import_service = service
         return await _run_import(service, content, filename)
