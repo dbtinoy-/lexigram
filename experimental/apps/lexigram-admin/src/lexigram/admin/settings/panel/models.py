@@ -86,6 +86,15 @@ class SecuritySettings(DomainModel):
         title="HSTS Max Age (seconds)",
         description="Strict-Transport-Security max-age.",
     )
+    frame_options: str = Field(
+        default="DENY",
+        title="X-Frame-Options",
+        description=(
+            "X-Frame-Options header value (DENY or SAMEORIGIN). "
+            "Leave empty to omit the header and let the CSP "
+            "frame-ancestors directive govern embedding."
+        ),
+    )
 
 
 class I18nSettings(DomainModel):

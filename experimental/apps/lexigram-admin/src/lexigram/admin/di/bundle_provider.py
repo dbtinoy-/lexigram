@@ -398,6 +398,33 @@ class AdminProvider(
         middleware_stack.append((AdminNavPushMiddleware, {}))
         _log.debug("admin.nav_push_middleware_wired")
 
+        # Wire security headers outermost (index 0 = outermost of the admin
+        # stack) so OWASP headers cover every admin response, including
+        # setup/CSRF/auth-guard short-circuits and error pages. Best-effort:
+        # the middleware degrades to compile-time defaults without a
+        # settings store, and the admin runs without security headers only
+        # if wiring itself fails.
+        try:
+            from lexigram.admin.middleware.security_headers import (
+                SecurityHeadersMiddleware,
+            )
+
+            settings_store: Any = None
+            if ctx.settings_service is not None:
+                from lexigram.admin.settings.store import TenantConfigStore
+
+                settings_store = TenantConfigStore(ctx.settings_service)
+            middleware_stack.insert(
+                0,
+                (SecurityHeadersMiddleware, {"settings_store": settings_store}),
+            )
+            _log.debug("admin.security_headers_middleware_wired")
+        except Exception as exc:  # noqa: BLE001 — security headers are best-effort
+            _log.warning(
+                "admin.security_headers_middleware_skipped",
+                reason=str(exc),
+            )
+
         ctx.middlewares = middleware_stack
 
     def _mount_tenant_scoping(self, ctx: MountContext) -> None:

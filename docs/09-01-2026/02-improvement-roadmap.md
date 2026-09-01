@@ -129,6 +129,14 @@ The first 15 minutes decide whether a team adopts an admin framework.
   aborts the batch or mis-reports completed work), and the silent
   bulk-purge no-op fixed to a proper 503. Progress-bar SSE wiring is the
   documented phase 2. Full plan in [09-bulk-ux.md](09-bulk-ux.md).
+- **Security headers wired.** ✅ **Done 2026-09-02** — the orphaned
+  `SecurityHeadersMiddleware` (flagged in doc 01) now sits outermost in the
+  admin stack, so every response carries the OWASP set (HSTS, CSP,
+  X-Frame-Options, nosniff, Referrer-Policy, Permissions-Policy). Fixed two
+  latent defects on the way in (duplicate `Set-Cookie` collapse,
+  case-sensitive merge) and added a runtime `frame_options` override on the
+  Security Headers settings page. Full plan in
+  [10-security-headers.md](10-security-headers.md).
 
 ## Phase 4 — Scale & polish
 

@@ -17,10 +17,11 @@ deployment, the fixes shipped on this date, and the forward-looking roadmap.
 | [07-mailer-onboarding.md](07-mailer-onboarding.md) | Mailer onboarding (R11): email delivery status page, test send, and debug-mode console fallback — design, phases, and verification. |
 | [08-saved-views.md](08-saved-views.md) | Saved views & filter presets (R13): per-user named list views over the settings service — design, sanitization rules, and verification. |
 | [09-bulk-ux.md](09-bulk-ux.md) | Bulk-action UX hardening (R14): per-row outcome reporting, honest toast severities, failure isolation — design and verification. |
+| [10-security-headers.md](10-security-headers.md) | Security headers wired: the orphaned `SecurityHeadersMiddleware` now outermost in the admin stack, plus fixes for duplicate-header collapse and a runtime `frame_options` override. |
 
 ## Status at time of writing
 
-- Unit suite: **5305 passed, 8 skipped** (baseline before this work: 5027 / 8);
+- Unit suite: **5317 passed, 8 skipped** (baseline before this work: 5027 / 8);
   webhook package suite: 336 passed; lexigram-sql suite: 1395 passed / 48 skipped.
 - New first-run scenario e2e (`tests/e2e/test_first_run_scenario_e2e.py`)
   walks setup → login → dashboard → list → create → edit → logout against
@@ -53,6 +54,12 @@ deployment, the fixes shipped on this date, and the forward-looking roadmap.
   accounting for bulk delete/purge/restore with honest toast severities
   and failure isolation, plus fixes for the silent bulk-purge no-op and
   a latent non-ASCII `HX-Trigger` header crash.
+  **Security headers wired** (doc 10) — every admin response now carries
+  the OWASP header set (HSTS, CSP, X-Frame-Options, nosniff,
+  Referrer-Policy, Permissions-Policy) via the previously orphaned
+  `SecurityHeadersMiddleware`, with runtime overrides on the Security
+  Headers settings page and two latent middleware defects fixed
+  (duplicate `Set-Cookie` collapse, case-sensitive merge).
 
 ## Guiding principles (applies to all follow-up work)
 

@@ -11,7 +11,7 @@ verifying any future change to lexigram-admin. Auth/authz changes require
 uv run pytest experimental/apps/lexigram-admin/tests/unit -q
 ```
 
-- Baseline 2026-09-02: **5305 passed, 8 skipped**, coverage
+- Baseline 2026-09-02: **5317 passed, 8 skipped**, coverage
   ≈ 75.9% (configured minimum 60%).
 - The suite adds `--cov` flags from `pyproject.toml`; use `--no-cov` for
   quick single-file runs.
@@ -82,6 +82,16 @@ uv run pytest experimental/apps/lexigram-admin/tests/unit -q
     failure isolation, storage rejections/missing rows reported with
     reasons, purge-without-hook → 503, warning/error toasts with
     duration in HX-Trigger (R14)
+  - `tests/unit/test_security_headers_middleware.py` — duplicate
+    `Set-Cookie` preservation, case-insensitive route-override respect,
+    original-headers-first ordering, `frame_options` knob incl. empty ⇒
+    header omitted (security headers wiring, doc 10)
+  - `tests/unit/middleware/test_security_headers_settings.py` —
+    `admin.security.frame_options` override/omission via settings store,
+    store-error fallback to defaults, once-per-process caching (doc 10)
+  - `tests/unit/test_bundle_provider.py::test_mount_to_app_wires_security_headers_outermost`
+    — SecurityHeadersMiddleware at stack index 0 with a settings store
+    passed through (doc 10)
 
 ## 2. Live playground (for anything touching auth, authz, middleware, layouts)
 

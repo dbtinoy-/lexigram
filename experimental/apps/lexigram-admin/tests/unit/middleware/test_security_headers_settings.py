@@ -52,6 +52,46 @@ class TestSecurityHeadersSettings:
         service = await mw._resolve_headers()
         assert "max-age=3600" in service._headers["Strict-Transport-Security"]
 
+    @pytest.mark.asyncio
+    async def test_frame_options_override_from_store(self) -> None:
+        store = _SettingsStore({"admin.security.frame_options": "SAMEORIGIN"})
+        mw = SecurityHeadersMiddleware(app=_passthrough, settings_store=store)
+        service = await mw._resolve_headers()
+        assert service._headers["X-Frame-Options"] == "SAMEORIGIN"
+
+    @pytest.mark.asyncio
+    async def test_empty_frame_options_omits_header(self) -> None:
+        store = _SettingsStore({"admin.security.frame_options": ""})
+        mw = SecurityHeadersMiddleware(app=_passthrough, settings_store=store)
+        service = await mw._resolve_headers()
+        assert "X-Frame-Options" not in service._headers
+        # Other defaults are untouched by the frame override.
+        assert "Content-Security-Policy" in service._headers
+
+    @pytest.mark.asyncio
+    async def test_unset_frame_options_defaults_to_deny(self) -> None:
+        store = _SettingsStore({"admin.security.hsts_max_age": 3600})
+        mw = SecurityHeadersMiddleware(app=_passthrough, settings_store=store)
+        service = await mw._resolve_headers()
+        assert service._headers["X-Frame-Options"] == "DENY"
+
+    @pytest.mark.asyncio
+    async def test_store_error_falls_back_to_defaults(self) -> None:
+        store = _SettingsStore()
+        store.get = AsyncMock(side_effect=RuntimeError("db down"))
+        mw = SecurityHeadersMiddleware(app=_passthrough, settings_store=store)
+        service = await mw._resolve_headers()
+        assert service._headers["X-Frame-Options"] == "DENY"
+
+    @pytest.mark.asyncio
+    async def test_resolution_is_cached_once_per_process(self) -> None:
+        store = _SettingsStore({"admin.security.hsts_max_age": 3600})
+        mw = SecurityHeadersMiddleware(app=_passthrough, settings_store=store)
+        first = await mw._resolve_headers()
+        second = await mw._resolve_headers()
+        assert first is second
+        assert store.get.await_count == 3
+
 
 async def _passthrough(scope: dict, receive: object, send: object) -> None:
     """Inner app stub."""

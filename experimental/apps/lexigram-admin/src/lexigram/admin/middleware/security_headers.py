@@ -31,10 +31,10 @@ class AdminSecurityHeaders:
         self,
         csp: str = DEFAULT_CSP,
         hsts_max_age: int = 63072000,  # 2 years
+        frame_options: str = "DENY",
     ) -> None:
         self._headers: dict[str, str] = {
             "Strict-Transport-Security": f"max-age={hsts_max_age}; includeSubDomains",
-            "X-Frame-Options": "DENY",
             "X-Content-Type-Options": "nosniff",
             "Referrer-Policy": "strict-origin-when-cross-origin",
             "Permissions-Policy": (
@@ -43,6 +43,8 @@ class AdminSecurityHeaders:
             ),
             "Content-Security-Policy": csp,
         }
+        if frame_options:
+            self._headers["X-Frame-Options"] = frame_options
 
     def apply(self, headers: dict[str, str]) -> dict[str, str]:
         """Apply security headers to an existing headers mapping.
@@ -98,10 +100,12 @@ class SecurityHeadersMiddleware:
             try:
                 csp = await self._settings_store.get("admin.security.csp")
                 hsts = await self._settings_store.get("admin.security.hsts_max_age")
-                if csp or hsts:
+                frame = await self._settings_store.get("admin.security.frame_options")
+                if csp or hsts or frame is not None:
                     service = AdminSecurityHeaders(
                         csp=str(csp) if csp else DEFAULT_CSP,
                         hsts_max_age=int(hsts) if hsts else 63072000,
+                        frame_options="DENY" if frame is None else str(frame),
                     )
             except (RuntimeError, ValueError, TypeError) as exc:
                 logger.warning("admin.security_headers.settings_error", error=str(exc))
@@ -123,18 +127,21 @@ class SecurityHeadersMiddleware:
 
         async def send_with_headers(message: dict[str, Any]) -> None:
             if message["type"] == "http.response.start":
+                # Preserve the raw header list verbatim: rebuilding it from a
+                # dict would collapse repeated names (e.g. multiple
+                # Set-Cookie headers). Only *append* security headers whose
+                # name is absent, comparing case-insensitively because HTTP
+                # header names are case-insensitive on the wire.
                 raw_headers: list[tuple[bytes, bytes]] = list(
                     message.get("headers", [])
                 )
-                # Build a mutable dict from existing headers (preserve case)
-                existing: dict[str, str] = {
-                    k.decode(): v.decode() for k, v in raw_headers
-                }
-                updated = service.apply(existing)
-                message = {
-                    **message,
-                    "headers": [(k.encode(), v.encode()) for k, v in updated.items()],
-                }
+                existing_lower = {name.decode("latin-1").lower() for name, _ in raw_headers}
+                additions = [
+                    (name.encode("latin-1"), value.encode("latin-1"))
+                    for name, value in service.apply({}).items()
+                    if name.lower() not in existing_lower
+                ]
+                message = {**message, "headers": raw_headers + additions}
             await send(message)
 
         await self._app(scope, receive, send_with_headers)

@@ -50,9 +50,10 @@ class TestSpecs:
 
     def test_security_spec_nodes(self) -> None:
         nodes = SecuritySpec.get_nodes()
-        assert set(nodes) == {"csp", "hsts_max_age"}
+        assert set(nodes) == {"csp", "hsts_max_age", "frame_options"}
         assert isinstance(nodes["hsts_max_age"], IntNode)
         assert "default-src" in nodes["csp"].default
+        assert nodes["frame_options"].default == "DENY"
 
     def test_newly_bound_specs_have_real_nodes(self) -> None:
         from lexigram.admin.settings.panel import (
