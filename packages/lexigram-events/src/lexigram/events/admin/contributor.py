@@ -141,6 +141,7 @@ class EventsAdminContributor(BaseAdminContributor):
         self._throughput_handler: WidgetHandlerProtocol | None = None
         self._dead_letter_handler: WidgetHandlerProtocol | None = None
         self._live_events_handler: WidgetHandlerProtocol | None = None
+        self._booted = False
 
     async def on_admin_boot(self, container: ContainerResolverProtocol | None) -> None:
         """Resolve event admin dependencies from the DI container.
@@ -149,6 +150,7 @@ class EventsAdminContributor(BaseAdminContributor):
             container: The DI container resolver.
         """
         if container is None:
+            self._booted = True
             return
         from lexigram.events.admin.handlers.dead_letter_count import (
             DeadLetterCountWidgetHandler,
@@ -187,6 +189,15 @@ class EventsAdminContributor(BaseAdminContributor):
                 "events_contributor.live_events_handler_unavailable", error=str(exc)
             )
             self._live_events_handler = None
+        self._booted = True
+
+    def _widget_handlers(self) -> dict[str, WidgetHandlerProtocol | None]:
+        """Widget name → resolved handler (the render_widget dispatch map)."""
+        return {
+            "events_throughput": self._throughput_handler,
+            "dead_letter_count": self._dead_letter_handler,
+            "live_events": self._live_events_handler,
+        }
 
     def get_routes(self) -> Sequence[AdminRouteSpec]:
         return [
@@ -200,7 +211,19 @@ class EventsAdminContributor(BaseAdminContributor):
         ]
 
     def get_dashboard_widgets(self) -> Sequence[DashboardWidgetDefinition]:
-        return list(_WIDGETS)
+        """Advertise widgets — the full catalog before boot, reality after.
+
+        Before ``on_admin_boot`` runs this is the declarative catalog
+        (tooling, docs, tests). After boot, widgets whose handler failed
+        to resolve are omitted so deployments without the events wiring
+        don't render permanently dead shells polling an error endpoint
+        every 5 s (R49, docs/09-01-2026/45-dead-dashboard-widgets.md).
+        Disabled, not broken — the platform's contributor principle.
+        """
+        if not self._booted:
+            return list(_WIDGETS)
+        handlers = self._widget_handlers()
+        return [w for w in _WIDGETS if handlers.get(w.name) is not None]
 
     def get_navigation_items(self) -> Sequence[NavigationContribution]:
         return list(_NAV_ITEMS)
@@ -269,14 +292,7 @@ class EventsAdminContributor(BaseAdminContributor):
             Result containing a WidgetViewModel with structured content
             or AdminError.
         """
-        if widget_name == "events_throughput":
-            handler = self._throughput_handler
-        elif widget_name == "dead_letter_count":
-            handler = self._dead_letter_handler
-        elif widget_name == "live_events":
-            handler = self._live_events_handler
-        else:
-            handler = None
+        handler = self._widget_handlers().get(widget_name)
 
         if handler is None:
             return Err(WidgetNotFoundError(self.name, widget_name))  # type: ignore[arg-type]

@@ -141,3 +141,48 @@ class TestEventsAdminContributor:
 __all__ = [
     "TestEventsAdminContributor",
 ]
+
+class TestWidgetAdvertising:
+    """Post-boot widget filtering (R49 — docs/09-01-2026/45-dead-dashboard-widgets.md).
+
+    Before boot the full declarative catalog is advertised (covered by
+    ``test_get_dashboard_widgets`` above); after boot only widgets whose
+    handler resolved are shown, so deployments without the events wiring
+    never render permanently dead dashboard shells.
+    """
+
+    @pytest.mark.asyncio
+    async def test_booted_contributor_advertises_only_resolved(self) -> None:
+        throughput = MagicMock(spec=WidgetHandlerProtocol)
+        container = MagicMock()
+        container.resolve = AsyncMock(
+            side_effect={EventsThroughputWidgetHandler: throughput}.get
+        )
+        contributor = EventsAdminContributor()
+        await contributor.on_admin_boot(container)
+
+        names = {w.name for w in contributor.get_dashboard_widgets()}
+        assert names == {"events_throughput"}
+
+    @pytest.mark.asyncio
+    async def test_boot_without_container_advertises_nothing(self) -> None:
+        contributor = EventsAdminContributor()
+        await contributor.on_admin_boot(None)
+        assert list(contributor.get_dashboard_widgets()) == []
+
+    @pytest.mark.asyncio
+    async def test_boot_with_failing_container_advertises_nothing(self) -> None:
+        container = MagicMock()
+        container.resolve = AsyncMock(side_effect=RuntimeError("not registered"))
+        contributor = EventsAdminContributor()
+        await contributor.on_admin_boot(container)
+        assert list(contributor.get_dashboard_widgets()) == []
+
+    @pytest.mark.asyncio
+    async def test_render_widget_still_errs_for_unresolved(self) -> None:
+        """Direct endpoint hits keep the structured error (friendly card)."""
+        contributor = EventsAdminContributor()
+        await contributor.on_admin_boot(None)
+        result = await contributor.render_widget("live_events", WidgetParams())
+        assert result.is_err()
+        assert isinstance(result.unwrap_err(), WidgetNotFoundError)
