@@ -8,6 +8,7 @@ unlock. Design: docs/09-01-2026/05-security-center.md.
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from html import escape
 from secrets import token_hex
 from typing import Any
@@ -41,6 +42,24 @@ _WINDOWS: dict[str, tuple[str, int]] = {
     "30d": ("Last 30 days", 2592000),
 }
 _LIMITS = (50, 100, 250)
+
+
+def _parse_ts(value: Any) -> datetime | None:
+    """Parse an audit-row timestamp; None when unparseable (never fatal).
+
+    Handles timezone-aware datetimes (Postgres drivers), naive datetimes
+    and plain strings (SQLite hands TIMESTAMP columns back as text) —
+    naive values are assumed UTC, matching how the stores write them.
+    """
+    if isinstance(value, datetime):
+        return value if value.tzinfo else value.replace(tzinfo=UTC)
+    if value is None:
+        return None
+    try:
+        parsed = datetime.fromisoformat(str(value).replace(" ", "T"))
+    except ValueError:
+        return None
+    return parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)
 
 
 def _fmt_ts(value: Any) -> str:
@@ -371,8 +390,102 @@ class SecurityController(AdminController):
             + '<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">'
             + cards
             + "</div>"
+            + self._login_sparkline_html(events)
         )
         return await self._page(request, html, "Security", "Security")
+
+    @staticmethod
+    def _login_sparkline_html(
+        events: list[Any], now: datetime | None = None
+    ) -> str:
+        """Hourly login-activity sparkline (R43, doc 39).
+
+        Buckets the audit events the overview already fetched —
+        LOGIN_SUCCESS / LOGIN_FAILURE per hour over 24 h — into an
+        inline SVG (CSP-safe: no script, no external assets). Rows with
+        unparseable timestamps are skipped, never fatal.
+        """
+        now = now or datetime.now(UTC)
+        buckets = 24
+        successes = [0] * buckets
+        failures = [0] * buckets
+        parsed_any = False
+        for e in events:
+            etype = getattr(e, "event_type", None)
+            if etype not in (
+                AdminSecurityEventType.LOGIN_SUCCESS,
+                AdminSecurityEventType.LOGIN_FAILURE,
+            ):
+                continue
+            ts = _parse_ts(getattr(e, "created_at", None))
+            if ts is None:
+                continue
+            age = (now - ts).total_seconds()
+            if age < 0 or age >= buckets * 3600:
+                continue
+            # Oldest hour on the left, current hour on the right.
+            idx = buckets - 1 - int(age // 3600)
+            parsed_any = True
+            if etype == AdminSecurityEventType.LOGIN_SUCCESS:
+                successes[idx] += 1
+            else:
+                failures[idx] += 1
+
+        heading = (
+            '<h2 class="text-sm font-medium text-foreground mt-8 mb-3">'
+            "Login activity</h2>"
+        )
+        if not parsed_any:
+            return heading + (
+                '<div class="bg-card border border-border rounded-xl p-8 '
+                'text-center text-muted-foreground">No login activity in '
+                "the last 24&nbsp;h.</div>"
+            )
+
+        bar_w, gap, chart_h = 10, 2, 48
+        peak = max(s + f for s, f in zip(successes, failures, strict=True)) or 1
+        rects = []
+        for i in range(buckets):
+            total = successes[i] + failures[i]
+            if total == 0:
+                continue
+            x = i * (bar_w + gap)
+            h_total = max(2, round(chart_h * total / peak))
+            h_fail = (
+                max(2, round(h_total * failures[i] / total)) if failures[i] else 0
+            )
+            h_ok = h_total - h_fail
+            y = chart_h - h_total
+            if h_fail:
+                rects.append(
+                    f'<rect x="{x}" y="{y}" width="{bar_w}" height="{h_fail}" '
+                    'style="fill:var(--destructive)" rx="1"><title>'
+                    f"{failures[i]} failed</title></rect>"
+                )
+            if h_ok:
+                rects.append(
+                    f'<rect x="{x}" y="{y + h_fail}" width="{bar_w}" '
+                    f'height="{h_ok}" '
+                    'style="fill:var(--muted-foreground);fill-opacity:.6" rx="1">'
+                    f"<title>{successes[i]} successful</title></rect>"
+                )
+        width = buckets * (bar_w + gap) - gap
+        total_ok, total_fail = sum(successes), sum(failures)
+        cap_note = (
+            " · window truncated at 250 events" if len(events) >= 250 else ""
+        )
+        return heading + (
+            '<div class="bg-card border border-border rounded-xl p-5" '
+            'data-testid="login-sparkline">'
+            f'<svg viewBox="0 0 {width} {chart_h}" width="{width}" '
+            f'height="{chart_h}" role="img" aria-label="Login attempts per '
+            'hour, last 24 hours" class="block">'
+            + "".join(rects)
+            + "</svg>"
+            + '<p class="text-xs text-muted-foreground mt-2">'
+            f"{total_ok} successful · {total_fail} failed · hourly, oldest "
+            f"left · last 24 h{escape(cap_note)}</p></div>"
+        )
 
     # -- CSP tab (docs 30/31) --------------------------------------------
 

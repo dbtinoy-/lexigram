@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
@@ -10,6 +11,7 @@ import pytest
 from starlette.exceptions import HTTPException
 from starlette.requests import Request
 
+from lexigram.admin.auth.types import AdminSecurityEventType
 from lexigram.admin.controllers.security import (
     SecurityController,
     _fmt_ts,
@@ -340,3 +342,83 @@ class TestActiveLockoutList:
         c._lockout_store = None
         html = await c._active_lockouts_html(_request(_FakeUser(is_superuser=True)))
         assert html == ""
+
+
+class TestLoginSparkline:
+    """R43 (doc 39): hourly login-activity sparkline on the overview."""
+
+    _NOW = datetime(2026, 9, 2, 12, 0, 0, tzinfo=UTC)
+
+    def _event(self, etype: AdminSecurityEventType, created_at: Any) -> Any:
+        return SimpleNamespace(event_type=etype, created_at=created_at)
+
+    def test_buckets_land_at_the_right_offsets(self) -> None:
+        events = [
+            # 30 min ago -> current hour (rightmost bucket)
+            self._event(
+                AdminSecurityEventType.LOGIN_SUCCESS,
+                self._NOW - timedelta(minutes=30),
+            ),
+            # 23.5 h ago -> oldest bucket (leftmost)
+            self._event(
+                AdminSecurityEventType.LOGIN_FAILURE,
+                self._NOW - timedelta(hours=23, minutes=30),
+            ),
+            # 25 h ago -> outside the window, dropped
+            self._event(
+                AdminSecurityEventType.LOGIN_FAILURE,
+                self._NOW - timedelta(hours=25),
+            ),
+        ]
+        html = SecurityController._login_sparkline_html(events, now=self._NOW)
+        assert 'data-testid="login-sparkline"' in html
+        assert "1 successful · 1 failed" in html
+        # leftmost bucket (x=0) is the failure; rightmost is the success
+        assert '<rect x="0" ' in html
+        assert 'x="276"' in html  # bucket 23 * (10 + 2)
+        assert html.count("<rect") == 2
+
+    def test_failure_bars_use_the_destructive_token(self) -> None:
+        events = [
+            self._event(AdminSecurityEventType.LOGIN_FAILURE, self._NOW)
+        ]
+        html = SecurityController._login_sparkline_html(events, now=self._NOW)
+        assert "fill:var(--destructive)" in html
+        assert "fill:var(--muted-foreground)" not in html
+
+    def test_sqlite_string_timestamps_are_parsed(self) -> None:
+        events = [
+            self._event(
+                AdminSecurityEventType.LOGIN_SUCCESS, "2026-09-02 11:45:00"
+            )
+        ]
+        html = SecurityController._login_sparkline_html(events, now=self._NOW)
+        assert "1 successful · 0 failed" in html
+
+    def test_garbage_timestamps_are_skipped_not_fatal(self) -> None:
+        events = [
+            self._event(AdminSecurityEventType.LOGIN_SUCCESS, "not-a-time"),
+            self._event(AdminSecurityEventType.LOGIN_SUCCESS, None),
+        ]
+        html = SecurityController._login_sparkline_html(events, now=self._NOW)
+        assert "No login activity" in html
+
+    def test_non_login_events_are_ignored(self) -> None:
+        events = [
+            self._event(AdminSecurityEventType.SESSION_REVOKED, self._NOW)
+        ]
+        html = SecurityController._login_sparkline_html(events, now=self._NOW)
+        assert "No login activity" in html
+
+    def test_empty_window_renders_empty_state(self) -> None:
+        html = SecurityController._login_sparkline_html([], now=self._NOW)
+        assert "No login activity" in html
+        assert "<svg" not in html
+
+    def test_cap_note_when_window_truncated(self) -> None:
+        events = [
+            self._event(AdminSecurityEventType.LOGIN_SUCCESS, self._NOW)
+            for _ in range(250)
+        ]
+        html = SecurityController._login_sparkline_html(events, now=self._NOW)
+        assert "window truncated at 250 events" in html
