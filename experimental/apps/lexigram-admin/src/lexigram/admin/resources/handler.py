@@ -293,6 +293,10 @@ class BulkActionHandler:
     """Handler for the ``bulk`` action — processes bulk operations."""
 
     _MAX_SELECTED_IDS = 1000
+    #: Hard caps for id-less "export the filtered view" requests (R25).
+    _MAX_FILTERED_EXPORT_ROWS = 10_000
+    _FILTERED_EXPORT_PAGE_SIZE = 1000
+    _MAX_LIST_QUERY_LENGTH = 4096
     _CONFIRM_LABELS = {
         "bulk-delete-confirm": ("delete", "Delete", "DELETE"),
         "bulk-purge-confirm": ("purge", "Purge", "PURGE"),
@@ -381,9 +385,7 @@ class BulkActionHandler:
             except (PermissionError, PermissionDeniedError):
                 outcome.record_failure(item_id, "forbidden")
             except Exception:  # noqa: BLE001 — row isolation; details stay private
-                logger.exception(
-                    "admin.bulk_delete_row_failed", item_id=str(item_id)
-                )
+                logger.exception("admin.bulk_delete_row_failed", item_id=str(item_id))
                 outcome.record_failure(item_id, "error")
             else:
                 outcome.record_success()
@@ -406,9 +408,7 @@ class BulkActionHandler:
                         outcome.record_failure(item_id, "restore rejected")
                         continue
                 else:
-                    updated = await data_source.update(
-                        item_id, {"deleted_at": None}
-                    )
+                    updated = await data_source.update(item_id, {"deleted_at": None})
                     if updated is None:
                         outcome.record_failure(item_id, "not found")
                         continue
@@ -419,9 +419,7 @@ class BulkActionHandler:
             except (PermissionError, PermissionDeniedError):
                 outcome.record_failure(item_id, "forbidden")
             except Exception:  # noqa: BLE001 — row isolation; details stay private
-                logger.exception(
-                    "admin.bulk_restore_row_failed", item_id=str(item_id)
-                )
+                logger.exception("admin.bulk_restore_row_failed", item_id=str(item_id))
                 outcome.record_failure(item_id, "error")
             else:
                 outcome.record_success()
@@ -549,6 +547,99 @@ class BulkActionHandler:
 
         return False, f"Bulk action '{action_name}' is not executable"
 
+    @staticmethod
+    def _shape_export_record(item: Any) -> dict[str, Any]:
+        """Normalize a record (mapping/model/object) to a plain dict."""
+        if isinstance(item, dict):
+            return dict(item)
+        if hasattr(item, "model_dump"):
+            return dict(item.model_dump())
+        if hasattr(item, "dict") and callable(item.dict):
+            return dict(item.dict())
+        return dict(vars(item))
+
+    async def _fetch_filtered_export_records(
+        self, request: Any, resource: Any, list_query: str
+    ) -> list[dict[str, Any]] | None:
+        """Fetch every record matching the forwarded list state (R25).
+
+        ``list_query`` is the list page's current querystring, parsed with
+        the same ``TableState`` parser the list page uses so the export
+        matches exactly what the user is looking at. The sort field is
+        allowlisted against the resource's known fields (same posture as
+        ``_sanitize_table_state`` on the list renderer). Results are paged
+        through :class:`ListDataFetcher` — the same cache/search/resilience
+        path as the list — and hard-capped at
+        ``_MAX_FILTERED_EXPORT_ROWS``.
+
+        Returns:
+            Shaped records, or ``None`` when the fetch failed (callers
+            should return an error response, not an empty file).
+        """
+        from types import SimpleNamespace
+
+        from starlette.datastructures import QueryParams
+
+        from lexigram.admin.resources.list_query import ListDataFetcher
+        from lexigram.ui import TableState
+
+        raw_query = str(list_query or "")
+        if len(raw_query) > self._MAX_LIST_QUERY_LENGTH:
+            return None
+        try:
+            params = QueryParams(raw_query.lstrip("?"))
+            state = TableState.from_request(SimpleNamespace(query_params=params))
+        except (ValueError, TypeError):
+            return None
+
+        columns_hook = getattr(resource, "columns", None)
+        source_columns = list(columns_hook()) if callable(columns_hook) else []
+
+        # Allowlist the URL-controlled sort field before it reaches storage.
+        allowed_fields: set[str] = set()
+        for column in source_columns:
+            name = column if isinstance(column, str) else getattr(column, "name", None)
+            if name:
+                allowed_fields.add(str(name))
+        sort_by = state.sort_by
+        if sort_by:
+            candidate = sort_by.lstrip("-")
+            if allowed_fields and candidate not in allowed_fields:
+                sort_by = None
+
+        fetcher = ListDataFetcher(str(resource.name or ""))
+        records: list[dict[str, Any]] = []
+        page = 1
+        while len(records) < self._MAX_FILTERED_EXPORT_ROWS:
+            page_state = state.model_copy(
+                update={
+                    "page": page,
+                    "per_page": self._FILTERED_EXPORT_PAGE_SIZE,
+                    "cursor": None,
+                    "sort_by": sort_by,
+                }
+            )
+            try:
+                items, _total = await fetcher.fetch_data(
+                    request, resource, page_state, source_columns
+                )
+            except Exception:  # noqa: BLE001 — storage details stay private
+                logger.exception("admin.filtered_export_fetch_failed")
+                return None
+            if fetcher.error and not items:
+                return None
+            batch = list(items or [])
+            if not batch:
+                break
+            remaining = self._MAX_FILTERED_EXPORT_ROWS - len(records)
+            records.extend(
+                self._shape_export_record(item) for item in batch[:remaining]
+            )
+            if len(batch) < self._FILTERED_EXPORT_PAGE_SIZE:
+                break
+            page += 1
+        return records
+
     async def handle(
         self, request: StarletteRequest, resource: Any, **kwargs: Any
     ) -> Any:
@@ -644,7 +735,16 @@ class BulkActionHandler:
                     return HTMLResponse("Forbidden", status_code=403)
 
         if not form_ids:
-            return HTMLResponse("No records selected", status_code=400)
+            # R25: an export submitted with scope=filtered and no ids means
+            # "export everything matching the current list view".
+            scope = str(form.get("scope", "") or "").strip().lower()
+            filtered_export = (
+                execution_action in {"export", "export_csv"} and scope == "filtered"
+            )
+            if not filtered_export:
+                return HTMLResponse("No records selected", status_code=400)
+        else:
+            filtered_export = False
 
         is_htmx = request.headers.get("HX-Request") == "true"
 
@@ -759,19 +859,21 @@ class BulkActionHandler:
             import csv
             from io import StringIO
 
-            records = []
-            for item_id in form_ids:
-                item = await data_source.find_one(item_id)
-                if item is None:
-                    continue
-                if isinstance(item, dict):
-                    records.append(dict(item))
-                elif hasattr(item, "model_dump"):
-                    records.append(dict(item.model_dump()))
-                elif hasattr(item, "dict") and callable(item.dict):
-                    records.append(dict(item.dict()))
-                else:
-                    records.append(dict(vars(item)))
+            if filtered_export:
+                records = await self._fetch_filtered_export_records(
+                    request, resource, str(form.get("list_query", "") or "")
+                )
+                if records is None:
+                    return HTMLResponse(
+                        "Unable to load records for export", status_code=503
+                    )
+            else:
+                records = []
+                for item_id in form_ids:
+                    item = await data_source.find_one(item_id)
+                    if item is None:
+                        continue
+                    records.append(self._shape_export_record(item))
 
             fieldnames: list[str] = []
             for record in records:

@@ -22,6 +22,11 @@ _EXPORT_BULK_ACTIONS: dict[str, str] = {
     "export_json": "json",
 }
 
+#: Hard caps for id-less "export the filtered view" requests (R25).
+MAX_FILTERED_EXPORT_ROWS = 10_000
+_FILTERED_EXPORT_PAGE_SIZE = 1000
+_MAX_LIST_QUERY_LENGTH = 4096
+
 
 class ResourceBulkMixin:
     """Bulk action confirmations and execution."""
@@ -30,6 +35,8 @@ class ResourceBulkMixin:
     meta: ResourceMeta
 
     get_data_source: Any
+
+    _build_query: Any  # ResourceListMixin — reused for filtered exports.
 
     async def _record_bulk_permission(self, hook: Any, item: Any) -> bool:
         """Evaluate a sync/async record permission hook fail-closed."""
@@ -128,7 +135,14 @@ class ResourceBulkMixin:
             action = form_data.get("action")
             ids = form_data.getlist("ids")
 
-            if not action or not ids:
+            # R25: an export submitted with scope=filtered and no ids means
+            # "export everything matching the current list view".
+            scope = str(form_data.get("scope") or "").strip().lower()
+            filtered_export = (
+                str(action) in _EXPORT_BULK_ACTIONS and scope == "filtered" and not ids
+            )
+
+            if not action or (not ids and not filtered_export):
                 return HTMLResponse("Missing action or ids", status_code=400)
 
             required_capability = {
@@ -153,6 +167,10 @@ class ResourceBulkMixin:
                 file_format = str(
                     form_data.get("format") or _EXPORT_BULK_ACTIONS[str(action)]
                 )
+                if filtered_export:
+                    return await self.bulk_export_filtered(
+                        str(form_data.get("list_query") or ""), file_format
+                    )
                 return await self.bulk_export(list(ids), file_format)
 
             result = await self.execute_bulk_action(str(action), ids)  # type: ignore[arg-type]
@@ -187,9 +205,6 @@ class ResourceBulkMixin:
             An attachment response, or an error response when the format
             is unsupported / export is disabled for the resource.
         """
-        from datetime import UTC, datetime
-        import re
-
         if not getattr(self.meta, "enable_export", True):
             return HTMLResponse("Export is disabled for this resource", status_code=403)
 
@@ -199,6 +214,78 @@ class ResourceBulkMixin:
 
         rows = [self._export_row(item) for item in await self._fetch_export_rows(ids)]
         rows = self._order_rows_by_selection(rows, ids)
+        return self._export_attachment(rows, fmt)
+
+    async def bulk_export_filtered(
+        self, list_query: str, file_format: str = "csv"
+    ) -> Response:
+        """Export every record matching the forwarded list state (R25).
+
+        ``list_query`` is the list page's current querystring; it is parsed
+        with the same ``URLState`` parser the list view uses, so the export
+        matches exactly what the user is looking at. Results are paged and
+        hard-capped at ``MAX_FILTERED_EXPORT_ROWS``.
+
+        Args:
+            list_query: Raw querystring (no leading ``?``).
+            file_format: ``csv`` (default) or ``json``.
+
+        Returns:
+            An attachment response, or an error response.
+        """
+        from types import SimpleNamespace
+
+        from starlette.datastructures import QueryParams
+
+        from lexigram.admin.state.url import URLState
+
+        if not getattr(self.meta, "enable_export", True):
+            return HTMLResponse("Export is disabled for this resource", status_code=403)
+
+        fmt = (file_format or "csv").strip().lower()
+        if fmt not in ("csv", "json"):
+            return HTMLResponse(f"Unsupported export format: {fmt}", status_code=400)
+
+        raw_query = str(list_query or "")
+        if len(raw_query) > _MAX_LIST_QUERY_LENGTH:
+            return HTMLResponse("List query too long", status_code=400)
+
+        try:
+            params = QueryParams(raw_query.lstrip("?"))
+            state = URLState.from_request(SimpleNamespace(query_params=params))
+        except (ValueError, TypeError):
+            return HTMLResponse("Invalid list query", status_code=400)
+        # Cursor pagination belongs to the interactive list; exports page
+        # deterministically from the start of the result set.
+        if state.cursor:
+            from dataclasses import replace
+
+            state = replace(state, cursor=None)
+
+        data_source = self.get_data_source()
+        rows: list[dict[str, Any]] = []
+        page = 1
+        while len(rows) < MAX_FILTERED_EXPORT_ROWS:
+            query = (
+                self._build_query(state)
+                .with_page(page)
+                .with_per_page(_FILTERED_EXPORT_PAGE_SIZE)
+            )
+            result = await data_source.find_many(query)
+            batch = list(result.items)
+            if not batch:
+                break
+            remaining = MAX_FILTERED_EXPORT_ROWS - len(rows)
+            rows.extend(self._export_row(item) for item in batch[:remaining])
+            if len(batch) < _FILTERED_EXPORT_PAGE_SIZE:
+                break
+            page += 1
+        return self._export_attachment(rows, fmt)
+
+    def _export_attachment(self, rows: list[dict[str, Any]], fmt: str) -> Response:
+        """Encode rows as a CSV/JSON attachment response."""
+        from datetime import UTC, datetime
+        import re
 
         if fmt == "csv":
             payload = self._encode_export_csv(rows)

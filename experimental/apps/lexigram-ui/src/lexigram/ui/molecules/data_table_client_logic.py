@@ -20,10 +20,7 @@ class DataTableScriptRenderer:
             window.LexigramDownloadBulk = window.LexigramDownloadBulk || function(button) {{
                 const table = document.querySelector('{Zones.TABLE.selector}');
                 const checked = table ? table.querySelectorAll('input[name="ids"]:checked') : [];
-                if (!checked.length) {{
-                    if (window.alert) window.alert('Select at least one record.');
-                    return false;
-                }}
+                const filtered = !checked.length;
 
                 const form = document.createElement('form');
                 form.method = 'post';
@@ -39,7 +36,14 @@ class DataTableScriptRenderer:
                     form.appendChild(input);
                 }};
                 add('action', button.dataset.bulkAction || 'export');
-                checked.forEach((checkbox) => add('ids', checkbox.value));
+                if (filtered) {{
+                    // R25: no selection means "export everything matching
+                    // the current view" — forward the list's URL state.
+                    add('scope', 'filtered');
+                    add('list_query', window.location.search.replace(/^\\?/, ''));
+                }} else {{
+                    checked.forEach((checkbox) => add('ids', checkbox.value));
+                }}
                 const csrf = table && table.querySelector('input[name="csrf_token"]');
                 if (csrf) add('csrf_token', csrf.value);
 

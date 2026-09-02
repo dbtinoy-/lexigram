@@ -32,13 +32,17 @@
       if (!url) return;
       const action = btn.getAttribute('data-bulk-action') || 'export';
       const checked = document.querySelectorAll('input[name="ids"]:checked');
-      if (!checked.length) {
-        toast('Select at least one row to export.', 'warning');
-        return;
-      }
+      const filtered = !checked.length;
       const body = new FormData();
       body.append('action', action);
-      checked.forEach(function(box) { body.append('ids', box.value); });
+      if (filtered) {
+        // R25: no selection means "export everything matching the current
+        // view" — forward the list's URL state to the server.
+        body.append('scope', 'filtered');
+        body.append('list_query', window.location.search.replace(/^\?/, ''));
+      } else {
+        checked.forEach(function(box) { body.append('ids', box.value); });
+      }
       const csrfInput = document.querySelector('input[name="csrf_token"]');
       const csrfEl = document.querySelector('[data-csrf-token]');
       const csrf = window.__lexigramCsrfToken ||
@@ -69,7 +73,12 @@
       link.click();
       link.remove();
       setTimeout(function() { URL.revokeObjectURL(link.href); }, 4000);
-      toast('Exported ' + checked.length + ' record' + (checked.length === 1 ? '' : 's') + '.', 'success');
+      toast(
+        filtered
+          ? 'Exported all records matching the current view.'
+          : 'Exported ' + checked.length + ' record' + (checked.length === 1 ? '' : 's') + '.',
+        'success'
+      );
     } catch (err) {
       toast('Export failed.', 'error');
     }
