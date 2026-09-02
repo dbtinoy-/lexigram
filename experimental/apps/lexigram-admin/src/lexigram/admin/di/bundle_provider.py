@@ -218,6 +218,7 @@ class AdminProvider(
         await self._mount_integration(container, ctx)
         await self._mount_sse_widgets(container, ctx)
         await self._mount_export_center(admin_resolver, ctx)
+        await self._mount_csp_reporting(ctx)
         await self._mount_app_state(app, ctx)
         _log.info("admin.mounted", prefix=self._config.prefix)
 
@@ -437,9 +438,19 @@ class AdminProvider(
                 from lexigram.admin.settings.store import TenantConfigStore
 
                 settings_store = TenantConfigStore(ctx.settings_service)
+            report_endpoint = (
+                f"{str(self._config.prefix or '/admin').rstrip('/')}"
+                "/security/csp-report"
+            )
             middleware_stack.insert(
                 0,
-                (SecurityHeadersMiddleware, {"settings_store": settings_store}),
+                (
+                    SecurityHeadersMiddleware,
+                    {
+                        "settings_store": settings_store,
+                        "report_endpoint": report_endpoint,
+                    },
+                ),
             )
             _log.debug("admin.security_headers_middleware_wired")
         except Exception as exc:  # noqa: BLE001 — security headers are best-effort

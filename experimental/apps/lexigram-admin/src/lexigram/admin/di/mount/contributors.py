@@ -368,6 +368,47 @@ class AdminMountContributorsMixin:
         except Exception as exc:  # noqa: BLE001 — export center is optional
             _log.warning("admin.export_center_routes_skipped", reason=str(exc))
 
+    async def _mount_csp_reporting(self, ctx: MountContext) -> None:
+        """Register CSP violation report ingestion + operator summary.
+
+        Mounts, fixed-path (doc 30 — CSP v2 groundwork):
+
+        * ``POST /security/csp-report`` — browser violation report sink
+          (CSRF/auth-guard exempt; size-capped; always terse).
+        * ``GET  /security/csp-reports`` — superuser-only JSON summary.
+
+        Args:
+            ctx: Mount pipeline state (``router`` read).
+        """
+        router = ctx.router
+        if router is None:
+            return
+        try:
+            from lexigram.admin.services.security.csp_reports import (
+                CspReportEndpoint,
+                CspReportStore,
+            )
+
+            endpoint = CspReportEndpoint(CspReportStore())
+            router.add_route(
+                "/security/csp-report",
+                "POST",
+                endpoint.ingest,
+                "admin_csp_report_ingest",
+            )
+            router.add_route(
+                "/security/csp-reports",
+                "GET",
+                endpoint.list_reports,
+                "admin_csp_reports_list",
+            )
+            _log.info(
+                "admin.csp_reporting_registered",
+                path=f"{self._config.prefix}/security/csp-report",
+            )
+        except Exception as exc:  # noqa: BLE001 — reporting is optional
+            _log.warning("admin.csp_reporting_skipped", reason=str(exc))
+
     async def _mount_app_state(self, app: Any, ctx: MountContext) -> None:
         """Mount the router and expose nav/registry state on both apps.
 

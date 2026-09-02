@@ -36,6 +36,10 @@ def _public_paths(admin_prefix: str) -> tuple[str, ...]:
         f"{prefix}/verify-email",
         f"{prefix}/password-reset",
         f"{prefix}/register",
+        # CSP violation report sink — browsers post pre-auth, no session
+        # (doc 30). Exact/boundary matching cannot leak the /csp-reports
+        # viewer, which stays authorized.
+        f"{prefix}/security/csp-report",
     )
 
 

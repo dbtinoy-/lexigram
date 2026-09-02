@@ -90,7 +90,9 @@ class TestSecurityHeadersSettings:
         first = await mw._resolve_headers()
         second = await mw._resolve_headers()
         assert first is second
-        assert store.get.await_count == 3
+        # csp + hsts + frame_options + csp_report_only — one read each,
+        # resolved once per process.
+        assert store.get.await_count == 4
 
 
 async def _passthrough(scope: dict, receive: object, send: object) -> None:

@@ -36,6 +36,10 @@ _BYPASS_SUFFIXES: frozenset[str] = frozenset(
         "/password-reset/",
         "/register",
         "/register/",
+        # CSP violation reports fire on pre-auth pages too (e.g. /login);
+        # ingestion is diagnostics-only and size-capped (doc 30).
+        "/security/csp-report",
+        "/security/csp-report/",
     }
 )
 

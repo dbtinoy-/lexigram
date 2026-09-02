@@ -9,6 +9,7 @@ from lexigram.validation import Field
 
 __all__ = [
     "DEFAULT_CSP",
+    "STRICT_CSP",
     "BrandingSettings",
     "CacheSettings",
     "I18nSettings",
@@ -38,6 +39,24 @@ DEFAULT_CSP = (
     "default-src 'self'; "
     "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
     "style-src 'self' 'unsafe-inline'; "
+    "img-src 'self' data:; "
+    "font-src 'self'; "
+    "connect-src 'self'; "
+    "object-src 'none'; "
+    "base-uri 'self'; "
+    "form-action 'self'; "
+    "frame-ancestors 'none';"
+)
+
+# The CSP v2 *candidate* policy (docs/09-01-2026/14 §3): what the enforced
+# policy should become once the inline-script/style migration lands. Shipped
+# by default as ``Content-Security-Policy-Report-Only`` so real deployments
+# surface every would-be violation without breaking anything. Do NOT enforce
+# this while the standard Alpine build + inline blocks remain in use.
+STRICT_CSP = (
+    "default-src 'self'; "
+    "script-src 'self'; "
+    "style-src 'self'; "
     "img-src 'self' data:; "
     "font-src 'self'; "
     "connect-src 'self'; "
