@@ -6,6 +6,7 @@ Implements SecurityHeadersProtocol from lexigram-contracts.
 
 from __future__ import annotations
 
+import time
 from typing import TYPE_CHECKING, Any
 
 from lexigram.admin.settings.panel.models import DEFAULT_CSP, STRICT_CSP
@@ -110,8 +111,10 @@ class SecurityHeadersMiddleware:
 
     Wraps the inner application and calls AdminSecurityHeaders.apply on the
     response headers before they are sent to the client. When a
-    ``settings_store`` is provided, CSP and HSTS values are read from it on
-    first use (once per process) and cached.
+    ``settings_store`` is provided, CSP and HSTS values are read from it and
+    cached for ``settings_ttl`` seconds, so panel changes take effect within
+    one TTL window without a restart (``settings_ttl <= 0`` restores the
+    legacy resolve-once behaviour).
     """
 
     def __init__(
@@ -120,6 +123,7 @@ class SecurityHeadersMiddleware:
         headers_service: SecurityHeadersProtocol | None = None,
         settings_store: Any = None,
         report_endpoint: str | None = None,
+        settings_ttl: float = 30.0,
     ) -> None:
         self._app = app
         self._service: SecurityHeadersProtocol = (
@@ -129,12 +133,34 @@ class SecurityHeadersMiddleware:
         )
         self._settings_store = settings_store
         self._report_endpoint = report_endpoint
+        self._settings_ttl = settings_ttl
         self._resolved: SecurityHeadersProtocol | None = None
+        self._resolved_at: float | None = None
+
+    def invalidate(self) -> None:
+        """Drop the cached resolution so the next request re-reads settings.
+
+        Exposed for explicit refresh (e.g. after a settings save) and for
+        tests; the TTL already bounds staleness when this is never called.
+        """
+        self._resolved = None
+        self._resolved_at = None
+
+    def _cache_fresh(self) -> bool:
+        """Return True while the cached resolution is still valid."""
+        if self._resolved is None:
+            return False
+        if self._settings_ttl <= 0:
+            return True  # legacy resolve-once behaviour
+        return (
+            self._resolved_at is not None
+            and time.monotonic() - self._resolved_at < self._settings_ttl
+        )
 
     async def _resolve_headers(self) -> SecurityHeadersProtocol:
-        """Return the headers service, applying settings overrides once."""
-        if self._resolved is not None:
-            return self._resolved
+        """Return the headers service, refreshing settings when the TTL lapses."""
+        if self._cache_fresh():
+            return self._resolved  # type: ignore[return-value]
 
         service = self._service
         if self._settings_store is not None:
@@ -155,8 +181,17 @@ class SecurityHeadersMiddleware:
                     )
             except (RuntimeError, ValueError, TypeError) as exc:
                 logger.warning("admin.security_headers.settings_error", error=str(exc))
+                if self._resolved is not None:
+                    # A periodic refresh failed: keep serving the last
+                    # successfully resolved service (stale-but-consistent)
+                    # instead of downgrading to compile-time defaults
+                    # mid-flight. Advance the retry timestamp so a flapping
+                    # store is not hammered on every request.
+                    self._resolved_at = time.monotonic()
+                    return self._resolved
 
         self._resolved = service
+        self._resolved_at = time.monotonic()
         return service
 
     async def __call__(
