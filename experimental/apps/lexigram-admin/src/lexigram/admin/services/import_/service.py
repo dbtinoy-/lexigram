@@ -28,6 +28,13 @@ from lexigram.di.decorators import inject
 from lexigram.logging import get_logger
 from lexigram.result import Err, Ok, Result
 
+try:  # R26: optional dependency shared with the Excel export backend.
+    import openpyxl  # type: ignore[import-untyped]
+
+    HAS_OPENPYXL = True
+except ImportError:
+    HAS_OPENPYXL = False
+
 logger = get_logger(__name__)
 
 
@@ -180,6 +187,108 @@ def _parse_csv(
         rows.append(mapped)
 
     return rows, effective_map, errors
+
+
+def _parse_xlsx(
+    content: bytes,
+    *,
+    column_map: dict[str, str] | None = None,
+) -> tuple[list[dict[str, Any]], dict[str, str], list[ImportRowError]]:
+    """Parse Excel (.xlsx) bytes into rows (R26).
+
+    Mirrors ``_parse_csv`` semantics: the first row of the active sheet
+    is the header row, the effective mapping defaults to identity, string
+    cells are stripped (empty → ``None``), and non-string cells (numbers,
+    dates, booleans) pass through natively — like JSON values.
+
+    ``openpyxl`` is optional (shared with the Excel export backend); when
+    unavailable a file-level error is returned so ``parse()`` surfaces a
+    clean ``Err`` instead of a traceback.
+
+    Args:
+        content: Raw ``.xlsx`` file bytes.
+        column_map: Optional explicit header → field mapping.
+
+    Returns:
+        Tuple of (rows, effective_column_map, parse_errors).
+    """
+    errors: list[ImportRowError] = []
+    if not HAS_OPENPYXL:
+        errors.append(
+            ImportRowError(
+                row=0,
+                field="__file__",
+                message=(
+                    "Excel import requires the optional 'openpyxl' dependency — "
+                    "install lexigram-admin[export]."
+                ),
+            )
+        )
+        return [], {}, errors
+
+    try:
+        # data_only=True reads cached formula *results*, never formulas;
+        # read_only streams rows without loading the full workbook.
+        workbook = openpyxl.load_workbook(
+            io.BytesIO(content), read_only=True, data_only=True
+        )
+    except Exception as exc:  # noqa: BLE001 — any load failure is a bad file
+        errors.append(
+            ImportRowError(
+                row=0, field="__file__", message=f"Invalid Excel file: {exc}"
+            )
+        )
+        return [], {}, errors
+
+    try:
+        sheet = workbook.active
+        rows_iter = sheet.iter_rows(values_only=True) if sheet is not None else iter(())
+        header_cells = next(rows_iter, None)
+        # Positional header list; unnamed columns stay as "" and are ignored.
+        headers: list[str] = [
+            (str(cell).strip() if cell is not None else "")
+            for cell in (header_cells or ())
+        ]
+        named_headers = [h for h in headers if h]
+        if not named_headers:
+            errors.append(
+                ImportRowError(
+                    row=0, field="__file__", message="Excel file has no header row"
+                )
+            )
+            return [], {}, errors
+
+        effective_map: dict[str, str] = dict(
+            column_map or {h: h for h in named_headers}
+        )
+
+        rows: list[dict[str, Any]] = []
+        for values in rows_iter:
+            cells = tuple(values or ())
+            # Skip fully blank spreadsheet rows (common trailing artifact).
+            if all(
+                cell is None or (isinstance(cell, str) and not cell.strip())
+                for cell in cells
+            ):
+                continue
+            raw_row: dict[str, Any] = {}
+            for idx, header in enumerate(headers):
+                if not header:
+                    continue
+                # Ragged rows fill with None — same posture as B15 for CSV.
+                raw_row[header] = cells[idx] if idx < len(cells) else None
+            mapped: dict[str, Any] = {}
+            for src, dst in effective_map.items():
+                raw_val = raw_row.get(src)
+                if isinstance(raw_val, str):
+                    stripped = raw_val.strip()
+                    mapped[dst] = stripped or None
+                else:
+                    mapped[dst] = raw_val
+            rows.append(mapped)
+        return rows, effective_map, errors
+    finally:
+        workbook.close()
 
 
 def _parse_json(
@@ -435,10 +544,17 @@ class AdminImportService:
             rows, effective_map, parse_errors = _parse_json(
                 content, column_map=column_map
             )
+        elif lower.endswith(".xlsx"):
+            rows, effective_map, parse_errors = _parse_xlsx(
+                content, column_map=column_map
+            )
         else:
             return Err(
                 AdminError(
-                    message=f"Unsupported file format: {filename!r}. Use .csv or .json."
+                    message=(
+                        f"Unsupported file format: {filename!r}. "
+                        "Use .csv, .json, .jsonl, or .xlsx."
+                    )
                 )
             )
 
@@ -457,9 +573,7 @@ class AdminImportService:
         # "field required" noise on top of the parse error.
         validation_errors = list(parse_errors)
         parse_error_rows = {e.row for e in parse_errors}
-        validation_errors.extend(
-            self._validate_rows(rows, skip_rows=parse_error_rows)
-        )
+        validation_errors.extend(self._validate_rows(rows, skip_rows=parse_error_rows))
 
         job = ImportJob(
             rows=rows,

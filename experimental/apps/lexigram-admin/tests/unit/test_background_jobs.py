@@ -287,7 +287,8 @@ class TestEnqueueImportWithRealService:
         svc = BackgroundJobService(
             import_service=AdminImportService(data_source=_FakeDataSource())
         )
-        job_id = await svc.enqueue_import("user", b"data", filename="users.xlsx")
+        # R26: .xlsx is now supported — use a genuinely unknown format.
+        job_id = await svc.enqueue_import("user", b"data", filename="users.parquet")
         await asyncio.sleep(0.1)
         status = await svc.get_status(job_id)
         assert status is not None

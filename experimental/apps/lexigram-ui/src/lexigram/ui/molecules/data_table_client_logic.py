@@ -67,7 +67,7 @@ class DataTableScriptRenderer:
                 }};
                 const picker = document.createElement('input');
                 picker.type = 'file';
-                picker.accept = button.dataset.importAccept || '.csv,.json,.jsonl';
+                picker.accept = button.dataset.importAccept || '.csv,.json,.jsonl,.xlsx';
                 picker.style.display = 'none';
                 picker.addEventListener('change', async function() {{
                     const file = picker.files && picker.files[0];

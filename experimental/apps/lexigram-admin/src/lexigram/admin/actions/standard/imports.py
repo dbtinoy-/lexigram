@@ -125,7 +125,7 @@ class ImportAction(_ImportReportMixin, HeaderAction):
     """Import records into a resource through the admin import service."""
 
     #: File extensions the admin import service can parse.
-    DEFAULT_ACCEPT_EXTENSIONS = (".csv", ".json", ".jsonl")
+    DEFAULT_ACCEPT_EXTENSIONS = (".csv", ".json", ".jsonl", ".xlsx")
 
     def __init__(
         self,
