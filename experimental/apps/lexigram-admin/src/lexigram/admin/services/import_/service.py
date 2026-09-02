@@ -503,6 +503,33 @@ class AdminImportService:
             )
         )
 
+    def store_validation_report(self, job: ImportJob) -> ImportReport:
+        """Persist a validation-only report for a dry run (R27).
+
+        Nothing has been written to the data source; the report carries
+        the parse/validation errors so operators can download and fix
+        them before committing.
+
+        Args:
+            job: A parsed ImportJob (from :meth:`parse`).
+
+        Returns:
+            The stored report (already retrievable via :meth:`get_report`).
+        """
+        from lexigram.identity import ambient as identity
+        from lexigram.primitives import clock
+
+        report = ImportReport(
+            id=identity.new_uuid(),
+            source_filename=job.source_filename,
+            created_at=clock.now().isoformat(),
+            total_rows=len(job.rows),
+            failed_rows=len({e.row for e in job.errors}),
+            failures=list(job.errors),
+        )
+        self._reports.append(report)
+        return report
+
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------

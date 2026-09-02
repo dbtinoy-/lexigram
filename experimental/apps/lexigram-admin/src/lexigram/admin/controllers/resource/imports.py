@@ -60,6 +60,13 @@ class ResourceImportMixin:
             )
 
         filename = getattr(upload, "filename", "") or "import.csv"
+        # R27: a truthy dry_run field validates without committing.
+        dry_run = str(form.get("dry_run", "") or "").strip().lower() in {
+            "1",
+            "true",
+            "on",
+            "yes",
+        }
         resource_prefix = f"{self.meta.prefix}/{self.meta.name}"  # type: ignore[attr-defined]
         ctx = ActionContext(
             request=request,
@@ -67,7 +74,11 @@ class ResourceImportMixin:
             resource_name=self.meta.name,  # type: ignore[attr-defined]
             resource_prefix=resource_prefix,
             data_source=self.get_data_source(),  # type: ignore[attr-defined]
-            metadata={"file_content": content, "filename": str(filename)},
+            metadata={
+                "file_content": content,
+                "filename": str(filename),
+                "dry_run": dry_run,
+            },
         )
         result = await action.execute(None, ctx)
         if result.is_err():
@@ -89,15 +100,16 @@ class ResourceImportMixin:
 
         if request.headers.get("hx-request"):
             response = HTMLResponse("".join(parts))
-            response.headers["HX-Trigger"] = dumps_str(
-                {
-                    "refresh-list": True,
-                    "show-toast": {
-                        "message": message,
-                        "type": "success" if not payload.get("failed") else "warning",
-                    },
+            triggers: dict[str, Any] = {
+                "show-toast": {
+                    "message": message,
+                    "type": "success" if not payload.get("failed") else "warning",
                 }
-            )
+            }
+            # R27: dry runs change nothing — don't refresh the list.
+            if not payload.get("dry_run"):
+                triggers["refresh-list"] = True
+            response.headers["HX-Trigger"] = dumps_str(triggers)
             return response
         return RedirectResponse(url=resource_prefix, status_code=302)
 

@@ -74,8 +74,6 @@ class DataTableScriptRenderer:
                     picker.remove();
                     if (!file) return;
                     try {{
-                        const body = new FormData();
-                        body.append('file', file, file.name);
                         const table = document.querySelector('{Zones.TABLE.selector}');
                         const csrfInput = table && table.querySelector('input[name="csrf_token"]');
                         const csrfEl = document.querySelector('[data-csrf-token]');
@@ -83,16 +81,42 @@ class DataTableScriptRenderer:
                             window.__lexigramCsrfToken ||
                             (csrfEl && csrfEl.getAttribute('data-csrf-token'));
                         const headers = {{ 'HX-Request': 'true' }};
-                        if (csrf) {{
-                            headers['X-CSRF-Token'] = csrf;
-                            body.append('csrf_token', csrf);
+                        if (csrf) headers['X-CSRF-Token'] = csrf;
+                        const buildBody = function(dryRun) {{
+                            const body = new FormData();
+                            body.append('file', file, file.name);
+                            if (dryRun) body.append('dry_run', '1');
+                            if (csrf) body.append('csrf_token', csrf);
+                            return body;
+                        }};
+                        const post = function(dryRun) {{
+                            return fetch(url, {{
+                                method: 'POST',
+                                body: buildBody(dryRun),
+                                headers: headers,
+                                credentials: 'same-origin'
+                            }});
+                        }};
+
+                        // R27: validate first (server-side dry run), then
+                        // confirm with the summary before committing.
+                        const preview = await post(true);
+                        const previewText = await preview.text();
+                        if (!preview.ok) {{
+                            const detail = previewText.replace(/<[^>]*>/g, ' ').trim().slice(0, 200);
+                            notify('Import failed: ' + (detail || preview.status), 'error');
+                            return;
                         }}
-                        const response = await fetch(url, {{
-                            method: 'POST',
-                            body: body,
-                            headers: headers,
-                            credentials: 'same-origin'
-                        }});
+                        const summary = previewText.replace(/<[^>]*>/g, ' ').trim().slice(0, 300);
+                        const proceed = window.confirm(
+                            (summary || 'File validated.') + '\\n\\nProceed with import?'
+                        );
+                        if (!proceed) {{
+                            notify('Import cancelled — nothing was written.', 'info');
+                            return;
+                        }}
+
+                        const response = await post(false);
                         const text = await response.text();
                         if (!response.ok) {{
                             const detail = text.replace(/<[^>]*>/g, ' ').trim().slice(0, 200);

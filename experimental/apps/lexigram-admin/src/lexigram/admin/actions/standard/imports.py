@@ -49,16 +49,45 @@ async def _run_import(
     service: AdminImportService,
     content: bytes,
     filename: str,
+    *,
+    dry_run: bool = False,
 ) -> Result[Any, Any]:
-    """Parse and commit an import, returning the result summary."""
+    """Parse and commit an import, returning the result summary.
+
+    With ``dry_run`` (R27), stop after the non-destructive parse step and
+    return a validation summary instead — nothing is written. Validation
+    errors are stored as a normal downloadable report.
+    """
     parsed = await service.parse(content, filename)
     if parsed.is_err():
         return Err(parsed.unwrap_err())
-    committed = await service.commit(parsed.unwrap())
+    job = parsed.unwrap()
+
+    if dry_run:
+        failed = len({e.row for e in job.errors})
+        valid = len(job.valid_rows)
+        payload: dict[str, Any] = {
+            "message": (
+                f"Validated {job.total_rows} row(s): {valid} ready to import, "
+                f"{failed} with error(s). Nothing was imported."
+            ),
+            "created": 0,
+            "failed": failed,
+            "total": job.total_rows,
+            "dry_run": True,
+        }
+        if failed:
+            report = service.store_validation_report(job)
+            stem = _safe_filename_stem(report.source_filename)
+            payload["report_id"] = report.id
+            payload["report_filename"] = f"{stem}-import-errors.csv"
+        return Ok(payload)
+
+    committed = await service.commit(job)
     if committed.is_err():
         return Err(committed.unwrap_err())
     result = committed.unwrap()
-    payload: dict[str, Any] = {
+    payload = {
         "message": f"Imported {result.created} of {result.total} record(s)",
         "created": result.created,
         "failed": result.failed,
@@ -218,7 +247,8 @@ class ImportAction(_ImportReportMixin, HeaderAction):
             # reports advertised via report_id stay downloadable through
             # report_csv()/report_filename() after this request.
             self._import_service = service
-        return await _run_import(service, content, filename)
+        dry_run = bool(ctx.metadata.get("dry_run"))
+        return await _run_import(service, content, filename, dry_run=dry_run)
 
 
 class ImportBulkAction(_ImportReportMixin, BulkAction):
@@ -271,4 +301,5 @@ class ImportBulkAction(_ImportReportMixin, BulkAction):
             # reports advertised via report_id stay downloadable through
             # report_csv()/report_filename() after this request.
             self._import_service = service
-        return await _run_import(service, content, filename)
+        dry_run = bool(ctx.metadata.get("dry_run"))
+        return await _run_import(service, content, filename, dry_run=dry_run)

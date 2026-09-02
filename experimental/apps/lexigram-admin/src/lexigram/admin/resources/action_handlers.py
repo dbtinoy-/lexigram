@@ -1629,6 +1629,13 @@ class ImportActionHandler:
             )
 
         filename = getattr(upload, "filename", "") or "import.csv"
+        # R27: a truthy dry_run field validates without committing.
+        dry_run = str(form.get("dry_run", "") or "").strip().lower() in {
+            "1",
+            "true",
+            "on",
+            "yes",
+        }
         admin_prefix = request.scope.get("admin_prefix", "") or ""
         resource_name = str(
             getattr(resource, "name", "")
@@ -1641,7 +1648,11 @@ class ImportActionHandler:
             resource_name=resource_name,
             resource_prefix=resource_prefix,
             data_source=get_resource_data_source(resource),
-            metadata={"file_content": content, "filename": str(filename)},
+            metadata={
+                "file_content": content,
+                "filename": str(filename),
+                "dry_run": dry_run,
+            },
         )
 
         try:
@@ -1669,15 +1680,16 @@ class ImportActionHandler:
         is_fragment = bool(request.headers.get("hx-request"))
         if is_fragment:
             response = HTMLResponse("".join(parts))
-            response.headers["HX-Trigger"] = dumps_str(
-                {
-                    "refresh-list": True,
-                    "show-toast": {
-                        "message": message,
-                        "type": "success" if not payload.get("failed") else "warning",
-                    },
+            triggers: dict[str, Any] = {
+                "show-toast": {
+                    "message": message,
+                    "type": "success" if not payload.get("failed") else "warning",
                 }
-            )
+            }
+            # R27: dry runs change nothing — don't refresh the list.
+            if not payload.get("dry_run"):
+                triggers["refresh-list"] = True
+            response.headers["HX-Trigger"] = dumps_str(triggers)
             return response
         return RedirectResponse(url=resource_prefix or "/", status_code=302)
 
