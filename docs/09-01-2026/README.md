@@ -96,3 +96,4 @@ deployment, the fixes shipped on this date, and the forward-looking roadmap.
 4. **Self-hosted frontend assets, pinned versions.** No `@latest` CDNs; see
    doc 03.
 5. **Every bug fix ships with a regression test** that fails on the old code.
+| [20-relations-inline-mutations.md](20-relations-inline-mutations.md) | Relations inline mutations & follow-ups (R24), B32–B34: inline create/update/delete handlers faked success (form discarded, nothing persisted, delete returned empty 200 without deleting) while `inline_*` defaults rendered the affordances — now real persistence hooks with honest 400/403/501 codes; `render()` pivot-data N+1 replaced by a single-fetch `get_pivot_data_map` (override-safe); `get_items(**filters)` no longer ignores filters. |

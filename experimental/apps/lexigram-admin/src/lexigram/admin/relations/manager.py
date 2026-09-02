@@ -174,6 +174,11 @@ class AbstractRelationManager(ABC):
         if not items:
             return []
 
+        # B34: equality filters were previously accepted and silently
+        # ignored. Apply them (dict- and attribute-aware) before paging.
+        for field, expected in filters.items():
+            items = [item for item in items if self._row_value(item, field) == expected]
+
         start = (page - 1) * per_page
         end = start + per_page
         return items[start:end]

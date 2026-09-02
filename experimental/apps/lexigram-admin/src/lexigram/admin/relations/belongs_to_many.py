@@ -162,7 +162,10 @@ class BelongsToManyRelationManager(RelationManager):
         rows = await self._matching_pivot_rows(related_id)
         if not rows:
             return None
-        row = rows[0]
+        return self._shape_pivot_row(rows[0])
+
+    def _shape_pivot_row(self, row: Any) -> dict[str, Any] | None:
+        """Shape a raw pivot row into the pivot-data mapping."""
         if self.pivot_columns:
             return {col: self._row_value(row, col) for col in self.pivot_columns}
         if isinstance(row, dict):
@@ -172,6 +175,41 @@ class BelongsToManyRelationManager(RelationManager):
             if hasattr(row, "__dict__")
             else None
         )
+
+    async def get_pivot_data_map(
+        self, related_ids: Sequence[str]
+    ) -> dict[str, dict[str, Any] | None]:
+        """Return pivot data for many attached records in one fetch (B33).
+
+        ``render()`` previously called :meth:`get_pivot_data` per attached
+        row, and each call re-fetched every pivot row for the parent —
+        N attached rows meant N+1 identical queries. This fetches once.
+
+        Subclasses that override :meth:`get_pivot_data` keep their
+        behavior: the map falls back to per-id calls when an override is
+        detected.
+
+        Args:
+            related_ids: Attached related-record ids.
+
+        Returns:
+            Mapping of related id → shaped pivot data (or ``None``).
+        """
+        override = (
+            type(self).get_pivot_data is not BelongsToManyRelationManager.get_pivot_data
+        )
+        if override:
+            return {rid: await self.get_pivot_data(rid) for rid in related_ids}
+        if self._data_source is None or not related_ids:
+            return dict.fromkeys(related_ids)
+        wanted = {str(rid) for rid in related_ids}
+        result: dict[str, dict[str, Any] | None] = dict.fromkeys(related_ids)
+        for row in await self._find_pivot_rows():
+            rid = self._row_value(row, self.related_key)
+            key = str(rid) if rid is not None else ""
+            if key in wanted and result.get(key) is None:
+                result[key] = self._shape_pivot_row(row)
+        return result
 
     async def update_pivot(self, related_id: str, pivot_data: dict[str, Any]) -> None:
         """Update pivot data for an attached record.
@@ -205,16 +243,27 @@ class BelongsToManyRelationManager(RelationManager):
         rel_name = self.get_relationship_name()
         admin_prefix = admin_prefix_from_request(request)
 
-        rows: list[Any] = []
+        # B26: SQL data sources return dict rows — use the dict-aware
+        # helpers, not getattr. B33: pivot data is fetched once for all
+        # attached rows instead of once per row.
+        labeled: list[tuple[str, str, bool]] = []
         for item in items:
-            # B26: SQL data sources return dict rows — use the
-            # dict-aware helpers, not getattr.
             raw_id = self._row_id(item)
             item_id = "" if raw_id is None else str(raw_id)
-            is_attached = item_id in attached_ids
-            label = str(self._row_value(item, "name") or item_id)
+            labeled.append(
+                (
+                    item_id,
+                    str(self._row_value(item, "name") or item_id),
+                    item_id in attached_ids,
+                )
+            )
+        pivot_map = await self.get_pivot_data_map(
+            [item_id for item_id, _label, is_attached in labeled if is_attached]
+        )
 
-            pivot_data = await self.get_pivot_data(item_id) if is_attached else None
+        rows: list[Any] = []
+        for item_id, label, is_attached in labeled:
+            pivot_data = pivot_map.get(item_id) if is_attached else None
             rows.append(
                 self._build_row(
                     resource_name,

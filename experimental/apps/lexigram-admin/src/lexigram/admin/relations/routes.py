@@ -94,7 +94,19 @@ def register_relation_routes(
         check = await _check(mgr.can_create, request, audit_service)
         if check:
             return check
-        await mgr.get_query()
+        # B32: this handler used to ignore the submitted form entirely and
+        # re-render the panel — a 200 that silently discarded the input.
+        if not getattr(mgr, "inline_create", True):
+            return HTMLResponse(
+                "Inline create is disabled for this relation", status_code=403
+            )
+        data = await _read_form_data(request)
+        if not data:
+            return HTMLResponse("No form data submitted", status_code=400)
+        try:
+            await mgr.create_record(data)
+        except NotImplementedError as exc:
+            return HTMLResponse(str(exc), status_code=501)
         html = await mgr.render(request, resource_name)
         return HTMLResponse(html)
 
@@ -138,6 +150,18 @@ def register_relation_routes(
         check = await _check(mgr.can_edit, request, audit_service, record)
         if check:
             return check
+        # B32: previously ignored the submitted form and re-rendered.
+        if not getattr(mgr, "inline_edit", True):
+            return HTMLResponse(
+                "Inline edit is disabled for this relation", status_code=403
+            )
+        data = await _read_form_data(request)
+        if not data:
+            return HTMLResponse("No form data submitted", status_code=400)
+        try:
+            await mgr.update_record(record_id, data)
+        except NotImplementedError as exc:
+            return HTMLResponse(str(exc), status_code=501)
         html = await mgr.render(request, resource_name)
         return HTMLResponse(html)
 
@@ -157,6 +181,15 @@ def register_relation_routes(
         check = await _check(mgr.can_delete, request, audit_service, record)
         if check:
             return check
+        # B32: previously returned an empty 200 without deleting anything.
+        if not getattr(mgr, "inline_delete", True):
+            return HTMLResponse(
+                "Inline delete is disabled for this relation", status_code=403
+            )
+        try:
+            await mgr.delete_record(record_id)
+        except NotImplementedError as exc:
+            return HTMLResponse(str(exc), status_code=501)
         return HTMLResponse("")
 
     async def _run_pivot_handler(
@@ -261,6 +294,32 @@ def _create_manager(
     manager_class: type[RelationManager], parent_id: Any
 ) -> RelationManager:
     return manager_class(parent_id=parent_id)
+
+
+async def _read_form_data(request: Any) -> dict[str, Any]:
+    """Read submitted form data for inline mutations (B32).
+
+    Prefers the CSRF-middleware-parsed ``admin_form_data`` (a bare
+    ``await request.form()`` hangs under the admin middleware chain),
+    strips the ``csrf_token`` field, and tolerates request stubs without
+    a scope or form.
+
+    Args:
+        request: The incoming request (or a test stub).
+
+    Returns:
+        Submitted fields minus ``csrf_token``; empty when nothing was
+        submitted.
+    """
+    scope = getattr(request, "scope", None)
+    form: Any = scope.get("admin_form_data") if isinstance(scope, dict) else None
+    if form is None:
+        form_getter = getattr(request, "form", None)
+        if callable(form_getter):
+            form = await form_getter()
+    if form is None:
+        return {}
+    return {key: value for key, value in dict(form).items() if key != "csrf_token"}
 
 
 async def _get_record(mgr: RelationManager, record_id: str) -> Any:

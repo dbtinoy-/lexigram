@@ -39,13 +39,18 @@ class _RaisingAuditService(_AuditService):
         raise RuntimeError("audit store down")
 
 
-def _make_request(path_params: dict[str, str], user: Any = object()) -> SimpleNamespace:
+def _make_request(
+    path_params: dict[str, str],
+    user: Any = object(),
+    form_data: dict[str, Any] | None = None,
+) -> SimpleNamespace:
     """Build a minimal authenticated request stub."""
     return SimpleNamespace(
         path_params=path_params,
         state=SimpleNamespace(user=user),
         client=SimpleNamespace(host="127.0.0.1"),
         headers={},
+        scope={"admin_form_data": form_data} if form_data is not None else {},
     )
 
 
@@ -216,25 +221,38 @@ class TestDefaultPreservation:
         assert "Edit form for 123" in response.body.decode()
 
     @pytest.mark.asyncio
-    async def test_create_rerenders_list(self) -> None:
+    async def test_create_without_form_data_is_400(self) -> None:
+        """B32: create no longer fakes success — empty submission → 400."""
         routes = register_relation_routes("users", _BenignRelationManager)
         request = _make_request({"parent_id": "1"})
         response = await routes[2].endpoint(request)
-        assert "<div>panel</div>" in response.body.decode()
+        assert response.status_code == 400
 
     @pytest.mark.asyncio
-    async def test_update_rerenders_list(self) -> None:
+    async def test_create_without_persistence_is_501(self) -> None:
+        """B32: create with data but no data source → honest 501."""
         routes = register_relation_routes("users", _BenignRelationManager)
-        request = _make_request({"parent_id": "1", "record_id": "7"})
-        response = await routes[4].endpoint(request)
-        assert "<div>panel</div>" in response.body.decode()
+        request = _make_request({"parent_id": "1"}, form_data={"name": "Rex"})
+        response = await routes[2].endpoint(request)
+        assert response.status_code == 501
 
     @pytest.mark.asyncio
-    async def test_delete_returns_empty_html(self) -> None:
+    async def test_update_without_persistence_is_501(self) -> None:
+        """B32: update previously discarded the form and re-rendered."""
+        routes = register_relation_routes("users", _BenignRelationManager)
+        request = _make_request(
+            {"parent_id": "1", "record_id": "7"}, form_data={"name": "Rex"}
+        )
+        response = await routes[4].endpoint(request)
+        assert response.status_code == 501
+
+    @pytest.mark.asyncio
+    async def test_delete_without_persistence_is_501(self) -> None:
+        """B32: delete previously returned empty 200 without deleting."""
         routes = register_relation_routes("users", _BenignRelationManager)
         request = _make_request({"parent_id": "1", "record_id": "7"})
         response = await routes[5].endpoint(request)
-        assert response.body == b""
+        assert response.status_code == 501
 
 
 class TestDenyManager:
@@ -394,13 +412,15 @@ class TestRecordMissing:
         assert "can_delete" not in _SpyRelationManager.calls
 
     @pytest.mark.asyncio
-    async def test_delete_resolvable_record_keeps_empty_html(self) -> None:
+    async def test_delete_resolvable_record_501_without_persistence(self) -> None:
+        """B32: resolvable record but no persistence → honest 501,
+        with the can_delete predicate consulted first."""
         _SpyRelationManager.reset()
         routes = register_relation_routes("users", _SpyRelationManager)
         request = _make_request({"parent_id": "1", "record_id": "7"})
         response = await routes[5].endpoint(request)
-        assert response.status_code == 200
-        assert response.body == b""
+        assert response.status_code == 501
+        assert "can_delete" in _SpyRelationManager.calls
 
 
 class TestPredicateWiring:
@@ -426,8 +446,12 @@ class TestPredicateWiring:
         assert _SpyRelationManager.calls == ["can_view_parent"]
         _SpyRelationManager.reset()
 
-        create_resp = await routes[2].endpoint(_make_request({"parent_id": "1"}))
-        assert create_resp.status_code == 200
+        create_resp = await routes[2].endpoint(
+            _make_request({"parent_id": "1"}, form_data={"name": "Rex"})
+        )
+        # No persistence on the spy manager: honest 501 (B32) — but the
+        # predicate must have been consulted before the mutation attempt.
+        assert create_resp.status_code == 501
         assert _SpyRelationManager.calls == ["can_create"]
         _SpyRelationManager.reset()
 
@@ -439,14 +463,14 @@ class TestPredicateWiring:
         _SpyRelationManager.reset()
 
         update_resp = await routes[4].endpoint(
-            _make_request({"parent_id": "1", "record_id": "7"})
+            _make_request({"parent_id": "1", "record_id": "7"}, form_data={"name": "R"})
         )
-        assert update_resp.status_code == 200
+        assert update_resp.status_code == 501
         assert _SpyRelationManager.calls == ["can_edit"]
         _SpyRelationManager.reset()
 
         delete_resp = await routes[5].endpoint(
             _make_request({"parent_id": "1", "record_id": "7"})
         )
-        assert delete_resp.status_code == 200
+        assert delete_resp.status_code == 501
         assert _SpyRelationManager.calls == ["can_delete"]
