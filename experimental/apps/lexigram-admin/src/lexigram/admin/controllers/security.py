@@ -49,7 +49,7 @@ def _fmt_ts(value: Any) -> str:
         return "—"
     text = str(value)
     # Trim microseconds/timezone noise: "2026-09-01 14:20:33.123456+00:00"
-    return text.split(".")[0].replace("T", " ")
+    return text.split(".", maxsplit=1)[0].replace("T", " ")
 
 
 def _short_id(value: Any, length: int = 8) -> str:
@@ -711,8 +711,71 @@ class SecurityController(AdminController):
             'text-primary-foreground px-4 py-2 text-sm font-medium">'
             "Check</button></form>"
         )
-        html = self._tabs(request, "lockouts") + form + result_html
+        fleet_html = await self._active_lockouts_html(request)
+        html = self._tabs(request, "lockouts") + form + result_html + fleet_html
         return await self._page(request, html, "Lockouts — Security", "Lockouts")
+
+    async def _active_lockouts_html(self, request: Request) -> str:
+        """Fleet-wide active-lockout table (R41, doc 37 §2.2).
+
+        Duck-typed against ``list_active_lockouts`` so stores predating
+        the protocol addition degrade to a note instead of a 500;
+        listing errors are logged and the rest of the page still works.
+        """
+        if self._lockout_store is None:
+            return ""
+        heading = (
+            '<h2 class="text-sm font-medium text-foreground mt-8 mb-3">'
+            "Active lockouts</h2>"
+        )
+        lister = getattr(self._lockout_store, "list_active_lockouts", None)
+        if not callable(lister):
+            return heading + (
+                '<div class="bg-card border border-border rounded-xl p-5 '
+                'text-sm text-muted-foreground">Listing is not supported by '
+                "this lockout store — use the lookup above.</div>"
+            )
+        try:
+            lockouts = await lister(limit=100)
+        except Exception:  # noqa: BLE001 — the lookup form must keep working
+            logger.warning("security_center.lockout_list_failed")
+            return heading + (
+                '<div class="bg-card border border-border rounded-xl p-5 '
+                'text-sm text-muted-foreground">Could not load the lockout '
+                "list — check the server log.</div>"
+            )
+        csrf = self._csrf_token(request)
+        clear_url = self._admin_path(request, "/admin/security/lockouts/clear")
+        rows = []
+        for row in lockouts:
+            row = dict(row)
+            row_email = str(row.get("email", "") or "")
+            kind = (
+                "Permanent"
+                if bool(row.get("is_permanent", False))
+                else f"Auto-unlocks {_fmt_ts(row.get('unlock_at'))}"
+            )
+            rows.append(
+                "<tr>"
+                f'<td class="px-4 py-3 text-sm font-medium">{escape(row_email)}</td>'
+                f'<td class="px-4 py-3 text-sm">{escape(kind)}</td>'
+                f'<td class="px-4 py-3 text-sm">'
+                f"{int(row.get('consecutive_failures', 0) or 0)}</td>"
+                f'<td class="px-4 py-3 text-sm">'
+                f"{escape(_fmt_ts(row.get('locked_at')))}</td>"
+                f'<td class="px-4 py-3 text-sm">'
+                f'<form method="post" action="{escape(clear_url)}" class="inline">'
+                f'<input type="hidden" name="csrf_token" value="{escape(csrf)}">'
+                f'<input type="hidden" name="email" value="{escape(row_email)}">'
+                '<button type="submit" class="text-sm font-medium text-primary '
+                'hover:underline">Unlock</button></form></td>'
+                "</tr>"
+            )
+        return heading + self._table(
+            ["Account", "Kind", "Failures", "Locked at", ""],
+            rows,
+            "No active lockouts.",
+        )
 
     @post("/lockouts/clear")
     async def clear_lockout(self, request: Request) -> Response:

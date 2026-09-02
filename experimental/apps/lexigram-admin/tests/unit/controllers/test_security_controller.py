@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
@@ -274,3 +273,70 @@ class TestEmailMapping:
     async def test_no_store_returns_empty(self) -> None:
         c = _controller()
         assert await c._email_by_user_id() == {}
+
+
+class TestActiveLockoutList:
+    """R41 (doc 37): fleet-wide active-lockout table on the Lockouts tab."""
+
+    @pytest.mark.asyncio
+    async def test_rows_render_with_unlock_forms(self) -> None:
+        c = _controller()
+        c._lockout_store = MagicMock()
+        c._lockout_store.list_active_lockouts = AsyncMock(
+            return_value=[
+                {
+                    "email": "locked@example.com",
+                    "locked_at": "2026-09-02 10:00:00",
+                    "unlock_at": "2026-09-02 10:15:00",
+                    "consecutive_failures": 5,
+                    "is_permanent": 0,
+                },
+                {
+                    "email": "banned@example.com",
+                    "locked_at": "2026-09-02 09:00:00",
+                    "unlock_at": None,
+                    "consecutive_failures": 50,
+                    "is_permanent": 1,
+                },
+            ]
+        )
+        html = await c._active_lockouts_html(_request(_FakeUser(is_superuser=True)))
+        assert "Active lockouts" in html
+        assert "locked@example.com" in html
+        assert "Auto-unlocks" in html
+        assert "banned@example.com" in html
+        assert "Permanent" in html
+        assert html.count("/admin/security/lockouts/clear") == 2
+        assert html.count(">Unlock</button>") == 2
+
+    @pytest.mark.asyncio
+    async def test_empty_state(self) -> None:
+        c = _controller()
+        c._lockout_store = MagicMock()
+        c._lockout_store.list_active_lockouts = AsyncMock(return_value=[])
+        html = await c._active_lockouts_html(_request(_FakeUser(is_superuser=True)))
+        assert "No active lockouts." in html
+
+    @pytest.mark.asyncio
+    async def test_store_without_method_degrades_to_note(self) -> None:
+        c = _controller()
+        c._lockout_store = SimpleNamespace(get_active_lockout=AsyncMock())
+        html = await c._active_lockouts_html(_request(_FakeUser(is_superuser=True)))
+        assert "not supported" in html
+
+    @pytest.mark.asyncio
+    async def test_store_error_keeps_page_usable(self) -> None:
+        c = _controller()
+        c._lockout_store = MagicMock()
+        c._lockout_store.list_active_lockouts = AsyncMock(
+            side_effect=RuntimeError("db down")
+        )
+        html = await c._active_lockouts_html(_request(_FakeUser(is_superuser=True)))
+        assert "Could not load" in html
+
+    @pytest.mark.asyncio
+    async def test_no_store_renders_nothing(self) -> None:
+        c = _controller()
+        c._lockout_store = None
+        html = await c._active_lockouts_html(_request(_FakeUser(is_superuser=True)))
+        assert html == ""

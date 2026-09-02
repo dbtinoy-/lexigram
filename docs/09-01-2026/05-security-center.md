@@ -73,9 +73,11 @@ Every mutating action writes to the audit log itself:
 
 - [x] **Phase 1 (this change):** sessions list + revoke, audit browser,
       lockout lookup + unlock, overview page, nav entry, tests.
-- [ ] **Phase 2:** lockout *listing* (needs a `list_active_lockouts` store
-      method), login-attempt sparkline on the overview, per-user session
-      panel on the (future R10) user form.
+- [x] **Phase 2 (core, R41 — doc 37):** lockout listing shipped —
+      `list_active_lockouts` store method (expired sweep + LIMIT guard)
+      and a fleet table with per-row unlock on the Lockouts tab.
+      Remaining: login-attempt sparkline on the overview, per-user
+      session panel on the user form.
 - [ ] **Phase 3:** SSE live tail of the audit log (reuse the existing
       realtime bridge when registered).
 
