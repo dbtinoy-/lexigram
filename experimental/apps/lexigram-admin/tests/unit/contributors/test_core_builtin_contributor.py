@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 from lexigram.admin.contributors.core import CoreAdminContributor
+from lexigram.admin.dashboard.resource_inventory import ResourceInventory
 from lexigram.contracts.admin import StatContent, Tone, WidgetParams
 from lexigram.contracts.admin.widget_content import (
     ChartContent,
     EmptyContent,
     WidgetKind,
 )
+from lexigram.contracts.admin.types import WidgetCategory
 from lexigram.contracts.core import HealthStatus
 
 
@@ -110,6 +112,66 @@ def test_widget_definitions_declare_widget_kind() -> None:
     assert defs["health"].view_kind == WidgetKind.EMPTY
     assert defs["activity"].view_kind == WidgetKind.TABLE
     assert defs["chart_metrics"].view_kind == WidgetKind.CHART
+    assert defs["resources"].view_kind == WidgetKind.STAT
+
+
+def test_resource_overview_definition_uses_resources_category() -> None:
+    contributor = CoreAdminContributor()
+    defs = {widget.name: widget for widget in contributor.get_dashboard_widgets()}
+    widget = defs["resources"]
+    assert widget.category == WidgetCategory.RESOURCES
+    assert widget.render_endpoint.endswith("/core/widgets/resources")
+    assert widget.title == "Resource Overview"
+
+
+async def test_resource_overview_without_inventory_returns_empty_content() -> None:
+    contributor = CoreAdminContributor()
+    result = await contributor.render_widget("resources", WidgetParams())
+    vm = result.unwrap()
+    assert isinstance(vm.content, EmptyContent)
+
+
+async def test_resource_overview_with_empty_inventory_returns_empty_content() -> None:
+    contributor = CoreAdminContributor()
+    contributor.set_resource_inventory(ResourceInventory({}))
+    result = await contributor.render_widget("resources", WidgetParams())
+    assert isinstance(result.unwrap().content, EmptyContent)
+
+
+async def test_resource_overview_renders_formatted_stat_cards() -> None:
+    class _Source:
+        def __init__(self, total: int) -> None:
+            self._total = total
+
+        async def count(self, query: object) -> int:
+            return self._total
+
+    class _Broken:
+        async def count(self, query: object) -> int:
+            raise RuntimeError("db down")
+
+    class _Resource:
+        def __init__(self, source: object, label: str, icon: str) -> None:
+            self._data_source = source
+            self.label = label
+            self.icon = icon
+
+    contributor = CoreAdminContributor()
+    contributor.set_resource_inventory(
+        ResourceInventory(
+            {
+                "products": _Resource(_Source(1234), "Products", "package"),
+                "orders": _Resource(_Broken(), "Orders", "shopping-cart"),
+            }
+        )
+    )
+    result = await contributor.render_widget("resources", WidgetParams())
+    content = result.unwrap().content
+    assert isinstance(content, StatContent)
+    by_label = {stat.label: stat for stat in content.stats}
+    assert by_label["Products"].value == "1,234"
+    assert by_label["Products"].icon == "package"
+    assert by_label["Orders"].value == "—"
 
 
 __all__ = [
@@ -120,5 +182,9 @@ __all__ = [
     "test_render_health_check_admin_core_uses_run_all",
     "test_render_health_check_degrades_without_registry",
     "test_render_health_check_uses_registry",
+    "test_resource_overview_definition_uses_resources_category",
+    "test_resource_overview_renders_formatted_stat_cards",
+    "test_resource_overview_with_empty_inventory_returns_empty_content",
+    "test_resource_overview_without_inventory_returns_empty_content",
     "test_widget_definitions_declare_widget_kind",
 ]

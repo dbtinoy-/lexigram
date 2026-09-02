@@ -163,6 +163,29 @@ class AdminMountContributorsMixin:
         except Exception:  # noqa: BLE001 — resource collection is non-fatal
             _log.warning("admin.contributors_resource_collection_failed", exc_info=True)
 
+        # Give contributors a countable view over the mounted resources.
+        # Duck-typed opt-in hook: any contributor exposing
+        # ``set_resource_inventory`` receives the inventory (the core
+        # contributor uses it for the Resource Overview widget).
+        try:
+            from lexigram.admin.dashboard.resource_inventory import ResourceInventory
+
+            inventory = ResourceInventory(ctx.resources)
+            wired = 0
+            for contributor in contributors:
+                hook = getattr(contributor, "set_resource_inventory", None)
+                if callable(hook):
+                    hook(inventory)
+                    wired += 1
+            if wired:
+                _log.info(
+                    "admin.resource_inventory_wired",
+                    contributors=wired,
+                    resources=len(ctx.resources),
+                )
+        except Exception:  # noqa: BLE001 — inventory wiring is best-effort
+            _log.warning("admin.resource_inventory_wiring_failed", exc_info=True)
+
     async def _mount_integration(self, container: Any, ctx: MountContext) -> None:
         """Build the admin router and integrate contributor routes.
 
