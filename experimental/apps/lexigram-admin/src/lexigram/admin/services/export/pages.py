@@ -191,7 +191,7 @@ class ExportCenter:
                 "div",
                 self._header(),
                 self._create_form(exportable, csrf_token),
-                self._jobs_table(jobs, csrf_token),
+                self._jobs_region(jobs, csrf_token),
                 class_="space-y-6",
             )
         )
@@ -262,6 +262,48 @@ class ExportCenter:
             method="post",
             action=f"{self._prefix}/exports",
             class_="flex flex-wrap items-center gap-3",
+        )
+
+    # -- GET /exports/jobs ---------------------------------------------------
+
+    async def jobs_fragment(self, request: Request) -> Response:
+        """Return the jobs region only, for HTMX polling swaps."""
+        user = self._user(request)
+        if user is None:
+            return PlainTextResponse("Authentication required", status_code=401)
+
+        from lexigram.ui import render_to_string
+
+        csrf_token = self._csrf_token(request)
+        jobs = self._jobs_for(user)
+        return HTMLResponse(render_to_string(self._jobs_region(jobs, csrf_token)))
+
+    def _jobs_region(self, jobs: list[ExportJob], csrf_token: str) -> Any:
+        """Wrap the jobs table in a self-updating region.
+
+        While any listed job is still active the region carries HTMX
+        polling attributes (``hx-get`` + ``every 3s`` + ``outerHTML``
+        swap); once every job is terminal the attributes are omitted, so
+        the final swap naturally stops the polling loop.
+        """
+        from lexigram.ui import el
+
+        polling: dict[str, str] = {}
+        if any(
+            job.status in (ExportStatus.PENDING, ExportStatus.PROCESSING)
+            for job in jobs
+        ):
+            polling = {
+                "hx_get": f"{self._prefix}/exports/jobs",
+                "hx_trigger": "every 3s",
+                "hx_swap": "outerHTML",
+            }
+        return el(
+            "div",
+            self._jobs_table(jobs, csrf_token),
+            id="exports-jobs",
+            data_testid="exports-jobs-region",
+            **polling,
         )
 
     def _jobs_table(self, jobs: list[ExportJob], csrf_token: str) -> Any:
@@ -355,6 +397,27 @@ class ExportCenter:
         if not actions:
             actions.append(el("span", "—", class_="text-muted-foreground"))
 
+        progress = min(max(float(job.progress or 0.0), 0.0), 100.0)
+        progress_cell = el(
+            "td",
+            el(
+                "div",
+                el("span", f"{progress:.0f}%", class_="tabular-nums"),
+                el(
+                    "div",
+                    el(
+                        "div",
+                        class_="bg-primary h-1.5 rounded",
+                        style=f"width:{progress:.0f}%",
+                    ),
+                    class_="bg-muted h-1.5 rounded w-24 overflow-hidden",
+                    aria_hidden="true",
+                ),
+                class_="flex items-center gap-2",
+            ),
+            class_=cell,
+        )
+
         return el(
             "tr",
             el("td", job.resource_name, class_=cell),
@@ -364,7 +427,7 @@ class ExportCenter:
                 el("span", job.status.value, class_=f"{status_class} font-medium"),
                 class_=cell,
             ),
-            el("td", f"{job.progress:.0f}%", class_=cell),
+            progress_cell,
             el(
                 "td",
                 f"{job.processed_records}/{job.total_records}",

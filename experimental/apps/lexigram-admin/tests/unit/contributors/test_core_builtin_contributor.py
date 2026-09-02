@@ -174,11 +174,31 @@ async def test_resource_overview_renders_formatted_stat_cards() -> None:
     assert by_label["Orders"].value == "—"
 
 
+def test_navigation_omits_exports_until_enabled() -> None:
+    contributor = CoreAdminContributor()
+    labels = [item.label for item in contributor.get_navigation_items()]
+    assert labels == ["Dashboard"]
+
+
+def test_navigation_includes_exports_after_enable() -> None:
+    contributor = CoreAdminContributor()
+    contributor.enable_export_center("/admin/exports")
+    items = {item.label: item for item in contributor.get_navigation_items()}
+    assert "Exports" in items
+    exports = items["Exports"]
+    assert exports.url == "/admin/exports"
+    assert exports.icon == "download"
+    assert exports.group == ""
+    assert items["Dashboard"].order < exports.order
+
+
 __all__ = [
     "test_chart_metrics_reads_metrics_capability",
     "test_chart_metrics_widget_degrades_without_source",
     "test_health_widget_reports_aggregate_status",
     "test_health_widget_returns_empty_content_placeholder",
+    "test_navigation_includes_exports_after_enable",
+    "test_navigation_omits_exports_until_enabled",
     "test_render_health_check_admin_core_uses_run_all",
     "test_render_health_check_degrades_without_registry",
     "test_render_health_check_uses_registry",

@@ -293,3 +293,78 @@ class TestHelpers:
 
     def test_format_allowlist_excludes_pdf(self):
         assert set(EXPORT_PAGE_FORMATS) == {"csv", "json", "xlsx"}
+
+
+# ---------------------------------------------------------------------------
+# Jobs fragment (R32: HTMX live progress)
+# ---------------------------------------------------------------------------
+
+
+class TestJobsFragment:
+    @pytest.mark.asyncio
+    async def test_unauthenticated_401(self, tmp_path):
+        center, _, _ = make_center(tmp_path)
+        resp = await center.jobs_fragment(make_request(None))
+        assert resp.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_active_job_enables_polling(self, tmp_path):
+        center, service, _ = make_center(tmp_path)
+        service.create_job("items", ExportFormat.CSV, user_id="u1")
+        resp = await center.jobs_fragment(make_request(make_user("u1")))
+        html = resp.body.decode()
+        assert 'id="exports-jobs"' in html
+        assert 'hx-get="/admin/exports/jobs"' in html
+        assert 'hx-trigger="every 3s"' in html
+        assert 'hx-swap="outerHTML"' in html
+
+    @pytest.mark.asyncio
+    async def test_terminal_jobs_stop_polling(self, tmp_path):
+        center, service, _ = make_center(tmp_path)
+        job_id = service.create_job("items", ExportFormat.CSV, user_id="u1")
+        service.get_job(job_id).status = ExportStatus.COMPLETED
+        resp = await center.jobs_fragment(make_request(make_user("u1")))
+        html = resp.body.decode()
+        assert 'id="exports-jobs"' in html
+        assert "hx-trigger" not in html
+        assert "hx-get" not in html
+
+    @pytest.mark.asyncio
+    async def test_empty_state_has_region_without_polling(self, tmp_path):
+        center, _, _ = make_center(tmp_path)
+        resp = await center.jobs_fragment(make_request(make_user("u1")))
+        html = resp.body.decode()
+        assert 'id="exports-jobs"' in html
+        assert "No export jobs yet" in html
+        assert "hx-trigger" not in html
+
+    @pytest.mark.asyncio
+    async def test_fragment_scopes_jobs_to_requester(self, tmp_path):
+        center, service, _ = make_center(tmp_path)
+        service.create_job("items", ExportFormat.CSV, user_id="u1")
+        service.create_job("items", ExportFormat.CSV, user_id="someone-else")
+        resp = await center.jobs_fragment(make_request(make_user("u1")))
+        assert resp.body.decode().count("<tr data-job-id=") == 1
+
+    @pytest.mark.asyncio
+    async def test_page_embeds_polling_region(self, tmp_path):
+        center, service, renderer = make_center(tmp_path)
+        service.create_job("items", ExportFormat.CSV, user_id="u1")
+        await center.page(make_request(make_user("u1")))
+        html = renderer.calls[-1]["content"]
+        assert 'id="exports-jobs"' in html
+        assert 'hx-trigger="every 3s"' in html
+
+    @pytest.mark.asyncio
+    async def test_progress_bar_clamps_out_of_range_values(self, tmp_path):
+        center, service, _ = make_center(tmp_path)
+        over_id = service.create_job("items", ExportFormat.CSV, user_id="u1")
+        under_id = service.create_job("items", ExportFormat.CSV, user_id="u1")
+        service.get_job(over_id).progress = 250.0
+        service.get_job(under_id).progress = -5.0
+        resp = await center.jobs_fragment(make_request(make_user("u1")))
+        html = resp.body.decode()
+        assert "width:100%" in html
+        assert "width:0%" in html
+        assert "250%" not in html
+        assert "-5%" not in html

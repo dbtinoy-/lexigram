@@ -372,13 +372,24 @@ class TestMountStep:
         container = FakeContainer()
         container.singleton(ExportService, make_service(tmp_path))
 
-        ctx = SimpleNamespace(router=Router(), resources={})
+        class NavContributor:
+            enabled_url: str | None = None
+
+            def enable_export_center(self, url: str) -> None:
+                self.enabled_url = url
+
+        nav_contributor = NavContributor()
+        ctx = SimpleNamespace(
+            router=Router(), resources={}, contributors=[nav_contributor]
+        )
         await Host()._mount_export_center(container, ctx)
 
-        # R30: the export center registers page + create + cancel + download.
+        # R30: the export center registers page + create + cancel + download;
+        # R32 adds the jobs fragment for HTMX polling.
         by_name = {name: (path, method) for path, method, _h, name in recorded}
         assert by_name["admin_exports_page"] == ("/exports", "GET")
         assert by_name["admin_exports_create"] == ("/exports", "POST")
+        assert by_name["admin_exports_jobs"] == ("/exports/jobs", "GET")
         assert by_name["admin_exports_cancel"] == (
             "/exports/{job_id}/cancel",
             "POST",
@@ -387,7 +398,9 @@ class TestMountStep:
             "/exports/{job_id}/download",
             "GET",
         )
-        assert len(recorded) == 4
+        assert len(recorded) == 5
+        # R32: the sidebar hook fires only after successful registration.
+        assert nav_contributor.enabled_url == "/admin/exports"
 
     @pytest.mark.asyncio
     async def test_mount_skips_when_service_unresolvable(self):

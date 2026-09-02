@@ -327,6 +327,12 @@ class AdminMountContributorsMixin:
             router.add_route("/exports", "GET", center.page, "admin_exports_page")
             router.add_route("/exports", "POST", center.create, "admin_exports_create")
             router.add_route(
+                "/exports/jobs",
+                "GET",
+                center.jobs_fragment,
+                "admin_exports_jobs",
+            )
+            router.add_route(
                 "/exports/{job_id}/cancel",
                 "POST",
                 center.cancel,
@@ -342,6 +348,23 @@ class AdminMountContributorsMixin:
                 "admin.export_center_routes_registered",
                 path=f"{self._config.prefix}/exports",
             )
+
+            # Surface the page in the sidebar: any contributor exposing the
+            # duck-typed enable_export_center hook gains an "Exports" nav
+            # item, gated on the routes above actually registering.
+            exports_url = f"{self._config.prefix.rstrip('/')}/exports"
+            for contributor in getattr(ctx, "contributors", None) or []:
+                hook = getattr(contributor, "enable_export_center", None)
+                if callable(hook):
+                    try:
+                        hook(exports_url)
+                        _log.info(
+                            "admin.export_center_nav_enabled", url=exports_url
+                        )
+                    except Exception:  # noqa: BLE001 — nav is best-effort
+                        _log.warning(
+                            "admin.export_center_nav_hook_failed", exc_info=True
+                        )
         except Exception as exc:  # noqa: BLE001 — export center is optional
             _log.warning("admin.export_center_routes_skipped", reason=str(exc))
 

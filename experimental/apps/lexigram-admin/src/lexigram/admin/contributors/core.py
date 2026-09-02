@@ -134,6 +134,7 @@ class CoreAdminContributor(BaseAdminContributor):
         self._metrics = metrics
         self._hub = hub
         self._resource_inventory: Any | None = None
+        self._export_center_url: str | None = None
         self._activity_cache: deque[AdminEvent] = deque(maxlen=50)
         self._background_tasks: set[asyncio.Task[Any]] = set()
         self._start_activity_tail()
@@ -266,9 +267,22 @@ class CoreAdminContributor(BaseAdminContributor):
             ),
         ]
 
+    def enable_export_center(self, url: str) -> None:
+        """Enable the Exports sidebar entry.
+
+        Called at mount time (duck-typed hook, see
+        ``AdminProvider._mount_export_center``) only after the export
+        center routes registered successfully, so the nav item never
+        points at a missing page.
+
+        Args:
+            url: Absolute admin path of the exports page.
+        """
+        self._export_center_url = url
+
     def get_navigation_items(self) -> Sequence[NavigationContribution]:
-        """Return core navigation: Dashboard link."""
-        return [
+        """Return core navigation: Dashboard, plus Exports when mounted."""
+        items = [
             NavigationContribution(
                 label="Dashboard",
                 url=f"{DEFAULT_ADMIN_PREFIX}/",
@@ -277,6 +291,17 @@ class CoreAdminContributor(BaseAdminContributor):
                 order=0,
             ),
         ]
+        if self._export_center_url:
+            items.append(
+                NavigationContribution(
+                    label="Exports",
+                    url=self._export_center_url,
+                    icon="download",
+                    group="",
+                    order=5,
+                ),
+            )
+        return items
 
     def get_health_definitions(self) -> Sequence[AdminHealthDefinition]:
         """Return core health definitions."""
