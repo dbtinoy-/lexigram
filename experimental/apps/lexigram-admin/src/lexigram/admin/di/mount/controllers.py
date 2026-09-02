@@ -524,6 +524,32 @@ class AdminMountControllersMixin:
                     )
             except Exception:
                 pass
+            # Attach the SQL delivery log so every email hand-off (test,
+            # verification, reset, invite) is recorded and surfaced on the
+            # Email page (R46, doc 42). Best-effort: without a database the
+            # page simply omits the "Recent deliveries" section.
+            try:
+                notification_service = getattr(
+                    email_controller, "_notification_service", None
+                )
+                if notification_service is not None and hasattr(
+                    notification_service, "attach_delivery_log"
+                ):
+                    from lexigram.admin.services.notifications.delivery_log_sql import (
+                        AdminEmailLogSqlStore,
+                    )
+                    from lexigram.contracts.data import DatabaseProviderProtocol
+
+                    db_provider = await resolver.resolve(
+                        DatabaseProviderProtocol,
+                        bypass_visibility=True,
+                    )
+                    delivery_log = AdminEmailLogSqlStore(db_provider)
+                    notification_service.attach_delivery_log(delivery_log)
+                    if hasattr(email_controller, "_delivery_log"):
+                        email_controller._delivery_log = delivery_log
+            except Exception:
+                pass
         except Exception as exc:
             _log.error(
                 "admin.email_controller_resolution_failed",

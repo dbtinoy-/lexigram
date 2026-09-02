@@ -19,6 +19,7 @@ from lexigram.admin.auth.protocols import AdminCsrfServiceProtocol
 from lexigram.admin.controllers.access_control import (
     _BTN_CLS,
     _AccessControlController,
+    _fmt_ts,
 )
 from lexigram.admin.engine.renderer import AdminRenderer
 from lexigram.admin.services.notifications import AdminNotificationService
@@ -62,6 +63,8 @@ class EmailDeliveryController(_AccessControlController):
             super_admin_role=super_admin_role,
         )
         self._notification_service = notification_service
+        # Delivery log store (R46, doc 42) — attached best-effort at mount.
+        self._delivery_log: Any = None
 
     # -- rendering ----------------------------------------------------------
 
@@ -191,11 +194,87 @@ class EmailDeliveryController(_AccessControlController):
             f"{button}</form></div>"
         )
 
+    async def _deliveries_html(self, limit: int = 50) -> str:
+        """Recent-deliveries table (R46, doc 42).
+
+        Args:
+            limit: Maximum rows to display.
+
+        Returns:
+            Card HTML; empty string when no delivery-log store is attached
+            (page degrades to its Phase 2 shape) and a muted note when the
+            store errors.
+        """
+        store = self._delivery_log
+        if store is None:
+            return ""
+        try:
+            rows = await store.list_recent(limit=limit)
+        except Exception:  # noqa: BLE001 — diagnostics must not break the page
+            logger.warning("email_delivery.log_listing_failed")
+            return (
+                '<div class="bg-card border border-border rounded-xl p-6 mt-4">'
+                '<h2 class="text-sm font-medium">Recent deliveries</h2>'
+                '<p class="text-sm text-muted-foreground mt-2">'
+                "Delivery log unavailable.</p></div>"
+            )
+        header = (
+            '<div class="bg-card border border-border rounded-xl p-6 mt-4">'
+            f'<h2 class="text-sm font-medium">Recent deliveries '
+            f'<span class="text-muted-foreground font-normal">({len(rows)} shown)</span></h2>'
+            '<p class="text-sm text-muted-foreground mt-2">Emails handed to the '
+            "mailer backend, newest first. &ldquo;Sent&rdquo; means the backend "
+            "accepted the message, not that it reached an inbox.</p>"
+        )
+        if not rows:
+            return (
+                header + '<p class="text-sm text-muted-foreground mt-4">'
+                "No deliveries recorded yet.</p></div>"
+            )
+        body: list[str] = []
+        for row in rows:
+            success = bool(row.get("success"))
+            error = str(row.get("error") or "")
+            if success:
+                outcome = '<span class="text-sm font-medium text-primary">Sent</span>'
+            else:
+                detail = (
+                    f'<span class="block text-xs text-muted-foreground" '
+                    f'title="{escape(error)}">{escape(error[:80])}'
+                    f"{'…' if len(error) > 80 else ''}</span>"
+                    if error
+                    else ""
+                )
+                outcome = f'<span class="text-sm font-medium text-destructive">Failed</span>{detail}'
+            body.append(
+                "<tr class='border-b border-border'>"
+                f'<td class="px-4 py-3 text-sm whitespace-nowrap">{escape(_fmt_ts(row.get("created_at")))}</td>'
+                f'<td class="px-4 py-3 text-sm">{escape(str(row.get("notification_type") or ""))}</td>'
+                f'<td class="px-4 py-3 text-sm">{escape(str(row.get("recipient") or ""))}</td>'
+                f'<td class="px-4 py-3 text-sm">{escape(str(row.get("subject") or ""))}</td>'
+                f'<td class="px-4 py-3">{outcome}</td>'
+                "</tr>"
+            )
+        head_cls = (
+            "px-4 py-2 text-left text-xs font-medium text-muted-foreground "
+            "uppercase tracking-wider"
+        )
+        return (
+            header + '<div class="overflow-x-auto mt-4"><table class="w-full">'
+            '<thead><tr class="border-b border-border">'
+            f'<th class="{head_cls}">Time</th>'
+            f'<th class="{head_cls}">Type</th>'
+            f'<th class="{head_cls}">Recipient</th>'
+            f'<th class="{head_cls}">Subject</th>'
+            f'<th class="{head_cls}">Outcome</th>'
+            f"</tr></thead><tbody>{''.join(body)}</tbody></table></div></div>"
+        )
+
     # -- routes -------------------------------------------------------------
 
     @get("/")
     async def status_page(self, request: Request) -> Response:
-        """Email delivery status card + test-send form."""
+        """Email delivery status card + test-send form + recent deliveries."""
         denied = self._guard(request)
         if denied is not None:
             return denied
@@ -215,9 +294,12 @@ class EmailDeliveryController(_AccessControlController):
             '<div class="max-w-2xl">'
             + self._status_card(sender=sender, health=health)
             + self._test_form(request)
+            + await self._deliveries_html()
             + "</div>"
         )
-        return await self._page(request, html, "Email delivery", "Email", "/admin/email")
+        return await self._page(
+            request, html, "Email delivery", "Email", "/admin/email"
+        )
 
     @post("/test")
     async def send_test(self, request: Request) -> Response:
@@ -259,6 +341,4 @@ class EmailDeliveryController(_AccessControlController):
             )
         logger.info("email_delivery.test_sent", to=email)
         backend: Any = self._notification_service.mailer_backend_name or "backend"
-        return self._redirect(
-            base, f"Test email accepted by {backend} for {email}."
-        )
+        return self._redirect(base, f"Test email accepted by {backend} for {email}.")

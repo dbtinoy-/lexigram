@@ -105,8 +105,11 @@ doc 05, B10).
       default, 30 s TTL runtime pickup); backend health surfaced on the
       status card via duck-typed `MailerProtocol.health_check`.
       `enabled`/retry knobs stay code-level by design (doc 35 §2.1).
-- [ ] **Phase 3:** delivery log (recent sends with outcome) once a
-      persistent outbox story exists.
+- [x] **Phase 3:** delivery log (recent sends with outcome) once a
+      persistent outbox story exists. _Done in R46 — see
+      [42-email-delivery-log.md](42-email-delivery-log.md): `admin_email_log`
+      SQL store attached to the shared notification service, "Recent
+      deliveries" table on `/admin/email`._
 
 ## Verification
 

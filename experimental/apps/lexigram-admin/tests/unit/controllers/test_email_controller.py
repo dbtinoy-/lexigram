@@ -227,3 +227,96 @@ class TestStatusCardOverrides:
     def test_unbound_service_has_no_health_line(self) -> None:
         html = _controller(notification_service=_service(bound=False))._status_card()
         assert "Health:" not in html
+
+
+class TestDeliveriesSection:
+    """Recent-deliveries table (R46 — docs/09-01-2026/42-email-delivery-log.md)."""
+
+    @staticmethod
+    def _row(**overrides: Any) -> dict:
+        row = {
+            "notification_type": "test_email",
+            "recipient": "op@example.com",
+            "subject": "Test email from Lexigram Admin",
+            "success": 1,
+            "error": None,
+            "created_at": "2026-09-02 10:00:00",
+        }
+        row.update(overrides)
+        return row
+
+    @pytest.mark.asyncio
+    async def test_no_store_renders_nothing(self) -> None:
+        controller = _controller()
+        assert await controller._deliveries_html() == ""
+
+    @pytest.mark.asyncio
+    async def test_empty_log_shows_empty_state(self) -> None:
+        controller = _controller()
+        controller._delivery_log = SimpleNamespace(
+            list_recent=AsyncMock(return_value=[])
+        )
+        html = await controller._deliveries_html()
+        assert "Recent deliveries" in html
+        assert "No deliveries recorded yet." in html
+
+    @pytest.mark.asyncio
+    async def test_success_row_rendered(self) -> None:
+        controller = _controller()
+        controller._delivery_log = SimpleNamespace(
+            list_recent=AsyncMock(return_value=[self._row()])
+        )
+        html = await controller._deliveries_html()
+        assert "op@example.com" in html
+        assert "test_email" in html
+        assert ">Sent</span>" in html
+        assert "2026-09-02 10:00:00" in html
+        # The note is honest about what "Sent" means.
+        assert "not that it reached an inbox" in html
+
+    @pytest.mark.asyncio
+    async def test_failed_row_shows_error_detail(self) -> None:
+        controller = _controller()
+        controller._delivery_log = SimpleNamespace(
+            list_recent=AsyncMock(
+                return_value=[
+                    self._row(success=0, error="Email to op@example.com: SMTP down")
+                ]
+            )
+        )
+        html = await controller._deliveries_html()
+        assert ">Failed</span>" in html
+        assert "SMTP down" in html
+
+    @pytest.mark.asyncio
+    async def test_long_error_truncated_with_full_tooltip(self) -> None:
+        controller = _controller()
+        long_error = "x" * 120
+        controller._delivery_log = SimpleNamespace(
+            list_recent=AsyncMock(return_value=[self._row(success=0, error=long_error)])
+        )
+        html = await controller._deliveries_html()
+        assert f'title="{long_error}"' in html
+        # Inline text is capped at 80 chars + ellipsis (full value in tooltip).
+        assert (">" + "x" * 80 + "…</span>") in html
+
+    @pytest.mark.asyncio
+    async def test_store_error_degrades_to_note(self) -> None:
+        controller = _controller()
+        controller._delivery_log = SimpleNamespace(
+            list_recent=AsyncMock(side_effect=OSError("db gone"))
+        )
+        html = await controller._deliveries_html()
+        assert "Delivery log unavailable." in html
+
+    @pytest.mark.asyncio
+    async def test_escapes_row_content(self) -> None:
+        controller = _controller()
+        controller._delivery_log = SimpleNamespace(
+            list_recent=AsyncMock(
+                return_value=[self._row(subject='<script>alert("x")</script>')]
+            )
+        )
+        html = await controller._deliveries_html()
+        assert "<script>" not in html
+        assert "&lt;script&gt;" in html
