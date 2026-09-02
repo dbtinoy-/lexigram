@@ -501,3 +501,94 @@ class TestAdminInitiatedReset:
             _request(_FakeUser(is_superuser=True)), "u-2", "target@example.com"
         )
         assert "not\n available".replace("\n ", " ") in html
+
+
+class TestEmailInvite:
+    """R45 (doc 41): create account + emailed set-password invite."""
+
+    def _controller(self) -> Any:
+        from lexigram.contracts.core.result import Ok
+
+        c = _controller()
+        c._password_reset_service = MagicMock()
+        c._password_reset_service.issue_invite = AsyncMock(return_value=Ok(None))
+        store = MagicMock()
+        store.get_user_by_email = AsyncMock(return_value=None)
+        store.list_users = AsyncMock(return_value=[])
+        store.create_user = AsyncMock(
+            return_value=SimpleNamespace(user_id="u-new", email="new@example.com")
+        )
+        c._user_store = store
+        return c
+
+    def _req(self, form: Any) -> MagicMock:
+        req = _request(_FakeUser(user_id="u-1", is_superuser=True), form=form)
+        req.base_url = "http://testserver/"
+        return req
+
+    @pytest.mark.asyncio
+    async def test_creates_account_and_sends_invite(self) -> None:
+        c = self._controller()
+        form = _FakeForm(
+            {"csrf_token": "", "name": "New Admin", "email": "New@Example.com"},
+            multi={"roles": ["editor"]},
+        )
+        response = await c.invite(self._req(form))
+        create_kwargs = c._user_store.create_user.await_args.kwargs
+        assert create_kwargs["email"] == "new@example.com"  # lowercased
+        assert create_kwargs["roles"] == ["editor"]
+        assert create_kwargs["hashed_password"]  # throwaway, never plain
+        invite_kwargs = c._password_reset_service.issue_invite.await_args.kwargs
+        assert invite_kwargs["email"] == "new@example.com"
+        assert "notice=" in response.headers["location"]
+        assert "Invite+sent" in response.headers["location"]
+
+    @pytest.mark.asyncio
+    async def test_duplicate_email_blocks_before_creation(self) -> None:
+        c = self._controller()
+        c._user_store.get_user_by_email = AsyncMock(
+            return_value=SimpleNamespace(user_id="u-2")
+        )
+        form = _FakeForm(
+            {"csrf_token": "", "name": "X", "email": "new@example.com"}
+        )
+        response = await c.invite(self._req(form))
+        c._user_store.create_user.assert_not_awaited()
+        assert "error=" in response.headers["location"]
+
+    @pytest.mark.asyncio
+    async def test_missing_service_refuses_before_creating(self) -> None:
+        c = self._controller()
+        c._password_reset_service = None
+        form = _FakeForm(
+            {"csrf_token": "", "name": "X", "email": "new@example.com"}
+        )
+        response = await c.invite(self._req(form))
+        c._user_store.create_user.assert_not_awaited()
+        assert "error=" in response.headers["location"]
+
+    @pytest.mark.asyncio
+    async def test_invite_email_failure_names_the_retry_path(self) -> None:
+        from lexigram.contracts.core.result import Err
+
+        c = self._controller()
+        c._password_reset_service.issue_invite = AsyncMock(
+            return_value=Err(ValueError("smtp down"))
+        )
+        form = _FakeForm(
+            {"csrf_token": "", "name": "X", "email": "new@example.com"}
+        )
+        response = await c.invite(self._req(form))
+        c._user_store.create_user.assert_awaited()  # account exists
+        location = response.headers["location"]
+        assert "error=" in location
+        assert "was+created" in location
+        assert "reset+link" in location
+
+    @pytest.mark.asyncio
+    async def test_invalid_identity_rejected(self) -> None:
+        c = self._controller()
+        form = _FakeForm({"csrf_token": "", "name": "", "email": "not-an-email"})
+        response = await c.invite(self._req(form))
+        c._user_store.create_user.assert_not_awaited()
+        assert "error=" in response.headers["location"]

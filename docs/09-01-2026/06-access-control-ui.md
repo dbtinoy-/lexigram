@@ -78,7 +78,8 @@ role is editable even though it has no `admin_roles` row.
       guards + session revocation, reactivate; all audited. Per-user
       session panel shipped in R42 (doc 38); admin-initiated password
       reset shipped in R44 (doc 40 — pairs with "Sign out everywhere"
-      for a full forced reset). Remaining: email invites.
+      for a full forced reset); email invites shipped in R45 (doc 41).
+      Phase 2 complete.
 - [x] **Phase 3 (R40 — doc 36):** effective-permissions preview
       (cycle-safe `inherits` resolution with per-permission provenance,
       mirroring runtime authorizer semantics) on the edit page +

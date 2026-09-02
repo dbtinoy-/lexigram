@@ -979,7 +979,9 @@ class UsersController(_AccessControlController):
 
         html = (
             '<div class="flex justify-end mb-4">'
-            f'<a href="{escape(base)}/new" class="{_BTN_CLS}">New admin</a>'
+            f'<a href="{escape(base)}/new" class="{_BTN_CLS}">New admin</a> '
+            f'<a href="{escape(base)}/invite" class="text-sm font-medium '
+            f'text-primary hover:underline ml-2">Invite by email</a>'
             "</div>"
         ) + self._table(
             ["Name", "Email", "Roles", "Status", ""],
@@ -1036,7 +1038,9 @@ class UsersController(_AccessControlController):
             "</fieldset>"
             '<p class="text-sm text-muted-foreground">The new admin will be '
             "asked to verify their email address on first login.</p>"
-            f'<button type="submit" class="{_BTN_CLS}">Create admin</button>'
+            f'<button type="submit" class="{_BTN_CLS}">Create admin</button> '
+            f'<a href="{escape(base)}/invite" class="text-sm text-primary '
+            'hover:underline">…or send an email invite</a>'
             "</form>"
         )
         return await self._page(
@@ -1118,6 +1122,171 @@ class UsersController(_AccessControlController):
         )
         logger.info("access_control.user_created", email=email, roles=roles)
         return self._redirect(base, f"Admin '{email}' created.")
+
+    # -- email invites (R45 — docs/09-01-2026/41-email-invites.md) ----------
+
+    @get("/invite")
+    async def invite_page(self, request: Request) -> Response:
+        """Invite form: identity + roles, no password fields."""
+        denied = self._guard(request)
+        if denied is not None:
+            return denied
+        base = self._admin_path(request, "/admin/users")
+        if not callable(getattr(self._password_reset_service, "issue_invite", None)):
+            html = (
+                '<div class="bg-card border border-border rounded-xl p-8 '
+                'text-center text-muted-foreground">Email invites are not '
+                "available — no invite-capable reset service is configured. "
+                f'<a href="{escape(base)}/new" class="text-primary '
+                'hover:underline">Create the admin with a password</a> '
+                "instead.</div>"
+            )
+            return await self._page(
+                request, html, "Invite admin — Users", "Users", "/admin/users",
+                "Invite admin",
+            )
+        options = await self._role_options(await self._list_users())
+        boxes = "".join(
+            '<label class="flex items-center gap-2 text-sm py-1">'
+            f'<input type="checkbox" name="roles" value="{escape(n)}"> {escape(n)}'
+            + (
+                ' <span class="text-xs text-muted-foreground">'
+                "(super admin — full control)</span>"
+                if n == self._super_admin_role
+                else ""
+            )
+            + "</label>"
+            for n in options
+        )
+        field_cls = (
+            "w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+        )
+        html = (
+            f'<form method="post" action="{escape(base)}/invite" '
+            'class="space-y-4 max-w-xl">'
+            f'<input type="hidden" name="csrf_token" value="{escape(self._csrf_token(request))}">'
+            '<div><label class="block text-sm font-medium mb-1" for="invite-name">Name</label>'
+            f'<input id="invite-name" name="name" required class="{field_cls}"></div>'
+            '<div><label class="block text-sm font-medium mb-1" for="invite-email">Email</label>'
+            f'<input id="invite-email" name="email" type="email" required class="{field_cls}"></div>'
+            '<fieldset class="border border-border rounded-lg p-4">'
+            '<legend class="px-1 text-sm font-medium">Roles</legend>'
+            f"{boxes}"
+            '<p class="text-xs text-muted-foreground mt-2">Optional — an '
+            "admin without roles can log in but reaches nothing "
+            "privileged until roles are assigned.</p>"
+            "</fieldset>"
+            '<p class="text-sm text-muted-foreground">They will receive an '
+            "email link (valid 7 days) to choose their own password — it is "
+            "never set or seen by you.</p>"
+            f'<button type="submit" class="{_BTN_CLS}">Send invite</button> '
+            f'<a href="{escape(base)}/new" class="text-sm text-primary '
+            'hover:underline">…or create with a password</a>'
+            "</form>"
+        )
+        return await self._page(
+            request, html, "Invite admin — Users", "Users", "/admin/users",
+            "Invite admin",
+        )
+
+    @post("/invite")
+    async def invite(self, request: Request) -> Response:
+        """Create an account and email a set-password invite (audited).
+
+        Refuses before creating anything when no invite-capable service
+        is wired — an account nobody can enter is worse than an error.
+        """
+        denied = self._guard(request)
+        if denied is not None:
+            return denied
+        base = self._admin_path(request, "/admin/users")
+        form_url = f"{base}/invite"
+        form = await self._form(request)
+        if not self._csrf_ok(request, str(form.get("csrf_token", ""))):
+            return self._redirect(form_url, "Invalid or expired form token.", True)
+        if self._user_store is None:
+            return self._redirect(base, "User store unavailable.", True)
+        issue = getattr(self._password_reset_service, "issue_invite", None)
+        if not callable(issue):
+            return self._redirect(
+                form_url, "Email invites are not available on this deployment.", True
+            )
+
+        name = str(form.get("name", "")).strip()
+        email = str(form.get("email", "")).strip().lower()
+        if not name or not email or "@" not in email:
+            return self._redirect(form_url, "Name and a valid email are required.", True)
+
+        # Load-bearing duplicate pre-check — same rationale as create (doc 34).
+        try:
+            existing = await self._user_store.get_user_by_email(email)
+        except Exception:  # noqa: BLE001 — fail closed on unreadable store
+            logger.warning("access_control.duplicate_check_failed", email=email)
+            return self._redirect(form_url, "Could not verify email uniqueness.", True)
+        if existing is not None:
+            return self._redirect(
+                form_url, "An admin with that email already exists.", True
+            )
+
+        getlist = getattr(form, "getlist", None)
+        roles = sorted(
+            {
+                str(v).strip()
+                for v in (getlist("roles") if getlist else [form.get("roles")])
+                if v and str(v).strip()
+            }
+        )
+
+        # Throwaway credential: policy-proof, never displayed, never sent —
+        # the invitee replaces it through the emailed link.
+        from secrets import token_urlsafe
+
+        from lexigram.admin.lib.password import hash_password
+
+        try:
+            created = await self._user_store.create_user(
+                name=name,
+                email=email,
+                hashed_password=hash_password(f"Iv1!{token_urlsafe(24)}"),
+                roles=roles,
+            )
+        except Exception:  # noqa: BLE001 — surface a friendly error, log the rest
+            logger.exception("access_control.invite_create_failed")
+            return self._redirect(form_url, "Could not create the admin account.", True)
+
+        await self._audit(
+            request,
+            AdminSecurityEventType.USER_CREATED,
+            True,
+            user_id=str(_user_field(created, "user_id", "id") or ""),
+            email=email,
+            roles=", ".join(roles),
+            invited=True,
+        )
+
+        from lexigram.admin.resources.urls import admin_prefix_from_request
+
+        client = getattr(request, "client", None)
+        try:
+            result = await issue(
+                email=email,
+                ip_address=getattr(client, "host", "unknown"),
+                user_agent=request.headers.get("user-agent", "") or "",
+                base_url=str(request.base_url),
+                admin_prefix=admin_prefix_from_request(request),
+            )
+        except Exception:  # noqa: BLE001 — account exists; be explicit about the state
+            logger.exception("access_control.invite_send_failed")
+            result = None
+        if result is None or getattr(result, "is_err", lambda: False)():
+            return self._redirect(
+                base,
+                f"Admin '{email}' was created, but the invite email failed — "
+                "open their page and use “Send password reset link” to retry.",
+                True,
+            )
+        logger.info("access_control.admin_invited", email=email, roles=roles)
+        return self._redirect(base, f"Invite sent to {email}.")
 
     @get("/{user_id:str}/edit")
     async def edit_page(self, request: Request, user_id: str) -> Response:

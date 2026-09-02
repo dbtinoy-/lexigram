@@ -197,6 +197,85 @@ class AdminPasswordResetService:
             logger.warning("admin.password_reset_rate_limit_unavailable")
             return False
 
+    async def issue_invite(
+        self,
+        email: str,
+        ip_address: str,
+        user_agent: str,
+        base_url: str,
+        admin_prefix: str = "/admin",
+        lifetime_seconds: int = 604800,
+    ) -> Result[None, AdminAuthError]:
+        """Issue a set-your-password invite link (R45, doc 41).
+
+        A sibling of :meth:`request_reset` for freshly created accounts:
+        same hashed token store and the same ``/password-reset/{token}``
+        confirm flow finish the job, but the token lives 7 days by
+        default and the email uses the ``USER_INVITED`` template instead
+        of the reset one. Deliberately NOT part of
+        ``AdminPasswordResetServiceProtocol`` (runtime-checkable —
+        extending it would break third-party implementations); callers
+        duck-type via ``getattr``.
+
+        Args:
+            email: Address of the (already created) account to invite.
+            ip_address: Acting client IP for audit.
+            user_agent: Acting client user agent for audit.
+            base_url: Request base URL used to build the invite link.
+            admin_prefix: Configured admin mount, without the origin.
+            lifetime_seconds: Token lifetime (default 7 days).
+
+        Returns:
+            ``Ok(None)`` — also for unknown emails, mirroring
+            ``request_reset``'s anti-enumeration contract.
+        """
+        email = email.strip().lower()
+        user = await self._user_store.get_user_by_email(email)
+        if user is None:
+            logger.info("admin.invite_unknown_email", email=email)
+            return Ok(None)
+
+        raw_token = secrets.token_urlsafe(32)
+        token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
+        expires_at = datetime.now(UTC) + timedelta(seconds=int(lifetime_seconds))
+        await self._token_store.create(email, token_hash, expires_at)
+
+        expires_in = f"{int(lifetime_seconds) // 86400} days"
+        if self._notification_service is not None:
+            prefix = (
+                f"/{admin_prefix.strip('/')}" if admin_prefix.strip("/") else "/admin"
+            )
+            invite_url = f"{base_url.rstrip('/')}{prefix}/password-reset/{raw_token}"
+            result = await self._notification_service.notify_user_invited(
+                user_email=email,
+                user_name=getattr(user, "name", email),
+                invite_url=invite_url,
+                expires_in=expires_in,
+            )
+            if getattr(result, "is_err", lambda: False)():
+                logger.warning(
+                    "admin.invite_notify_failed",
+                    email=email,
+                    error=str(result.unwrap_err()),
+                )
+                return Err(
+                    AdminAuthError(
+                        "The invite email could not be sent.",
+                        reason="notify_failed",
+                    )
+                )
+
+        await self._audit_service.log_event(
+            event_type=AdminSecurityEventType.PASSWORD_RESET_REQUESTED,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            success=True,
+            admin_user_id=getattr(user, "user_id", None),
+            metadata={"email": email, "invite": True, "expires_in": expires_in},
+        )
+        logger.info("admin.invite_issued", email=email, expires_in=expires_in)
+        return Ok(None)
+
     async def confirm_reset(
         self,
         token: str,
