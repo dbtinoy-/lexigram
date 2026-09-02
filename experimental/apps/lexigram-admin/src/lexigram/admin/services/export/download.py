@@ -46,7 +46,7 @@ _CONTENT_TYPES: dict[ExportFormat, str] = {
 }
 
 
-def _requester_id(user: Any) -> str | None:
+def requester_id(user: Any) -> str | None:
     """Extract a comparable user identifier from the request user."""
     for attr in ("user_id", "id"):
         value = getattr(user, attr, None)
@@ -60,15 +60,19 @@ def _is_superuser(user: Any) -> bool:
     return getattr(user, "is_superuser", False) is True
 
 
-def _may_download(user: Any, job: ExportJob) -> bool:
-    """Return True when ``user`` owns the job or is a superuser."""
+def may_access_job(user: Any, job: ExportJob) -> bool:
+    """Return True when ``user`` owns the job or is a superuser.
+
+    Shared by the download route, the export center page, and the cancel
+    endpoint so all three enforce identical ownership rules.
+    """
     if _is_superuser(user):
         return True
     if job.user_id is None:
         # Ownerless jobs are superuser-only: fail closed rather than
         # letting any authenticated user fetch an unattributed artifact.
         return False
-    requester = _requester_id(user)
+    requester = requester_id(user)
     return requester is not None and requester == str(job.user_id)
 
 
@@ -105,7 +109,7 @@ def build_export_download_handler(
         if job is None:
             return PlainTextResponse("Export job not found", status_code=404)
 
-        if not _may_download(user, job):
+        if not may_access_job(user, job):
             return PlainTextResponse("Forbidden", status_code=403)
 
         if job.status != ExportStatus.COMPLETED or not job.file_path:
@@ -141,4 +145,4 @@ def build_export_download_handler(
     return download_export
 
 
-__all__ = ["build_export_download_handler"]
+__all__ = ["build_export_download_handler", "may_access_job", "requester_id"]

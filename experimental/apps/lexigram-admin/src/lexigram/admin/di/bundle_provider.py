@@ -217,7 +217,7 @@ class AdminProvider(
         await self._mount_contributors(admin_resolver, ctx)
         await self._mount_integration(container, ctx)
         await self._mount_sse_widgets(container, ctx)
-        await self._mount_export_download(admin_resolver, ctx)
+        await self._mount_export_center(admin_resolver, ctx)
         await self._mount_app_state(app, ctx)
         _log.info("admin.mounted", prefix=self._config.prefix)
 

@@ -357,7 +357,7 @@ class TestSubProvider:
 
 class TestMountStep:
     @pytest.mark.asyncio
-    async def test_mount_registers_route(self, tmp_path):
+    async def test_mount_registers_routes(self, tmp_path):
         from lexigram.admin.di.mount.contributors import AdminMountContributorsMixin
 
         recorded: list[tuple] = []
@@ -372,15 +372,22 @@ class TestMountStep:
         container = FakeContainer()
         container.singleton(ExportService, make_service(tmp_path))
 
-        ctx = SimpleNamespace(router=Router())
-        await Host()._mount_export_download(container, ctx)
+        ctx = SimpleNamespace(router=Router(), resources={})
+        await Host()._mount_export_center(container, ctx)
 
-        assert len(recorded) == 1
-        path, method, handler, name = recorded[0]
-        assert path == "/exports/{job_id}/download"
-        assert method == "GET"
-        assert name == "admin_export_download"
-        assert callable(handler)
+        # R30: the export center registers page + create + cancel + download.
+        by_name = {name: (path, method) for path, method, _h, name in recorded}
+        assert by_name["admin_exports_page"] == ("/exports", "GET")
+        assert by_name["admin_exports_create"] == ("/exports", "POST")
+        assert by_name["admin_exports_cancel"] == (
+            "/exports/{job_id}/cancel",
+            "POST",
+        )
+        assert by_name["admin_export_download"] == (
+            "/exports/{job_id}/download",
+            "GET",
+        )
+        assert len(recorded) == 4
 
     @pytest.mark.asyncio
     async def test_mount_skips_when_service_unresolvable(self):
@@ -393,6 +400,6 @@ class TestMountStep:
         class Host(AdminMountContributorsMixin):
             _config = SimpleNamespace(prefix="/admin")
 
-        ctx = SimpleNamespace(router=Router())
+        ctx = SimpleNamespace(router=Router(), resources={})
         # Empty container → resolve raises → step logs and skips, no raise.
-        await Host()._mount_export_download(FakeContainer(), ctx)
+        await Host()._mount_export_center(FakeContainer(), ctx)

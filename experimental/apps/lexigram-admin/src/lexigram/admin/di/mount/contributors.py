@@ -245,16 +245,22 @@ class AdminMountContributorsMixin:
         except Exception as exc:  # noqa: BLE001 — SSE is optional
             _log.warning("admin.sse_widgets_route_skipped", reason=str(exc))
 
-    async def _mount_export_download(self, container: Any, ctx: MountContext) -> None:
-        """Register the download route for completed export jobs (B30).
+    async def _mount_export_center(self, container: Any, ctx: MountContext) -> None:
+        """Register the export center routes (R28 download + R30 pages).
 
-        Mounted at ``{prefix}/exports/{job_id}/download`` — keyed by the
-        opaque job id, with ownership/status checks inside the handler.
+        Mounts, all fixed-path and behind the admin auth guard:
+
+        * ``GET  /exports`` — jobs page (full admin shell).
+        * ``POST /exports`` — create + start a background export.
+        * ``POST /exports/{job_id}/cancel`` — cancel a running job.
+        * ``GET  /exports/{job_id}/download`` — artifact download (R28),
+          keyed by the opaque job id with ownership/status checks inside
+          the handler.
 
         Args:
             container: The admin DI resolver holding the ExportService
                 singleton registered by AdminExportSubProvider.
-            ctx: Mount pipeline state (``router`` read).
+            ctx: Mount pipeline state (``router`` and ``resources`` read).
         """
         router = ctx.router
         if router is None:
@@ -263,9 +269,46 @@ class AdminMountContributorsMixin:
             from lexigram.admin.services.export.download import (
                 build_export_download_handler,
             )
+            from lexigram.admin.services.export.pages import ExportCenter
             from lexigram.admin.services.export.service import ExportService
 
             export_service: ExportService = await container.resolve(ExportService)
+
+            renderer: Any = None
+            try:
+                from lexigram.admin.engine.renderer import (
+                    AdminRenderer as EngineAdminRenderer,
+                )
+
+                renderer = await container.resolve(EngineAdminRenderer)
+            except Exception:  # noqa: BLE001 — fall back to a fresh renderer
+                from lexigram.admin.engine.renderer import AdminRenderer
+
+                renderer = AdminRenderer()
+
+            permission_service: Any = None
+            try:
+                from lexigram.admin.rbac.service import PermissionService
+
+                permission_service = await container.resolve(PermissionService)
+            except Exception:  # noqa: BLE001 — creation falls back to superuser-only
+                permission_service = None
+
+            center = ExportCenter(
+                export_service=export_service,
+                resources=ctx.resources or {},
+                config=self._config,
+                renderer=renderer,
+                permission_service=permission_service,
+            )
+            router.add_route("/exports", "GET", center.page, "admin_exports_page")
+            router.add_route("/exports", "POST", center.create, "admin_exports_create")
+            router.add_route(
+                "/exports/{job_id}/cancel",
+                "POST",
+                center.cancel,
+                "admin_exports_cancel",
+            )
             router.add_route(
                 "/exports/{job_id}/download",
                 "GET",
@@ -273,11 +316,11 @@ class AdminMountContributorsMixin:
                 "admin_export_download",
             )
             _log.info(
-                "admin.export_download_route_registered",
-                path=f"{self._config.prefix}/exports/{{job_id}}/download",
+                "admin.export_center_routes_registered",
+                path=f"{self._config.prefix}/exports",
             )
-        except Exception as exc:  # noqa: BLE001 — export downloads are optional
-            _log.warning("admin.export_download_route_skipped", reason=str(exc))
+        except Exception as exc:  # noqa: BLE001 — export center is optional
+            _log.warning("admin.export_center_routes_skipped", reason=str(exc))
 
     async def _mount_app_state(self, app: Any, ctx: MountContext) -> None:
         """Mount the router and expose nav/registry state on both apps.
