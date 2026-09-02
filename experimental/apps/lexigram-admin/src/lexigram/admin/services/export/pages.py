@@ -43,13 +43,39 @@ if TYPE_CHECKING:
 
 logger = get_logger(__name__)
 
-#: Formats offered by the export center. PDF stays out until the backend
-#: has a real layout story (and its own optional dependency check).
+#: Formats offered by the export center, mapped to job-flow formats.
+#: Availability of optional-dependency formats is checked at render/create
+#: time via :func:`page_format_available`.
 EXPORT_PAGE_FORMATS: dict[str, ExportFormat] = {
     "csv": ExportFormat.CSV,
     "json": ExportFormat.JSON,
     "xlsx": ExportFormat.EXCEL,
+    "pdf": ExportFormat.PDF,
 }
+
+#: Human-readable install hint per optional-dependency format.
+_FORMAT_REQUIREMENTS: dict[str, str] = {
+    "xlsx": "openpyxl",
+    "pdf": "reportlab",
+}
+
+
+def page_format_available(key: str) -> bool:
+    """Return whether a page format's backing library is importable.
+
+    Flags are read from their modules at call time (not import time) so
+    tests can monkeypatch ``HAS_OPENPYXL`` / ``HAS_REPORTLAB`` and hosts
+    that install the optional dependency later are picked up on restart.
+    """
+    if key == "xlsx":
+        from lexigram.admin.services.export import xlsx
+
+        return bool(xlsx.HAS_OPENPYXL)
+    if key == "pdf":
+        from lexigram.admin.services.export.adapters import pdf
+
+        return bool(pdf.HAS_REPORTLAB)
+    return key in EXPORT_PAGE_FORMATS
 
 #: Jobs listed on the page (most recent first, service-side ordering).
 _MAX_LISTED_JOBS = 50
@@ -245,7 +271,11 @@ class ExportCenter:
             ),
             el(
                 "select",
-                *[el("option", fmt.upper(), value=fmt) for fmt in EXPORT_PAGE_FORMATS],
+                *[
+                    el("option", fmt.upper(), value=fmt)
+                    for fmt in EXPORT_PAGE_FORMATS
+                    if page_format_available(fmt)
+                ],
                 name="format",
                 class_=select_class,
                 aria_label="Format",
@@ -467,6 +497,13 @@ class ExportCenter:
             return HTMLResponse(
                 f"Unsupported export format: {fmt_key}", status_code=400
             )
+        if not page_format_available(fmt_key):
+            requirement = _FORMAT_REQUIREMENTS.get(fmt_key, fmt_key)
+            return HTMLResponse(
+                f"Export format '{fmt_key}' is unavailable on this server: "
+                f"install the '{requirement}' package to enable it.",
+                status_code=501,
+            )
 
         if not await self._can_create(user, resource_name):
             return HTMLResponse("Forbidden", status_code=403)
@@ -528,4 +565,4 @@ class ExportCenter:
         return RedirectResponse(url=f"{self._prefix}/exports", status_code=303)
 
 
-__all__ = ["EXPORT_PAGE_FORMATS", "ExportCenter"]
+__all__ = ["EXPORT_PAGE_FORMATS", "ExportCenter", "page_format_available"]
