@@ -422,3 +422,135 @@ class TestLoginSparkline:
         ]
         html = SecurityController._login_sparkline_html(events, now=self._NOW)
         assert "window truncated at 250 events" in html
+
+
+class TestLiveAuditTail:
+    """Live audit tail (R47 — docs/09-01-2026/43-live-audit-tail.md)."""
+
+    @staticmethod
+    def _event(**overrides: Any) -> SimpleNamespace:
+        from lexigram.admin.auth.types import AdminSecurityEventType
+
+        defaults = {
+            "event_type": AdminSecurityEventType.LOGIN_FAILURE,
+            "success": False,
+            "admin_user_id": "u-1",
+            "ip_address": "10.0.0.9",
+            "created_at": "2026-09-02 10:00:00",
+        }
+        defaults.update(overrides)
+        return SimpleNamespace(**defaults)
+
+    def test_parse_live_flag_variants(self) -> None:
+        c = _controller()
+        for raw, expected in (
+            ("1", True),
+            ("true", True),
+            ("on", True),
+            ("", False),
+            ("0", False),
+            ("yes", False),
+        ):
+            *_, live = c._parse_audit_query({"live": raw})
+            assert live is expected, raw
+        *_, live = c._parse_audit_query({})
+        assert live is False
+
+    @pytest.mark.asyncio
+    async def test_region_without_live_has_no_polling_attrs(self) -> None:
+        c = _controller()
+        req = _request(_FakeUser(is_superuser=True))
+        html = await c._audit_table_region(req)
+        assert 'id="security-audit-table"' in html
+        assert "hx-get" not in html
+        assert "hx-trigger" not in html
+        assert "Live — refreshing" not in html
+
+    @pytest.mark.asyncio
+    async def test_live_region_polls_fragment_with_filters(self) -> None:
+        from datetime import UTC, datetime
+
+        c = _controller()
+        store = SimpleNamespace(query_recent=AsyncMock(return_value=[]))
+        c._audit_store = store
+        req = _request(
+            _FakeUser(is_superuser=True),
+            query={
+                "live": "1",
+                "window": "1h",
+                "limit": "50",
+                "event_type": "login_failure",
+                "user_id": "u-42",
+            },
+        )
+        html = await c._audit_table_region(
+            req, now=datetime(2026, 9, 2, 15, 4, 5, tzinfo=UTC)
+        )
+        assert 'hx-trigger="every 5s"' in html
+        assert 'hx-swap="outerHTML"' in html
+        assert "/admin/security/audit/table?" in html
+        assert "window=1h" in html
+        assert "limit=50" in html
+        assert "live=1" in html
+        assert "event_type=login_failure" in html
+        assert "user_id=u-42" in html
+        assert "updated 15:04:05 UTC" in html
+        # The underlying query honours the same filters.
+        kwargs = store.query_recent.await_args.kwargs
+        assert kwargs["admin_user_id"] == "u-42"
+        assert kwargs["limit"] == 50
+        assert kwargs["since_seconds"] == 3600
+
+    @pytest.mark.asyncio
+    async def test_live_region_renders_event_rows(self) -> None:
+        c = _controller()
+        c._audit_store = SimpleNamespace(
+            query_recent=AsyncMock(return_value=[self._event()])
+        )
+        req = _request(_FakeUser(is_superuser=True), query={"live": "1"})
+        html = await c._audit_table_region(req)
+        assert "login_failure" in html
+        assert ">fail</span>" in html
+        assert "10.0.0.9" in html
+
+    @pytest.mark.asyncio
+    async def test_user_filter_cannot_inject_markup(self) -> None:
+        c = _controller()
+        c._audit_store = SimpleNamespace(query_recent=AsyncMock(return_value=[]))
+        req = _request(
+            _FakeUser(is_superuser=True),
+            query={"live": "1", "user_id": '"><script>alert(1)</script>'},
+        )
+        html = await c._audit_table_region(req)
+        assert "<script>" not in html
+        # urlencode() percent-escapes the payload inside the hx-get URL.
+        assert "user_id=%22%3E%3Cscript%3E" in html
+
+    @pytest.mark.asyncio
+    async def test_store_error_degrades_to_empty_state(self) -> None:
+        c = _controller()
+        c._audit_store = SimpleNamespace(
+            query_recent=AsyncMock(side_effect=OSError("db gone"))
+        )
+        req = _request(_FakeUser(is_superuser=True), query={"live": "1"})
+        html = await c._audit_table_region(req)
+        assert "No audit events match the current filters." in html
+        assert 'hx-trigger="every 5s"' in html  # keeps polling for recovery
+
+    @pytest.mark.asyncio
+    async def test_fragment_route_returns_region_only(self) -> None:
+        c = _controller()
+        req = _request(
+            _FakeUser(is_superuser=True), path="/admin/security/audit/table"
+        )
+        response = await c.audit_table_fragment(req)
+        body = response.body.decode()
+        assert body.startswith('<div id="security-audit-table"')
+        assert "Sessions</a>" not in body  # no tabs — fragment, not a page
+
+    @pytest.mark.asyncio
+    async def test_fragment_route_gated(self) -> None:
+        """Authed non-superadmins get the same 403 as every security page."""
+        c = _controller()
+        with pytest.raises(HTTPException):
+            await c.audit_table_fragment(_request(_FakeUser()))

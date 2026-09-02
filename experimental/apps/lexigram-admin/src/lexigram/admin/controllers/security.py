@@ -12,7 +12,7 @@ from datetime import UTC, datetime
 from html import escape
 from secrets import token_hex
 from typing import Any
-from urllib.parse import quote_plus
+from urllib.parse import quote_plus, urlencode
 
 from starlette.exceptions import HTTPException
 from starlette.requests import Request
@@ -302,9 +302,7 @@ class SecurityController(AdminController):
             + f'">{escape(label)}</a>'
             for label, href, key in entries
         )
-        return (
-            '<div class="flex gap-1 border-b border-border mb-6">' + links + "</div>"
-        )
+        return '<div class="flex gap-1 border-b border-border mb-6">' + links + "</div>"
 
     @staticmethod
     def _card(title: str, value: str, note: str = "") -> str:
@@ -395,9 +393,7 @@ class SecurityController(AdminController):
         return await self._page(request, html, "Security", "Security")
 
     @staticmethod
-    def _login_sparkline_html(
-        events: list[Any], now: datetime | None = None
-    ) -> str:
+    def _login_sparkline_html(events: list[Any], now: datetime | None = None) -> str:
         """Hourly login-activity sparkline (R43, doc 39).
 
         Buckets the audit events the overview already fetched —
@@ -451,9 +447,7 @@ class SecurityController(AdminController):
                 continue
             x = i * (bar_w + gap)
             h_total = max(2, round(chart_h * total / peak))
-            h_fail = (
-                max(2, round(h_total * failures[i] / total)) if failures[i] else 0
-            )
+            h_fail = max(2, round(h_total * failures[i] / total)) if failures[i] else 0
             h_ok = h_total - h_fail
             y = chart_h - h_total
             if h_fail:
@@ -471,9 +465,7 @@ class SecurityController(AdminController):
                 )
         width = buckets * (bar_w + gap) - gap
         total_ok, total_fail = sum(successes), sum(failures)
-        cap_note = (
-            " · window truncated at 250 events" if len(events) >= 250 else ""
-        )
+        cap_note = " · window truncated at 250 events" if len(events) >= 250 else ""
         return heading + (
             '<div class="bg-card border border-border rounded-xl p-5" '
             'data-testid="login-sparkline">'
@@ -627,9 +619,7 @@ class SecurityController(AdminController):
         if not session_id:
             return self._redirect(back, "Missing session id.", True)
         if session_id == str(request.session.get("session_id", "")):
-            return self._redirect(
-                back, "Use Logout to end your own session.", True
-            )
+            return self._redirect(back, "Use Logout to end your own session.", True)
         if self._session_service is None:
             return self._redirect(back, "Session service unavailable.", True)
 
@@ -655,14 +645,19 @@ class SecurityController(AdminController):
         )
         return self._redirect(back, "Session revoked.")
 
-    @get("/audit")
-    async def audit_page(self, request: Request) -> Response:
-        """Filterable audit-log browser."""
-        denied = self._guard(request)
-        if denied is not None:
-            return denied
+    @staticmethod
+    def _parse_audit_query(
+        q: Any,
+    ) -> tuple[str, int, AdminSecurityEventType | None, str | None, bool]:
+        """Normalise audit-browser query params (shared by page + fragment).
 
-        q = request.query_params
+        Args:
+            q: Query-params mapping.
+
+        Returns:
+            ``(window_key, limit, event_type, user_filter, live)`` with
+            unknown windows/limits/event types already coerced to defaults.
+        """
         window_key = q.get("window", "24h")
         if window_key not in _WINDOWS:
             window_key = "24h"
@@ -680,7 +675,31 @@ class SecurityController(AdminController):
             except ValueError:
                 event_type = None
         user_filter = q.get("user_id", "").strip() or None
+        live = q.get("live", "") in ("1", "true", "on")
+        return window_key, limit, event_type, user_filter, live
 
+    async def _audit_table_region(
+        self, request: Request, now: datetime | None = None
+    ) -> str:
+        """Audit table region — the htmx swap target for the live tail.
+
+        Live audit tail (R47, docs/09-01-2026/43-live-audit-tail.md):
+        with ``live=1`` the region carries htmx polling attributes whose
+        fragment URL preserves the current filters, so the live view and
+        the filtered view can never disagree. Without ``live`` no polling
+        attributes render (CSP-region rationale: never poll a region that
+        cannot change on its own).
+
+        Args:
+            request: Current request (query params define the filters).
+            now: Injectable clock for the "updated" caption (tests).
+
+        Returns:
+            ``<div id="security-audit-table">…</div>`` HTML.
+        """
+        window_key, limit, event_type, user_filter, live = self._parse_audit_query(
+            request.query_params
+        )
         events: list[Any] = []
         if self._audit_store is not None:
             try:
@@ -694,40 +713,6 @@ class SecurityController(AdminController):
                 logger.warning("security_center.audit_query_failed")
 
         emails = await self._email_by_user_id()
-        type_options = '<option value="">All events</option>' + "".join(
-            f'<option value="{escape(t.value)}"'
-            + (" selected" if event_type is not None and t is event_type else "")
-            + f">{escape(t.value)}</option>"
-            for t in AdminSecurityEventType
-        )
-        window_options = "".join(
-            f'<option value="{escape(key)}"'
-            + (" selected" if key == window_key else "")
-            + f">{escape(label)}</option>"
-            for key, (label, _) in _WINDOWS.items()
-        )
-        limit_options = "".join(
-            f'<option value="{n}"' + (" selected" if n == limit else "") + f">{n}</option>"
-            for n in _LIMITS
-        )
-        select_cls = (
-            "rounded-lg border border-border bg-background px-3 py-2 text-sm"
-        )
-        filters = (
-            f'<form method="get" class="flex flex-wrap items-end gap-3 mb-4">'
-            f'<label class="text-sm text-muted-foreground">Event'
-            f'<select name="event_type" class="{select_cls} block mt-1">{type_options}</select></label>'
-            f'<label class="text-sm text-muted-foreground">Window'
-            f'<select name="window" class="{select_cls} block mt-1">{window_options}</select></label>'
-            f'<label class="text-sm text-muted-foreground">Limit'
-            f'<select name="limit" class="{select_cls} block mt-1">{limit_options}</select></label>'
-            f'<label class="text-sm text-muted-foreground">User id'
-            f'<input type="text" name="user_id" value="{escape(user_filter or "")}" '
-            f'placeholder="all users" class="{select_cls} block mt-1"></label>'
-            '<button type="submit" class="rounded-lg bg-primary text-primary-foreground '
-            'px-4 py-2 text-sm font-medium">Filter</button></form>'
-        )
-
         rows = []
         for e in events:
             ok = getattr(e, "success", False) is True
@@ -748,17 +733,102 @@ class SecurityController(AdminController):
                 f'<td class="px-4 py-3 text-sm">{escape(str(getattr(e, "ip_address", "") or "—"))}</td>'
                 "</tr>"
             )
+        table = self._table(
+            ["Time", "Event", "Result", "Admin", "IP"],
+            rows,
+            "No audit events match the current filters.",
+        )
+
+        attrs = ""
+        caption = ""
+        if live:
+            params: dict[str, str] = {
+                "window": window_key,
+                "limit": str(limit),
+                "live": "1",
+            }
+            if event_type is not None:
+                params["event_type"] = event_type.value
+            if user_filter:
+                params["user_id"] = user_filter
+            url = (
+                self._admin_path(request, "/admin/security/audit/table")
+                + "?"
+                + urlencode(params)
+            )
+            attrs = f' hx-get="{escape(url)}" hx-trigger="every 5s" hx-swap="outerHTML"'
+            ts = (now or datetime.now(UTC)).strftime("%H:%M:%S")
+            caption = (
+                '<p class="text-xs text-muted-foreground mb-2">'
+                f"Live — refreshing every 5 s · updated {ts} UTC</p>"
+            )
+        return f'<div id="security-audit-table"{attrs}>{caption}{table}</div>'
+
+    @get("/audit")
+    async def audit_page(self, request: Request) -> Response:
+        """Filterable audit-log browser with an optional live tail."""
+        denied = self._guard(request)
+        if denied is not None:
+            return denied
+
+        window_key, limit, event_type, user_filter, live = self._parse_audit_query(
+            request.query_params
+        )
+
+        type_options = '<option value="">All events</option>' + "".join(
+            f'<option value="{escape(t.value)}"'
+            + (" selected" if event_type is not None and t is event_type else "")
+            + f">{escape(t.value)}</option>"
+            for t in AdminSecurityEventType
+        )
+        window_options = "".join(
+            f'<option value="{escape(key)}"'
+            + (" selected" if key == window_key else "")
+            + f">{escape(label)}</option>"
+            for key, (label, _) in _WINDOWS.items()
+        )
+        limit_options = "".join(
+            f'<option value="{n}"'
+            + (" selected" if n == limit else "")
+            + f">{n}</option>"
+            for n in _LIMITS
+        )
+        select_cls = "rounded-lg border border-border bg-background px-3 py-2 text-sm"
+        filters = (
+            f'<form method="get" class="flex flex-wrap items-end gap-3 mb-4">'
+            f'<label class="text-sm text-muted-foreground">Event'
+            f'<select name="event_type" class="{select_cls} block mt-1">{type_options}</select></label>'
+            f'<label class="text-sm text-muted-foreground">Window'
+            f'<select name="window" class="{select_cls} block mt-1">{window_options}</select></label>'
+            f'<label class="text-sm text-muted-foreground">Limit'
+            f'<select name="limit" class="{select_cls} block mt-1">{limit_options}</select></label>'
+            f'<label class="text-sm text-muted-foreground">User id'
+            f'<input type="text" name="user_id" value="{escape(user_filter or "")}" '
+            f'placeholder="all users" class="{select_cls} block mt-1"></label>'
+            '<label class="text-sm text-muted-foreground flex items-center gap-2 pb-2">'
+            f'<input type="checkbox" name="live" value="1"{" checked" if live else ""}>'
+            "Live</label>"
+            '<button type="submit" class="rounded-lg bg-primary text-primary-foreground '
+            'px-4 py-2 text-sm font-medium">Filter</button></form>'
+        )
 
         html = (
             self._tabs(request, "audit")
             + filters
-            + self._table(
-                ["Time", "Event", "Result", "Admin", "IP"],
-                rows,
-                "No audit events match the current filters.",
-            )
+            + await self._audit_table_region(request)
         )
         return await self._page(request, html, "Audit log — Security", "Audit log")
+
+    @get("/audit/table")
+    async def audit_table_fragment(self, request: Request) -> Response:
+        """Audit table region only, for HTMX live-tail polling swaps."""
+        denied = self._guard(request)
+        if denied is not None:
+            return denied
+
+        from starlette.responses import HTMLResponse
+
+        return HTMLResponse(await self._audit_table_region(request))
 
     @get("/lockouts")
     async def lockouts_page(self, request: Request) -> Response:
@@ -783,9 +853,7 @@ class SecurityController(AdminController):
                 )
             else:
                 csrf = self._csrf_token(request)
-                clear_url = self._admin_path(
-                    request, "/admin/security/lockouts/clear"
-                )
+                clear_url = self._admin_path(request, "/admin/security/lockouts/clear")
                 kind = (
                     "Permanent — manual unlock required"
                     if getattr(info, "is_permanent", False) is True

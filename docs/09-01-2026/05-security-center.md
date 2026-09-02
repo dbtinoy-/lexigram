@@ -78,8 +78,13 @@ Every mutating action writes to the audit log itself:
       and a fleet table with per-row unlock on the Lockouts tab.
       Per-user session panel shipped in R42 (doc 38); login-activity
       sparkline shipped in R43 (doc 39). Phase 2 complete.
-- [ ] **Phase 3:** SSE live tail of the audit log (reuse the existing
-      realtime bridge when registered).
+- [x] **Phase 3:** live tail of the audit log. _Done in R47 — see
+      [43-live-audit-tail.md](43-live-audit-tail.md): htmx-polled
+      fragment (`/audit/table`, every 5 s) driven by a Live checkbox
+      that preserves the browser's filters; polling chosen over SSE
+      because the realtime bridge is optional/unregistered and audit
+      writes emit no hook — an SSE upgrade can swap in later without
+      changing the page structure._
 
 ## Verification
 
