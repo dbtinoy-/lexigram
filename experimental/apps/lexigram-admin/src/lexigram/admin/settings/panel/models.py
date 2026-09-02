@@ -13,6 +13,7 @@ __all__ = [
     "BrandingSettings",
     "CacheSettings",
     "I18nSettings",
+    "NotificationSettings",
     "ProfilerSettings",
     "RbacSettings",
     "SecuritySettings",
@@ -89,9 +90,34 @@ class BrandingSettings(DomainModel):
     )
 
 
+class NotificationSettings(DomainModel):
+    """Outbound email sender identity consumed by AdminNotificationService.
+
+    Empty values mean "keep the code-configured default" — a fresh save
+    with untouched fields changes nothing (doc 35).
+    """
+
+    email_from: str = Field(
+        default="",
+        title="From address",
+        description=(
+            "Sender email address for verification, password-reset, and "
+            "notification emails. Leave empty to keep the configured "
+            "default."
+        ),
+    )
+    email_from_name: str = Field(
+        default="",
+        title="From name",
+        description=(
+            "Sender display name shown in email clients. Leave empty to "
+            "keep the configured default."
+        ),
+    )
+
+
 class CacheSettings(DomainModel):
     """Response caching settings consumed by AdminCacheMiddleware."""
-
     enabled: bool = Field(
         default=True,
         title="Enabled",

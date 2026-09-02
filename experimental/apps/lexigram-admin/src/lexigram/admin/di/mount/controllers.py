@@ -489,6 +489,24 @@ class AdminMountControllersMixin:
             audit_service = await self._resolve_audit_service(resolver)
             if audit_service is not None:
                 email_controller._audit_service = audit_service
+            # Attach the settings store so panel-edited sender identity
+            # (admin.notifications.*) applies at runtime (R39, doc 35).
+            # Best-effort: the notification service is the shared singleton,
+            # so verification/reset emails pick the override up too.
+            try:
+                notification_service = getattr(
+                    email_controller, "_notification_service", None
+                )
+                if ctx.settings_service is not None and hasattr(
+                    notification_service, "attach_settings_store"
+                ):
+                    from lexigram.admin.settings.store import TenantConfigStore
+
+                    notification_service.attach_settings_store(
+                        TenantConfigStore(ctx.settings_service)
+                    )
+            except Exception:
+                pass
         except Exception as exc:
             _log.error(
                 "admin.email_controller_resolution_failed",

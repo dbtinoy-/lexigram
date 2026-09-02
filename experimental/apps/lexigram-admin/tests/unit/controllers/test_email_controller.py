@@ -176,3 +176,54 @@ class TestSendTest:
         response = await c.send_test(req)
         service.notify_test_email.assert_not_awaited()
         assert "error=" in response.headers["location"]
+
+
+class TestStatusCardOverrides:
+    """R39 (doc 35): panel-driven sender identity + backend health."""
+
+    def test_sender_param_overrides_config(self) -> None:
+        c = _controller(notification_service=_service())
+        html = c._status_card(sender=("ops@lexigram.dev", "Lexigram Ops"))
+        assert "ops@lexigram.dev" in html
+        assert "Lexigram Ops" in html
+        assert "admin@example.com" not in html
+
+    def test_no_sender_falls_back_to_config(self) -> None:
+        html = _controller(notification_service=_service())._status_card()
+        assert "admin@example.com" in html
+
+    def test_health_none_renders_unknown(self) -> None:
+        html = _controller(notification_service=_service())._status_card()
+        assert "Health:" in html
+        assert "unknown" in html
+
+    def test_healthy_renders_green(self) -> None:
+        health = SimpleNamespace(
+            status=SimpleNamespace(value="healthy"), message="Console mailer ready"
+        )
+        html = _controller(notification_service=_service())._status_card(
+            health=health
+        )
+        assert "text-green-600" in html
+        assert "Console mailer ready" in html
+
+    def test_unhealthy_renders_destructive(self) -> None:
+        health = SimpleNamespace(
+            status=SimpleNamespace(value="unhealthy"), message="SMTP unreachable"
+        )
+        html = _controller(notification_service=_service())._status_card(
+            health=health
+        )
+        assert "text-destructive" in html
+        assert "SMTP unreachable" in html
+
+    def test_degraded_renders_amber(self) -> None:
+        health = SimpleNamespace(status=SimpleNamespace(value="degraded"), message="")
+        html = _controller(notification_service=_service())._status_card(
+            health=health
+        )
+        assert "text-amber-600" in html
+
+    def test_unbound_service_has_no_health_line(self) -> None:
+        html = _controller(notification_service=_service(bound=False))._status_card()
+        assert "Health:" not in html

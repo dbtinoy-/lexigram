@@ -41,6 +41,10 @@ from lexigram.admin.settings.panel.nodes import (
     SecretNode,
     StringNode,
 )
+from lexigram.admin.settings.panel.notifications_spec import NotificationsSpec
+from lexigram.admin.settings.panel.notifications_spec import (
+    register_spec as register_notifications_spec,
+)
 from lexigram.admin.settings.panel.profiler_spec import ProfilerSpec
 from lexigram.admin.settings.panel.profiler_spec import (
     register_spec as register_profiler_spec,
@@ -83,6 +87,7 @@ __all__ = [
     "I18nSpec",
     "IntNode",
     "MemoryStore",
+    "NotificationsSpec",
     "ProfilerSpec",
     "PydanticConfigSpec",
     "RBACSpec",
@@ -96,6 +101,7 @@ __all__ = [
     "register_deployment_spec",
     "register_features_spec",
     "register_i18n_spec",
+    "register_notifications_spec",
     "register_profiler_spec",
     "register_rate_limit_spec",
     "register_rbac_spec",

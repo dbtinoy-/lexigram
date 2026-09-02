@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+import time
 from typing import Any
 
 from lexigram.admin.config import AdminNotificationConfig
@@ -17,7 +18,10 @@ from lexigram.admin.services.notifications.sender import EmailSender
 from lexigram.admin.services.notifications.templates import TemplateRenderer
 from lexigram.contracts.mailer.protocols import MailerProtocol
 from lexigram.di.decorators import inject
+from lexigram.logging import get_logger
 from lexigram.result import Err, Ok, Result
+
+logger = get_logger(__name__)
 
 
 @inject
@@ -70,6 +74,92 @@ class AdminNotificationService:
 
         self._sent_count = 0
 
+        # Settings-panel overrides (R39, doc 35): attached best-effort at
+        # mount time; sender identity re-resolved on a monotonic TTL so
+        # panel saves apply without a restart (R37 pattern).
+        self._settings_store: Any = None
+        self._settings_ttl: float = 30.0
+        self._identity_refreshed_at: float | None = None
+
+    # ------------------------------------------------------------------
+    # Settings overrides (R39 — docs/09-01-2026/35-notification-settings.md)
+    # ------------------------------------------------------------------
+
+    def attach_settings_store(self, store: Any, ttl: float = 30.0) -> None:
+        """Attach a settings store for panel-editable sender identity.
+
+        Args:
+            store: StoreBase-like object with ``async get(key)``.
+            ttl: Seconds between refreshes; ``<= 0`` refreshes every send.
+        """
+        self._settings_store = store
+        self._settings_ttl = ttl
+        self._identity_refreshed_at = None
+
+    def _identity_fresh(self) -> bool:
+        """True while the last identity refresh is within the TTL."""
+        return (
+            self._identity_refreshed_at is not None
+            and self._settings_ttl > 0
+            and time.monotonic() - self._identity_refreshed_at < self._settings_ttl
+        )
+
+    async def _refresh_sender_identity(self) -> None:
+        """Apply ``admin.notifications.*`` overrides to the email sender.
+
+        Non-empty values override the sender identity; empty/absent values
+        reset to the config defaults (clearing a panel field undoes the
+        override). Read errors keep the current identity and advance the
+        retry timestamp so a flapping store is not hammered per send.
+        """
+        if self._settings_store is None or self._identity_fresh():
+            return
+        try:
+            email_from = await self._settings_store.get(
+                "admin.notifications.email_from"
+            )
+            from_name = await self._settings_store.get(
+                "admin.notifications.email_from_name"
+            )
+        except Exception:  # noqa: BLE001 — stale identity over broken sends
+            logger.warning("admin.notifications.settings_read_failed")
+            self._identity_refreshed_at = time.monotonic()
+            return
+        self.email_sender.from_email = (
+            str(email_from).strip() if email_from and str(email_from).strip()
+            else self.config.email_from
+        )
+        self.email_sender.from_name = (
+            str(from_name).strip() if from_name and str(from_name).strip()
+            else self.config.email_from_name
+        )
+        self._identity_refreshed_at = time.monotonic()
+
+    async def effective_sender(self) -> tuple[str, str]:
+        """Return the ``(from_email, from_name)`` outbound emails carry now."""
+        await self._refresh_sender_identity()
+        return self.email_sender.from_email, self.email_sender.from_name
+
+    async def mailer_health(self) -> Any | None:
+        """Best-effort backend health check for the status card.
+
+        Returns the backend's ``HealthCheckResult`` when it exposes
+        ``health_check()``; ``None`` when no mailer is bound, the backend
+        lacks the method, or the check raises (logged, never rendered).
+        """
+        mailer = self.email_sender.mailer
+        check = getattr(mailer, "health_check", None) if mailer else None
+        if not callable(check):
+            return None
+        try:
+            return await check()
+        except Exception:  # noqa: BLE001 — diagnostics must not break the page
+            logger.warning(
+                "admin.notifications.health_check_failed",
+                backend=type(mailer).__name__,
+            )
+            return None
+
     async def send(
         self,
         notification: Notification,
@@ -83,6 +173,7 @@ class AdminNotificationService:
             ``Ok(NotificationResult)`` on success or partial success.
             ``Err(NotificationError)`` when all recipients failed.
         """
+        await self._refresh_sender_identity()
         enabled_types = getattr(self.config, "enabled_types", None)
         if enabled_types and notification.type not in enabled_types:
             result = NotificationResult(
@@ -524,6 +615,7 @@ class AdminNotificationService:
                     "(or enable debug mode for the console fallback)."
                 )
             )
+        await self._refresh_sender_identity()
         subject = "Test email from Lexigram Admin"
         body = (
             "This is a test email sent from the Email delivery page.\n\n"

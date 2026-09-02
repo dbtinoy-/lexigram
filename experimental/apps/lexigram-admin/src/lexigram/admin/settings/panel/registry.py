@@ -184,6 +184,9 @@ class ConfigRegistry:
         from lexigram.admin.settings.panel.deployment_spec import DeploymentInfoSpec
         from lexigram.admin.settings.panel.features_spec import FeaturesSpec
         from lexigram.admin.settings.panel.i18n_spec import I18nSpec
+        from lexigram.admin.settings.panel.notifications_spec import (
+            NotificationsSpec,
+        )
         from lexigram.admin.settings.panel.profiler_spec import ProfilerSpec
         from lexigram.admin.settings.panel.rate_limit_spec import RateLimitSpec
         from lexigram.admin.settings.panel.rbac_spec import RBACSpec
@@ -196,6 +199,7 @@ class ConfigRegistry:
             DeploymentInfoSpec,
             FeaturesSpec,
             I18nSpec,
+            NotificationsSpec,
             ProfilerSpec,
             RateLimitSpec,
             RBACSpec,

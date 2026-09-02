@@ -100,9 +100,11 @@ doc 05, B10).
 - [x] **Phase 1 (this change):** console mailer + debug DI fallback,
       `/admin/email` status page + test send, nav entry, tests, live
       verification.
-- [ ] **Phase 2:** settings-spec for `AdminNotificationConfig`
-      (from address/name editable in the settings panel); backend health
-      check surfaced on the status card via `MailerProtocol.health_check`.
+- [x] **Phase 2 (R39 — doc 35):** `admin.notifications` settings-spec
+      (from address/name editable in the settings panel, empty = config
+      default, 30 s TTL runtime pickup); backend health surfaced on the
+      status card via duck-typed `MailerProtocol.health_check`.
+      `enabled`/retry knobs stay code-level by design (doc 35 §2.1).
 - [ ] **Phase 3:** delivery log (recent sends with outcome) once a
       persistent outbox story exists.
 

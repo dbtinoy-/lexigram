@@ -122,6 +122,7 @@ class TestSpecs:
             "admin.security",
             "admin.features",
             "admin.i18n",
+            "admin.notifications",
             "admin.profiler",
             "admin.rate_limit",
             "admin.rbac",
