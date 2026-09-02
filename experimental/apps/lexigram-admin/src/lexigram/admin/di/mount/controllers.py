@@ -405,6 +405,34 @@ class AdminMountControllersMixin:
                     audit_service = await self._resolve_audit_service(resolver)
                     if audit_service is not None:
                         ac_controller._audit_service = audit_service
+                    # User-lifecycle services (R38, doc 34): password policy
+                    # for creation, session service for revoke-on-deactivate.
+                    # Best-effort — the controller falls back to the default
+                    # policy rule set and skips revocation when absent.
+                    if hasattr(ac_controller, "_password_policy"):
+                        try:
+                            from lexigram.admin.auth.services.password_policy_service import (  # noqa: E501
+                                AdminPasswordPolicyService,
+                            )
+
+                            ac_controller._password_policy = await resolver.resolve(
+                                AdminPasswordPolicyService,
+                                bypass_visibility=True,
+                            )
+                        except Exception:
+                            pass
+                    if hasattr(ac_controller, "_session_service"):
+                        try:
+                            from lexigram.admin.auth.protocols.session import (
+                                AdminSessionServiceProtocol,
+                            )
+
+                            ac_controller._session_service = await resolver.resolve(
+                                AdminSessionServiceProtocol,
+                                bypass_visibility=True,
+                            )
+                        except Exception:
+                            pass
                 except Exception as exc:
                     _log.error(
                         "admin.access_control_controller_resolution_failed",

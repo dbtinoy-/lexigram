@@ -635,12 +635,16 @@ class RolesController(_AccessControlController):
 
 
 class UsersController(_AccessControlController):
-    """Admin user listing and role assignment (superadmin-only).
+    """Admin user lifecycle: listing, roles, create, deactivate (superadmin-only).
 
     Routes:
-        GET  /admin/users                 - Admin list
-        GET  /admin/users/{id}/edit       - Role assignment form
-        POST /admin/users/{id}/update     - Save roles (last-superadmin guard)
+        GET  /admin/users                     - Admin list
+        GET  /admin/users/new                 - Create form
+        POST /admin/users/create              - Create (policy + duplicate guard)
+        GET  /admin/users/{id}/edit           - Role assignment form
+        POST /admin/users/{id}/update         - Save roles (last-superadmin guard)
+        POST /admin/users/{id}/deactivate     - Deactivate (self + last-superadmin guards)
+        POST /admin/users/{id}/activate       - Reactivate
     """
 
     prefix = "/users"
@@ -666,8 +670,48 @@ class UsersController(_AccessControlController):
             super_admin_role=super_admin_role,
         )
         self._role_service = role_service
+        # Wired best-effort at mount time (di/mount/controllers.py):
+        self._password_policy: Any = None  # AdminPasswordPolicyService
+        self._session_service: Any = None  # AdminSessionServiceProtocol
 
     # -- helpers ------------------------------------------------------------
+
+    def _policy_service(self) -> Any:
+        """Wired password-policy service, or the default rule set.
+
+        Creation must never run unvalidated: when mount-time wiring did
+        not attach a service, fall back to the same default admin rule
+        set the setup flow uses.
+        """
+        if self._password_policy is not None:
+            return self._password_policy
+        from lexigram.admin.auth.services.password_policy_service import (
+            AdminPasswordPolicyService,
+        )
+
+        self._password_policy = AdminPasswordPolicyService()
+        return self._password_policy
+
+    def _deactivation_blocked(self, target: Any, all_users: list[Any]) -> bool:
+        """True when deactivating *target* would leave zero active superadmins.
+
+        Unlike role demotion, deactivation removes permanent-flag holders
+        from the active pool too, so the guard applies to any superadmin
+        standing. Fail-closed: with an empty/unreadable user listing the
+        deactivation is blocked, because remaining superadmin standing
+        cannot be proven.
+        """
+        if not self._holds_super(target):
+            return False  # not a superadmin — no pool impact
+        target_id = str(_user_field(target, "user_id", "id"))
+        others = [
+            u
+            for u in all_users
+            if str(_user_field(u, "user_id", "id")) != target_id
+            and _user_field(u, "is_active", default=True) in (True, 1)
+            and self._holds_super(u)
+        ]
+        return not others
 
     async def _role_options(self, users: list[Any]) -> list[str]:
         """Stored roles ∪ roles held by any user ∪ the super-admin role.
@@ -730,6 +774,7 @@ class UsersController(_AccessControlController):
         users = await self._list_users()
         base = self._admin_path(request, "/admin/users")
         me = str(getattr(self.current_user(request), "user_id", ""))
+        csrf = self._csrf_token(request)
 
         rows = []
         for u in users:
@@ -754,6 +799,29 @@ class UsersController(_AccessControlController):
                 if uid == me
                 else ""
             )
+            if uid == me:
+                lifecycle = ""  # never offer self-deactivation
+            elif active:
+                lifecycle = (
+                    f'<form method="post" action="{escape(base)}/'
+                    f'{quote_plus(uid)}/deactivate" class="inline" '
+                    "onsubmit=\"return confirm('Deactivate this admin? "
+                    "Their sessions are revoked and they can no longer "
+                    "log in.')\">"
+                    f'<input type="hidden" name="csrf_token" value="{escape(csrf)}">'
+                    '<button type="submit" class="text-sm font-medium '
+                    'text-destructive hover:underline">Deactivate</button>'
+                    "</form>"
+                )
+            else:
+                lifecycle = (
+                    f'<form method="post" action="{escape(base)}/'
+                    f'{quote_plus(uid)}/activate" class="inline">'
+                    f'<input type="hidden" name="csrf_token" value="{escape(csrf)}">'
+                    '<button type="submit" class="text-sm font-medium '
+                    'text-primary hover:underline">Activate</button>'
+                    "</form>"
+                )
             rows.append(
                 "<tr>"
                 f'<td class="px-4 py-3 text-sm font-medium">'
@@ -763,16 +831,154 @@ class UsersController(_AccessControlController):
                 f'<td class="px-4 py-3 text-sm">{status}</td>'
                 f'<td class="px-4 py-3 text-sm"><a href="{escape(base)}/'
                 f'{quote_plus(uid)}/edit" class="font-medium text-primary '
-                'hover:underline">Edit roles</a></td>'
+                'hover:underline">Edit roles</a>'
+                + (' <span class="text-muted-foreground">·</span> ' if lifecycle else "")
+                + lifecycle
+                + "</td>"
                 "</tr>"
             )
 
-        html = self._table(
+        html = (
+            '<div class="flex justify-end mb-4">'
+            f'<a href="{escape(base)}/new" class="{_BTN_CLS}">New admin</a>'
+            "</div>"
+        ) + self._table(
             ["Name", "Email", "Roles", "Status", ""],
             rows,
             "No admin users found.",
         )
         return await self._page(request, html, "Users", "Users", "/admin/users")
+
+    @get("/new")
+    async def new_page(self, request: Request) -> Response:
+        """Create-admin form: identity, password, role checkboxes."""
+        denied = self._guard(request)
+        if denied is not None:
+            return denied
+        base = self._admin_path(request, "/admin/users")
+        options = await self._role_options(await self._list_users())
+
+        boxes = "".join(
+            '<label class="flex items-center gap-2 text-sm py-1">'
+            f'<input type="checkbox" name="roles" value="{escape(n)}"> {escape(n)}'
+            + (
+                ' <span class="text-xs text-muted-foreground">'
+                "(super admin — full control)</span>"
+                if n == self._super_admin_role
+                else ""
+            )
+            + "</label>"
+            for n in options
+        )
+        field_cls = (
+            "w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+        )
+        html = (
+            f'<form method="post" action="{escape(base)}/create" '
+            'class="space-y-4 max-w-xl">'
+            f'<input type="hidden" name="csrf_token" value="{escape(self._csrf_token(request))}">'
+            '<div><label class="block text-sm font-medium mb-1" for="new-admin-name">Name</label>'
+            f'<input id="new-admin-name" name="name" required class="{field_cls}"></div>'
+            '<div><label class="block text-sm font-medium mb-1" for="new-admin-email">Email</label>'
+            f'<input id="new-admin-email" name="email" type="email" required class="{field_cls}"></div>'
+            '<div><label class="block text-sm font-medium mb-1" for="new-admin-password">Password</label>'
+            f'<input id="new-admin-password" name="password" type="password" '
+            f'required autocomplete="new-password" class="{field_cls}"></div>'
+            '<div><label class="block text-sm font-medium mb-1" '
+            'for="new-admin-password-confirm">Confirm password</label>'
+            f'<input id="new-admin-password-confirm" name="password_confirm" '
+            f'type="password" required autocomplete="new-password" class="{field_cls}"></div>'
+            '<fieldset class="border border-border rounded-lg p-4">'
+            '<legend class="px-1 text-sm font-medium">Roles</legend>'
+            f"{boxes}"
+            '<p class="text-xs text-muted-foreground mt-2">Optional — an '
+            "admin without roles can log in but reaches nothing "
+            "privileged until roles are assigned.</p>"
+            "</fieldset>"
+            '<p class="text-sm text-muted-foreground">The new admin will be '
+            "asked to verify their email address on first login.</p>"
+            f'<button type="submit" class="{_BTN_CLS}">Create admin</button>'
+            "</form>"
+        )
+        return await self._page(
+            request, html, "New admin — Users", "Users", "/admin/users", "New admin"
+        )
+
+    @post("/create")
+    async def create(self, request: Request) -> Response:
+        """Create an admin account (CSRF + policy + duplicate guard, audited)."""
+        denied = self._guard(request)
+        if denied is not None:
+            return denied
+        base = self._admin_path(request, "/admin/users")
+        form_url = f"{base}/new"
+        form = await self._form(request)
+        if not self._csrf_ok(request, str(form.get("csrf_token", ""))):
+            return self._redirect(form_url, "Invalid or expired form token.", True)
+        if self._user_store is None:
+            return self._redirect(base, "User store unavailable.", True)
+
+        name = str(form.get("name", "")).strip()
+        email = str(form.get("email", "")).strip().lower()
+        password = str(form.get("password", ""))
+        confirm = str(form.get("password_confirm", ""))
+        if not name or not email or "@" not in email:
+            return self._redirect(form_url, "Name and a valid email are required.", True)
+        if not password:
+            return self._redirect(form_url, "Password is required.", True)
+        if password != confirm:
+            return self._redirect(form_url, "Passwords do not match.", True)
+
+        policy_result = self._policy_service().validate(password, email=email)
+        if not policy_result.is_valid:
+            summary = "; ".join(v.message for v in policy_result.violations)
+            return self._redirect(form_url, f"Password rejected: {summary}", True)
+
+        # Load-bearing pre-check: the store's create_user silently resolves
+        # to the existing user on duplicate email instead of failing, which
+        # would make this "create" quietly report success (doc 34).
+        try:
+            existing = await self._user_store.get_user_by_email(email)
+        except Exception:  # noqa: BLE001 — fail closed on unreadable store
+            logger.warning("access_control.duplicate_check_failed", email=email)
+            return self._redirect(form_url, "Could not verify email uniqueness.", True)
+        if existing is not None:
+            return self._redirect(
+                form_url, "An admin with that email already exists.", True
+            )
+
+        getlist = getattr(form, "getlist", None)
+        roles = sorted(
+            {
+                str(v).strip()
+                for v in (getlist("roles") if getlist else [form.get("roles")])
+                if v and str(v).strip()
+            }
+        )
+
+        from lexigram.admin.lib.password import hash_password
+
+        try:
+            created = await self._user_store.create_user(
+                name=name,
+                email=email,
+                hashed_password=hash_password(password),
+                roles=roles,
+            )
+        except Exception:  # noqa: BLE001 — surface a friendly error, log the rest
+            logger.exception("access_control.user_create_failed")
+            return self._redirect(form_url, "Could not create the admin account.", True)
+
+        await self._audit(
+            request,
+            AdminSecurityEventType.USER_CREATED,
+            True,
+            user_id=str(_user_field(created, "user_id", "id") or ""),
+            email=email,
+            roles=", ".join(roles),
+        )
+        logger.info("access_control.user_created", email=email, roles=roles)
+        return self._redirect(base, f"Admin '{email}' created.")
 
     @get("/{user_id:str}/edit")
     async def edit_page(self, request: Request, user_id: str) -> Response:
@@ -880,3 +1086,101 @@ class UsersController(_AccessControlController):
             roles_after=new_roles,
         )
         return self._redirect(base, "Roles updated.")
+
+    @post("/{user_id:str}/deactivate")
+    async def deactivate(self, request: Request, user_id: str) -> Response:
+        """Deactivate an admin (self + last-superadmin guards, audited).
+
+        Sessions are revoked best-effort; even if revocation fails,
+        ``authenticate()`` rejects inactive accounts so no new logins
+        are possible.
+        """
+        denied = self._guard(request)
+        if denied is not None:
+            return denied
+        base = self._admin_path(request, "/admin/users")
+        form = await self._form(request)
+        if not self._csrf_ok(request, str(form.get("csrf_token", ""))):
+            return self._redirect(base, "Invalid or expired form token.", True)
+        if self._user_store is None:
+            return self._redirect(base, "User store unavailable.", True)
+
+        me = str(getattr(self.current_user(request), "user_id", "") or "")
+        if me and me == user_id:
+            return self._redirect(
+                base, "You cannot deactivate your own account.", True
+            )
+
+        target = await self._get_user(user_id)
+        if target is None:
+            return self._redirect(base, "Admin user not found.", True)
+        email = str(_user_field(target, "email", default="") or "")
+        if _user_field(target, "is_active", default=True) not in (True, 1):
+            return self._redirect(base, f"'{email}' is already inactive.")
+
+        if self._deactivation_blocked(target, await self._list_users()):
+            return self._redirect(
+                base, "Cannot deactivate the last active super admin.", True
+            )
+
+        try:
+            target.is_active = False
+            await self._user_store.update_user(target)
+        except Exception:  # noqa: BLE001 — surface a friendly error, log the rest
+            logger.exception("access_control.user_deactivate_failed")
+            return self._redirect(base, "Could not deactivate the account.", True)
+
+        if self._session_service is not None:
+            try:
+                await self._session_service.revoke_all_user_sessions(user_id)
+            except Exception:  # noqa: BLE001 — inactive accounts cannot re-auth
+                logger.warning(
+                    "access_control.session_revocation_failed", user_id=user_id
+                )
+
+        await self._audit(
+            request,
+            AdminSecurityEventType.USER_DEACTIVATED,
+            True,
+            user_id=user_id,
+            email=email,
+        )
+        logger.info("access_control.user_deactivated", user_id=user_id, email=email)
+        return self._redirect(base, f"Admin '{email}' deactivated.")
+
+    @post("/{user_id:str}/activate")
+    async def activate(self, request: Request, user_id: str) -> Response:
+        """Reactivate a previously deactivated admin (CSRF, audited)."""
+        denied = self._guard(request)
+        if denied is not None:
+            return denied
+        base = self._admin_path(request, "/admin/users")
+        form = await self._form(request)
+        if not self._csrf_ok(request, str(form.get("csrf_token", ""))):
+            return self._redirect(base, "Invalid or expired form token.", True)
+        if self._user_store is None:
+            return self._redirect(base, "User store unavailable.", True)
+
+        target = await self._get_user(user_id)
+        if target is None:
+            return self._redirect(base, "Admin user not found.", True)
+        email = str(_user_field(target, "email", default="") or "")
+        if _user_field(target, "is_active", default=True) in (True, 1):
+            return self._redirect(base, f"'{email}' is already active.")
+
+        try:
+            target.is_active = True
+            await self._user_store.update_user(target)
+        except Exception:  # noqa: BLE001 — surface a friendly error, log the rest
+            logger.exception("access_control.user_activate_failed")
+            return self._redirect(base, "Could not reactivate the account.", True)
+
+        await self._audit(
+            request,
+            AdminSecurityEventType.USER_REACTIVATED,
+            True,
+            user_id=user_id,
+            email=email,
+        )
+        logger.info("access_control.user_reactivated", user_id=user_id, email=email)
+        return self._redirect(base, f"Admin '{email}' reactivated.")

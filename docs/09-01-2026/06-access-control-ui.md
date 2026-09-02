@@ -73,9 +73,11 @@ role is editable even though it has no `admin_roles` row.
 - [x] **Phase 1 (this change):** roles list/create/edit/delete with
       permission matrix, users list + role assignment, guard rails,
       nav entries, tests, live verification.
-- [ ] **Phase 2:** user lifecycle (invite/create, deactivate with
-      last-superadmin guard, forced password reset); per-user session
-      panel linking to the Security Center.
+- [x] **Phase 2 (core, R38 — doc 34):** create admin (password policy +
+      duplicate-email guard), deactivate with self- and last-superadmin
+      guards + session revocation, reactivate; all audited. Remaining:
+      email invites, forced password reset, per-user session panel
+      linking to the Security Center.
 - [ ] **Phase 3:** permission matrix "effective permissions" preview
       (resolve `inherits` chains); role duplication.
 
