@@ -44,6 +44,20 @@ _BTN_CLS = (
 )
 
 
+def _fmt_ts(value: Any) -> str:
+    """Best-effort compact timestamp rendering for table cells."""
+    if value is None:
+        return "—"
+    text = str(value)
+    return text.split(".", maxsplit=1)[0].replace("T", " ")
+
+
+def _short_id(value: Any, length: int = 8) -> str:
+    """Truncate an identifier for display — never render full tokens."""
+    text = str(value or "")
+    return f"{text[:length]}…" if len(text) > length else text
+
+
 def _user_field(user: Any, *names: str, default: Any = "") -> Any:
     """Read the first present attribute/key from a user record."""
     for name in names:
@@ -1149,9 +1163,205 @@ class UsersController(_AccessControlController):
             f'<button type="submit" class="{_BTN_CLS}">Save roles</button>'
             "</form>"
         )
+        html += await self._sessions_html(request, user_id)
         return await self._page(
             request, html, f"{email} — Users", "Users", "/admin/users", email or user_id
         )
+
+    # -- session panel (R42 — docs/09-01-2026/38-user-session-panel.md) -----
+
+    async def _sessions_html(self, request: Request, user_id: str) -> str:
+        """Active-session card for one admin, with revoke actions.
+
+        Duck-typed against ``list_user_sessions`` so services predating
+        the method degrade to a note; listing errors keep the roles form
+        usable. The acting admin's own current session is never
+        revocable from here (use Logout), matching the Security Center.
+        """
+        if self._session_service is None:
+            return ""
+        heading = (
+            '<h2 class="text-sm font-medium text-foreground mt-8 mb-3">'
+            "Active sessions</h2>"
+        )
+        lister = getattr(self._session_service, "list_user_sessions", None)
+        if not callable(lister):
+            return heading + (
+                '<div class="bg-card border border-border rounded-xl p-5 '
+                'text-sm text-muted-foreground">Per-user listing is not '
+                "supported by the configured session service.</div>"
+            )
+        try:
+            sessions = await lister(user_id, limit=50)
+        except Exception:  # noqa: BLE001 — the roles form must keep working
+            logger.warning("access_control.session_listing_failed", user_id=user_id)
+            return heading + (
+                '<div class="bg-card border border-border rounded-xl p-5 '
+                'text-sm text-muted-foreground">Could not load sessions — '
+                "check the server log.</div>"
+            )
+
+        base = self._admin_path(request, "/admin/users")
+        csrf = self._csrf_token(request)
+        actor = self.current_user(request)
+        is_self = str(getattr(actor, "user_id", "")) == str(user_id)
+        current_session_id = str(request.session.get("session_id", ""))
+
+        rows = []
+        for s in sessions:
+            sid = str(s.get("session_id", ""))
+            is_current = is_self and sid == current_session_id
+            action = (
+                '<span class="text-xs text-muted-foreground">this session</span>'
+                if is_current
+                else (
+                    f'<form method="post" action="{escape(base)}/'
+                    f'{quote_plus(user_id)}/sessions/revoke" class="inline">'
+                    f'<input type="hidden" name="csrf_token" value="{escape(csrf)}">'
+                    f'<input type="hidden" name="session_id" value="{escape(sid)}">'
+                    '<button type="submit" class="text-sm font-medium '
+                    'text-destructive hover:underline">Revoke</button></form>'
+                )
+            )
+            rows.append(
+                "<tr>"
+                f'<td class="px-4 py-3 text-sm font-mono">{escape(_short_id(sid))}</td>'
+                f'<td class="px-4 py-3 text-sm">{escape(str(s.get("ip_address") or "—"))}</td>'
+                f'<td class="px-4 py-3 text-sm text-muted-foreground max-w-[16rem] '
+                f'truncate">{escape(str(s.get("user_agent") or "—"))}</td>'
+                f'<td class="px-4 py-3 text-sm">{escape(_fmt_ts(s.get("last_active_at")))}</td>'
+                f'<td class="px-4 py-3 text-sm">{escape(_fmt_ts(s.get("expires_at")))}</td>'
+                f'<td class="px-4 py-3 text-sm">{action}</td>'
+                "</tr>"
+            )
+
+        revoke_all = ""
+        if rows and not is_self:
+            revoke_all = (
+                f'<form method="post" action="{escape(base)}/'
+                f'{quote_plus(user_id)}/sessions/revoke-all" class="mt-3">'
+                f'<input type="hidden" name="csrf_token" value="{escape(csrf)}">'
+                '<button type="submit" class="rounded-lg border border-destructive '
+                'text-destructive px-4 py-2 text-sm font-medium">'
+                "Sign out everywhere</button></form>"
+            )
+        elif rows and is_self:
+            revoke_all = (
+                '<p class="text-xs text-muted-foreground mt-3">Use Logout to '
+                "end your own session; other sessions can be revoked "
+                "individually.</p>"
+            )
+        return (
+            heading
+            + self._table(
+                ["Session", "IP", "User agent", "Last active", "Expires", ""],
+                rows,
+                "No active sessions.",
+            )
+            + revoke_all
+        )
+
+    @post("/{user_id:str}/sessions/revoke")
+    async def revoke_session(self, request: Request, user_id: str) -> Response:
+        """Revoke ONE of the target user's sessions (CSRF, audited).
+
+        The submitted session id must belong to the target user — the
+        endpoint cannot be replayed with an arbitrary id from another
+        account (doc 38 §2.3).
+        """
+        denied = self._guard(request)
+        if denied is not None:
+            return denied
+        base = self._admin_path(request, "/admin/users")
+        back = f"{base}/{quote_plus(user_id)}/edit"
+        form = await self._form(request)
+        if not self._csrf_ok(request, str(form.get("csrf_token", ""))):
+            return self._redirect(back, "Invalid or expired form token.", True)
+        if self._session_service is None:
+            return self._redirect(back, "Session service unavailable.", True)
+
+        session_id = str(form.get("session_id", "")).strip()
+        if not session_id:
+            return self._redirect(back, "Missing session id.", True)
+        if session_id == str(request.session.get("session_id", "")):
+            return self._redirect(back, "Use Logout to end your own session.", True)
+
+        lister = getattr(self._session_service, "list_user_sessions", None)
+        owned = (
+            {str(s.get("session_id", "")) for s in await lister(user_id, limit=50)}
+            if callable(lister)
+            else set()
+        )
+        if session_id not in owned:
+            return self._redirect(
+                back, "That session does not belong to this user.", True
+            )
+
+        try:
+            await self._session_service.revoke_session(session_id)
+        except Exception:  # noqa: BLE001 — surface a friendly error, log the rest
+            logger.exception("access_control.session_revoke_failed")
+            return self._redirect(back, "Could not revoke the session.", True)
+
+        await self._audit(
+            request,
+            AdminSecurityEventType.SESSION_REVOKED,
+            True,
+            user_id=user_id,
+            revoked_session_id=_short_id(session_id),
+            scope="single",
+            source="user_form",
+        )
+        logger.info(
+            "access_control.session_revoked",
+            user_id=user_id,
+            session_id=_short_id(session_id),
+        )
+        return self._redirect(back, "Session revoked.")
+
+    @post("/{user_id:str}/sessions/revoke-all")
+    async def revoke_all_sessions(self, request: Request, user_id: str) -> Response:
+        """Sign the target user out everywhere (CSRF, audited).
+
+        Blocked for the acting admin's own account — killing your own
+        session mid-request is a logout, not an admin action.
+        """
+        denied = self._guard(request)
+        if denied is not None:
+            return denied
+        base = self._admin_path(request, "/admin/users")
+        back = f"{base}/{quote_plus(user_id)}/edit"
+        form = await self._form(request)
+        if not self._csrf_ok(request, str(form.get("csrf_token", ""))):
+            return self._redirect(back, "Invalid or expired form token.", True)
+        if self._session_service is None:
+            return self._redirect(back, "Session service unavailable.", True)
+
+        actor = self.current_user(request)
+        if str(getattr(actor, "user_id", "")) == str(user_id):
+            return self._redirect(
+                back,
+                "Use Logout to end your own session; other sessions can be "
+                "revoked individually.",
+                True,
+            )
+
+        try:
+            await self._session_service.revoke_all_user_sessions(user_id)
+        except Exception:  # noqa: BLE001 — surface a friendly error, log the rest
+            logger.exception("access_control.session_revoke_all_failed")
+            return self._redirect(back, "Could not revoke the sessions.", True)
+
+        await self._audit(
+            request,
+            AdminSecurityEventType.SESSION_REVOKED,
+            True,
+            user_id=user_id,
+            scope="all",
+            source="user_form",
+        )
+        logger.info("access_control.sessions_revoked_all", user_id=user_id)
+        return self._redirect(back, "All sessions revoked.")
 
     @post("/{user_id:str}/update")
     async def update(self, request: Request, user_id: str) -> Response:
