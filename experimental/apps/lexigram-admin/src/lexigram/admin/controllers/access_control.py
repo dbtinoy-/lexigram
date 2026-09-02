@@ -24,6 +24,7 @@ from lexigram.admin.auth.protocols import AdminCsrfServiceProtocol
 from lexigram.admin.auth.types import AdminSecurityEventType
 from lexigram.admin.controllers.base import AdminController
 from lexigram.admin.engine.renderer import AdminRenderer
+from lexigram.admin.rbac.effective import resolve_effective_permissions
 from lexigram.admin.rbac.inventory import PermissionInventoryService
 from lexigram.admin.rbac.protocols import AdminRoleServiceProtocol
 from lexigram.contracts.web import get, post
@@ -383,6 +384,66 @@ class RolesController(_AccessControlController):
             f"{boxes}</fieldset>"
         )
 
+    @staticmethod
+    def _effective_html(role_name: str, all_roles: list[Any]) -> str:
+        """Read-only effective-permissions card for the edit page (R40).
+
+        Mirrors runtime authorizer semantics via
+        ``resolve_effective_permissions`` — cycle-safe, missing parents
+        grant nothing but are surfaced as a warning.
+        """
+        eff = resolve_effective_permissions(
+            role_name, {r.name: r for r in all_roles}
+        )
+        chip = (
+            '<span class="inline-block font-mono text-xs rounded border '
+            'border-border px-1.5 py-0.5 mr-1 mb-1">{}</span>'
+        )
+        direct_html = (
+            "".join(chip.format(escape(p)) for p in sorted(eff.direct))
+            or '<span class="text-sm text-muted-foreground">none</span>'
+        )
+        inherited_html = (
+            "".join(
+                '<span class="inline-block mr-2 mb-1">'
+                + chip.format(escape(p))
+                + '<span class="text-xs text-muted-foreground">via '
+                + escape(", ".join(sources))
+                + "</span></span>"
+                for p, sources in eff.inherited.items()
+            )
+            or '<span class="text-sm text-muted-foreground">none</span>'
+        )
+        warning = ""
+        if eff.missing:
+            warning = (
+                '<p class="text-sm text-amber-600 mt-3">Warning: this role '
+                f"inherits {escape(', '.join(repr(m) for m in eff.missing))} "
+                "which no longer exist"
+                + ("s" if len(eff.missing) == 1 else "")
+                + " — dangling entries grant nothing. Edit the role to "
+                "remove them.</p>"
+            )
+        ancestors = (
+            escape(", ".join(eff.ancestors)) if eff.ancestors else "none"
+        )
+        return (
+            '<div class="bg-card border border-border rounded-xl p-6 mt-6 '
+            'max-w-5xl" data-testid="effective-permissions">'
+            '<h2 class="text-sm font-medium">Effective permissions '
+            f'<span class="text-muted-foreground">({len(eff.all_permissions)}'
+            " total)</span></h2>"
+            '<p class="text-xs text-muted-foreground mt-1">What this role '
+            "grants at runtime, including inheritance. Reflects the saved "
+            "state — save changes to refresh.</p>"
+            f'<h3 class="text-xs font-medium text-muted-foreground mt-4 mb-2">'
+            f"Direct ({len(eff.direct)})</h3><div>{direct_html}</div>"
+            f'<h3 class="text-xs font-medium text-muted-foreground mt-4 mb-2">'
+            f"Inherited ({len(eff.inherited)}) — resolved chain: {ancestors}"
+            f"</h3><div>{inherited_html}</div>"
+            f"{warning}</div>"
+        )
+
     async def _role_form(
         self,
         request: Request,
@@ -436,9 +497,18 @@ class RolesController(_AccessControlController):
 
         base = self._admin_path(request, "/admin/roles")
         csrf = self._csrf_token(request)
+        roles_by_name = {r.name: r for r in roles}
         rows = []
         for role in roles:
             edit_url = f"{base}/{quote_plus(role.name)}/edit"
+            duplicate_url = f"{base}/new?from={quote_plus(role.name)}"
+            eff = resolve_effective_permissions(role.name, roles_by_name)
+            perm_count = str(len(role.permissions))
+            if eff.inherited:
+                perm_count += (
+                    f' <span class="text-xs text-muted-foreground">'
+                    f"(+{len(eff.inherited)} inherited)</span>"
+                )
             badges = ""
             if role.is_system:
                 badges += (
@@ -465,11 +535,13 @@ class RolesController(_AccessControlController):
                 "<tr>"
                 f'<td class="px-4 py-3 text-sm font-medium">{escape(role.name)}{badges}</td>'
                 f'<td class="px-4 py-3 text-sm text-muted-foreground">{escape(role.description or "—")}</td>'
-                f'<td class="px-4 py-3 text-sm">{len(role.permissions)}</td>'
+                f'<td class="px-4 py-3 text-sm">{perm_count}</td>'
                 f'<td class="px-4 py-3 text-sm">{escape(", ".join(role.inherits) or "—")}</td>'
                 f'<td class="px-4 py-3 text-sm">{held.get(role.name, 0)}</td>'
                 f'<td class="px-4 py-3 text-sm"><a href="{escape(edit_url)}" '
                 'class="font-medium text-primary hover:underline">Edit</a> '
+                f'<a href="{escape(duplicate_url)}" '
+                'class="font-medium text-primary hover:underline">Duplicate</a> '
                 f"{delete_html}</td>"
                 "</tr>"
             )
@@ -489,13 +561,48 @@ class RolesController(_AccessControlController):
 
     @get("/new")
     async def new_page(self, request: Request) -> Response:
-        """Blank role creation form."""
+        """Role creation form, optionally prefilled from ``?from=<role>``.
+
+        Duplication reuses this form + the create POST (same CSRF,
+        validation, duplicate-name rejection, audit) instead of a
+        second mutation path (R40, doc 36 §2.4).
+        """
         denied = self._guard(request)
         if denied is not None:
             return denied
-        html = await self._role_form(
+        base = self._admin_path(request, "/admin/roles")
+        name = ""
+        description = ""
+        permissions: set[str] = set()
+        inherits: set[str] = set()
+        source_note = ""
+        source_name = str(request.query_params.get("from", "") or "").strip()
+        if source_name:
+            roles = (
+                await self._role_service.list_roles() if self._role_service else []
+            )
+            source = next((r for r in roles if r.name == source_name), None)
+            if source is None:
+                return self._redirect(
+                    base, f"Role '{source_name}' does not exist.", True
+                )
+            name = f"{source.name}-copy"[:64]
+            description = source.description
+            permissions = set(source.permissions)
+            inherits = set(source.inherits)
+            source_note = (
+                '<p class="text-sm text-muted-foreground mb-4">'
+                f"Duplicating <strong>{escape(source.name)}</strong> — "
+                "permissions and inheritance are prefilled; adjust the name "
+                "and save to create the copy.</p>"
+            )
+        html = source_note + await self._role_form(
             request,
             action_url=self._admin_path(request, "/admin/roles/create"),
+            name=name,
+            description=description,
+            permissions=permissions,
+            inherits=inherits,
         )
         return await self._page(
             request, html, "New role — Roles", "Roles", "/admin/roles", "New role"
@@ -562,6 +669,7 @@ class RolesController(_AccessControlController):
             name_locked=True,
             submit_label="Save changes",
         )
+        html += self._effective_html(role.name, roles)
         return await self._page(
             request,
             html,
@@ -624,6 +732,22 @@ class RolesController(_AccessControlController):
                 base,
                 f"Cannot delete '{role_name}': still assigned to {holders} "
                 f"admin{'s' if holders != 1 else ''}. Reassign them first.",
+                True,
+            )
+        # Block deletion while other roles inherit this one (R40, doc 36
+        # §2.5): the runtime treats a missing parent as permission-less,
+        # so deleting would silently narrow the inheritors' effective
+        # permissions.
+        inheritors = sorted(
+            r.name
+            for r in await self._role_service.list_roles()
+            if role_name in (r.inherits or [])
+        )
+        if inheritors:
+            return self._redirect(
+                base,
+                f"Cannot delete '{role_name}': still inherited by "
+                f"{', '.join(inheritors)}. Remove the inheritance first.",
                 True,
             )
         result = await self._role_service.delete_role(

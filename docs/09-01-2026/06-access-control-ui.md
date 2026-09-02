@@ -78,8 +78,12 @@ role is editable even though it has no `admin_roles` row.
       guards + session revocation, reactivate; all audited. Remaining:
       email invites, forced password reset, per-user session panel
       linking to the Security Center.
-- [ ] **Phase 3:** permission matrix "effective permissions" preview
-      (resolve `inherits` chains); role duplication.
+- [x] **Phase 3 (R40 — doc 36):** effective-permissions preview
+      (cycle-safe `inherits` resolution with per-permission provenance,
+      mirroring runtime authorizer semantics) on the edit page +
+      `(+n inherited)` list counts; role duplication via
+      `GET /roles/new?from=<role>` prefill; delete guard extended to
+      block deletion while other roles inherit the target.
 
 ## Verification
 
