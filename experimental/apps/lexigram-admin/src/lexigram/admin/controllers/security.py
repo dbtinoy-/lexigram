@@ -68,6 +68,8 @@ class SecurityController(AdminController):
         GET  /admin/security/audit            - Audit-log browser
         GET  /admin/security/lockouts         - Lockout lookup
         POST /admin/security/lockouts/clear   - Manual unlock
+        GET  /admin/security/csp              - CSP status + violations
+        GET  /admin/security/csp/violations   - Violations fragment (HTMX)
     """
 
     prefix = "/security"
@@ -96,6 +98,9 @@ class SecurityController(AdminController):
         self._audit_service: Any = None  # AdminAuditLogServiceProtocol
         self._lockout_store: Any = None  # AdminAccountLockoutStoreProtocol
         self._user_store: Any = None  # AdminUserStoreProtocol
+        # Wired best-effort by _mount_csp_reporting (docs 30/31):
+        self._csp_store: Any = None  # CspReportStore (shared with ingest)
+        self._csp_settings: Any = None  # TenantConfigStore
 
     # -- access control -----------------------------------------------------
 
@@ -266,6 +271,7 @@ class SecurityController(AdminController):
             ("Sessions", f"{base}/sessions", "sessions"),
             ("Audit log", f"{base}/audit", "audit"),
             ("Lockouts", f"{base}/lockouts", "lockouts"),
+            ("CSP", f"{base}/csp", "csp"),
         )
         links = "".join(
             f'<a href="{escape(href)}" class="px-3 py-2 text-sm font-medium '
@@ -367,6 +373,61 @@ class SecurityController(AdminController):
             + "</div>"
         )
         return await self._page(request, html, "Security", "Security")
+
+    # -- CSP tab (docs 30/31) --------------------------------------------
+
+    @get("/csp")
+    async def csp_page(self, request: Request) -> Response:
+        """CSP status: enforced/report-only policies + violation reports."""
+        denied = self._guard(request)
+        if denied is not None:
+            return denied
+
+        from lexigram.admin.services.security.pages import (
+            render_csp_cards,
+            render_csp_violations_region,
+            resolve_csp_policies,
+        )
+
+        base = self._admin_path(request, "/admin/security")
+        enforced, report_only, ro_status = await resolve_csp_policies(
+            self._csp_settings
+        )
+        html = (
+            self._tabs(request, "csp")
+            + '<div class="space-y-6">'
+            + render_csp_cards(
+                enforced,
+                report_only,
+                ro_status,
+                report_endpoint=f"{base}/csp-report",
+            )
+            + render_csp_violations_region(
+                self._csp_store, fragment_url=f"{base}/csp/violations"
+            )
+            + "</div>"
+        )
+        return await self._page(request, html, "Content Security Policy", "CSP")
+
+    @get("/csp/violations")
+    async def csp_violations_fragment(self, request: Request) -> Response:
+        """Violations region only, for HTMX polling swaps."""
+        denied = self._guard(request)
+        if denied is not None:
+            return denied
+
+        from starlette.responses import HTMLResponse
+
+        from lexigram.admin.services.security.pages import (
+            render_csp_violations_region,
+        )
+
+        base = self._admin_path(request, "/admin/security")
+        return HTMLResponse(
+            render_csp_violations_region(
+                self._csp_store, fragment_url=f"{base}/csp/violations"
+            )
+        )
 
     @get("/sessions")
     async def sessions_page(self, request: Request) -> Response:

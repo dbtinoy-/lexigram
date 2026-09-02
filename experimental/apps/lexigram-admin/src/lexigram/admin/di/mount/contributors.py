@@ -369,16 +369,25 @@ class AdminMountContributorsMixin:
             _log.warning("admin.export_center_routes_skipped", reason=str(exc))
 
     async def _mount_csp_reporting(self, ctx: MountContext) -> None:
-        """Register CSP violation report ingestion + operator summary.
+        """Register CSP violation reporting + wire the Security CSP tab.
 
-        Mounts, fixed-path (doc 30 — CSP v2 groundwork):
+        Mounts, fixed-path (docs 30 + 31 — CSP v2 groundwork):
 
         * ``POST /security/csp-report`` — browser violation report sink
           (CSRF/auth-guard exempt; size-capped; always terse).
         * ``GET  /security/csp-reports`` — superuser-only JSON summary.
 
+        The Security Center controller's CSP tab (``GET /security/csp``,
+        R12 controller + doc 31) renders the same store: after the sink
+        registers, the store and a settings reader are attached to the
+        ``SecurityController`` instance in ``ctx.controllers``
+        (best-effort, mirroring how its audit/lockout stores attach in
+        ``di/mount/controllers.py``). If attachment fails the tab still
+        renders with a "reporting not wired" note.
+
         Args:
-            ctx: Mount pipeline state (``router`` read).
+            ctx: Mount pipeline state (``router``, ``controllers`` and
+                ``settings_service`` read).
         """
         router = ctx.router
         if router is None:
@@ -389,7 +398,8 @@ class AdminMountContributorsMixin:
                 CspReportStore,
             )
 
-            endpoint = CspReportEndpoint(CspReportStore())
+            store = CspReportStore()
+            endpoint = CspReportEndpoint(store)
             router.add_route(
                 "/security/csp-report",
                 "POST",
@@ -408,6 +418,35 @@ class AdminMountContributorsMixin:
             )
         except Exception as exc:  # noqa: BLE001 — reporting is optional
             _log.warning("admin.csp_reporting_skipped", reason=str(exc))
+            return
+
+        try:
+            settings_store: Any = None
+            if ctx.settings_service is not None:
+                from lexigram.admin.settings.store import TenantConfigStore
+
+                settings_store = TenantConfigStore(ctx.settings_service)
+
+            from lexigram.admin.controllers.security import SecurityController
+
+            wired = False
+            for controller in ctx.controllers or []:
+                if isinstance(controller, SecurityController):
+                    controller._csp_store = store  # noqa: SLF001 — mount-time wiring, same pattern as _audit_store
+                    controller._csp_settings = settings_store  # noqa: SLF001
+                    wired = True
+            if wired:
+                _log.info(
+                    "admin.security_csp_tab_wired",
+                    path=f"{self._config.prefix}/security/csp",
+                )
+            else:
+                _log.warning(
+                    "admin.security_csp_tab_skipped",
+                    reason="SecurityController not mounted",
+                )
+        except Exception as exc:  # noqa: BLE001 — the tab is optional
+            _log.warning("admin.security_csp_tab_skipped", reason=str(exc))
 
     async def _mount_app_state(self, app: Any, ctx: MountContext) -> None:
         """Mount the router and expose nav/registry state on both apps.
