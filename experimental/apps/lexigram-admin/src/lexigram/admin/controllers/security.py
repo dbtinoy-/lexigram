@@ -507,6 +507,7 @@ class SecurityController(AdminController):
                 ro_status,
                 report_endpoint=f"{base}/csp-report",
             )
+            + self._enforcement_card_html(request, enforced, report_only)
             + render_csp_violations_region(
                 self._csp_store, fragment_url=f"{base}/csp/violations"
             )
@@ -532,6 +533,227 @@ class SecurityController(AdminController):
             render_csp_violations_region(
                 self._csp_store, fragment_url=f"{base}/csp/violations"
             )
+        )
+
+    def _enforcement_card_html(
+        self,
+        request: Request,
+        enforced: str,
+        report_only: str | None,
+    ) -> str:
+        """Enforcement card: readiness + promote/rollback actions (R48).
+
+        Design: docs/09-01-2026/44-csp-enforcement-flip.md. Promotion is
+        ack-gated (not refused) when the candidate would break the stock
+        UI or violations were recorded — deployments that migrated their
+        front-end can still flip, everyone else is warned in plain words.
+        """
+        from lexigram.admin.services.security.promotion import ui_compat_blockers
+        from lexigram.admin.settings.panel.models import DEFAULT_CSP
+
+        base = self._admin_path(request, "/admin/security/csp")
+        overridden = enforced != DEFAULT_CSP
+        source_note = (
+            "settings override (<code>admin.security.csp</code>)"
+            if overridden
+            else "compile-time default"
+        )
+        monitoring_on = bool(report_only)
+
+        violations = 0
+        received = 0
+        if self._csp_store is not None:
+            try:
+                violations = len(self._csp_store.list_violations())
+                received = int(getattr(self._csp_store, "total_received", 0))
+            except Exception:  # noqa: BLE001 — card must render regardless
+                logger.warning("security_center.csp_store_read_failed")
+
+        blockers = ui_compat_blockers(report_only) if report_only else []
+        needs_ack = bool(blockers) or violations > 0
+
+        rows = [
+            f'<p class="text-sm text-muted-foreground">Enforced policy source: {source_note}.</p>'
+        ]
+        if monitoring_on:
+            rows.append(
+                '<p class="text-sm text-muted-foreground">Report-only monitoring: '
+                f"<strong>on</strong> · {received} report(s) received · "
+                f"{violations} distinct violation(s). The violation store is "
+                "in-memory and resets on restart — judge readiness over a "
+                "representative uptime window.</p>"
+            )
+        else:
+            rows.append(
+                '<p class="text-sm text-muted-foreground">Report-only monitoring '
+                "is <strong>off</strong> — enable it (settings key "
+                "<code>admin.security.csp_report_only</code>) and drive "
+                "violations to zero before promoting.</p>"
+            )
+        for blocker in blockers:
+            rows.append(
+                f'<p class="text-sm text-destructive mt-2">⚠ {escape(blocker)}</p>'
+            )
+
+        actions = ""
+        if monitoring_on and report_only != enforced:
+            ack = ""
+            if needs_ack:
+                ack = (
+                    '<label class="flex items-start gap-2 text-sm text-muted-foreground mt-3">'
+                    '<input type="checkbox" name="acknowledge" value="1" class="mt-1">'
+                    "I understand the warnings above and want to enforce this "
+                    "policy anyway.</label>"
+                )
+            actions += (
+                f'<form method="post" action="{escape(base)}/promote" class="mt-4">'
+                f'<input type="hidden" name="csrf_token" value="{escape(self._csrf_token(request))}">'
+                f"{ack}"
+                f'<button type="submit" class="rounded-lg bg-primary text-primary-foreground '
+                'px-4 py-2 text-sm font-medium mt-3">Promote candidate to enforced</button>'
+                "</form>"
+            )
+        elif monitoring_on and report_only == enforced:
+            actions += (
+                '<p class="text-sm text-muted-foreground mt-3">The candidate '
+                "policy is already the enforced policy.</p>"
+            )
+        if overridden:
+            actions += (
+                f'<form method="post" action="{escape(base)}/rollback" class="mt-3">'
+                f'<input type="hidden" name="csrf_token" value="{escape(self._csrf_token(request))}">'
+                '<button type="submit" class="rounded-lg border border-border '
+                'px-4 py-2 text-sm font-medium">Roll back to the compile-time '
+                "default</button></form>"
+            )
+
+        return (
+            '<div class="bg-card border border-border rounded-xl p-6">'
+            '<h2 class="text-sm font-medium">Enforcement</h2>'
+            + "".join(rows)
+            + actions
+            + "</div>"
+        )
+
+    @post("/csp/promote")
+    async def csp_promote(self, request: Request) -> Response:
+        """Promote the report-only candidate policy to enforcement."""
+        denied = self._guard(request)
+        if denied is not None:
+            return denied
+        base = self._admin_path(request, "/admin/security/csp")
+        form = request.scope.get("admin_form_data") or await request.form()
+        if not self._csrf_ok(request, str(form.get("csrf_token", ""))):
+            return self._redirect(base, "Invalid or expired form token.", True)
+        if self._csp_settings is None:
+            return self._redirect(
+                base, "Settings store unavailable — cannot change policies.", True
+            )
+
+        from lexigram.admin.services.security.pages import resolve_csp_policies
+        from lexigram.admin.services.security.promotion import ui_compat_blockers
+
+        enforced, report_only, _ = await resolve_csp_policies(self._csp_settings)
+        if not report_only:
+            return self._redirect(
+                base,
+                "Report-only monitoring is off — there is no candidate "
+                "policy to promote.",
+                True,
+            )
+        if report_only == enforced:
+            return self._redirect(
+                base, "The candidate policy is already enforced.", False
+            )
+
+        blockers = ui_compat_blockers(report_only)
+        violations = 0
+        if self._csp_store is not None:
+            try:
+                violations = len(self._csp_store.list_violations())
+            except Exception:  # noqa: BLE001 — treat unreadable store as zero
+                logger.warning("security_center.csp_store_read_failed")
+        acknowledged = str(form.get("acknowledge", "")) == "1"
+        if (blockers or violations > 0) and not acknowledged:
+            reasons = []
+            if blockers:
+                reasons.append(f"{len(blockers)} known UI-compatibility issue(s)")
+            if violations > 0:
+                reasons.append(f"{violations} recorded violation(s)")
+            return self._redirect(
+                base,
+                "Promotion needs explicit acknowledgement: "
+                + " and ".join(reasons)
+                + ". Tick the checkbox to proceed anyway.",
+                True,
+            )
+
+        try:
+            await self._csp_settings.set("admin.security.csp", report_only)
+            # Report-only of the now-enforced policy is pure noise.
+            await self._csp_settings.set("admin.security.csp_report_only", "off")
+        except Exception:  # noqa: BLE001 — surface the failure, change nothing else
+            logger.warning("security_center.csp_promote_write_failed")
+            return self._redirect(
+                base, "Saving the policy failed — nothing was changed.", True
+            )
+        await self._audit(
+            request,
+            AdminSecurityEventType.SETTINGS_UPDATED,
+            True,
+            source="csp_tab",
+            action="csp_promote",
+            policy_length=len(report_only),
+            acknowledged=acknowledged,
+            blockers=len(blockers),
+            violations=violations,
+        )
+        logger.info("security_center.csp_promoted", policy_length=len(report_only))
+        return self._redirect(
+            base,
+            "Candidate policy promoted to enforcement. Headers update "
+            "within 30 seconds; use Roll back if anything breaks.",
+            False,
+        )
+
+    @post("/csp/rollback")
+    async def csp_rollback(self, request: Request) -> Response:
+        """Revert the enforced policy to the compile-time default."""
+        denied = self._guard(request)
+        if denied is not None:
+            return denied
+        base = self._admin_path(request, "/admin/security/csp")
+        form = request.scope.get("admin_form_data") or await request.form()
+        if not self._csrf_ok(request, str(form.get("csrf_token", ""))):
+            return self._redirect(base, "Invalid or expired form token.", True)
+        if self._csp_settings is None:
+            return self._redirect(
+                base, "Settings store unavailable — cannot change policies.", True
+            )
+        try:
+            # Empty string ⇒ middleware falls back to DEFAULT_CSP; empty
+            # report-only ⇒ strict candidate monitoring resumes (doc 30).
+            await self._csp_settings.set("admin.security.csp", "")
+            await self._csp_settings.set("admin.security.csp_report_only", "")
+        except Exception:  # noqa: BLE001 — surface the failure, change nothing else
+            logger.warning("security_center.csp_rollback_write_failed")
+            return self._redirect(
+                base, "Saving the rollback failed — nothing was changed.", True
+            )
+        await self._audit(
+            request,
+            AdminSecurityEventType.SETTINGS_UPDATED,
+            True,
+            source="csp_tab",
+            action="csp_rollback",
+        )
+        logger.info("security_center.csp_rolled_back")
+        return self._redirect(
+            base,
+            "Enforced policy reverted to the compile-time default; "
+            "report-only monitoring restored. Headers update within "
+            "30 seconds.",
+            False,
         )
 
     @get("/sessions")

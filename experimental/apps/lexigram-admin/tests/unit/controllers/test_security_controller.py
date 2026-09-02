@@ -554,3 +554,212 @@ class TestLiveAuditTail:
         c = _controller()
         with pytest.raises(HTTPException):
             await c.audit_table_fragment(_request(_FakeUser()))
+
+
+class TestCspEnforcementFlip:
+    """CSP promotion workflow (R48 — docs/09-01-2026/44-csp-enforcement-flip.md)."""
+
+    @staticmethod
+    def _settings(
+        enforced: str | None = None, report_only: str | None = None
+    ) -> SimpleNamespace:
+        values = {
+            "admin.security.csp": enforced,
+            "admin.security.csp_report_only": report_only,
+        }
+
+        async def get(key: str, default: object = None) -> object:
+            return values.get(key, default)
+
+        return SimpleNamespace(get=get, set=AsyncMock())
+
+    # -- card ---------------------------------------------------------------
+
+    def test_card_monitoring_off(self) -> None:
+        from lexigram.admin.settings.panel.models import DEFAULT_CSP
+
+        c = _controller()
+        html = c._enforcement_card_html(
+            _request(_FakeUser(is_superuser=True)), DEFAULT_CSP, None
+        )
+        assert "monitoring is <strong>off</strong>" in html
+        assert "/csp/promote" not in html
+        assert "/csp/rollback" not in html
+
+    def test_card_strict_candidate_warns_and_requires_ack(self) -> None:
+        from lexigram.admin.settings.panel.models import DEFAULT_CSP, STRICT_CSP
+
+        c = _controller()
+        html = c._enforcement_card_html(
+            _request(_FakeUser(is_superuser=True)), DEFAULT_CSP, STRICT_CSP
+        )
+        assert html.count("⚠") == 3
+        assert 'name="acknowledge"' in html
+        assert "/csp/promote" in html
+
+    def test_card_candidate_already_enforced(self) -> None:
+        from lexigram.admin.settings.panel.models import DEFAULT_CSP
+
+        c = _controller()
+        html = c._enforcement_card_html(
+            _request(_FakeUser(is_superuser=True)), DEFAULT_CSP, DEFAULT_CSP
+        )
+        assert "already the enforced policy" in html
+        assert "/csp/promote" not in html
+
+    def test_card_override_offers_rollback(self) -> None:
+        c = _controller()
+        html = c._enforcement_card_html(
+            _request(_FakeUser(is_superuser=True)), "default-src 'none'", None
+        )
+        assert "/csp/rollback" in html
+        assert "settings override" in html
+
+    def test_card_shows_violation_counts(self) -> None:
+        from lexigram.admin.settings.panel.models import DEFAULT_CSP, STRICT_CSP
+
+        c = _controller()
+        c._csp_store = SimpleNamespace(
+            list_violations=lambda: [object(), object()], total_received=7
+        )
+        html = c._enforcement_card_html(
+            _request(_FakeUser(is_superuser=True)), DEFAULT_CSP, STRICT_CSP
+        )
+        assert "7 report(s) received" in html
+        assert "2 distinct violation(s)" in html
+
+    # -- promote ------------------------------------------------------------
+
+    @pytest.mark.asyncio
+    async def test_promote_without_settings_store_errors(self) -> None:
+        c = _controller()
+        req = _request(_FakeUser(is_superuser=True), form={"csrf_token": ""})
+        resp = await c.csp_promote(req)
+        assert "Settings+store+unavailable" in resp.headers["location"]
+
+    @pytest.mark.asyncio
+    async def test_promote_requires_active_monitoring(self) -> None:
+        c = _controller()
+        c._csp_settings = self._settings(report_only="off")
+        req = _request(_FakeUser(is_superuser=True), form={"csrf_token": ""})
+        resp = await c.csp_promote(req)
+        assert "no+candidate" in resp.headers["location"]
+        c._csp_settings.set.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_promote_already_enforced_is_noop(self) -> None:
+        from lexigram.admin.settings.panel.models import STRICT_CSP
+
+        c = _controller()
+        c._csp_settings = self._settings(enforced=STRICT_CSP)
+        req = _request(_FakeUser(is_superuser=True), form={"csrf_token": ""})
+        resp = await c.csp_promote(req)
+        assert "already+enforced" in resp.headers["location"]
+        c._csp_settings.set.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_promote_strict_without_ack_blocked(self) -> None:
+        c = _controller()
+        c._csp_settings = self._settings()  # default enforced, strict candidate
+        req = _request(_FakeUser(is_superuser=True), form={"csrf_token": ""})
+        resp = await c.csp_promote(req)
+        loc = resp.headers["location"]
+        assert "acknowledgement" in loc
+        assert "3+known+UI-compatibility" in loc
+        c._csp_settings.set.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_promote_strict_with_ack_writes_both_keys(self) -> None:
+        from lexigram.admin.settings.panel.models import STRICT_CSP
+
+        c = _controller()
+        c._csp_settings = self._settings()
+        audit = AsyncMock()
+        c._audit_service = SimpleNamespace(log_event=audit)
+        req = _request(
+            _FakeUser(is_superuser=True),
+            form={"csrf_token": "", "acknowledge": "1"},
+        )
+        resp = await c.csp_promote(req)
+        assert "notice=" in resp.headers["location"]
+        calls = {call.args[0]: call.args[1] for call in c._csp_settings.set.await_args_list}
+        assert calls["admin.security.csp"] == STRICT_CSP
+        assert calls["admin.security.csp_report_only"] == "off"
+        meta = audit.await_args.kwargs["metadata"]
+        assert meta["action"] == "csp_promote"
+        assert meta["acknowledged"] is True
+        assert meta["blockers"] == 3
+
+    @pytest.mark.asyncio
+    async def test_promote_compatible_candidate_needs_no_ack(self) -> None:
+        from lexigram.admin.settings.panel.models import DEFAULT_CSP
+
+        candidate = DEFAULT_CSP + "; report-to csp-endpoint"
+        c = _controller()
+        c._csp_settings = self._settings(report_only=candidate)
+        req = _request(_FakeUser(is_superuser=True), form={"csrf_token": ""})
+        resp = await c.csp_promote(req)
+        assert "notice=" in resp.headers["location"]
+        calls = {call.args[0]: call.args[1] for call in c._csp_settings.set.await_args_list}
+        assert calls["admin.security.csp"] == candidate
+
+    @pytest.mark.asyncio
+    async def test_promote_with_violations_needs_ack(self) -> None:
+        from lexigram.admin.settings.panel.models import DEFAULT_CSP
+
+        candidate = DEFAULT_CSP + "; report-to csp-endpoint"
+        c = _controller()
+        c._csp_settings = self._settings(report_only=candidate)
+        c._csp_store = SimpleNamespace(
+            list_violations=lambda: [object()], total_received=1
+        )
+        req = _request(_FakeUser(is_superuser=True), form={"csrf_token": ""})
+        resp = await c.csp_promote(req)
+        assert "1+recorded+violation" in resp.headers["location"]
+        c._csp_settings.set.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_promote_csrf_failure_rejected(self) -> None:
+        csrf = MagicMock()
+        csrf.validate_token.return_value = False
+        c = _controller(csrf_service=csrf)
+        c._csp_settings = self._settings()
+        req = _request(
+            _FakeUser(is_superuser=True),
+            session={"csrf_session_id": "sid"},
+            form={"csrf_token": "bad"},
+        )
+        resp = await c.csp_promote(req)
+        assert "error=" in resp.headers["location"]
+        c._csp_settings.set.assert_not_awaited()
+
+    # -- rollback -----------------------------------------------------------
+
+    @pytest.mark.asyncio
+    async def test_rollback_clears_override_and_restores_monitoring(self) -> None:
+        c = _controller()
+        c._csp_settings = self._settings(enforced="default-src 'none'")
+        audit = AsyncMock()
+        c._audit_service = SimpleNamespace(log_event=audit)
+        req = _request(_FakeUser(is_superuser=True), form={"csrf_token": ""})
+        resp = await c.csp_rollback(req)
+        assert "notice=" in resp.headers["location"]
+        calls = {call.args[0]: call.args[1] for call in c._csp_settings.set.await_args_list}
+        assert calls["admin.security.csp"] == ""
+        assert calls["admin.security.csp_report_only"] == ""
+        assert audit.await_args.kwargs["metadata"]["action"] == "csp_rollback"
+
+    @pytest.mark.asyncio
+    async def test_rollback_without_settings_store_errors(self) -> None:
+        c = _controller()
+        req = _request(_FakeUser(is_superuser=True), form={"csrf_token": ""})
+        resp = await c.csp_rollback(req)
+        assert "Settings+store+unavailable" in resp.headers["location"]
+
+    @pytest.mark.asyncio
+    async def test_promote_and_rollback_gated(self) -> None:
+        c = _controller()
+        with pytest.raises(HTTPException):
+            await c.csp_promote(_request(_FakeUser(), form={"csrf_token": ""}))
+        with pytest.raises(HTTPException):
+            await c.csp_rollback(_request(_FakeUser(), form={"csrf_token": ""}))
