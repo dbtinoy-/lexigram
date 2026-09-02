@@ -11,8 +11,9 @@ in a growing if/else chain.
 Two registries are provided:
 
 * :data:`VERB_SPECS` — keyed by framework generator *verb* (e.g. ``service``,
-  ``exception_filter``). Drives staging-dir creation, destination mapping, and
-  per-file reconciliation.
+  ``exception_filter``). Drives destination mapping and per-file
+  reconciliation; staging is the destination now (OQ-L5), so a verb no
+  longer names a staging directory of its own.
 * :data:`ENTITY_ATTACHED_VERBS` — the verbs that are driven by an
   ``entity -> <node>`` edge and take the entity's ``fields_str``; the writer
   collects their targets uniformly from edges.
@@ -61,6 +62,11 @@ from lexigram.builder.gen.emitters.projection_postprocess import (
 from lexigram.builder.gen.emitters.seeder_postprocess import reconcile_seeder
 from lexigram.builder.gen.emitters.task_postprocess import reconcile_task
 from lexigram.builder.gen.emitters.webhook_postprocess import reconcile_webhook
+from lexigram.builder.gen.layout import (
+    DEFAULT_LAYOUT,
+    WriterLayout,
+    component_directory,
+)
 from lexigram.builder.graph.models import (
     ChannelConfig,
     EntityConfig,
@@ -86,6 +92,17 @@ class ReconcileContext:
     # Audit write-hook wiring: entity name -> the ops its wired audit log
     # records (None/absent = unaudited).
     audit_by_entity: dict[str, ControllerAuditHooks] | None = None
+    # Structure the run is writing for. Reconcilers that rewrite imports
+    # need the module-path map, not just paths; without it they would
+    # silently emit minimal-layout imports into a structured project.
+    layout: WriterLayout | None = None
+    module: str | None = None
+
+    @property
+    def mods(self) -> dict[str, str]:
+        """Dotted import paths for this run's structure."""
+        layout = self.layout or DEFAULT_LAYOUT
+        return layout.module_names(module=self.module)
 
 
 @dataclass(frozen=True, slots=True)
@@ -94,17 +111,27 @@ class VerbSpec:
 
     Attributes:
         verb: Framework generator verb resolved through ``cli_bridge``.
-        staging_dir: Per-run staging subdirectory name under ``.staging``.
-        dest_sub: Destination path (relative to the generated ``src/app``
-            project root) where produced files are committed.
+        default_output_dir: The contributor-declared default output
+            directory for this generator (``src/models``,
+            ``migrations/versions``, ``seeds``, ``src``). It is *not* a
+            destination: :class:`lexigram.builder.gen.layout.WriterLayout`
+            maps it onto the active project structure. Values are validated
+            against the canonical map by
+            ``lexigram.cli.layout.validate_definition``.
+        component: Builder-owned component to resolve through instead of
+            the canonical map, for the documented deviations where the
+            canonical location would change the *runtime* contract rather
+            than a directory name. Still layout-resolved -- the deviation is
+            which package, never which structure. Exactly one exists today
+            (``seeder`` -> ``seeders``); a test pins that count.
         reconcile: Optional callback ``(text, produced_path, ctx) -> text``
             applied to each produced file before it is committed. Absent for
             generators whose output is already lint/format-clean.
     """
 
     verb: str
-    staging_dir: str
-    dest_sub: str
+    default_output_dir: str
+    component: str | None = None
     reconcile: Callable[[str, Path, ReconcileContext], str] | None = None
     # When True the reconciled file is passed through `ruff check --fix`
     # before commit, for generators whose templates emit lint noise that the
@@ -162,7 +189,7 @@ def _reconcile_projection(text: str, produced: Path, ctx: ReconcileContext) -> s
     projection = projections.get(produced.stem)
     if projection is None or not projection.events:
         return text
-    return reconcile_projection(text, projection.events).text
+    return reconcile_projection(text, projection.events, ctx.mods).text
 
 
 def _reconcile_seeder(text: str, produced: Path, ctx: ReconcileContext) -> str:
@@ -199,12 +226,13 @@ def _reconcile_controller(text: str, produced: Path, ctx: ReconcileContext) -> s
         text,
         entity_name=entity_name,
         pascal=pascal_case(entity_name),
+        mods=ctx.mods,
     ).text
     # Contract wiring (Workstream C): routes wired to contract nodes swap
     # the auto-derived Create/Update DTOs for the contract models.
     wiring = (ctx.contracts_by_entity or {}).get(entity_name)
     if wiring is not None:
-        text = apply_contract(text, wiring)
+        text = apply_contract(text, wiring, ctx.mods)
     # Feature-flag gating (nodes plan N2.1): routes wired to enabled flags
     # check the DI-injected FlagManager before the handler body runs.
     gates = (ctx.flag_gates_by_entity or {}).get(entity_name)
@@ -237,92 +265,96 @@ def _reconcile_health(text: str, produced: Path, ctx: ReconcileContext) -> str:
 # ── The verb registry ───────────────────────────────────────────────────────
 # Bespoke generators (model/repository/migration/controller/task/webhook/
 # websocket/middleware) keep their own invocation loops in the writer, but
-# their staging/destination/reconcile are declared here so the copy phase is
+# their destination/reconcile are declared here so the copy phase is
 # fully data-driven. Uniform generators (service/seeder/error/exception_filter/
 # cache_repo) are driven entirely from this table.
 
 VERB_SPECS: dict[str, VerbSpec] = {
     spec.verb: spec
     for spec in (
-        VerbSpec("model", "models", "src/app/models", reconcile=_reconcile_model),
-        VerbSpec("repository", "repositories", "src/app/repositories"),
-        VerbSpec("migration", "migrations", "migrations/versions"),
+        VerbSpec("model", "src/models", reconcile=_reconcile_model),
+        VerbSpec("repository", "src/repositories"),
+        VerbSpec("migration", "migrations/versions"),
         VerbSpec(
-            "controller", "controllers", "src/app/controllers",
+            "controller", "src/controllers",
             reconcile=_reconcile_controller,
         ),
         VerbSpec(
-            "resource", "controllers", "src/app/controllers",
+            "resource", "src",
             reconcile=_reconcile_controller,
         ),
-        VerbSpec("middleware", "middleware", "src/app/middleware"),
-        VerbSpec("task", "tasks", "src/app/tasks", reconcile=_reconcile_task),
-        VerbSpec("webhook", "webhooks", "src/app/webhooks", reconcile=_reconcile_webhook),
+        VerbSpec("middleware", "src/middleware"),
+        VerbSpec("task", "src/tasks", reconcile=_reconcile_task),
+        VerbSpec("webhook", "src/webhooks", reconcile=_reconcile_webhook),
         VerbSpec(
-            "websocket", "channels", "src/app/channels", reconcile=_reconcile_channel
+            "websocket", "src/websocket", reconcile=_reconcile_channel
         ),
-        VerbSpec("service", "services", "src/app/services"),
-        VerbSpec("seeder", "seeders", "src/app/seeders", reconcile=_reconcile_seeder),
+        VerbSpec("service", "src/services"),
         VerbSpec(
-            "exception_filter", "filters", "src/app/filters",
+            # DEVIATION: canonical is the project-root ``seeds/`` package,
+            # which is not importable from the app package. The generated
+            # PersistenceProvider imports seeders at boot, so adopting it
+            # would break the runtime contract, not just the path (OQ-L1 in
+            # docs/09-01-2026/02-LAYOUT_ENGINE.md). The deviation is the
+            # *directory*, not the layout: ``seeders`` is a builder-owned
+            # component, so it follows the structure like every other
+            # package instead of being pinned to ``src/app/seeders``.
+            "seeder", "seeds",
+            component="seeders",
+            reconcile=_reconcile_seeder,
+        ),
+        VerbSpec(
+            "exception_filter", "src/filters",
             reconcile=_reconcile_exception_filter,
         ),
-        VerbSpec("error", "errors", "src/app/errors", reconcile=_reconcile_error),
-        VerbSpec("cache_repo", "caches", "src/app/caches"),
+        VerbSpec("error", "src/errors", reconcile=_reconcile_error),
+        VerbSpec("cache_repo", "src/repositories"),
         VerbSpec(
-            "graphql", "graphql", "src/app/graphql",
+            "graphql", "src/schema",
             reconcile=_reconcile_graphql, ruff_autofix=True,
         ),
         VerbSpec(
-            "event", "events", "src/app/events",
+            "event", "src/events",
             reconcile=_reconcile_event, ruff_autofix=True,
         ),
         VerbSpec(
-            "event_handler", "event_handlers", "src/app/handlers",
+            "event_handler", "src/handlers",
             reconcile=_reconcile_event_handler,
         ),
         VerbSpec(
-            "command", "commands", "src/app/commands",
+            "command", "src/commands",
             reconcile=_reconcile_cqrs, ruff_autofix=True,
         ),
         VerbSpec(
-            "query", "queries", "src/app/queries",
+            "query", "src/queries",
             reconcile=_reconcile_cqrs, ruff_autofix=True,
         ),
         VerbSpec(
-            "projection", "projections", "src/app/projections",
+            "projection", "src/projections",
             reconcile=_reconcile_projection,
         ),
-        VerbSpec("metric", "metrics", "src/app/metrics"),
-        VerbSpec("saga", "sagas", "src/app/sagas"),
-        VerbSpec("interceptor", "interceptors", "src/app/interceptors"),
-        VerbSpec("dataloader", "dataloaders", "src/app/graphql/dataloaders"),
-        VerbSpec("auth_policy", "auth_policies", "src/app/policies"),
-        VerbSpec("api_client", "clients", "src/app/clients"),
-        VerbSpec("storage_driver", "storage", "src/app/storage/backends"),
+        VerbSpec("metric", "src/metrics"),
+        VerbSpec("saga", "src/sagas"),
+        VerbSpec("interceptor", "src/interceptors"),
+        VerbSpec("dataloader", "src/schema/dataloaders"),
+        VerbSpec("auth_policy", "src/policies"),
+        VerbSpec("api_client", "src/clients"),
+        VerbSpec("storage_driver", "src/storage/backends"),
         VerbSpec(
-            "health", "healthchecks", "src/app/healthchecks",
+            "health", "src/health",
             reconcile=_reconcile_health, ruff_autofix=True,
         ),
         # lexigram-features `feature_flag` generator: one <Name>Flag
         # definition module per flag node (canonical key + default rollout).
-        VerbSpec("feature_flag", "features", "src/app/features"),
+        VerbSpec("feature_flag", "src/features"),
         # lexigram-auth guard scaffolds: one <Name>AuthGuard definition per
         # auth node and one <Name>Guard (RoleGuard variant) per role node.
         VerbSpec(
-            "auth_guard", "auth_guards", "src/app/guards", reconcile=_reconcile_guard
+            "auth_guard", "src/guards", reconcile=_reconcile_guard
         ),
-        VerbSpec("guard", "guards", "src/app/guards", reconcile=_reconcile_guard),
+        VerbSpec("guard", "src/guards", reconcile=_reconcile_guard),
     )
 }
-
-
-def staging_dirs(staging_root: Path) -> dict[str, Path]:
-    """Return ``{verb: staging_path}`` for every registered verb, created."""
-    dirs = {verb: staging_root / spec.staging_dir for verb, spec in VERB_SPECS.items()}
-    for path in dirs.values():
-        path.mkdir(parents=True, exist_ok=True)
-    return dirs
 
 
 def reconcile_text(verb: str, text: str, produced: Path, ctx: ReconcileContext) -> str:
@@ -333,9 +365,30 @@ def reconcile_text(verb: str, text: str, produced: Path, ctx: ReconcileContext) 
     return text
 
 
-def dest_for(verb: str) -> str:
-    """Return the generated-project destination subpath for *verb*."""
-    return VERB_SPECS[verb].dest_sub
+def dest_for(
+    verb: str,
+    layout: WriterLayout | None = None,
+    *,
+    module: str | None = None,
+) -> str:
+    """Return the destination subpath for *verb* under *layout*.
+
+    Args:
+        verb: Registered generator verb.
+        layout: Project layout; defaults to the minimal single-package
+            layout, which reproduces the writer's historical paths.
+        module: Bounded-context slug (modular structure only).
+    """
+    # ``resource`` declares ``src`` upstream and delegates to the controller
+    # generator, so ``resolve_output_dir`` hands back the *base* package for
+    # the generator to append to. The writer commits produced files directly,
+    # so resolve it as the controller component instead.
+    resolved = "controller" if verb == "resource" else verb
+    spec = VERB_SPECS[resolved]
+    active = layout or DEFAULT_LAYOUT
+    if spec.component is not None:
+        return component_directory(spec.component, active, module=module)
+    return active.dest(spec.default_output_dir, generator=resolved, module=module)
 
 
 def autofix_for(verb: str) -> bool:
@@ -390,3 +443,31 @@ def entity_attached_extra_kwargs(kind: str, node_config: Any) -> dict[str, Any]:
     if kind == "health":
         return {"critical": bool(getattr(node_config, "critical", True))}
     return {}
+
+
+# ── Standalone node runs ────────────────────────────────────────────────────
+# Most node kinds are generated by the same three lines: take the config's
+# name, add a couple of verb-specific kwargs, force-write. Repeating that
+# eleven times in the writer is how a loop ends up without an attribution
+# wrapper -- which is exactly the bug this table removes the room for
+# (MODULAR-1). The verb-specific part is the only part that differs, so it
+# is the only part declared.
+
+STANDALONE_NODE_KWARGS: dict[str, Callable[[Any], dict[str, Any]]] = {
+    "metric": lambda _cfg: {},
+    "saga": lambda _cfg: {},
+    "feature_flag": lambda _cfg: {},
+    "auth_guard": lambda _cfg: {},
+    "auth_policy": lambda _cfg: {},
+    "guard": lambda _cfg: {"type": "role"},
+    "interceptor": lambda cfg: {"doc": cfg.description or None},
+    "dataloader": lambda cfg: {"key_type": cfg.key_type},
+    "api_client": lambda cfg: {"auth": cfg.auth_type},
+    "storage_driver": lambda cfg: {"driver_type": cfg.driver_type},
+    "exception_filter": lambda cfg: {
+        "exception_type": cfg.exception_type,
+        "status_code": cfg.status_code,
+        "doc": cfg.description or f"Exception filter {cfg.name}.",
+    },
+}
+"""Verb -> extra kwargs for a one-config-one-module generator run."""

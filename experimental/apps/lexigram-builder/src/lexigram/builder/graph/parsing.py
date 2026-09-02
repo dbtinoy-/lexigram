@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict
+import json
 import re
 from typing import Any
 
@@ -29,6 +30,7 @@ from lexigram.builder.graph.models import (
     EventConfig,
     EventHandlerConfig,
     ExceptionFilterConfig,
+    ExportSpec,
     FeatureFlagConfig,
     FieldConfig,
     FileUploadConfig,
@@ -41,6 +43,7 @@ from lexigram.builder.graph.models import (
     JobConfig,
     MetricConfig,
     MiddlewareConfig,
+    ModuleConfig,
     Position,
     ProjectionConfig,
     RateLimitConfig,
@@ -55,10 +58,11 @@ from lexigram.builder.graph.models import (
     ValidatorConfig,
     WebhookConfig,
 )
-from lexigram.builder.graph.palette import KNOWN_KINDS, normalize_structure
+from lexigram.builder.graph.palette import (
+    KIND_MODULE,
+    KNOWN_KINDS,
+)
 from lexigram.result import Err, Ok, Result
-from lexigram.serialization import dumps_str, loads_str
-from lexigram.serialization.backends.json import JSONDecodeError
 
 _TTL_UNIT_SECONDS = {"s": 1, "m": 60, "h": 3600, "d": 86400}
 
@@ -85,6 +89,20 @@ def _ttl_seconds(value: Any) -> int:
     return 300
 
 
+def _profiles(raw: object) -> tuple[str, ...]:
+    """Normalise the ``profiles`` list, preserving order and dropping dupes.
+
+    Order is preserved rather than sorted so the inspector's list reads back
+    the way it was authored; duplicates are dropped because two identical
+    profiles would emit the same file twice and the second write would
+    silently win. Validation -- not parsing -- rejects unsafe names, so a
+    bad value still reaches the user as a diagnostic instead of vanishing.
+    """
+    if not isinstance(raw, (list, tuple)):
+        return ()
+    return tuple(dict.fromkeys(str(item).strip() for item in raw if str(item).strip()))
+
+
 def _seed_rows(raw_cfg: dict[str, Any]) -> tuple[str, ...]:
     """JSON-encode Seed Data rows from ``seedData`` / ``seed_data``."""
     raw = raw_cfg.get("seedData")
@@ -96,12 +114,12 @@ def _seed_rows(raw_cfg: dict[str, Any]) -> tuple[str, ...]:
     for item in raw:
         if isinstance(item, str):
             try:
-                loads_str(item)
-            except JSONDecodeError:
+                json.loads(item)
+            except json.JSONDecodeError:
                 continue
             out.append(item)
         elif isinstance(item, dict):
-            out.append(dumps_str(item, sort_keys=True))
+            out.append(json.dumps(item, default=str, sort_keys=True))
     return tuple(out)
 
 
@@ -150,17 +168,54 @@ def document_to_dict(document: GraphDocument) -> dict[str, Any]:
             "kind": node.kind,
             "position": asdict(node.position),
         }
-        if isinstance(node.config, AppSettingsConfig):
+        # Node metadata rides under ``meta`` to match the canvas format,
+        # and every key is written only when set, so documents that predate
+        # module scoping and stamp provenance round-trip byte-identically
+        # (taxonomy gates T1 and T4).
+        meta: dict[str, Any] = {}
+        if node.module is not None:
+            meta["module"] = node.module
+        if node.stamp_id is not None:
+            meta["stampId"] = node.stamp_id
+        if node.stamp_run is not None:
+            meta["stampRun"] = node.stamp_run
+        if node.muted:
+            meta["muted"] = True
+        if meta:
+            entry["meta"] = meta
+        if isinstance(node.config, ModuleConfig):
+            entry["config"] = {
+                "name": node.config.name,
+                "description": node.config.description,
+                "exports": [asdict(e) for e in node.config.exports],
+                "isGlobal": node.config.is_global,
+                "provider": node.config.provider,
+                "protocols": node.config.protocols,
+                "providerPriority": node.config.provider_priority,
+                "health": node.config.health,
+            }
+        elif isinstance(node.config, AppSettingsConfig):
             cfg = asdict(node.config)
             # Round-trip features as the frontend's {key: bool} object.
             enabled = node.config.features
             cfg["features"] = {key: (key in enabled) for key in APP_FEATURE_KEYS}
+            # Same rule as ``meta`` above: written only when set, so a graph
+            # authored before profiles existed round-trips unchanged instead
+            # of gaining an empty key on its next save.
+            if node.config.profiles:
+                cfg["profiles"] = list(node.config.profiles)
+            else:
+                cfg.pop("profiles", None)
+            # Likewise for the boundary policy: the default is the world as
+            # it was, so only a graph that opted in says so on disk.
+            if not node.config.strict_boundaries:
+                cfg.pop("strict_boundaries", None)
             entry["config"] = cfg
         elif isinstance(node.config, EntityConfig):
             cfg = asdict(node.config)
             cfg["fields"] = [asdict(f) for f in node.config.fields]
             cfg["seedData"] = [
-                loads_str(row) for row in node.config.seed_data
+                json.loads(row) for row in node.config.seed_data
             ]
             cfg.pop("seed_data", None)
             entry["config"] = cfg
@@ -445,10 +500,39 @@ def document_to_dict(document: GraphDocument) -> dict[str, Any]:
             entry["config"] = None
         nodes.append(entry)
     return {
-        "version": document.version,
+        "version": schema_version_for(document),
         "nodes": nodes,
         "edges": [asdict(e) for e in document.edges],
     }
+
+
+#: Schema version that introduced module scope, stamp provenance and the
+#: Module node kind. Version 1 documents remain valid forever: v2 adds
+#: optional fields and removes nothing.
+GRAPH_SCHEMA_V2 = 2
+
+
+def schema_version_for(document: GraphDocument) -> int:
+    """Lowest schema version that can describe *document* faithfully.
+
+    A version number is a claim about what a reader must understand, so it
+    is derived from the content rather than stamped on every save. A graph
+    that never mentions a module is still a v1 graph after a round-trip
+    through v2 code, which is what keeps the committed fixture corpus and
+    the golden byte-comparisons from churning.
+
+    The declared version is never lowered: another tool may already have
+    written 2, and quietly demoting it would make this writer the one that
+    broke the claim.
+    """
+    uses_v2 = any(
+        node.module is not None
+        or node.stamp_id is not None
+        or node.stamp_run is not None
+        or node.kind == KIND_MODULE
+        for node in document.nodes
+    )
+    return max(document.version, GRAPH_SCHEMA_V2 if uses_v2 else 1)
 
 
 def parse_document(data: dict[str, Any]) -> Result[GraphDocument, GraphValidationError]:
@@ -504,7 +588,35 @@ def parse_document(data: dict[str, Any]) -> Result[GraphDocument, GraphValidatio
                 | None
             ) = None
             raw_cfg = raw.get("config")
-            if kind == "app_settings":
+            if kind == "module":
+                raw_exports = raw_cfg.get("exports") or []
+                exports = tuple(
+                    ExportSpec(
+                        protocol=str(e.get("protocol", "")),
+                        implementation=str(e.get("implementation", "")),
+                        description=str(e.get("description", "")),
+                    )
+                    for e in raw_exports
+                    if isinstance(e, dict)
+                )
+                config = ModuleConfig(
+                    name=str(raw_cfg.get("name", "")),
+                    description=str(raw_cfg.get("description", "")),
+                    exports=exports,
+                    is_global=bool(
+                        raw_cfg.get("isGlobal", raw_cfg.get("is_global", False))
+                    ),
+                    provider=bool(raw_cfg.get("provider", True)),
+                    protocols=bool(raw_cfg.get("protocols", True)),
+                    provider_priority=str(
+                        raw_cfg.get(
+                            "providerPriority",
+                            raw_cfg.get("provider_priority", "DOMAIN"),
+                        )
+                    ),
+                    health=bool(raw_cfg.get("health", False)),
+                )
+            elif kind == "app_settings":
                 raw_features = raw_cfg.get("features") or {}
                 if isinstance(raw_features, dict):
                     features = frozenset(
@@ -518,10 +630,11 @@ def parse_document(data: dict[str, Any]) -> Result[GraphDocument, GraphValidatio
                     app_name=str(raw_cfg["app_name"]),
                     port=int(raw_cfg["port"]),
                     db=str(raw_cfg["db"]),
-                    structure=normalize_structure(
-                        str(raw_cfg.get("structure", "minimal"))
-                    ),
                     features=features,
+                    profiles=_profiles(raw_cfg.get("profiles")),
+                    strict_boundaries=bool(
+                        raw_cfg.get("strict_boundaries", False)
+                    ),
                 )
             elif kind == "entity":
                 fields = tuple(
@@ -862,7 +975,7 @@ def parse_document(data: dict[str, Any]) -> Result[GraphDocument, GraphValidatio
                 if isinstance(boost_raw, dict):
                     for key, value in boost_raw.items():
                         try:
-                            boost[str(key)] = float(value)
+                            boost[str(key)] = float(value)  # type: ignore[arg-type]
                         except (TypeError, ValueError):
                             continue
                 engine = str(raw_cfg.get("engine", "fts"))
@@ -1121,8 +1234,36 @@ def parse_document(data: dict[str, Any]) -> Result[GraphDocument, GraphValidatio
                     enabled=bool(raw_cfg.get("enabled", True)),
                     description=str(raw_cfg.get("description", "")),
                 )
+            raw_meta = raw.get("meta")
+            meta_in: dict[str, Any] = raw_meta if isinstance(raw_meta, dict) else {}
+
+            def _meta_str(*keys: str) -> str | None:
+                """First non-empty string among *keys*, from meta or the root.
+
+                The root is accepted too so hand-written fixtures can stay
+                flat, and so a client that has not moved a key under
+                ``meta`` yet still round-trips.
+                """
+                for key in keys:
+                    value = meta_in.get(key, raw.get(key))
+                    if isinstance(value, str) and value:
+                        return value
+                return None
+
             nodes.append(
-                GraphNode(id=str(raw["id"]), kind=kind, position=pos, config=config)
+                GraphNode(
+                    id=str(raw["id"]),
+                    kind=kind,
+                    position=pos,
+                    config=config,
+                    module=_meta_str("module"),
+                    stamp_id=_meta_str("stampId", "stamp_id"),
+                    stamp_run=_meta_str("stampRun", "stamp_run"),
+                    # Muting is the one meta key generation must honour, so
+                    # it cannot be left in an untyped bag the writer never
+                    # looks in -- see ``modules.drop_muted``.
+                    muted=bool(meta_in.get("muted", raw.get("muted", False))),
+                )
             )
         edges = [
             GraphEdge(

@@ -211,8 +211,6 @@ class ProjectBuilder:
         project_name: str,
         target_dir: Path,
         options: dict[str, Any] | None = None,
-        *,
-        structure: str = "structured",
     ) -> list[Path]:
         """Create a new project from the template.
 
@@ -220,7 +218,6 @@ class ProjectBuilder:
             project_name: Project name (dashes become underscores).
             target_dir: Destination directory.
             options: Reserved for feature toggles (currently unused).
-            structure: Project structure (minimal, structured, modular).
 
         Returns:
             The list of created file paths.
@@ -230,12 +227,7 @@ class ProjectBuilder:
         """
         from lexigram.cli.scaffold import render_project
 
-        return render_project(
-            self.template.name,
-            project_name,
-            target_dir,
-            structure=structure,
-        )
+        return render_project(self.template.name, project_name, target_dir)
 
 
 __all__ = [

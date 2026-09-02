@@ -7,9 +7,6 @@ from pathlib import Path
 import pytest
 
 from lexigram.cli.layout import (
-    MINIMAL,
-    MODULAR,
-    STRUCTURED,
     component_packages,
     read_project_layout,
     resolve_output_dir,
@@ -18,49 +15,32 @@ from lexigram.cli.layout import (
 
 
 class TestResolveOutputDir:
-    """Structure-aware generator path resolution."""
+    """Per-node generator path resolution.
 
-    def test_structured_passthrough(self) -> None:
-        for default in (
-            "src/controllers",
-            "src/schema/dataloaders",
-            "src/vector/collections",
-            "migrations/versions",
-            "tests/unit",
-            "src",
-        ):
-            assert resolve_output_dir(default, structure=STRUCTURED) == default
+    There is one project layout, so nothing here is parametrised over a
+    structure any more. Two questions decide every path: is the component
+    cross-cutting, and is the node in a module.
+    """
 
-    def test_minimal_nests_inside_app_package(self) -> None:
+    def test_components_nest_inside_the_app_package(self) -> None:
         assert (
-            resolve_output_dir(
-                "src/controllers", structure=MINIMAL, app_package="my_app"
-            )
+            resolve_output_dir("src/controllers", app_package="my_app")
             == "src/my_app/controllers"
         )
         assert (
-            resolve_output_dir(
-                "src/vector/collections", structure=MINIMAL, app_package="my_app"
-            )
-            == "src/my_app/vector/collections"
+            resolve_output_dir("src/vector/collections", app_package="my_app")
+            == "src/my_app/shared/vector/collections"
         )
+        assert resolve_output_dir("src", app_package="my_app") == "src/my_app"
+
+    def test_root_dirs_stay_at_the_project_root(self) -> None:
+        assert resolve_output_dir("tests/unit", app_package="my_app") == "tests/unit"
         assert (
-            resolve_output_dir("src", structure=MINIMAL, app_package="my_app")
-            == "src/my_app"
-        )
-        # Root-level dirs stay at the project root.
-        assert (
-            resolve_output_dir("tests/unit", structure=MINIMAL, app_package="my_app")
-            == "tests/unit"
-        )
-        assert (
-            resolve_output_dir(
-                "migrations/versions", structure=MINIMAL, app_package="my_app"
-            )
+            resolve_output_dir("migrations/versions", app_package="my_app")
             == "migrations/versions"
         )
 
-    def test_modular_shared_layer(self) -> None:
+    def test_cross_cutting_components_land_in_shared(self) -> None:
         for default, expected in (
             ("src/errors", "src/my_app/shared/errors"),
             ("src/filters", "src/my_app/shared/filters"),
@@ -70,87 +50,68 @@ class TestResolveOutputDir:
             ("src/providers", "src/my_app/shared/providers"),
             ("src/storage/backends", "src/my_app/shared/storage/backends"),
         ):
-            assert (
-                resolve_output_dir(default, structure=MODULAR, app_package="my_app")
-                == expected
-            )
+            assert resolve_output_dir(default, app_package="my_app") == expected
 
-    def test_modular_module_local_requires_module(self) -> None:
-        for default in (
-            "src/controllers",
-            "src/models",
-            "src/services",
-            "src/repositories",
-            "src/events",
-            "src/admin/actions",
+    def test_cross_cutting_components_ignore_a_module(self) -> None:
+        """Scope is legal on a shared kind; it just does not move the file."""
+        for default in ("src/errors", "src/schema/dataloaders"):
+            assert resolve_output_dir(
+                default, app_package="my_app", module="auth"
+            ) == resolve_output_dir(default, app_package="my_app")
+
+    def test_module_local_components_without_a_module(self) -> None:
+        """The state every node starts in: at the app root, not an error."""
+        for default, expected in (
+            ("src/controllers", "src/my_app/controllers"),
+            ("src/models", "src/my_app/models"),
+            ("src/services", "src/my_app/services"),
+            ("src/repositories", "src/my_app/repositories"),
+            ("src/events", "src/my_app/events"),
+            ("src/admin/actions", "src/my_app/admin/actions"),
         ):
-            with pytest.raises(ValueError, match="module-local"):
-                resolve_output_dir(default, structure=MODULAR, app_package="my_app")
+            assert resolve_output_dir(default, app_package="my_app") == expected
 
-    def test_modular_module_local_with_module(self) -> None:
+    def test_module_local_components_with_a_module(self) -> None:
         assert (
             resolve_output_dir(
-                "src/controllers",
-                structure=MODULAR,
-                app_package="my_app",
-                module="auth",
+                "src/controllers", app_package="my_app", module="auth"
             )
             == "src/my_app/modules/auth/controllers"
         )
         assert (
             resolve_output_dir(
-                "src/admin/resources",
-                structure=MODULAR,
-                app_package="my_app",
-                module="admin",
+                "src/admin/resources", app_package="my_app", module="admin"
             )
             == "src/my_app/modules/admin/admin/resources"
         )
 
-    def test_modular_tests_with_module(self) -> None:
+    def test_tests_follow_their_module(self) -> None:
         assert (
-            resolve_output_dir(
-                "tests/unit",
-                structure=MODULAR,
-                app_package="my_app",
-                module="billing",
-            )
+            resolve_output_dir("tests/unit", app_package="my_app", module="billing")
             == "src/my_app/modules/billing/tests"
         )
 
-    def test_modular_resource_requires_module(self) -> None:
-        with pytest.raises(ValueError, match="module-local"):
-            resolve_output_dir(
-                "src", structure=MODULAR, app_package="my_app", generator="resource"
-            )
+    def test_resource_resolves_to_the_package_root(self) -> None:
+        assert (
+            resolve_output_dir("src", app_package="my_app", generator="resource")
+            == "src/my_app"
+        )
         assert (
             resolve_output_dir(
-                "src",
-                structure=MODULAR,
-                app_package="my_app",
-                generator="resource",
-                module="auth",
+                "src", app_package="my_app", generator="resource", module="auth"
             )
             == "src/my_app/modules/auth"
         )
 
-    def test_modular_src_root_generators(self) -> None:
+    def test_src_root_generators(self) -> None:
         assert (
-            resolve_output_dir(
-                "src", structure=MODULAR, app_package="my_app", generator="mcp-server"
-            )
-            == "src/my_app/shared"
-        )
-        assert (
-            resolve_output_dir("src", structure=MINIMAL, app_package="my_app")
+            resolve_output_dir("src", app_package="my_app", generator="mcp-server")
             == "src/my_app"
         )
 
     def test_unknown_output_dir_raises(self) -> None:
         with pytest.raises(ValueError, match="Unknown generator output directory"):
-            resolve_output_dir(
-                "migrations/other", structure=MINIMAL, app_package="my_app"
-            )
+            resolve_output_dir("migrations/other", app_package="my_app")
 
 
 class TestValidateDefinition:
@@ -180,32 +141,37 @@ class TestValidateDefinition:
 class TestReadProjectLayout:
     """Project metadata discovery from pyproject.toml."""
 
-    def test_no_pyproject_returns_structured_default(self, tmp_path: Path) -> None:
+    def test_no_pyproject_returns_the_default_package(self, tmp_path: Path) -> None:
         layout = read_project_layout(tmp_path)
-        assert layout.structure == STRUCTURED
         assert layout.app_package == "app"
         assert layout.declared is False
-        assert layout.structure_declared is False
 
-    def test_reads_structure_and_module(self, tmp_path: Path) -> None:
+    def test_reads_the_app_package_from_the_module_target(
+        self, tmp_path: Path
+    ) -> None:
         (tmp_path / "pyproject.toml").write_text(
-            "[tool.lexigram]\nstructure = \"modular\"\nmodule = \"my_app.app:app\"\n"
+            '[tool.lexigram]\nmodule = "my_app.app:app"\n'
         )
         layout = read_project_layout(tmp_path)
-        assert layout.structure == MODULAR
         assert layout.app_package == "my_app"
         assert layout.declared is True
-        assert layout.structure_declared is True
         assert layout.module_target() == "my_app.app:app"
 
-    def test_legacy_module_without_structure(self, tmp_path: Path) -> None:
+    def test_a_stale_structure_key_is_ignored(self, tmp_path: Path) -> None:
+        """Projects generated before the collapse still resolve.
+
+        The key is not read, not validated and not migrated: it is simply
+        not part of the layout any more, and a project carrying one behaves
+        exactly like a project that does not.
+        """
         (tmp_path / "pyproject.toml").write_text(
-            "[tool.lexigram]\nmodule = \"old_app.app:app\"\n"
+            '[tool.lexigram]\nstructure = "modular"\nmodule = "old_app.app:app"\n'
         )
+
         layout = read_project_layout(tmp_path)
-        assert layout.structure == STRUCTURED
+
         assert layout.app_package == "old_app"
-        assert layout.structure_declared is False
+        assert not hasattr(layout, "structure")
 
 
 class TestComponentPackages:

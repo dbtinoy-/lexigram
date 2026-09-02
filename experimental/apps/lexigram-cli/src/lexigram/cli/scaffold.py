@@ -2,26 +2,26 @@
 
 Single source of truth for project bootstrapping:
 
-- ``lexigram new project --template <name> --structure <s>`` (``commands/new.py``)
+- ``lexigram new project --template <name>`` (``commands/new.py``)
 - ``ProjectBuilder.create_project`` (``registry/template.py``)
 - scaffold alignment tests (``tests/unit/test_scaffold_alignment.py``)
 
 Every generated file targets the **real** lexigram APIs (``Application``,
 ``LexigramConfig``, ``WebModule``, ``Controller``) and the **canonical
-generator map** in :mod:`lexigram.cli.layout` — the component packages below
-mirror ``lexigram gen`` output directories, so a scaffolded project and its
-generators stay aligned in every structure:
+generator map** in :mod:`lexigram.cli.layout`, so a scaffolded project and
+its generators stay aligned:
 
-    lexigram new project myapp --template web-api --structure structured
+    lexigram new project myapp --template web-api
     cd myapp && pip install -e .
-    lexigram gen controller users     # writes src/controllers/users_controller.py
-    lexigram dev                      # WebModule auto-discovers it
+    lexigram gen controller users  # src/myapp/controllers/users_controller.py
+    lexigram dev                   # WebModule auto-discovers it
 
-The same renderer produces:
-
-- ``minimal``    — single package; generators write inside ``src/<app>/``
-- ``structured`` — generator-native sibling component packages (default)
-- ``modular``    — bounded contexts + ``shared/`` + ``infrastructure/``
+There is one project layout. A project starts flat -- feature components sit
+directly under ``src/<app>/`` -- and grows bounded contexts in place:
+``lexigram new module billing`` adds ``src/<app>/modules/billing/``, and
+``lexigram gen controller orders --module billing`` writes into it. Nothing
+about the project changes when that happens; only the generated node moves.
+Cross-cutting components always live under ``src/<app>/shared/``.
 
 The generated ``application.yaml`` is validated by :class:`LexigramConfig`
 (extra sections such as ``web`` / ``sql`` are consumed through the
@@ -36,12 +36,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 import re
 import textwrap
+from collections.abc import Sequence
 
 from lexigram.cli.layout import (
-    MODULAR,
+    COMPONENTS,
     ROOT_DIRS,
-    STRUCTURED,
-    STRUCTURES,
 )
 from lexigram.cli.layout import (
     component_packages as _layout_component_packages,
@@ -95,8 +94,9 @@ TEMPLATES: dict[str, ProjectTemplateSpec] = {
         frozenset({"web", "sql"}),
         (
             (
-                "Controllers are auto-discovered from src/controllers; run "
-                "`lexigram gen controller users` (does not need a restart)."
+                "Controllers are auto-discovered from src/<app>/controllers "
+                "and from every module; run `lexigram gen controller users` "
+                "(does not need a restart)."
             ),
         ),
     ),
@@ -159,11 +159,6 @@ def template_names() -> list[str]:
     return sorted(set(TEMPLATES) - set(TEMPLATE_ALIASES)) + sorted(TEMPLATE_ALIASES)
 
 
-def structure_names() -> list[str]:
-    """Return the supported project structures."""
-    return list(STRUCTURES)
-
-
 def resolve_template(name: str) -> ProjectTemplateSpec:
     """Resolve a template name (following aliases)."""
     spec = TEMPLATES.get(TEMPLATE_ALIASES.get(name, name))
@@ -189,24 +184,24 @@ def _package_line(package: str, generators: tuple[str, ...]) -> str:
     return f'"""{package} package.\n\nWriters: {names} (lexigram gen)."""\n'
 
 
-def _component_files(package_name: str, structure: str) -> dict[str, str]:
-    """Component ``__init__.py`` files for a given structure."""
-    files: dict[str, str] = {}
-    if structure == STRUCTURED:
-        for package, generators in _layout_component_packages().items():
-            files[f"src/{package}/__init__.py"] = _package_line(package, generators)
-    elif structure == MODULAR:
-        from lexigram.cli.layout import COMPONENTS
+def _component_files(package_name: str) -> dict[str, str]:
+    """Pre-created ``__init__.py`` files for a fresh project.
 
-        for component in COMPONENTS:
-            if component.shared:
-                path = f"src/{package_name}/shared/{component.modular}"
-                files[f"{path}/__init__.py"] = _package_line(
-                    f"{component.modular} (shared)", component.generators
-                )
-        for package, generators in ROOT_DIRS:
-            files[f"{package}/__init__.py"] = _package_line(package, generators)
-    # minimal: nothing pre-created; generators create their packages on demand.
+    Only the packages whose location can never change are created up front:
+    the cross-cutting ``shared/`` components and the root output dirs. Feature
+    components are left to the generators, because where they land is a fact
+    about the node being generated (app root until it joins a module), not a
+    fact about the project.
+    """
+    files: dict[str, str] = {}
+    for component in COMPONENTS:
+        if component.shared:
+            path = f"src/{package_name}/shared/{component.modular}"
+            files[f"{path}/__init__.py"] = _package_line(
+                f"{component.modular} (shared)", component.generators
+            )
+    for package, generators in ROOT_DIRS:
+        files[f"{package}/__init__.py"] = _package_line(package, generators)
     files[f"src/{package_name}/__init__.py"] = f'"""{package_name} package."""\n'
     files[f"src/{package_name}/py.typed"] = ""
     return files
@@ -318,25 +313,13 @@ def _application_yaml(project_name: str, spec: ProjectTemplateSpec) -> str:
     return "\n".join(lines)
 
 
-def _wheel_packages(package_name: str, structure: str) -> list[str]:
-    """Wheel packages: the app package plus (structured) component packages."""
-    packages = {f"src/{package_name}"}
-    if structure == STRUCTURED:
-        for relative in _layout_component_packages():
-            packages.add(f"src/{relative.split('/')[0]}")
-    return sorted(packages)
-
-
 def _pyproject_toml(
     project_name: str,
     package_name: str,
     spec: ProjectTemplateSpec,
-    structure: str,
 ) -> str:
     deps = "".join(f'    "{dep}",\n' for dep in spec.dependencies)
-    wheel = "".join(
-        f'    "{pkg}",\n' for pkg in _wheel_packages(package_name, structure)
-    )
+    wheel = f'    "src/{package_name}",\n'
     return f"""[project]
 name = "{project_name}"
 version = "0.1.0"
@@ -364,7 +347,6 @@ packages = [
 {wheel}]
 
 [tool.lexigram]
-structure = "{structure}"
 module = "{package_name}.app:app"
 
 [tool.pytest.ini_options]
@@ -412,15 +394,15 @@ def _feature_calls(
     features: frozenset[str],
     project_name: str,
     *,
-    web_discover: str | None,
+    web_discover: Sequence[str] | None,
     include_graphql: bool = True,
 ) -> list[tuple[str, list[str]]]:
     """Ordered ``(comment, configure-call lines)`` pairs for the features.
 
     The web module is appended last so the server boots after every
-    dependency is registered.  ``web_discover`` is the controller package
-    discovered by ``WebModule`` (structure-dependent); when ``None`` the web
-    call is omitted.  ``include_graphql=False`` skips the GraphQL call (used
+    dependency is registered.  ``web_discover`` lists the packages
+    ``WebModule`` scans for controllers -- the app-root ``controllers``
+    package and ``modules`` -- and when ``None`` the web call is omitted.  ``include_graphql=False`` skips the GraphQL call (used
     by the modular infrastructure layer, where the surface is wired by the
     composition root next to the web module).
     """
@@ -502,10 +484,34 @@ def _feature_calls(
         calls.append(
             (
                 "# Web server - controllers written by `lexigram gen controller` are",
-                [f'WebModule.configure(discover=["{web_discover}"])'],
+                _web_configure_lines(web_discover),
             )
         )
     return calls
+
+
+def _web_configure_lines(web_discover: Sequence[str]) -> list[str]:
+    """``WebModule.configure(...)``, wrapped when one line will not fit.
+
+    The call is rendered at twelve spaces of indentation inside
+    ``add_modules([...])``, and a package name is a project name, so a
+    single-line form is a formatting bug waiting for a long-ish project.
+    Line length is checked rather than guessed: scaffolded projects are
+    linted by their own ruff config, and E501 there reads as the framework
+    shipping broken code.
+    """
+    roots = [f'"{root}"' for root in web_discover]
+    single = f"WebModule.configure(discover=[{', '.join(roots)}])"
+    # +12 indent, +1 for the trailing comma _render_calls appends.
+    if 12 + len(single) + 1 <= 88:
+        return [single]
+    return [
+        "WebModule.configure(",
+        "    discover=[",
+        *[f"        {root}," for root in roots],
+        "    ]",
+        ")",
+    ]
 
 
 def _render_calls(calls: list[tuple[str, list[str]]], indent: int) -> list[str]:
@@ -666,58 +672,53 @@ def _app_py(
     project_name: str,
     package_name: str,
     spec: ProjectTemplateSpec,
-    structure: str,
 ) -> str:
+    """Render the composition root.
+
+    One root serves a flat project and one full of bounded contexts. It
+    registers the shared ``infrastructure_modules()`` layer, then
+    ``MODULES`` -- empty until ``lexigram new module`` appends to it -- and
+    points web discovery at *both* the app-root ``controllers`` package and
+    ``modules``. Adding the first module therefore changes one file,
+    ``modules/__init__.py``, and never this one.
+
+    This is also the file the builder emits for a canvas-built project, via
+    :func:`lexigram.builder.gen.modular.composition.emit_app`, and the two
+    are asserted byte-identical. Two composition roots that drift is the
+    failure this shape exists to prevent.
+    """
     features = spec.features
     notes = "\n".join("\n".join(textwrap.wrap(note, width=88)) for note in spec.notes)
-    if structure == MODULAR:
-        imports = [
-            "from lexigram.app import Application",
-            "from lexigram.config import LexigramConfig",
-        ]
-        if "web" in features:
-            imports.append("from lexigram.web import WebModule")
-        if "graphql" in features:
-            imports.append("from lexigram.graphql import GraphQLModule")
-        imports.sort()
-        local_imports = [
-            f"from {package_name}.infrastructure import infrastructure_modules",
-            f"from {package_name}.modules import MODULES",
-        ]
-        local_imports.sort()
-        import_lines = "\n".join(imports) + "\n\n" + "\n".join(local_imports)
-        lines = [
-            "    application.add_modules(",
-            "        [",
-            "            *infrastructure_modules(),",
-        ]
-        if "graphql" in features:
-            lines.append("            GraphQLModule.configure(),")
-        lines.append("            *MODULES,")
-        if "web" in features:
-            lines.append(
-                f'            WebModule.configure(discover=["{package_name}.modules"]),'
-            )
-        lines.append("        ]")
-        lines.append("    )")
-    else:
-        imports = _module_imports(features)
-        imports.extend(
-            [
-                "from lexigram.app import Application",
-                "from lexigram.config import LexigramConfig",
-            ]
-        )
-        imports.sort()
-        discover = (
-            "controllers" if structure == STRUCTURED else f"{package_name}.controllers"
-        )
-        calls = _feature_calls(features, project_name, web_discover=discover)
-        lines = ["    application.add_modules(", "        ["]
-        lines.extend(_render_calls(calls, 12))
-        lines.append("        ]")
-        lines.append("    )")
-        import_lines = "\n".join(imports)
+    web_discover = [f"{package_name}.{root}" for root in ("controllers", "modules")]
+    imports = [
+        "from lexigram.app import Application",
+        "from lexigram.config import LexigramConfig",
+    ]
+    if "web" in features:
+        imports.append("from lexigram.web import WebModule")
+    if "graphql" in features:
+        imports.append("from lexigram.graphql import GraphQLModule")
+    local_imports = [
+        f"from {package_name}.infrastructure import infrastructure_modules",
+        f"from {package_name}.modules import MODULES",
+    ]
+    lines = [
+        "    application.add_modules(",
+        "        [",
+        "            *infrastructure_modules(),",
+    ]
+    if "graphql" in features:
+        lines.append("            GraphQLModule.configure(),")
+    lines.append("            *MODULES,")
+    if "web" in features:
+        web_lines = _web_configure_lines(web_discover)
+        web_lines[-1] = f"{web_lines[-1]},"
+        lines.extend(f"            {line}" for line in web_lines)
+    lines.append("        ]")
+    lines.append("    )")
+    imports.sort()
+    local_imports.sort()
+    import_lines = "\n".join(imports) + "\n\n" + "\n".join(local_imports)
 
     return f'''"""{project_name} - composition root.
 
@@ -852,8 +853,8 @@ async def application() -> Application:
 '''
 
 
-def _test_app(spec: ProjectTemplateSpec, structure: str) -> str:
-    web_bootable = "web" in spec.features and structure != "minimal"
+def _test_app(spec: ProjectTemplateSpec) -> str:
+    web_bootable = "web" in spec.features
     if web_bootable:
         return '''"""Smoke tests for the scaffolded application."""
 from __future__ import annotations
@@ -899,27 +900,17 @@ async def test_boots(application: Application) -> None:
 def _readme(
     project_name: str,
     spec: ProjectTemplateSpec,
-    structure: str,
     package_name: str,
 ) -> str:
     features = spec.features
     run = "lexigram dev" if "web" in features else "pytest"
-    if structure == MODULAR:
-        gen_example = "lexigram gen controller orders --module billing"
-    elif structure == STRUCTURED:
-        gen_example = (
-            "lexigram gen controller users"
-            if "web" in features
-            else "lexigram gen task nightly_report"
-        )
-    else:
-        gen_example = (
-            "lexigram gen controller users"
-            if "web" in features
-            else "lexigram gen task nightly_report"
-        )
+    gen_example = (
+        "lexigram gen controller users"
+        if "web" in features
+        else "lexigram gen task nightly_report"
+    )
     sections = ["```bash", f"cd {project_name}", "pip install -e .", f"{run}", "```"]
-    if "web" in features and structure != "minimal":
+    if "web" in features:
         sections.append("")
         sections.append("`/` and `/health` are served by the scaffolded controllers.")
     sections += [
@@ -938,35 +929,15 @@ def _readme(
         "",
         "- `application.yaml` — typed configuration (see `lexigram config show`)",
         f"- `src/{package_name}/app.py` — composition root (`create_app`)",
-    ]
-    if structure == STRUCTURED:
-        sections += [
-            "- `src/controllers/` — web controllers (auto-discovered)",
-            "- `src/models/`, `src/repositories/`, `src/services/` — data layer",
-            "- `src/filters/`, `src/interceptors/`, `src/errors/` — web cross-cutting",
-        ]
-    elif structure == MODULAR:
-        sections += [
-            (
-                f"- `src/{package_name}/modules/` — bounded contexts "
-                "(`lexigram new module <name>`)"
-            ),
-            f"- `src/{package_name}/shared/` — cross-cutting packages",
-            f"- `src/{package_name}/infrastructure/` — db/cache/events wiring",
-        ]
-    else:
-        sections += [
-            (
-                f"- `src/{package_name}/controllers/` — web controllers "
-                "(created by `lexigram gen controller users`)"
-            ),
-            (
-                f"- `src/{package_name}/models/`, "
-                f"`src/{package_name}/repositories/` — data layer "
-                "(created on demand)"
-            ),
-        ]
-    sections += [
+        (
+            f"- `src/{package_name}/controllers/`, `src/{package_name}/services/`, "
+            "… — feature components (created on demand)"
+        ),
+        f"- `src/{package_name}/shared/` — cross-cutting packages",
+        (
+            f"- `src/{package_name}/modules/` — bounded contexts "
+            "(`lexigram new module <name>`)"
+        ),
         "- `tests/` — boot smoke tests (pytest, asyncio-mode auto)",
         "",
     ]
@@ -1040,51 +1011,34 @@ def _file_map(
     project_name: str,
     package_name: str,
     template: str,
-    structure: str,
 ) -> dict[str, str]:
     """Return the canonical file map for a project (path → content)."""
     spec = resolve_template(template)
-    files = _component_files(package_name, structure)
+    files = _component_files(package_name)
     files.update(
         {
-            f"src/{package_name}/app.py": _app_py(
-                project_name, package_name, spec, structure
+            f"src/{package_name}/app.py": _app_py(project_name, package_name, spec),
+            f"src/{package_name}/infrastructure/__init__.py": _infrastructure_py(
+                package_name, spec
             ),
+            f"src/{package_name}/modules/__init__.py": _modules_init(package_name, ()),
             "application.yaml": _application_yaml(project_name, spec),
-            "pyproject.toml": _pyproject_toml(
-                project_name, package_name, spec, structure
-            ),
-            "README.md": _readme(project_name, spec, structure, package_name),
+            "pyproject.toml": _pyproject_toml(project_name, package_name, spec),
+            "README.md": _readme(project_name, spec, package_name),
             ".env.example": _env_example(project_name),
             ".gitignore": _gitignore(),
             "tests/__init__.py": "",
             "tests/conftest.py": _conftest(project_name, package_name, spec),
-            "tests/test_app.py": _test_app(spec, structure),
+            "tests/test_app.py": _test_app(spec),
         }
     )
-    if structure == STRUCTURED:
-        files.update(
-            {
-                "src/controllers/__init__.py": _package_line(
-                    "controllers", ("controller",)
-                ),
-                "src/controllers/api.py": _controller_module(project_name),
-            }
+    if "web" in spec.features:
+        files[f"src/{package_name}/controllers/__init__.py"] = _package_line(
+            "controllers", ("controller",)
         )
-    elif structure == MODULAR:
-        files.update(
-            {
-                f"src/{package_name}/infrastructure/__init__.py": _infrastructure_py(
-                    package_name, spec
-                ),
-                f"src/{package_name}/modules/__init__.py": _modules_init(
-                    package_name,
-                    (("users", "UsersModule"),) if "web" in spec.features else (),
-                ),
-            }
+        files[f"src/{package_name}/controllers/api.py"] = _controller_module(
+            project_name
         )
-        if "web" in spec.features:
-            files.update(_sample_module_files(package_name, project_name))
     return files
 
 
@@ -1093,7 +1047,6 @@ def render_project(
     project_name: str,
     target_dir: Path,
     *,
-    structure: str = STRUCTURED,
     force: bool = False,
 ) -> list[Path]:
     """Render a canonical Lexigram project into *target_dir*.
@@ -1103,26 +1056,20 @@ def render_project(
             ``graphql``, ``worker``, ``full``, ``fullstack``).
         project_name: Project / package name (dashes become underscores).
         target_dir: Destination directory (must be empty unless *force*).
-        structure: Project structure (``minimal``, ``structured``,
-            ``modular``); defaults to ``structured``.
         force: Allow writing into a non-empty directory.
 
     Returns:
         The list of created file paths.
 
     Raises:
-        ValueError: Unknown template/structure or non-empty target directory.
+        ValueError: Unknown template or non-empty target directory.
     """
-    if structure not in STRUCTURES:
-        raise ValueError(
-            f"Unknown structure {structure!r}. Available: {', '.join(STRUCTURES)}"
-        )
     resolve_template(template)
     if target_dir.exists() and any(target_dir.iterdir()) and not force:
         raise ValueError(f"Directory {target_dir} is not empty")
 
     package_name = project_name.replace("-", "_")
-    files = _file_map(project_name, package_name, template, structure)
+    files = _file_map(project_name, package_name, template)
 
     created: list[Path] = []
     for relative, content in files.items():
@@ -1174,16 +1121,11 @@ def render_module(module_name: str, target_dir: Path) -> list[Path]:
         The list of created file paths.
 
     Raises:
-        ValueError: Not a modular project, or the module already exists.
+        ValueError: The module already exists.
     """
-    from lexigram.cli.layout import MODULAR, read_project_layout
+    from lexigram.cli.layout import read_project_layout
 
     layout = read_project_layout(target_dir)
-    if layout.structure != MODULAR:
-        raise ValueError(
-            "`lexigram new module` requires a modular project "
-            "(set [tool.lexigram] structure = modular)."
-        )
     module_slug = module_name.replace("-", "_")
     module_dir = target_dir / "src" / layout.app_package / "modules" / module_slug
     if module_dir.exists() and any(module_dir.iterdir()):
@@ -1215,6 +1157,5 @@ __all__ = [
     "render_project",
     "resolve_template",
     "root_output_dirs",
-    "structure_names",
     "template_names",
 ]

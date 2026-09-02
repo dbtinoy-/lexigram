@@ -24,6 +24,7 @@ from __future__ import annotations
 import re
 
 from lexigram.builder.gen.emitters.context import pascal_entity
+from lexigram.builder.gen.layout import DEFAULT_LAYOUT
 from lexigram.builder.graph.models import FileUploadConfig
 
 _EXTERNAL_STORAGE: frozenset[str] = frozenset({"s3", "gcs", "azure_blob"})
@@ -225,12 +226,14 @@ def emit_upload_controller(
     entity_name: str,
     route_path: str,
     config: FileUploadConfig,
+    mods: dict[str, str] | None = None,
 ) -> str:
-    """Render ``src/app/controllers/<name>_upload_controller.py``."""
+    """Render the upload controller for *entity_name*."""
+    mods = mods or DEFAULT_LAYOUT.module_names()
     pascal = pascal_entity(entity_name)
     storage_pascal = f"{pascal}UploadStorage"
     route_path = route_path.rstrip("/") or f"/{entity_name}"
-    storage_module = f"app.uploads.{config.name}_upload_storage"
+    storage_module = f"{mods['uploads']}.{config.name}_upload_storage"
 
     return "\n".join(
         [

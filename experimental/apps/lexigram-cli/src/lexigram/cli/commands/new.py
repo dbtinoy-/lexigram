@@ -7,13 +7,11 @@ import re
 
 import typer
 
-from lexigram.cli.layout import STRUCTURES
 from lexigram.cli.output import OutputManager
 from lexigram.cli.scaffold import (
     render_module,
     render_project,
     resolve_template,
-    structure_names,
     template_names,
 )
 
@@ -39,12 +37,6 @@ def main(
         "-t",
         help="Project template",
     ),
-    structure: str = typer.Option(
-        "structured",
-        "--structure",
-        "-s",
-        help="Project structure (minimal, structured, modular)",
-    ),
     directory: str = typer.Option(".", "--directory", "-d", help="Target directory"),
     interactive: bool = typer.Option(
         False,
@@ -67,13 +59,6 @@ def main(
             type=click.Choice(template_names()),
         )
 
-    if structure not in STRUCTURES:
-        out.error(
-            f"Structure {structure} not found. "
-            f"Available: {', '.join(structure_names())}."
-        )
-        raise typer.Exit(1)
-
     try:
         resolve_template(selected_template)
     except ValueError:
@@ -90,18 +75,12 @@ def main(
         f"template [bold]{selected_template}[/bold]...",
     )
 
-    created = render_project(
-        selected_template,
-        project_name,
-        target_dir,
-        structure=structure,
-    )
+    created = render_project(selected_template, project_name, target_dir)
 
     out.success(f"Project {project_name} created successfully!")
     out.print(
         f"[info]Scaffolded[/info] {len(created)} files "
-        f"([bold]{selected_template}[/bold] template, "
-        f"[bold]{structure}[/bold] structure).",
+        f"([bold]{selected_template}[/bold] template).",
     )
     out.print(
         f"\n[bold]Next steps:[/bold]\n"

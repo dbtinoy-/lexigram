@@ -108,15 +108,19 @@ def temp_dir() -> Generator[Path, None, None]:
 
 @pytest.fixture
 def temp_project(temp_dir: Path) -> Generator[Path, None, None]:
-    """Create a temporary project directory with basic structure."""
+    """Create a temporary project directory in the one project layout.
+
+    Everything lives under the application package ``src/test_project/``:
+    feature components at the package root until a node joins a module,
+    cross-cutting ones under ``shared/``. The package name is declared the
+    only way a project declares it -- through ``[tool.lexigram] module``.
+    """
     project_dir = temp_dir / "test_project"
     project_dir.mkdir()
 
-    # Create basic project structure
-    (project_dir / "src").mkdir()
-    (project_dir / "src" / "models").mkdir()
-    (project_dir / "src" / "controllers").mkdir()
-    (project_dir / "src" / "services").mkdir()
+    package_dir = project_dir / "src" / "test_project"
+    for component in ("models", "controllers", "services"):
+        (package_dir / component).mkdir(parents=True)
 
     # Create basic pyproject.toml
     pyproject_content = """
@@ -131,6 +135,7 @@ dependencies = []
 
 [tool.lexigram]
 framework_version = "0.1.0"
+module = "test_project.app:app"
 """
     (project_dir / "pyproject.toml").write_text(pyproject_content.strip())
 

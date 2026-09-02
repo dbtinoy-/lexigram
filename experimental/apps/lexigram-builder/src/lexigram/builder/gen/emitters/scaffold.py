@@ -4,9 +4,17 @@ from __future__ import annotations
 
 from lexigram.builder.gen.emitters.context import pascal_entity, snake_case
 from lexigram.builder.gen.emitters.webhook_emitter import emit_webhook_controllers
+from lexigram.builder.gen.layout import (
+    DEFAULT_LAYOUT,
+    WriterLayout,
+)
+from lexigram.builder.gen.modular.composition import asgi_target
+from lexigram.builder.gen.modular.placement import Placement, sole
+from lexigram.builder.gen.node_generators import dest_for
 from lexigram.builder.graph.models import (
     ApiKeyGroupConfig,
     AuthConfig,
+    AuthPolicyConfig,
     CacheConfig,
     ChannelConfig,
     CqrsMessageConfig,
@@ -24,7 +32,6 @@ from lexigram.builder.graph.models import (
     MetricConfig,
     MiddlewareConfig,
     ProjectionConfig,
-    RateLimitConfig,
     RoleConfig,
     RouteConfig,
     SagaConfig,
@@ -41,7 +48,8 @@ def emit_scaffold_files(
     route_bindings: list[tuple[RouteConfig, EntityConfig]],
     *,
     relative_root: str,
-    structure: str = "minimal",
+    has_modules: bool = False,
+    layout: WriterLayout | None = None,
     pypi_sources: bool = False,
     extra_dependencies: tuple[str, ...] = (),
     api_clients: bool = False,
@@ -71,11 +79,14 @@ def emit_scaffold_files(
     email_templates: tuple[EmailTemplateConfig, ...]
     | list[EmailTemplateConfig] = (),
     roles: tuple[RoleConfig, ...] | list[RoleConfig] = (),
-    policies: tuple[RateLimitConfig, ...] | list[RateLimitConfig] = (),
+    policies: tuple[AuthPolicyConfig, ...] | list[AuthPolicyConfig] = (),
     rate_limited: bool = False,
     search_entities: tuple[str, ...] | list[str] = (),
     audit_repositories: tuple[str, ...] | list[str] = (),
-    upload_controllers: tuple[tuple[str, str], ...] | list[tuple[str, str]] = (),
+    upload_controllers: tuple[tuple[str, str, str], ...]
+    | list[tuple[str, str, str]] = (),
+    profiles: tuple[str, ...] | list[str] = (),
+    placement: Placement | None = None,
 ) -> dict[str, str]:
     """Emit every non-entity/non-controller file of the generated project.
 
@@ -94,51 +105,90 @@ def emit_scaffold_files(
         crons: Enabled scheduled background tasks to register and run via
             the framework tasks subsystem.
         webhooks: Enabled inbound webhook triggers to mount as POST routes.
+        has_modules: True when the graph declares bounded contexts. It is a
+            fact about *this graph*, not a project-wide mode: with modules
+            the composition root discovers them instead of importing every
+            controller by name.
+        layout: Path authority; derived from *app_name* when omitted.
+        placement: Which bounded context owns each config. Omitted means
+            "nothing is owned", which is what a project without modules
+            looks like.
     """
+    layout = layout or WriterLayout.for_app(app_name)
+    place = placement or Placement.unscoped(layout)
+    mods = (layout or DEFAULT_LAYOUT).module_names()
+
+    def package_inits(verb: str, configs: object) -> dict[str, str]:
+        """One package ``__init__`` per bounded context that owns *configs*.
+
+        Under modular a component package exists once per owning context --
+        `modules/sales/commands/` and `modules/billing/commands/` are two
+        packages, not one -- so the marker file is emitted per group. One
+        group outside modular, which is the pre-modular behaviour exactly.
+        """
+        assert isinstance(configs, (list, tuple))
+        return {
+            f"{place.dest(verb, sole(group))}/__init__.py": GENERATED_HEADER
+            for _slug, group in place.group(configs)
+        }
     app_pascal = pascal_entity(app_name)
-    middleware_entries = _middleware_entries(list(middlewares))
+    middleware_entries = _middleware_entries(list(middlewares), mods)
     if rate_limited:
         middleware_entries.append(
-            ("app.middleware.rate_limit", "RateLimitMiddleware")
+            (f"{mods['middleware']}.rate_limit", "RateLimitMiddleware")
         )
-    cron_entries = _task_entries(list(crons))
     # Plain jobs share the tasks package; include each once (cron wins on clash).
     cron_names = {c.name for c in crons}
-    job_entries = [
-        f"app.tasks.{snake_case(j.name)}_task" for j in jobs if j.name not in cron_names
-    ]
-    task_entries = sorted(set(cron_entries) | set(job_entries))
+    task_configs: list[object] = [*crons, *(j for j in jobs if j.name not in cron_names)]
+    task_entries = sorted(
+        {
+            f"{place.imports(cfg)['tasks']}.{snake_case(str(getattr(cfg, 'name', '')))}_task"
+            for cfg in task_configs
+        }
+    )
     scheduled_names = [snake_case(c.name) for c in crons]
-    webhook_entries = _webhook_controller_entries(list(webhooks))
-    controller_imports = "\n".join(
+    webhook_entries = [
+        (
+            f"{place.imports(w)['controllers']}.{snake_case(w.name)}_webhook_controller",
+            f"{pascal_entity(w.name)}WebhookController",
+        )
+        for w in webhooks
+    ]
+
+    # Once a graph has bounded contexts, the "one global app.py that imports
+    # and registers every controller" model is gone: module-local controllers
+    # are discovered by the composition root
+    # (`WebModule.configure(discover=...)`, G4) rather than named one by one.
+    modular = has_modules
+    controller_imports = "" if modular else "\n".join(
         [
-            f"from app.controllers.{name}_search_controller import "
+            f"from {mods['controllers']}.{name}_search_controller import "
             f"{pascal_entity(name)}SearchController"
             for name in search_entities
         ]
         + [
-            f"from app.controllers.{cfg_name}_upload_controller import "
+            f"from {mods['controllers']}.{cfg_name}_upload_controller import "
             f"{pascal_entity(name)}UploadController"
-            for name, cfg_name in upload_controllers
+            for name, cfg_name, _root in upload_controllers
         ]
         + [
-            f"from app.controllers.{snake_case(e.name)}_controller import "
+            f"from {mods['controllers']}.{snake_case(e.name)}_controller import "
             f"{pascal_entity(e.name)}Controller"
             for _r, e in route_bindings
         ]
         + [
-            f"from app.controllers.{snake_case(w.name)}_webhook_controller import "
+            f"from {mods['controllers']}.{snake_case(w.name)}_webhook_controller import "
             f"{pascal_entity(w.name)}WebhookController"
             for w in sorted(webhooks, key=lambda x: x.name)
         ]
     )
     # Search / upload controllers register BEFORE the CRUD controllers so
     # their static routes win over the entity's `/{item_id}` dynamic route.
-    controller_classes = ", ".join(
+    controller_classes = "" if modular else ", ".join(
         [f"{pascal_entity(name)}SearchController" for name in search_entities]
         + [
             f"{pascal_entity(name)}UploadController"
-            for name, _cfg_name in upload_controllers
+            for name, _cfg_name, _root in upload_controllers
         ]
         + [f"{pascal_entity(e.name)}Controller" for _r, e in route_bindings]
         + [
@@ -146,25 +196,31 @@ def emit_scaffold_files(
             for w in sorted(webhooks, key=lambda x: x.name)
         ]
     )
-    repo_imports = "\n".join(
-        f"from app.repositories.{e.name}_repository import {pascal_entity(e.name)}Repository"
+    # Under modular there is no global repositories package and no global
+    # persistence provider: each bounded context binds its own repositories
+    # (G3), so every repository string below stays empty and `di/provider.py`
+    # is not emitted at all. `mods` has no 'repositories' key there, which is
+    # the layout refusing to guess rather than a gap to paper over.
+    repo_package = mods.get("repositories", "")
+    repo_imports = "" if modular else "\n".join(
+        f"from {repo_package}.{e.name}_repository import {pascal_entity(e.name)}Repository"
         for e in entities
     ) + "".join(
-        f"\nfrom app.repositories.{name}_search_repository import "
+        f"\nfrom {repo_package}.{name}_search_repository import "
         f"{pascal_entity(name)}SearchRepository"
         for name in search_entities
     ) + "".join(
-        f"\nfrom app.repositories.{name}_audit_repository import "
+        f"\nfrom {repo_package}.{name}_audit_repository import "
         f"{pascal_entity(name)}AuditRepository"
         for name in audit_repositories
     ) + (
         "\nfrom lexigram.auth.authn.apikeys import APIKeyManager"
         "\nfrom lexigram.contracts.auth import APIKeyRepositoryProtocol"
-        "\nfrom app.repositories.api_key_repository import SqliteApiKeyRepository"
+        f"\nfrom {repo_package}.api_key_repository import SqliteApiKeyRepository"
         if bool(api_key_groups)
         else ""
     )
-    repo_binds = "\n".join(
+    repo_binds = "" if modular else "\n".join(
         f"        container.bind({pascal_entity(e.name)}Repository, {pascal_entity(e.name)}Repository(db_provider))"
         for e in entities
     ) + "".join(
@@ -182,7 +238,7 @@ def emit_scaffold_files(
         if bool(api_key_groups)
         else ""
     )
-    repo_exports = ", ".join(
+    repo_exports = "" if modular else ", ".join(
         [f"{pascal_entity(e.name)}Repository" for e in entities]
         + [
             f"{pascal_entity(name)}SearchRepository"
@@ -198,7 +254,8 @@ def emit_scaffold_files(
     # Business-logic services (framework sql `service` generator). Each is
     # bound to the resolved database provider in the persistence provider.
     service_imports = "".join(
-        f"\nfrom app.services.{e.name}_service import {pascal_entity(e.name)}Service"
+        f"\nfrom {place.imports(e)['services']}.{e.name}_service import "
+        f"{pascal_entity(e.name)}Service"
         for e in services
     )
     service_binds = "\n".join(
@@ -208,7 +265,7 @@ def emit_scaffold_files(
     # Idempotent seeders run after migrations. Imported lazily inside boot()
     # (they are not DI tokens) so import-time cost stays zero when unused.
     seeder_runs = "\n".join(
-        f"\n        from app.seeders.{e.name} import run as seed_{snake_case(e.name)}\n\n"
+        f"\n        from {mods['seeders']}.{e.name} import run as seed_{snake_case(e.name)}\n\n"
         f"        await seed_{snake_case(e.name)}(db_provider)"
         for e in seeders
     )
@@ -220,7 +277,8 @@ def emit_scaffold_files(
         "pyproject.toml": _pyproject(
             app_name,
             relative_root,
-            structure=structure,
+            has_modules=has_modules,
+            layout=layout,
             pypi_sources=pypi_sources,
             extra_dependencies=extra_dependencies
             + (("lexigram-http>=0.1.0",) if api_clients else ())
@@ -252,14 +310,18 @@ def emit_scaffold_files(
         ".gitignore": _gitignore(),
         ".env.example": f"DATABASE_URL=sqlite+aiosqlite:///{app_name}.db\n",
         "application.yaml": _application_yaml(app_name),
+        **{
+            f"application.{profile}.yaml": _profile_yaml(profile)
+            for profile in profiles
+        },
         "migrations/alembic.ini": _alembic_ini(),
         "migrations/env.py": _alembic_env(app_name),
         "migrations/script.py.mako": _mako(),
-        "src/app/__init__.py": _init(app_name),
-        "src/app/config.py": _config(app_name),
-        "src/app/domain.py": _domain(domain_classes),
-        "src/app/exceptions.py": _exceptions(exception_classes),
-        "src/app/app.py": _app(
+        layout.app_path("__init__.py"): _init(app_name),
+        layout.app_path("config.py"): _config(app_name),
+        layout.app_path("domain.py"): _domain(domain_classes),
+        layout.app_path("exceptions.py"): _exceptions(exception_classes),
+        layout.app_path("app.py"): _app(
             app_name,
             app_pascal,
             controller_imports,
@@ -286,11 +348,13 @@ def emit_scaffold_files(
             commands=[m for m in cqrs_messages if m.side == "command"],
             queries=[m for m in cqrs_messages if m.side == "query"],
             projections=list(projections),
+            layout=layout,
         ),
-        "src/app/main.py": _main(app_name),
-        "src/app/__main__.py": _main_entry(app_name),
-        "src/app/di/__init__.py": GENERATED_HEADER,
-        "src/app/di/provider.py": _persistence_provider(
+        layout.app_path("main.py"): _main(app_name, mods),
+        layout.app_path("__main__.py"): _main_entry(app_name, mods),
+        layout.pkg("di", "__init__.py"): GENERATED_HEADER,
+        **({} if modular else {
+        layout.pkg("di", "provider.py"): _persistence_provider(
             app_name,
             repo_imports,
             repo_binds,
@@ -303,10 +367,11 @@ def emit_scaffold_files(
             audit_repositories=audit_repositories,
             upload_storages=upload_controllers,
             api_key_groups=api_key_groups,
-        ),
+            mods=mods,
+        )}),
         **(
             {
-                "src/app/di/tasks_provider.py": _tasks_provider(
+                layout.pkg("di", "tasks_provider.py"): _tasks_provider(
                     task_entries, scheduled_names
                 )
             }
@@ -314,25 +379,27 @@ def emit_scaffold_files(
             else {}
         ),
         "tests/__init__.py": GENERATED_HEADER,
-        "tests/conftest.py": _test_conftest(app_name),
+        "tests/conftest.py": _test_conftest(app_name, mods),
     }
     if middlewares or rate_limited:
         # Custom middleware nodes and the generated rate-limit enforcement
-        # middleware both live in the app.middleware package.
-        files["src/app/middleware/__init__.py"] = GENERATED_HEADER
+        # middleware both live in the {mods['middleware']} package.
+        files[f"{dest_for('middleware', layout)}/__init__.py"] = GENERATED_HEADER
     if services:
-        files["src/app/services/__init__.py"] = GENERATED_HEADER
+        files.update(package_inits("service", list(services)))
     if seeders:
-        files["src/app/seeders/__init__.py"] = GENERATED_HEADER
+        files[f"{dest_for('seeder', layout)}/__init__.py"] = GENERATED_HEADER
     if filters:
-        files["src/app/filters/__init__.py"] = GENERATED_HEADER
-        files["src/app/di/filters_provider.py"] = _filters_provider(list(filters))
+        files[f"{dest_for('exception_filter', layout)}/__init__.py"] = GENERATED_HEADER
+        files[layout.pkg("di", "filters_provider.py")] = _filters_provider(
+            list(filters), mods
+        )
     if errors:
-        files["src/app/errors/__init__.py"] = GENERATED_HEADER
+        files[f"{dest_for('error', layout)}/__init__.py"] = GENERATED_HEADER
     if caches:
-        files["src/app/caches/__init__.py"] = GENERATED_HEADER
+        files.update(package_inits("cache_repo", list(caches)))
     if graphql:
-        files["src/app/graphql/__init__.py"] = GENERATED_HEADER
+        files[f"{dest_for('graphql', layout)}/__init__.py"] = GENERATED_HEADER
     # The events package re-exports every event node plus any event a handler
     # subscribes to by name (a handler may name a fallback event without a
     # wired event node); de-duplicated by name, node events first.
@@ -343,47 +410,81 @@ def emit_scaffold_files(
         EventConfig(name=name) for name in sorted(handler_event_names)
     ]
     if all_events:
-        files["src/app/events/__init__.py"] = _events_init(all_events)
+        # An event a handler merely names has no node, so nothing owns it --
+        # except the handler, which is the only reason the module exists.
+        handler_by_event = {h.event: h for h in event_handlers if h.event}
+        node_events = set(events)
+
+        def event_owner(cfg: object) -> object:
+            if cfg in node_events:
+                return cfg
+            return handler_by_event.get(getattr(cfg, "name", ""), cfg)
+
+        for _slug, group in place.group(all_events, owner=event_owner):
+            rep = event_owner(sole(group))
+            files[f"{place.dest('event', rep)}/__init__.py"] = _events_init(
+                [e for e in group if isinstance(e, EventConfig)],
+                place.imports(rep),
+            )
     if event_handlers:
-        files["src/app/handlers/__init__.py"] = GENERATED_HEADER
-        files["src/app/di/handlers_provider.py"] = _handlers_provider(list(event_handlers))
+        files.update(package_inits("event_handler", list(event_handlers)))
+        files[layout.pkg("di", "handlers_provider.py")] = _handlers_provider(
+            list(event_handlers), place
+        )
     commands = [m for m in cqrs_messages if m.side == "command"]
     queries = [m for m in cqrs_messages if m.side == "query"]
     if commands:
-        files["src/app/commands/__init__.py"] = GENERATED_HEADER
+        files.update(package_inits("command", commands))
     if queries:
-        files["src/app/queries/__init__.py"] = GENERATED_HEADER
+        files.update(package_inits("query", queries))
     if cqrs_messages:
-        files["src/app/di/cqrs_provider.py"] = _cqrs_provider(commands, queries)
+        files[layout.pkg("di", "cqrs_provider.py")] = _cqrs_provider(
+            commands, queries, place
+        )
     if projections:
-        files["src/app/projections/__init__.py"] = GENERATED_HEADER
-        files["src/app/di/projections_provider.py"] = _projections_provider(
-            list(projections)
+        files.update(package_inits("projection", list(projections)))
+        files[layout.pkg("di", "projections_provider.py")] = _projections_provider(
+            list(projections), place
         )
     if metrics:
-        files["src/app/metrics/__init__.py"] = GENERATED_HEADER
+        files[f"{dest_for('metric', layout)}/__init__.py"] = GENERATED_HEADER
     if flags:
-        files["src/app/features/__init__.py"] = GENERATED_HEADER
+        files[f"{dest_for('feature_flag', layout)}/__init__.py"] = GENERATED_HEADER
     if auths or roles:
-        files["src/app/guards/__init__.py"] = GENERATED_HEADER
+        files[f"{dest_for('auth_guard', layout)}/__init__.py"] = GENERATED_HEADER
     if policies:
-        files["src/app/policies/__init__.py"] = GENERATED_HEADER
+        files.update(package_inits("auth_policy", list(policies)))
     if health_checks:
-        files["src/app/healthchecks/__init__.py"] = GENERATED_HEADER
+        files[f"{dest_for('health', layout)}/__init__.py"] = GENERATED_HEADER
     if task_entries:
-        files["src/app/tasks/__init__.py"] = _tasks_init(task_entries)
+        for _slug, group in place.group(task_configs):
+            rep = sole(group)
+            prefix = f"{place.imports(rep)['tasks']}."
+            files[f"{place.dest('task', rep)}/__init__.py"] = _tasks_init(
+                [entry for entry in task_entries if entry.startswith(prefix)]
+            )
     if webhook_entries:
-        files["src/app/webhooks/__init__.py"] = GENERATED_HEADER
+        files.update(package_inits("webhook", list(webhooks)))
         files.update(
             emit_webhook_controllers(
                 list(webhooks),
-                package="app",
+                package=layout.app_package,
+                controllers_dir=dest_for("controller", layout),
                 jobs_by_trigger=jobs_by_trigger or {},
             )
         )
     if channels:
-        files["src/app/channels/__init__.py"] = GENERATED_HEADER
-        files["src/app/di/channels_provider.py"] = _channels_provider(list(channels))
+        files.update(package_inits("websocket", list(channels)))
+        files[layout.pkg("di", "channels_provider.py")] = _channels_provider(
+            list(channels), place
+        )
+    if modular:
+        # The modular composition root is written by `gen/modular` from the
+        # graph's modules, not by this scaffold. Leaving the scaffold's
+        # version here to be overwritten later would work today and ship the
+        # wrong `app.py` the first time emission order changed, so the
+        # layout's authority is made explicit: one author per file.
+        files.pop(layout.app_path("app.py"), None)
     return files
 
 
@@ -391,7 +492,8 @@ def _pyproject(
     app_name: str,
     rel: str,
     *,
-    structure: str = "minimal",
+    mods: dict[str, str] | None = None,
+    has_modules: bool = False,
     pypi_sources: bool = False,
     extra_dependencies: tuple[str, ...] = (),
     with_tasks: bool = False,
@@ -404,7 +506,25 @@ def _pyproject(
     with_email: bool = False,
     with_http: bool = False,
     with_storage: bool = False,
+    layout: WriterLayout | None = None,
 ) -> str:
+    layout = layout or WriterLayout.for_app(app_name)
+    mods = mods or layout.module_names()
+    # ``uvicorn <module>:app`` must name the application package the layout
+    # chose, not the literal "app".
+    app_module = mods["app"]
+    # The ASGI target is always the composition root. `app.py` is where
+    # infrastructure, the bounded contexts and the web surface are
+    # assembled, and it exposes a module-level `app`; `main.py` merely
+    # imports it. One target, no branch.
+    asgi_module = asgi_target(app_module)
+    # The wheel ships everything under ``src`` with the prefix stripped, so
+    # the importable roots are exactly the directories the layout created.
+    # ``packages = ["src"]`` (the old structured form) means something else
+    # entirely -- a package *named* src -- which made the editable install
+    # add the project root and left ``import <app>`` failing: pytest passed
+    # on its own ``pythonpath = ["src"]`` while the preview server could not
+    # boot. One rule, matching that pythonpath.
     extra_lines = "".join(f'    "{dep}",\n' for dep in extra_dependencies)
     tasks_source = (
         f'lexigram-tasks = {{ path = "{rel}/packages/lexigram-tasks", editable = true }}\n'
@@ -494,11 +614,22 @@ testpaths = ["tests"]
 pythonpath = ["src"]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/app"]
+sources = ["src"]
+include = ["src"]
+
+# Generated code is linted by its own project, so the project has to say
+# where its first-party packages live. Without this, ruff has no reason to
+# believe ``<app>`` (or ``<app>.modules.sales``) is anything but a
+# third-party dependency, and it sorts every generated import block the
+# wrong way -- output that is correct in place and non-conforming the
+# moment anyone runs ``uv run ruff check``. Naming ``src`` rather than the
+# packages inside it keeps first-party membership a fact about the tree
+# rather than a list to maintain.
+[tool.ruff]
+src = ["src"]
 
 [tool.lexigram]
-structure = "{structure}"
-module = "app.main:app"
+module = "{asgi_module}"
 """
 
 
@@ -545,6 +676,38 @@ web:
 
 database:
   url: sqlite+aiosqlite:///{app_name}.db
+"""
+
+
+def _profile_yaml(profile: str) -> str:
+    """A deployment-profile overlay for ``application.yaml``.
+
+    The framework merges this *on top of* the base file when
+    ``LEX_PROFILE`` matches, so anything omitted here falls through. That
+    is why the overlay is nearly empty by design: repeating the base
+    values would turn every future change to ``application.yaml`` into a
+    change that silently does not apply in production.
+
+    Only two keys are set, and both are wrong-by-default in the base file
+    for a deployed service rather than opinions about your infrastructure:
+    a loopback bind is unreachable from outside its container, and CSRF is
+    disabled in the base file to keep local API poking friction-free.
+    """
+    return f"""{GENERATED_HEADER}
+# Overlay for the `{profile}` profile: merged over application.yaml when
+# LEX_PROFILE={profile}. Set only what differs -- omitted keys fall through
+# to the base file, so this stays small as the base file grows.
+#
+# Secrets belong in the environment (LEX_*), not here: this file is
+# generated, committed, and regenerated.
+
+web:
+  server:
+    # 127.0.0.1 is unreachable from outside a container.
+    host: 0.0.0.0
+  security:
+    csrf:
+      enabled: true
 """
 
 
@@ -797,39 +960,49 @@ def _exception_class(entity: EntityConfig) -> str:
         self.identifier = identifier"""
 
 
-def _middleware_entries(middlewares: list[MiddlewareConfig]) -> list[tuple[str, str]]:
+def _middleware_entries(
+    middlewares: list[MiddlewareConfig],
+    mods: dict[str, str] | None = None,
+) -> list[tuple[str, str]]:
     """Return ``(module_path, ClassName)`` for each generated middleware."""
+    mods = mods or DEFAULT_LAYOUT.module_names()
     entries: list[tuple[str, str]] = []
     for mw in middlewares:
         class_name = f"{pascal_case(mw.name)}Middleware"
-        module_path = f"app.middleware.{snake_case(mw.name)}_middleware"
+        module_path = f"{mods['middleware']}.{snake_case(mw.name)}_middleware"
         entries.append((module_path, class_name))
     return entries
 
 
 def _webhook_controller_entries(
     webhooks: list[WebhookConfig],
+    mods: dict[str, str] | None = None,
 ) -> list[tuple[str, str]]:
     """Return ``(module_path, ClassName)`` for each webhook controller."""
+    mods = mods or DEFAULT_LAYOUT.module_names()
     from lexigram.contracts.cli.generators import pascal_case as _pascal
 
     return [
         (
-            f"app.controllers.{snake_case(w.name)}_webhook_controller",
+            f"{mods['controllers']}.{snake_case(w.name)}_webhook_controller",
             f"{_pascal(w.name)}WebhookController",
         )
         for w in sorted(webhooks, key=lambda x: x.name)
     ]
 
 
-def _task_entries(crons: list[CronConfig]) -> list[str]:
+def _task_entries(
+    crons: list[CronConfig],
+    mods: dict[str, str] | None = None,
+) -> list[str]:
     """Return importable module paths for each generated scheduled task.
 
     The framework's ``@scheduled``/``@task`` decorators self-register the
     job when the defining module is imported, so the task package's
     ``__init__`` imports every task module to trigger registration.
     """
-    return [f"app.tasks.{snake_case(c.name)}_task" for c in crons]
+    mods = mods or DEFAULT_LAYOUT.module_names()
+    return [f"{mods['tasks']}.{snake_case(c.name)}_task" for c in crons]
 
 
 def _tasks_provider(task_modules: list[str], scheduled_func_names: list[str]) -> str:
@@ -918,7 +1091,9 @@ class TasksRegistrationProvider(Provider):
 '''
 
 
-def _channels_provider(channels: list[ChannelConfig]) -> str:
+def _channels_provider(
+    channels: list[ChannelConfig], place: Placement | None = None
+) -> str:
     """Emit a late-boot provider that mounts WebSocket channels.
 
     The framework's web router does not auto-discover standalone
@@ -929,6 +1104,7 @@ def _channels_provider(channels: list[ChannelConfig]) -> str:
     (see WS-2 in docs/LEXIGRAM_FRAMEWORK_BUGS.md) — and (b) appends a
     ``WebSocketRoute`` wrapped with the framework's own bridge at boot (WS-1).
     """
+    place = place or Placement.unscoped(DEFAULT_LAYOUT)
     singletons = "\n".join(
         f"        container.singleton({pascal_entity(c.name)}, {pascal_entity(c.name)}())"
         for c in channels
@@ -939,8 +1115,11 @@ def _channels_provider(channels: list[ChannelConfig]) -> str:
         f"        )"
         for c in channels
     )
+    # Mounting is app-wide; the handlers are not, so each import names the
+    # context that declared the channel.
     handler_imports = "\n".join(
-        f"from app.channels.{snake_case(c.name)} import {pascal_entity(c.name)}"
+        f"from {place.imports(c)['websocket']}"
+        f".{snake_case(c.name)} import {pascal_entity(c.name)}"
         for c in channels
     )
     return f'''{GENERATED_HEADER}\
@@ -996,7 +1175,10 @@ class ChannelsRegistrationProvider(Provider):
 '''
 
 
-def _filters_provider(filters: list[ExceptionFilterConfig]) -> str:
+def _filters_provider(
+    filters: list[ExceptionFilterConfig],
+    mods: dict[str, str] | None = None,
+) -> str:
     """Emit a late-boot provider that registers global exception filters.
 
     The framework's web layer keeps a global filter pipeline consulted by the
@@ -1004,8 +1186,9 @@ def _filters_provider(filters: list[ExceptionFilterConfig]) -> str:
     generated filter instance to it at boot so matching exceptions become
     structured JSON responses rather than unhandled 500s.
     """
+    mods = mods or DEFAULT_LAYOUT.module_names()
     filter_imports = "\n".join(
-        f"from app.filters.{snake_case(f.name)}_exception_filter import "
+        f"from {mods['filters']}.{snake_case(f.name)}_exception_filter import "
         f"{pascal_entity(f.name)}ExceptionFilter"
         for f in filters
     )
@@ -1056,15 +1239,19 @@ class FiltersRegistrationProvider(Provider):
 '''
 
 
-def _events_init(events: list[EventConfig]) -> str:
+def _events_init(
+    events: list[EventConfig],
+    mods: dict[str, str] | None = None,
+) -> str:
     """Emit ``app/events/__init__.py`` importing each event module.
 
     Importing the package imports every ``<name>_event`` module so the event
-    classes are defined; handlers then ``from app.events import *`` to refer
+    classes are defined; handlers then ``from {mods['events']} import *`` to refer
     to ``<Pascal>Event`` by name.
     """
+    mods = mods or DEFAULT_LAYOUT.module_names()
     imports = "\n".join(
-        f"from app.events.{e.name}_event import {pascal_entity(e.name)}Event"
+        f"from {mods['events']}.{e.name}_event import {pascal_entity(e.name)}Event"
         for e in events
     )
     names = "\n".join(f'    "{pascal_entity(e.name)}Event",' for e in events)
@@ -1079,7 +1266,10 @@ def _events_init(events: list[EventConfig]) -> str:
     )
 
 
-def _handlers_provider(handlers: list[EventHandlerConfig]) -> str:
+def _handlers_provider(
+    handlers: list[EventHandlerConfig],
+    place: Placement | None = None,
+) -> str:
     """Emit a late-boot provider that subscribes event handlers on the bus.
 
     The framework event bus requires explicit subscription
@@ -1087,13 +1277,18 @@ def _handlers_provider(handlers: list[EventHandlerConfig]) -> str:
     global auto-discovery for in-process handlers. This provider resolves the
     bus at boot and wires each generated handler to its event class.
     """
+    # This provider is cross-cutting (it lives in the shared `di` package)
+    # while handlers are not, so each import is resolved from its own
+    # handler's context rather than from one global map that, under modular,
+    # has no key for `handlers` at all.
+    place = place or Placement.unscoped(DEFAULT_LAYOUT)
     handler_imports = "\n".join(
-        f"from app.handlers.{snake_case(h.name)}_handler import "
+        f"from {place.imports(h)['handlers']}.{snake_case(h.name)}_handler import "
         f"{pascal_entity(h.name)}Handler"
         for h in handlers
     )
     event_imports = "\n".join(
-        f"from app.events.{snake_case(h.event)}_event import "
+        f"from {place.imports(h)['events']}.{snake_case(h.event)}_event import "
         f"{pascal_entity(h.event)}Event"
         for h in handlers
         if h.event
@@ -1156,6 +1351,7 @@ class HandlersRegistrationProvider(Provider):
 def _cqrs_provider(
     commands: list[CqrsMessageConfig],
     queries: list[CqrsMessageConfig],
+    place: Placement | None = None,
 ) -> str:
     """Emit a late-boot provider registering CQRS handlers on the buses.
 
@@ -1165,6 +1361,7 @@ def _cqrs_provider(
     bound to a wired entity receive that entity's repository, resolved from
     the container.
     """
+    place = place or Placement.unscoped(DEFAULT_LAYOUT)
     messages = [*commands, *queries]
 
     command_imports = "\n".join(
@@ -1172,11 +1369,11 @@ def _cqrs_provider(
         for c in commands
         for line in (
             (
-                f"from app.commands.{snake_case(c.name)} import "
+                f"from {place.imports(c)['commands']}.{snake_case(c.name)} import "
                 f"{pascal_entity(c.name)}Command as {pascal_entity(c.name)}CmdMessage"
             ),
             (
-                f"from app.commands.{snake_case(c.name)} import "
+                f"from {place.imports(c)['commands']}.{snake_case(c.name)} import "
                 f"{pascal_entity(c.name)}Handler as {pascal_entity(c.name)}CmdHandler"
             ),
         )
@@ -1186,11 +1383,11 @@ def _cqrs_provider(
         for q in queries
         for line in (
             (
-                f"from app.queries.{snake_case(q.name)} import "
+                f"from {place.imports(q)['queries']}.{snake_case(q.name)} import "
                 f"{pascal_entity(q.name)}Handler as {pascal_entity(q.name)}QryHandler"
             ),
             (
-                f"from app.queries.{snake_case(q.name)} import "
+                f"from {place.imports(q)['queries']}.{snake_case(q.name)} import "
                 f"{pascal_entity(q.name)}Query as {pascal_entity(q.name)}QryMessage"
             ),
         )
@@ -1199,7 +1396,8 @@ def _cqrs_provider(
     # an entity).
     repo_imports = "\n".join(
         dict.fromkeys(
-            f"from app.repositories.{snake_case(m.entity)}_repository import "
+            f"from {place.imports(m)['repositories']}."
+            f"{snake_case(m.entity)}_repository import "
             f"{pascal_entity(m.entity)}Repository"
             for m in messages
             if m.entity
@@ -1299,7 +1497,10 @@ class CqrsRegistrationProvider(Provider):
     )
 
 
-def _projections_provider(projections: list[ProjectionConfig]) -> str:
+def _projections_provider(
+    projections: list[ProjectionConfig],
+    place: Placement | None = None,
+) -> str:
     """Emit a late-boot provider wiring projections into a manager.
 
     Each generated ``<Name>Projection`` is registered with a
@@ -1308,16 +1509,25 @@ def _projections_provider(projections: list[ProjectionConfig]) -> str:
     distinct event type the projections consume. The framework bus has no
     projection auto-discovery.
     """
+    place = place or Placement.unscoped(DEFAULT_LAYOUT)
     # Distinct events across all projections (deduplicated, sorted).
     event_names = sorted({e for p in projections for e in p.events})
 
     projection_imports = "\n".join(
-        f"from app.projections.{snake_case(p.name)}_projection import "
+        f"from {place.imports(p)['projections']}."
+        f"{snake_case(p.name)}_projection import "
         f"{pascal_entity(p.name)}Projection"
         for p in projections
     )
+    # A projection names the events it consumes; the event itself lives in
+    # whichever context declared it, which is a lookup by name because that
+    # is all the projection has.
+    projection_by_event = {
+        name: p for p in projections for name in p.events
+    }
     event_imports = "\n".join(
-        f"from app.events.{snake_case(name)}_event import "
+        f"from {place.imports_named('EventConfig', name, fallback=projection_by_event.get(name))['events']}."
+        f"{snake_case(name)}_event import "
         f"{pascal_entity(name)}Event"
         for name in event_names
     )
@@ -1427,7 +1637,9 @@ def _app(
     commands: list[CqrsMessageConfig] | None = None,
     queries: list[CqrsMessageConfig] | None = None,
     projections: list[ProjectionConfig] | None = None,
+    layout: WriterLayout | None = None,
 ) -> str:
+    mods = (layout or DEFAULT_LAYOUT).module_names()
     middlewares = middlewares or []
     task_modules = task_modules or []
     channel_entries = channel_entries or []
@@ -1438,12 +1650,14 @@ def _app(
     middleware_imports = "\n".join(
         f"from {module_path} import {cls_name}" for module_path, cls_name in middlewares
     )
-    # Importing the tasks package runs its __init__, which imports every
-    # task module so the @scheduled decorators register their jobs.
-    tasks_import = (
-        "import app.tasks  # noqa: F401  (registers @scheduled jobs)\n"
-        if task_modules
-        else ""
+    # Importing a tasks package runs its __init__, which imports every task
+    # module so the @scheduled decorators register their jobs. Under modular
+    # there is one such package per bounded context that owns a task, so the
+    # packages are derived from the task modules rather than from a single
+    # global name that does not exist there.
+    tasks_import = "".join(
+        f"import {package}  # noqa: F401  (registers @scheduled jobs)\n"
+        for package in sorted({mod.rsplit(".", 1)[0] for mod in task_modules})
     )
     tasks_module_import = (
         "from lexigram.tasks.backends.memory import MemoryTaskQueue\n"
@@ -1473,7 +1687,8 @@ def _app(
         "from lexigram.graphql.module import GraphQLModule\n" if has_graphql else ""
     )
     graphql_side_effect_import = (
-        "import app.graphql  # noqa: F401  (registers Strawberry schema)\n"
+        f"import {WriterLayout.module_path(dest_for('graphql', layout))}"
+        "  # noqa: F401  (registers Strawberry schema)\n"
         if has_graphql
         else ""
     )
@@ -1535,7 +1750,7 @@ def _app(
         else ""
     )
     tasks_provider_import = (
-        "from app.di.tasks_provider import TasksRegistrationProvider\n"
+        f"from {mods['di']}.tasks_provider import TasksRegistrationProvider\n"
         if task_modules
         else ""
     )
@@ -1543,7 +1758,7 @@ def _app(
         "    providers.append(TasksRegistrationProvider())\n" if task_modules else ""
     )
     channels_provider_import = (
-        "from app.di.channels_provider import ChannelsRegistrationProvider\n"
+        f"from {mods['di']}.channels_provider import ChannelsRegistrationProvider\n"
         if channel_entries
         else ""
     )
@@ -1553,7 +1768,7 @@ def _app(
         else ""
     )
     filters_provider_import = (
-        "from app.di.filters_provider import FiltersRegistrationProvider\n"
+        f"from {mods['di']}.filters_provider import FiltersRegistrationProvider\n"
         if filter_entries
         else ""
     )
@@ -1563,7 +1778,7 @@ def _app(
         else ""
     )
     handlers_provider_import = (
-        "from app.di.handlers_provider import HandlersRegistrationProvider\n"
+        f"from {mods['di']}.handlers_provider import HandlersRegistrationProvider\n"
         if event_handlers
         else ""
     )
@@ -1573,7 +1788,7 @@ def _app(
         else ""
     )
     cqrs_provider_import = (
-        "from app.di.cqrs_provider import CqrsRegistrationProvider\n"
+        f"from {mods['di']}.cqrs_provider import CqrsRegistrationProvider\n"
         if (commands or queries)
         else ""
     )
@@ -1583,7 +1798,7 @@ def _app(
         else ""
     )
     projections_provider_import = (
-        "from app.di.projections_provider import ProjectionsRegistrationProvider\n"
+        f"from {mods['di']}.projections_provider import ProjectionsRegistrationProvider\n"
         if projections
         else ""
     )
@@ -1611,8 +1826,8 @@ from lexigram.di.provider import Provider
 from lexigram.sql.module import DatabaseModule
 from lexigram.web.module import WebModule
 {tasks_module_import}{cache_module_import}{graphql_module_import}{health_import}{events_import}{flags_import}
-from app.config import DATABASE_URL
-from app.di.provider import PersistenceProvider
+from {mods['app']}.config import DATABASE_URL
+from {mods['di']}.provider import PersistenceProvider
 {tasks_provider_import}{channels_provider_import}{filters_provider_import}{handlers_provider_import}{cqrs_provider_import}{projections_provider_import}{controller_imports}
 {repo_imports}
 {middleware_imports}
@@ -1646,7 +1861,8 @@ __all__ = ["build_modules", "build_providers", "create_app"]
 '''
 
 
-def _main(app_name: str) -> str:
+def _main(app_name: str, mods: dict[str, str] | None = None) -> str:
+    mods = mods or DEFAULT_LAYOUT.module_names()
     return f'''{GENERATED_HEADER}
 from __future__ import annotations
 
@@ -1658,10 +1874,11 @@ from lexigram.logging import get_logger
 logger = get_logger(__name__)
 
 
-from app.app import create_app
+from {mods['app']}.app import create_app
 
-# Module-level ASGI application — ``uvicorn app.main:app`` imports this
-# directly; the framework's server runner drives the lifecycle.
+# Module-level ASGI application, for anyone pointing a server at this module.
+# ``[tool.lexigram] module`` names ``{mods['app']}.app:app`` -- the composition
+# root itself -- so the preview boots one object, not this re-export of it.
 app = create_app()
 
 
@@ -1693,13 +1910,14 @@ __all__ = ["main", "serve"]
 '''
 
 
-def _main_entry(app_name: str) -> str:
+def _main_entry(app_name: str, mods: dict[str, str] | None = None) -> str:
+    mods = mods or DEFAULT_LAYOUT.module_names()
     return f"""{GENERATED_HEADER}
 from __future__ import annotations
 
 
 def main() -> None:
-    from app.main import main as serve_main
+    from {mods['app']}.main import main as serve_main
 
     serve_main()
 
@@ -1721,10 +1939,12 @@ def _persistence_provider(
     seeder_runs: str = "",
     search_entities: tuple[str, ...] | list[str] = (),
     audit_repositories: tuple[str, ...] | list[str] = (),
-    upload_storages: tuple[tuple[str, str], ...]
+    upload_storages: tuple[tuple[str, str, str], ...]
     | list[tuple[str, str]] = (),
     api_key_groups: tuple[ApiKeyGroupConfig, ...] | list[ApiKeyGroupConfig] = (),
+    mods: dict[str, str] | None = None,
 ) -> str:
+    mods = mods or DEFAULT_LAYOUT.module_names()
     del app_name, repo_exports
     repo_tokens = "\n".join(f"    {pascal_entity(e.name)}Repository," for e in entities)
     search_repo_tokens = "\n".join(
@@ -1739,18 +1959,18 @@ def _persistence_provider(
         else ""
     )
     upload_imports = "".join(
-        f"\nfrom app.uploads.{cfg_name}_upload_storage import "
+        f"\nfrom {root}.{cfg_name}_upload_storage import "
         f"{pascal_entity(name)}UploadStorage"
-        for name, cfg_name in upload_storages
+        for name, cfg_name, root in upload_storages
     )
     upload_tokens = "\n".join(
         f"    {pascal_entity(name)}UploadStorage,"
-        for name, _cfg_name in upload_storages
+        for name, _cfg_name, _root in upload_storages
     )
     upload_binds = "".join(
         f"\n        container.bind({pascal_entity(name)}UploadStorage, "
         f"{pascal_entity(name)}UploadStorage())"
-        for name, _cfg_name in upload_storages
+        for name, _cfg_name, _root in upload_storages
     )
     # Compose the post-resolution boot body (binds + seeds) as one block so
     # empty sections don't leave stacked blank lines.
@@ -1773,7 +1993,7 @@ from lexigram.contracts.core.health import HealthCheckResult, HealthStatus
 from lexigram.contracts.core.provider import ProviderPriority
 from lexigram.di.provider import Provider
 
-from app.config import DATABASE_URL as _APP_DATABASE_URL
+from {mods['app']}.config import DATABASE_URL as _APP_DATABASE_URL
 {repo_imports}{service_imports}{upload_imports}
 
 _REPO_TYPES = [
@@ -1826,7 +2046,8 @@ class PersistenceProvider(Provider):
 '''
 
 
-def _test_conftest(app_name: str) -> str:
+def _test_conftest(app_name: str, mods: dict[str, str] | None = None) -> str:
+    mods = mods or DEFAULT_LAYOUT.module_names()
     return f"""{GENERATED_HEADER}
 from __future__ import annotations
 
@@ -1855,7 +2076,7 @@ def _ensure_cwd() -> None:
 @pytest.fixture
 async def client() -> AsyncIterator[httpx.AsyncClient]:
     \"\"\"Boot the real application and yield an async HTTP client.\"\"\"
-    from app.app import create_app
+    from {mods['app']}.app import create_app
 
     application = create_app()
     await application.start()

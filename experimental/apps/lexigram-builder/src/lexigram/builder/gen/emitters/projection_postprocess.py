@@ -20,6 +20,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import re
 
+from lexigram.builder.gen.layout import DEFAULT_LAYOUT
 from lexigram.contracts.cli.generators import pascal_case, snake_case
 
 
@@ -31,14 +32,20 @@ class ProjectionReconcileResult:
     changed: bool = True
 
 
-def reconcile_projection(text: str, events: tuple[str, ...]) -> ProjectionReconcileResult:
+def reconcile_projection(
+    text: str,
+    events: tuple[str, ...],
+    mods: dict[str, str] | None = None,
+) -> ProjectionReconcileResult:
     """Populate the projection's ``handles`` set with the wired events."""
+    mods = mods or DEFAULT_LAYOUT.module_names()
     original = text
     if not events:
         return ProjectionReconcileResult(text=text, changed=False)
 
     event_imports = "\n".join(
-        f"from app.events.{snake_case(name)}_event import {pascal_case(name)}Event"
+        f"from {mods['events']}.{snake_case(name)}_event import "
+        f"{pascal_case(name)}Event"
         for name in events
     )
     class_names = ", ".join(f"{pascal_case(name)}Event" for name in events)

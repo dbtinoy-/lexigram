@@ -25,6 +25,7 @@ TASKS.md, and in the emitted constants module).
 
 from __future__ import annotations
 
+from lexigram.builder.gen.layout import DEFAULT_LAYOUT
 from lexigram.builder.graph.models import ApiKeyGroupConfig
 
 _HEADER = (
@@ -235,8 +236,13 @@ def emit_api_key_repository() -> str:
     )
 
 
-def emit_api_keys_auth_module(config: ApiKeyGroupConfig, scopes: list[str]) -> str:
+def emit_api_keys_auth_module(
+    config: ApiKeyGroupConfig,
+    scopes: list[str],
+    mods: dict[str, str] | None = None,
+) -> str:
     """Render ``src/app/auth/api_keys.py`` for the first enabled group."""
+    mods = mods or DEFAULT_LAYOUT.module_names()
     scope_lines = ",\n".join(f"    {s!r}" for s in scopes)
     lines: list[str] = [
         _HEADER,
@@ -258,7 +264,10 @@ def emit_api_keys_auth_module(config: ApiKeyGroupConfig, scopes: list[str]) -> s
         "from lexigram.contracts import DatabaseProviderProtocol",
         "from lexigram.contracts.auth import APIKeyRepositoryProtocol",
         "",
-        "from app.repositories.api_key_repository import SqliteApiKeyRepository",
+        (
+            f"from {mods['repositories']}.api_key_repository import "
+            "SqliteApiKeyRepository"
+        ),
         "",
         "",
         "# HTTP header carrying the raw key.",

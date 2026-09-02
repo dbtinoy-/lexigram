@@ -6,10 +6,15 @@ from collections.abc import Callable
 from dataclasses import replace as dc_replace
 from pathlib import Path
 import shutil
-import subprocess
 from typing import Any
 
 from lexigram.builder.gen.cli_bridge import load_generator
+from lexigram.builder.gen.edge_resolution import (
+    resolve_cqrs,
+    resolve_handlers,
+    resolve_projections,
+)
+from lexigram.builder.gen.emitted import AttributionLedger, EmittedFile
 from lexigram.builder.gen.emitters.apikey_emitter import (
     emit_api_key_repository,
     emit_api_keys_auth_module,
@@ -58,15 +63,25 @@ from lexigram.builder.gen.emitters.search_emitter import (
 from lexigram.builder.gen.emitters.validator_emitter import (
     emit_validator_module,
 )
+from lexigram.builder.gen.formatting import format_project
+from lexigram.builder.gen.layout import DEFAULT_LAYOUT, WriterLayout
+from lexigram.builder.gen.modular import (
+    Placement,
+    commit_staged,
+    emit_modular_project,
+    sole,
+)
 from lexigram.builder.gen.node_generators import (
     ENTITY_ATTACHED,
+    STANDALONE_NODE_KWARGS,
     ReconcileContext,
-    autofix_for,
     dest_for,
     entity_attached_extra_kwargs,
-    reconcile_text,
-    staging_dirs,
 )
+from lexigram.builder.gen.packaging import FRAMEWORK_REPO_REL, extra_dependencies
+from lexigram.builder.gen.pruning import prune_stale_generated
+from lexigram.builder.gen.staging import StagingArea
+from lexigram.builder.graph.palette import KIND_MODULE
 from lexigram.builder.graph.models import (
     ApiClientConfig,
     ApiKeyGroupConfig,
@@ -86,8 +101,6 @@ from lexigram.builder.graph.models import (
     ExceptionFilterConfig,
     FeatureFlagConfig,
     FileUploadConfig,
-    GraphDocument,
-    GraphNode,
     InterceptorConfig,
     JobConfig,
     MetricConfig,
@@ -111,13 +124,6 @@ from lexigram.contracts.cli.generators import (
 )
 
 __all__ = ["ProjectWriter"]
-
-# Generated projects live at <playground>/projects/<app>. The framework is
-# vendored as a git submodule at <playground>/lexigram, so from a generated
-# project's root two parent hops reach the playground root and the framework
-# is at "../../lexigram". Absolute framework-root overrides (tmp-dir runs)
-# take precedence in _relative_monorepo_root().
-_FRAMEWORK_REPO_REL = "../../lexigram"
 
 
 class ProjectWriter(GeneratorBase):
@@ -143,29 +149,83 @@ class ProjectWriter(GeneratorBase):
         post_process: bool = False,
         framework_root: str | None = None,
         pypi_sources: bool = False,
+        layout: WriterLayout | None = None,
     ) -> None:
         super().__init__(output_dir=projects_root)
         self._post_process = post_process
+        # Structure-aware path authority. Defaults to the minimal layout so
+        # existing golden trees stay byte-identical.
+        self._layout = layout or DEFAULT_LAYOUT
+        self._ledger: AttributionLedger | None = None
         self._framework_root = framework_root
         # Container/cloud mode: generated projects depend on published
         # PyPI packages instead of local editable paths.
         self._pypi_sources = pypi_sources
 
+    @property
+    def emitted(self) -> tuple[EmittedFile, ...]:
+        """Attribution records from the most recent :meth:`write_project`."""
+        return self._ledger.records if self._ledger is not None else ()
+
+    def files_by_node(self) -> dict[str, list[str]]:
+        """``{node_id: [paths]}`` for the most recent write.
+
+        Recorded as files were produced (task L4), so it stays correct
+        under any project structure -- unlike deriving it from paths.
+        """
+        return self._ledger.files_by_node() if self._ledger is not None else {}
+
     def write_project(
         self,
         graph: ValidatedGraph,
         *,
-        on_file: Callable[[str, int, int], None] | None = None,
+        on_file: Callable[[str, int, int, EmittedFile | None], None] | None = None,
     ) -> GenerationResult:
         """Emit, stage, and commit the full project for *graph*."""
+        # L4: attribution is recorded as files are produced, not deduced from
+        # their paths afterwards. Config objects are the same instances the
+        # document holds, so identity maps them back to their node without
+        # touching any of the extraction loops below.
+        ledger = AttributionLedger()
+        self._ledger = ledger
+        # The graph decides the layout, not the constructor: this writer
+        # outlives any one project (see ``WriterLayout.for_settings``).
+        # ``mods`` is that layout's import map -- "shop_api.repositories"
+        # unscoped, "shop_api.modules.sales.repositories" scoped -- never a
+        # hardcoded stem.
         settings_config = graph.settings().config
         assert isinstance(settings_config, AppSettingsConfig)
         app_name = settings_config.app_name
+        self._layout = WriterLayout.for_settings(settings_config)
+        mods = self._layout.module_names()
+        # Bounded contexts are a fact about this graph, not a project mode:
+        # a graph that declares modules gets module packages and a
+        # discovering composition root, and one that does not gets neither.
+        # This is what lets a project start flat and grow into contexts
+        # without relocating a single file that was already correct.
+        has_modules = any(node.kind == KIND_MODULE for node in graph.document.nodes)
+        # A component then has no single destination -- `order`
+        # belongs to sales, `invoice` to billing, and both are repositories.
+        # `place` is the layout's missing half: it answers "which context
+        # owns this config's files?" so destinations and import roots are
+        # resolved together instead of each caller guessing (MODULAR-1/2).
+        place = Placement.of(graph, self._layout)
+        node_id_by_config = {id(n.config): n.id for n in graph.document.nodes}
+
+        def owner(config: object | None) -> str | None:
+            """Node id that owns *config*, or None for synthesised configs."""
+            return None if config is None else node_id_by_config.get(id(config))
 
         entities: list[EntityConfig] = []
         for node in graph.entities():
             assert isinstance(node.config, EntityConfig)
             entities.append(node.config)
+        # Some files are named after an entity but caused by another node:
+        # `order`'s search repository exists because a Search Index node was
+        # drawn, yet it is a repository *of order* and belongs wherever
+        # order does. Placing it by its entity keeps a bounded context's
+        # persistence in one package instead of scattering it by cause.
+        entity_cfg_by_name: dict[str, EntityConfig] = {e.name: e for e in entities}
         middlewares: list[MiddlewareConfig] = []
         for node in graph.document.nodes:
             if node.kind == "middleware" and isinstance(node.config, MiddlewareConfig):
@@ -429,8 +489,10 @@ class ProjectWriter(GeneratorBase):
         # Validator rules per entity name (entity -> validator edges; the
         # entity node's own config is the authoritative field list).
         validator_rules_by_entity: dict[str, list[tuple[str, str]]] = {}
+        validator_owner_by_entity: dict[str, str] = {}
         # rate-limit name -> the path prefixes of its wired routes.
         paths_by_rate_limit: dict[str, set[str]] = {}
+        route_owner_by_entity: dict[str, str] = {}
         for route_node in graph.routes():
             assert isinstance(route_node.config, RouteConfig)
             route_path = (route_node.config.path_prefix or "").strip()
@@ -453,6 +515,8 @@ class ProjectWriter(GeneratorBase):
                 continue
             dst_config = by_id[dst_id].config
             assert isinstance(dst_config, EntityConfig)
+            # First route wins, matching the previous attribution order.
+            route_owner_by_entity.setdefault(dst_config.name, route_node.id)
             bucket = ops_by_entity.setdefault(dst_config.name, [])
             bucket.extend(op for op in route_node.config.ops if op not in bucket)
             entity_by_name[dst_config.name] = dst_config
@@ -505,6 +569,11 @@ class ProjectWriter(GeneratorBase):
                 continue
             cfg = validator_cfg_by_name[dst_node.config.name]
             if cfg.enabled:
+                # Rules from several validators merge into one module, so
+                # the first wired validator node owns the result.
+                validator_owner_by_entity.setdefault(
+                    src_node.config.name, dst_node.id
+                )
                 validator_rules_by_entity.setdefault(
                     src_node.config.name, []
                 ).extend(cfg.rules)
@@ -551,6 +620,9 @@ class ProjectWriter(GeneratorBase):
         # Entity-attached search indexes (entity -> search_index edges):
         # merge fields/boost across index nodes per entity (first engine wins).
         search_cfg_by_entity: dict[str, SearchIndexConfig] = {}
+        # Like audit, merged search configs are rebuilt, so identity cannot
+        # map them back; remember the first wired node explicitly.
+        search_owner_by_entity: dict[str, str] = {}
         for e in graph.document.edges:
             src_node = by_id.get(e.src)
             dst_node = by_id.get(e.dst)
@@ -563,6 +635,7 @@ class ProjectWriter(GeneratorBase):
             ):
                 continue
             scfg = dst_node.config
+            search_owner_by_entity.setdefault(src_node.config.name, dst_node.id)
             existing = search_cfg_by_entity.get(src_node.config.name)
             if existing is None:
                 search_cfg_by_entity[src_node.config.name] = SearchIndexConfig(
@@ -599,8 +672,14 @@ class ProjectWriter(GeneratorBase):
         for idx, entity_name in enumerate(search_entities_sorted):
             search_cfg = search_cfg_by_entity[entity_name]
             route_path = self._route_path(entity_name, path_by_entity)
+            search_owner = search_owner_by_entity.get(entity_name)
             if effective_engine_local(search_cfg) == "fts":
                 revision = f"b{idx + 1:04d}_{entity_name}_search_fts"
+                ledger.record(
+                    f"migrations/versions/{revision}.py",
+                    node_id=search_owner,
+                    verb="migration",
+                )
                 files[f"migrations/versions/{revision}.py"] = (
                     emit_search_migration(
                         entity_name,
@@ -610,17 +689,39 @@ class ProjectWriter(GeneratorBase):
                     )
                 )
                 search_prev_rev = revision
-            files[f"src/app/repositories/{entity_name}_search_repository.py"] = (
+            search_entity = entity_cfg_by_name.get(entity_name)
+            search_repo_dest = place.dest("repository", search_entity)
+            ledger.record(
+                f"{search_repo_dest}/{entity_name}_search_repository.py",
+                node_id=search_owner,
+                verb="repository",
+            )
+            files[
+                f"{search_repo_dest}/{entity_name}_search_repository.py"
+            ] = (
                 emit_search_repository(entity_name, search_cfg)
             )
-            files[f"src/app/controllers/{entity_name}_search_controller.py"] = (
-                emit_search_controller(entity_name, route_path)
+            search_ctl_dest = place.dest("controller", search_entity)
+            ledger.record(
+                f"{search_ctl_dest}/{entity_name}_search_controller.py",
+                node_id=search_owner,
+                verb="controller",
+            )
+            files[
+                f"{search_ctl_dest}/{entity_name}_search_controller.py"
+            ] = (
+                emit_search_controller(
+                    entity_name, route_path, place.imports(search_entity)
+                )
             )
 
         # Audit-log emission (nodes plan N4.1): entity-attached. The first
         # enabled audit_log wired to each entity defines its trail; multiple
         # audit nodes on one entity merge their op subsets (union).
         audit_cfg_by_entity: dict[str, AuditLogConfig] = {}
+        # Merged audit configs are freshly constructed, so identity cannot
+        # map them back to a node; remember the first wired one explicitly.
+        audit_owner_by_entity: dict[str, str] = {}
         for e in graph.document.edges:
             src_node = by_id.get(e.src)
             dst_node = by_id.get(e.dst)
@@ -633,6 +734,7 @@ class ProjectWriter(GeneratorBase):
             ):
                 continue
             acfg = dst_node.config
+            audit_owner_by_entity.setdefault(src_node.config.name, dst_node.id)
             audit_existing = audit_cfg_by_entity.get(src_node.config.name)
             if audit_existing is None:
                 audit_cfg_by_entity[src_node.config.name] = AuditLogConfig(
@@ -685,6 +787,12 @@ class ProjectWriter(GeneratorBase):
         for idx, entity_name in enumerate(audit_entities_sorted):
             audit_cfg = audit_cfg_by_entity[entity_name]
             revision = f"b{idx + 1:04d}_{entity_name}_audit_log"
+            audit_owner = audit_owner_by_entity.get(entity_name)
+            ledger.record(
+                f"migrations/versions/{revision}.py",
+                node_id=audit_owner,
+                verb="migration",
+            )
             files[f"migrations/versions/{revision}.py"] = emit_audit_migration(
                 entity_name,
                 audit_cfg,
@@ -692,7 +800,17 @@ class ProjectWriter(GeneratorBase):
                 prev_revision=audit_prev_rev,
             )
             audit_prev_rev = revision
-            files[f"src/app/repositories/{entity_name}_audit_repository.py"] = (
+            audit_repo_dest = place.dest(
+                "repository", entity_cfg_by_name.get(entity_name)
+            )
+            ledger.record(
+                f"{audit_repo_dest}/{entity_name}_audit_repository.py",
+                node_id=audit_owner,
+                verb="repository",
+            )
+            files[
+                f"{audit_repo_dest}/{entity_name}_audit_repository.py"
+            ] = (
                 emit_audit_repository(entity_name, audit_cfg)
             )
 
@@ -702,30 +820,49 @@ class ProjectWriter(GeneratorBase):
             primary = enabled_api_key_groups[0]
             scopes = merged_api_key_scopes(enabled_api_key_groups)
             revision = "b0001_api_keys"
+            # The API-key surface is app-global; the primary group owns it.
+            api_key_owner = owner(primary)
+            for rel in (
+                f"migrations/versions/{revision}.py",
+                f"{dest_for('repository', self._layout)}/api_key_repository.py",
+                self._layout.pkg("auth", "__init__.py"),
+                self._layout.pkg("auth", "api_keys.py"),
+            ):
+                ledger.record(rel, node_id=api_key_owner)
             files[f"migrations/versions/{revision}.py"] = emit_api_keys_migration(
                 revision=revision,
                 prev_revision=audit_prev_rev,
             )
             audit_prev_rev = revision
-            files["src/app/repositories/api_key_repository.py"] = (
+            files[f"{dest_for('repository', self._layout)}/api_key_repository.py"] = (
                 emit_api_key_repository()
             )
-            files["src/app/auth/__init__.py"] = (
+            files[self._layout.pkg("auth", "__init__.py")] = (
                 "# generated by lexigram-builder - do not edit\n"
             )
-            files["src/app/auth/api_keys.py"] = emit_api_keys_auth_module(
-                primary, scopes
+            files[self._layout.pkg("auth", "api_keys.py")] = emit_api_keys_auth_module(
+                primary, scopes, mods
             )
 
         # Email emission (nodes plan N4.3): screen-driven. One Mailable
         # module per enabled template + shared mailer/init modules.
         if enabled_email_templates:
-            files["src/app/emails/__init__.py"] = emit_emails_init(
-                enabled_email_templates
+            email_owner = owner(enabled_email_templates[0])
+            for rel in (
+                self._layout.pkg("emails", "__init__.py"),
+                self._layout.pkg("emails", "mailer.py"),
+            ):
+                ledger.record(rel, node_id=email_owner)
+            files[self._layout.pkg("emails", "__init__.py")] = emit_emails_init(
+                enabled_email_templates, mods
             )
-            files["src/app/emails/mailer.py"] = emit_mailer_helper()
+            files[self._layout.pkg("emails", "mailer.py")] = emit_mailer_helper()
             for template in enabled_email_templates:
-                files[f"src/app/emails/{template.name}.py"] = (
+                ledger.record(
+                    self._layout.pkg("emails", f"{template.name}.py"),
+                    node_id=owner(template),
+                )
+                files[self._layout.pkg("emails", f"{template.name}.py")] = (
                     emit_email_module(template)
                 )
 
@@ -734,6 +871,7 @@ class ProjectWriter(GeneratorBase):
         # upload endpoint mounts at that route's entity path + /upload.
         # First enabled binding per route wins; unwired nodes are inert.
         upload_cfg_by_route: dict[str, FileUploadConfig] = {}
+        upload_owner_by_route: dict[str, str] = {}
         if any(fu.enabled for fu in file_uploads):
             for edge in graph.document.edges:
                 src_node = by_id.get(edge.src)
@@ -748,6 +886,9 @@ class ProjectWriter(GeneratorBase):
                 ):
                     continue
                 upload_cfg_by_route[src_node.id] = dst_node.config
+                # The storage-driver remap below rebuilds this config, so
+                # remember its node now while identity still holds.
+                upload_owner_by_route[src_node.id] = dst_node.id
         driver_type_by_upload: dict[str, str] = {}
         for edge in graph.document.edges:
             src_node = by_id.get(edge.src)
@@ -799,14 +940,26 @@ class ProjectWriter(GeneratorBase):
             if entity_name in upload_entities:
                 continue
             upload_entities[entity_name] = upload_cfg
-            files[f"src/app/uploads/{upload_cfg.name}_upload_storage.py"] = (
-                emit_upload_storage(entity_name, upload_cfg)
+            upload_owner = upload_owner_by_route.get(route_id)
+            storage_path = place.pkg(
+                "uploads",
+                f"{upload_cfg.name}_upload_storage.py",
+                config=upload_cfg,
             )
-            files[f"src/app/controllers/{upload_cfg.name}_upload_controller.py"] = (
-                emit_upload_controller(entity_name, route_path, upload_cfg)
+            controller_path = (
+                f"{place.dest('controller', upload_cfg)}"
+                f"/{upload_cfg.name}_upload_controller.py"
             )
-        if upload_entities:
-            files["src/app/uploads/__init__.py"] = (
+            ledger.record(storage_path, node_id=upload_owner)
+            ledger.record(
+                controller_path, node_id=upload_owner, verb="controller"
+            )
+            files[storage_path] = emit_upload_storage(entity_name, upload_cfg)
+            files[controller_path] = emit_upload_controller(
+                entity_name, route_path, upload_cfg, place.imports(upload_cfg)
+            )
+        for _slug, group in place.group(list(upload_entities.values())):
+            files[place.pkg("uploads", "__init__.py", config=sole(group))] = (
                 "# Generated by lexigram-builder. Do not edit; regenerate instead.\n"
             )
 
@@ -815,10 +968,13 @@ class ProjectWriter(GeneratorBase):
                 app_name,
                 entities,
                 [(RouteConfig(ops=()), entity_by_name[name]) for name in ops_by_entity],
-                relative_root=self._relative_monorepo_root(),
-                structure=settings_config.structure,
-                pypi_sources=self._uses_pypi_sources(),
-                extra_dependencies=self._extra_dependencies(
+                relative_root=self._monorepo_root(),
+                has_modules=has_modules,
+                placement=place,
+                profiles=settings_config.profiles,
+                layout=self._layout,
+                pypi_sources=self._pypi_sources,
+                extra_dependencies=extra_dependencies(
                     entities, uploads=bool(upload_entities)
                 ),
                 api_clients=bool(enabled_api_clients),
@@ -837,10 +993,10 @@ class ProjectWriter(GeneratorBase):
                 graphql=tuple(graphql_cfgs),
                 health_checks=tuple(health_cfgs),
                 events=tuple(enabled_events),
-                event_handlers=tuple(_resolve_handlers(enabled_handlers, graph.document, by_id)),
-                cqrs_messages=tuple(_resolve_cqrs(enabled_cqrs, graph.document, by_id)),
+                event_handlers=tuple(resolve_handlers(enabled_handlers, graph.document, by_id)),
+                cqrs_messages=tuple(resolve_cqrs(enabled_cqrs, graph.document, by_id)),
                 projections=tuple(
-                    _resolve_projections(enabled_projections, graph.document, by_id)
+                    resolve_projections(enabled_projections, graph.document, by_id)
                 ),
                 metrics=tuple(enabled_metrics),
                 sagas=tuple(enabled_sagas),
@@ -849,12 +1005,12 @@ class ProjectWriter(GeneratorBase):
                 api_key_groups=tuple(enabled_api_key_groups),
                 email_templates=tuple(enabled_email_templates),
                 roles=tuple(roles),
-                policies=tuple(rate_limits),
+                policies=tuple(enabled_auth_policies),
                 rate_limited=bool(rate_limits),
                 search_entities=tuple(search_entities_sorted),
                 audit_repositories=tuple(audit_entities_sorted),
                 upload_controllers=tuple(
-                    (name, cfg.name)
+                    (name, cfg.name, place.imports(cfg)["uploads"])
                     for name, cfg in sorted(upload_entities.items())
                 ),
             )
@@ -865,26 +1021,45 @@ class ProjectWriter(GeneratorBase):
         # generators (model / repository / migration) via cli_bridge —
         # sorted entities chain their alembic revisions.
         staging_root = Path(self.output_dir) / ".staging"
-        staging_root.mkdir(parents=True, exist_ok=True)
-        gen_dirs = staging_dirs(staging_root)
+        # Clear it first, not just on the way out. Attribution credits a
+        # node with whatever *appears* in a staging dir, so a file left
+        # behind by a run that crashed before its cleanup is invisible to
+        # the next run -- it was already there. That used to cost only a
+        # missing ledger entry; under modular, attribution also decides
+        # destinations, so a poisoned staging dir turns into "no Module
+        # node owns this file" on a graph that is perfectly correct.
+        shutil.rmtree(staging_root, ignore_errors=True)
+        # Staging is shaped like the destination and anchored as a project,
+        # so a generator resolves its own imports from where it is standing
+        # instead of emitting bare package names for the writer to repair
+        # afterwards (OQ-L5). `generating` hands out that directory and
+        # credits whatever appears in it to the node that asked.
+        staging = StagingArea(
+            staging_root, layout=self._layout, placement=place
+        )
+        generating = staging.generating
 
         # Custom middleware components (framework web `middleware` generator).
         for mw in middlewares:
-            load_generator("middleware", output_dir=gen_dirs["middleware"]).generate(
-                mw.name,
-                doc=f"Generated {mw.type} middleware.",
-                force=True,
-            )
+            with generating("middleware", owner(mw)) as staged_dir:
+                load_generator(
+                    "middleware", output_dir=staged_dir
+                ).generate(
+                    mw.name,
+                    doc=f"Generated {mw.type} middleware.",
+                    force=True,
+                )
 
         # Scheduled background tasks (framework tasks `task` generator, @scheduled).
         enabled_crons = [c for c in crons if c.enabled]
         for cron in enabled_crons:
-            load_generator("task", output_dir=gen_dirs["task"]).generate(
-                cron.name,
-                schedule=cron.schedule,
-                doc=cron.description or f"Scheduled task {cron.name}.",
-                force=True,
-            )
+            with generating("task", owner(cron)) as staged_dir:
+                load_generator("task", output_dir=staged_dir).generate(
+                    cron.name,
+                    schedule=cron.schedule,
+                    doc=cron.description or f"Scheduled task {cron.name}.",
+                    force=True,
+                )
 
         # Plain background jobs (same generator, no schedule -> @task). These
         # run only when a connected trigger enqueues them.
@@ -892,21 +1067,23 @@ class ProjectWriter(GeneratorBase):
         for job in enabled_jobs:
             if job.name in cron_names:
                 continue  # a cron with the same name already emitted it
-            load_generator("task", output_dir=gen_dirs["task"]).generate(
-                job.name,
-                doc=job.description or f"Background job {job.name}.",
-                force=True,
-            )
+            with generating("task", owner(job)) as staged_dir:
+                load_generator("task", output_dir=staged_dir).generate(
+                    job.name,
+                    doc=job.description or f"Background job {job.name}.",
+                    force=True,
+                )
 
         # Inbound webhook triggers: the framework webhook generator emits a
         # payload + HMAC-verification handler; we wrap it in a thin framework
         # Controller that mounts a POST route (see _emit_webhook_controller).
         for hook in enabled_webhooks:
-            load_generator("webhook", output_dir=gen_dirs["webhook"]).generate(
-                hook.name,
-                doc=hook.description or f"Webhook {hook.name}.",
-                force=True,
-            )
+            with generating("webhook", owner(hook)) as staged_dir:
+                load_generator("webhook", output_dir=staged_dir).generate(
+                    hook.name,
+                    doc=hook.description or f"Webhook {hook.name}.",
+                    force=True,
+                )
 
         # Realtime channels: the framework websocket generator emits an
         # AbstractWebSocketHandler; a late-boot provider registers it as a
@@ -914,11 +1091,12 @@ class ProjectWriter(GeneratorBase):
         # docs/LEXIGRAM_FRAMEWORK_BUGS.md — standalone handlers are not
         # auto-discovered by the web router).
         for channel in enabled_channels:
-            load_generator("websocket", output_dir=gen_dirs["websocket"]).generate(
-                channel.name,
-                doc=channel.description or f"Realtime channel {channel.name}.",
-                force=True,
-            )
+            with generating("websocket", owner(channel)) as staged_dir:
+                load_generator("websocket", output_dir=staged_dir).generate(
+                    channel.name,
+                    doc=channel.description or f"Realtime channel {channel.name}.",
+                    force=True,
+                )
 
         prev_rev: str | None = None
         for idx, entity in enumerate(sorted(entities, key=lambda e: e.name), start=1):
@@ -936,25 +1114,30 @@ class ProjectWriter(GeneratorBase):
                 if part and part.split(":", 1)[0] not in _MIGRATION_RESERVED
             )
             table = table_name(entity.name)
-            load_generator("model", output_dir=gen_dirs["model"]).generate(
-                entity.name,
-                fields_str=fields_str,
-                force=True,
-            )
-            load_generator("repository", output_dir=gen_dirs["repository"]).generate(
-                entity.name,
-                fields_str=fields_str,
-                table_name=table,
-                force=True,
-            )
-            load_generator("migration", output_dir=gen_dirs["migration"]).generate(
-                entity.name,
-                fields_str=migration_fields_str,
-                rev_id=rev_id,
-                prev_rev=prev_rev,
-                table_name=table,
-                force=True,
-            )
+            with generating("model", owner(entity)) as staged_dir:
+                load_generator("model", output_dir=staged_dir).generate(
+                    entity.name,
+                    fields_str=fields_str,
+                    force=True,
+                )
+            with generating("repository", owner(entity)) as staged_dir:
+                load_generator(
+                    "repository", output_dir=staged_dir
+                ).generate(
+                    entity.name,
+                    fields_str=fields_str,
+                    table_name=table,
+                    force=True,
+                )
+            with generating("migration", owner(entity)) as staged_dir:
+                load_generator("migration", output_dir=staged_dir).generate(
+                    entity.name,
+                    fields_str=migration_fields_str,
+                    rev_id=rev_id,
+                    prev_rev=prev_rev,
+                    table_name=table,
+                    force=True,
+                )
             prev_rev = rev_id
 
         # Entity-attached generators (service / seeder / error / cache), driven
@@ -967,27 +1150,27 @@ class ProjectWriter(GeneratorBase):
                     "force": True,
                 }
                 kwargs.update(entity_attached_extra_kwargs(kind, node_cfg))
-                load_generator(verb, output_dir=gen_dirs[verb]).generate(
-                    entity.name,
-                    **kwargs,
-                )
+                with generating(verb, owner(node_cfg)) as staged_dir:
+                    load_generator(verb, output_dir=staged_dir).generate(
+                        entity.name,
+                        **kwargs,
+                    )
 
-        # Global exception filters (framework web `exception_filter` generator).
+        # Global exception filters (framework web `exception_filter`).
         for flt in enabled_filters:
-            load_generator(
-                "exception_filter", output_dir=gen_dirs["exception_filter"]
-            ).generate(
-                flt.name,
-                exception_type=flt.exception_type,
-                status_code=flt.status_code,
-                doc=flt.description or f"Exception filter {flt.name}.",
-                force=True,
-            )
+            with generating("exception_filter", owner(flt)) as staged_dir:
+                load_generator(
+                    "exception_filter", output_dir=staged_dir
+                ).generate(
+                    flt.name,
+                    **STANDALONE_NODE_KWARGS["exception_filter"](flt),
+                    force=True,
+                )
 
         # Event handlers (framework lexigram-events `event_handler` generator).
         # These in-process subscribers are subscribed to their wired event by a
         # late-boot registration provider emitted by the scaffold.
-        resolved_handlers = _resolve_handlers(
+        resolved_handlers = resolve_handlers(
             enabled_handlers, graph.document, by_id
         )
 
@@ -1002,137 +1185,118 @@ class ProjectWriter(GeneratorBase):
             event_payloads[evt.name] = fields_str
         for handler in resolved_handlers:
             event_payloads.setdefault(handler.event, "")
-        for event_name, fields_str in sorted(event_payloads.items()):
-            load_generator("event", output_dir=gen_dirs["event"]).generate(
-                event_name,
-                fields_str=fields_str or None,
-                force=True,
+        # Edge resolution rebuilds handler/message/projection configs, so
+        # identity no longer maps them to their node -- the name does, and
+        # a duplicate name is already a validation error.
+        handler_owner_by_name = {h.name: owner(h) for h in enabled_handlers}
+        event_owner_by_name = {e.name: owner(e) for e in enabled_events}
+        for handler in resolved_handlers:
+            # An event a handler merely names has no node; the handler is
+            # the only reason its module exists, so the handler owns it.
+            event_owner_by_name.setdefault(
+                handler.event, handler_owner_by_name.get(handler.name)
             )
+        for event_name, fields_str in sorted(event_payloads.items()):
+            with generating("event", event_owner_by_name.get(event_name)) as staged_dir:
+                load_generator("event", output_dir=staged_dir).generate(
+                    event_name,
+                    fields_str=fields_str or None,
+                    force=True,
+                )
 
         for handler in resolved_handlers:
-            load_generator(
-                "event_handler", output_dir=gen_dirs["event_handler"]
-            ).generate(
-                handler.name,
-                force=True,
-            )
+            with generating(
+                "event_handler", handler_owner_by_name.get(handler.name)
+            ) as staged_dir:
+                load_generator(
+                    "event_handler", output_dir=staged_dir
+                ).generate(
+                    handler.name,
+                    force=True,
+                )
 
         # CQRS commands and queries (framework lexigram-events `command` /
         # `query` generators). Each emits message + handler in one module;
         # the scaffold registers the handler on the matching bus at boot.
-        resolved_cqrs = _resolve_cqrs(enabled_cqrs, graph.document, by_id)
+        resolved_cqrs = resolve_cqrs(enabled_cqrs, graph.document, by_id)
+        cqrs_owner_by_name = {(m.side, m.name): owner(m) for m in enabled_cqrs}
         for msg in resolved_cqrs:
             fields_str = ",".join(f"{name}:{typ}" for name, typ in msg.fields)
-            load_generator(msg.side, output_dir=gen_dirs[msg.side]).generate(
-                msg.name,
-                fields_str=fields_str or None,
-                force=True,
-            )
+            with generating(
+                msg.side, cqrs_owner_by_name.get((msg.side, msg.name))
+            ) as staged_dir:
+                load_generator(msg.side, output_dir=staged_dir).generate(
+                    msg.name,
+                    fields_str=fields_str or None,
+                    force=True,
+                )
 
         # Read-model projections (framework lexigram-events `projection`
         # generator). A late-boot provider builds a ProjectionManager and
         # subscribes it to the event bus for each projection's events.
-        resolved_projections = _resolve_projections(
+        resolved_projections = resolve_projections(
             enabled_projections, graph.document, by_id
         )
+        projection_owner_by_name = {
+            p.name: owner(p) for p in enabled_projections
+        }
         for projection in resolved_projections:
-            load_generator(
-                "projection", output_dir=gen_dirs["projection"]
-            ).generate(
-                projection.name,
-                doc=projection.description or None,
-                force=True,
-            )
+            with generating(
+                "projection", projection_owner_by_name.get(projection.name)
+            ) as staged_dir:
+                load_generator(
+                    "projection", output_dir=staged_dir
+                ).generate(
+                    projection.name,
+                    doc=projection.description or None,
+                    force=True,
+                )
 
-        # Application metrics (framework lexigram-monitor `metric`
-        # generator). The generated <Name>Metric is a user-edited scaffold;
-        # its presence only ensures MonitorModule is configured.
-        for metric in enabled_metrics:
-            load_generator("metric", output_dir=gen_dirs["metric"]).generate(
-                metric.name,
-                force=True,
-            )
-
-        for saga in enabled_sagas:
-            load_generator("saga", output_dir=gen_dirs["saga"]).generate(
-                saga.name,
-                force=True,
-            )
-
-        for interceptor in enabled_interceptors:
-            load_generator(
-                "interceptor", output_dir=gen_dirs["interceptor"]
-            ).generate(
-                interceptor.name,
-                doc=interceptor.description or None,
-                force=True,
-            )
-
-        for loader in enabled_dataloaders:
-            load_generator(
-                "dataloader", output_dir=gen_dirs["dataloader"]
-            ).generate(
-                loader.name,
-                key_type=loader.key_type,
-                force=True,
-            )
-
-        for client in enabled_api_clients:
-            load_generator("api_client", output_dir=gen_dirs["api_client"]).generate(
-                client.name,
-                auth=client.auth_type,
-                force=True,
-            )
-        for driver in enabled_storage_drivers:
-            load_generator(
-                "storage_driver", output_dir=gen_dirs["storage_driver"]
-            ).generate(
-                driver.name,
-                driver_type=driver.driver_type,
-                force=True,
-            )
-
-        # Feature flags (framework lexigram-features `feature_flag`
-        # generator). Each enabled flag emits one <Name>Flag definition
-        # module; the scaffold registers FeatureFlagsModule (seeding the
-        # canonical keys) only when at least one flag exists.
-        for flag in enabled_flags:
-            load_generator("feature_flag", output_dir=gen_dirs["feature_flag"]).generate(
-                flag.name,
-                force=True,
-            )
-
-        # Guard scaffolds (framework lexigram-auth generators): one
-        # <Name>AuthGuard credential-check definition per auth node, one
-        # <Name>Guard (RoleGuard variant) per role node. Enforcement on the
-        # wired routes happens in the controller decoration below.
-        for auth in auths:
-            load_generator("auth_guard", output_dir=gen_dirs["auth_guard"]).generate(
-                auth.name,
-                force=True,
-            )
-        for role in roles:
-            load_generator("guard", output_dir=gen_dirs["guard"]).generate(
-                role.name,
-                type="role",
-                force=True,
-            )
-        for policy in enabled_auth_policies:
-            load_generator(
-                "auth_policy", output_dir=gen_dirs["auth_policy"]
-            ).generate(
-                policy.name,
-                force=True,
-            )
+        # One-config-one-module node runs, driven by
+        # STANDALONE_NODE_KWARGS so a new kind adds a row rather than
+        # another loop -- and cannot be added without attribution.
+        standalone_nodes: list[tuple[str, list[Any]]] = [
+            ("metric", list(enabled_metrics)),
+            ("saga", list(enabled_sagas)),
+            ("interceptor", list(enabled_interceptors)),
+            ("dataloader", list(enabled_dataloaders)),
+            ("api_client", list(enabled_api_clients)),
+            ("storage_driver", list(enabled_storage_drivers)),
+        ]
+        # Feature flags seed FeatureFlagsModule's canonical keys; guard
+        # scaffolds are the credential check (auth) and role variants, with
+        # enforcement decorated onto the wired controllers below.
+        standalone_nodes += [
+            ("feature_flag", list(enabled_flags)),
+            ("auth_guard", list(auths)),
+            ("guard", list(roles)),
+            ("auth_policy", list(enabled_auth_policies)),
+        ]
+        for verb, configs in standalone_nodes:
+            for config in configs:
+                with generating(verb, owner(config)) as staged_dir:
+                    load_generator(verb, output_dir=staged_dir).generate(
+                        config.name,
+                        **STANDALONE_NODE_KWARGS[verb](config),
+                        force=True,
+                    )
 
         # Rate-limit policies + enforcement middleware (nodes plan N2.2 —
         # the framework has no per-route throttle primitive). The policy
         # module records the path prefixes of the routes wired to the node
         # (empty → documented placeholder); the middleware enforces it.
+        # The policy module sits in the middleware package, not `policies/`:
+        # `policies/` is where the framework's `auth_policy` generator writes
+        # and is module-local under modular, while a rate limit is
+        # cross-cutting (its kind maps to `middleware`). Borrowing that shelf
+        # made a shared middleware import a bounded context's package -- the
+        # boundary inverted -- and left a rate limit with nowhere to live in
+        # a modular app.
         for limit in rate_limits:
             wired = tuple(sorted(paths_by_rate_limit.get(limit.name, set())))
             files[
-                f"src/app/policies/{limit.name}_rate_limit.py"
+                f"{dest_for('middleware', self._layout)}/"
+                f"{limit.name}_rate_limit.py"
             ] = emit_rate_limit_module(limit, paths=wired, doc=limit.description)
 
         # Contract DTO modules (builder-side — the framework has no
@@ -1143,20 +1307,27 @@ class ProjectWriter(GeneratorBase):
         # imports the policy constants, so definition and enforcement cannot
         # drift. Registered in app.py via the scaffold's middleware list.
         if rate_limits:
-            files["src/app/middleware/rate_limit.py"] = emit_rate_limit_middleware(
+            files[
+                f"{dest_for('middleware', self._layout)}/rate_limit.py"
+            ] = emit_rate_limit_middleware(
                 [
                     (limit, tuple(sorted(paths_by_rate_limit.get(limit.name, set()))))
                     for limit in rate_limits
-                ]
+                ],
+                self._layout,
             )
 
         enabled_contracts = [c for c in contracts if c.enabled]
         for contract in enabled_contracts:
-            files[f"src/app/contracts/{contract.name}.py"] = (
+            ledger.record(
+                self._layout.pkg("contracts", f"{contract.name}.py"),
+                node_id=owner(contract),
+            )
+            files[self._layout.pkg("contracts", f"{contract.name}.py")] = (
                 emit_contract_module(contract)
             )
         if enabled_contracts:
-            files["src/app/contracts/__init__.py"] = (
+            files[self._layout.pkg("contracts", "__init__.py")] = (
                 "# generated by lexigram-builder - do not edit\n"
             )
 
@@ -1169,38 +1340,66 @@ class ProjectWriter(GeneratorBase):
             merged = ValidatorConfig(
                 name=f"validate_{entity_name}", rules=rules
             )
-            files[f"src/app/validators/{entity_name}.py"] = (
-                emit_validator_module(entity_name, merged)
+            # Rules from several validator nodes merge into one module, so
+            # the config is rebuilt and identity is gone; the node that
+            # caused the file is still recorded, and that is enough to place
+            # it (validators are module-local under modular).
+            validator_node = validator_owner_by_entity.get(entity_name)
+            validator_path = place.pkg(
+                "validators", f"{entity_name}.py", config=validator_node
             )
-            files["src/app/validators/__init__.py"] = (
+            ledger.record(validator_path, node_id=validator_node)
+            files[validator_path] = emit_validator_module(entity_name, merged)
+            files[place.pkg("validators", "__init__.py", config=validator_node)] = (
                 "# generated by lexigram-builder - do not edit\n"
             )
 
         for entity_name in sorted(ops_by_entity):
             entity_cfg = entity_by_name[entity_name]
             route_path = self._route_path(entity_name, path_by_entity)
+            # The route that exposes this entity owns its controller; an
+            # entity with no route (possible for `resource` style) keeps it.
+            controller_owner = route_owner_by_entity.get(entity_name) or owner(
+                entity_cfg
+            )
             if style_by_entity.get(entity_name) == "resource":
                 # ResourceGenerator writes output_dir/controllers/*.py
-                load_generator(
-                    "resource", output_dir=gen_dirs["controller"].parent
-                ).generate(
-                    entity_name,
-                    fields_str=_fields_str(entity_cfg),
-                    force=True,
-                )
+                with generating(
+                    "resource", controller_owner, subdirectory_of=True
+                ) as staged_dir:
+                    load_generator(
+                        "resource", output_dir=staged_dir
+                    ).generate(
+                        entity_name,
+                        fields_str=_fields_str(entity_cfg),
+                        force=True,
+                    )
             else:
-                load_generator("controller", output_dir=gen_dirs["controller"]).generate(
-                    entity_name,
-                    fields_str=_fields_str(entity_cfg),
-                    path=route_path,
-                    force=True,
-                )
+                with generating("controller", controller_owner) as staged_dir:
+                    load_generator(
+                        "controller", output_dir=staged_dir
+                    ).generate(
+                        entity_name,
+                        fields_str=_fields_str(entity_cfg),
+                        path=route_path,
+                        force=True,
+                    )
 
         # Stage → destination mapping and per-file reconciliation are entirely
         # data-driven from VERB_SPECS (see gen/node_generators.py). Adding a
         # generator-backed node adds a registry entry rather than another
         # branch here.
+        # The controller's audit hook imports the audit repository, which
+        # lives in the entity's own context under modular -- so the import
+        # root is the entity's, not the global one (which does not exist).
+        audit_repo_roots = {
+            entity_name: place.imports(entity_cfg_by_name.get(entity_name))[
+                "repositories"
+            ]
+            for entity_name in audit_entities_sorted
+        }
         reconcile_ctx = ReconcileContext(
+            layout=self._layout,
             entity_by_stem={entity.name: entity for entity in entities},
             channel_by_stem={c.name: c for c in enabled_channels},
             event_handler_by_stem={
@@ -1208,7 +1407,7 @@ class ProjectWriter(GeneratorBase):
             },
             projection_by_stem={
                 f"{snake_case(p.name)}_projection": p
-                for p in _resolve_projections(
+                for p in resolve_projections(
                     enabled_projections, graph.document, by_id
                 )
             },
@@ -1259,21 +1458,22 @@ class ProjectWriter(GeneratorBase):
                         f"{pascal_entity(entity_name)}AuditRepository"
                     ),
                     repo_module=(
-                        f"app.repositories.{entity_name}_audit_repository"
+                        f"{audit_repo_roots[entity_name]}."
+                        f"{entity_name}_audit_repository"
                     ),
                 )
                 for entity_name in audit_entities_sorted
             },
         )
-        for verb, gen_dir in gen_dirs.items():
-            dest_sub = dest_for(verb)
-            do_autofix = autofix_for(verb)
-            for produced in sorted(gen_dir.glob("*.py")):
-                text = produced.read_text(encoding="utf-8")
-                text = reconcile_text(verb, text, produced, reconcile_ctx)
-                if do_autofix:
-                    text = _ruff_autofix_text(text, produced.name)
-                files[f"{dest_sub}/{produced.name}"] = text
+        # Committing staged files is `gen/modular`'s job: which verb
+        # produced a file, which context owns it, and which import roots its
+        # reconcilers must name are one decision, taken in one place.
+        commit_staged(
+            staging.staged(),
+            files=files,
+            ledger=ledger,
+            reconcile_ctx=reconcile_ctx,
+        )
         shutil.rmtree(staging_root, ignore_errors=True)
 
         # HTTP smoke tests only for entities that actually have routes.
@@ -1281,16 +1481,28 @@ class ProjectWriter(GeneratorBase):
         for entity in entities:
             if entity.name in routed_names:
                 rel = crud_test_filename(entity)
+                ledger.record(rel, node_id=owner(entity))
                 files[rel] = emit_crud_test(
                     entity,
                     ops=frozenset(ops_by_entity[entity.name]),
                     path=self._route_path(entity.name, path_by_entity),
+                    mods=mods,
                 )
 
+        # ── modular: bounded contexts, their wiring, the composition root ──
+        #
+        # Emitted last so it can see everything the rest of the run
+        # produced, and kept in one place rather than threaded through every
+        # emitter: the modular-only artifacts are exactly the files that
+        # have no counterpart under minimal or structured.
+        if has_modules:
+            emit_modular_project(graph, files, ledger, layout=self._layout)
+
         app_prefix = f"{app_name}/"
-        _prune_stale_generated(
+        prune_stale_generated(
             Path(self.output_dir) / app_name,
             keep={f"{app_prefix}{rel}" for rel in files},
+            layout=self._layout,
         )
 
         staged_paths = sorted(files)
@@ -1298,11 +1510,12 @@ class ProjectWriter(GeneratorBase):
         for index, rel_path in enumerate(staged_paths, start=1):
             self.stage(app_prefix + rel_path, files[rel_path])
             if on_file is not None:
-                on_file(rel_path, index, total)
+                # Attribution from the ledger; matching paths would re-copy layout.
+                on_file(rel_path, index, total, ledger.record_for(rel_path))
 
         result = self.commit(GenerationOptions(policy=CollisionPolicy.OVERWRITE))
         if self._post_process:
-            self._ruff_format(Path(self.output_dir) / app_name)
+            format_project(Path(self.output_dir) / app_name)
         return self.finalize(result)
 
     @staticmethod
@@ -1317,63 +1530,9 @@ class ProjectWriter(GeneratorBase):
             return "/" + prefix.strip("/")
         return f"/{table_name(entity_name)}"
 
-    def _uses_pypi_sources(self) -> bool:
-        return self._pypi_sources
-
-    @staticmethod
-    def _extra_dependencies(
-        entities: list[EntityConfig], uploads: bool = False
-    ) -> tuple[str, ...]:
-        """Pinned extra deps required by the field types used in *entities*.
-
-        The framework's Pydantic models rely on optional extras (e.g.
-        ``EmailStr`` needs ``email-validator``); surface them in the
-        generated pyproject so ``uv sync`` pulls them and the generated
-        app imports cleanly.
-        """
-        field_types = {f.type for entity in entities for f in entity.fields}
-        deps: list[str] = []
-        if "email" in field_types:
-            deps.append("email-validator>=2.0.0")
-        if uploads:
-            # starlette's request.form() multipart parsing needs it.
-            deps.append("python-multipart>=0.0.9")
-        return tuple(deps)
-
-    def _relative_monorepo_root(self) -> str:
-        """Path prefix for generated [tool.uv.sources].
-
-        Absolute when a framework root override is supplied (tmp-dir runs);
-        otherwise the deterministic relative form used by golden snapshots.
-        """
-        return self._framework_root or _FRAMEWORK_REPO_REL
-
-    def _ruff_format(self, project_dir: Path) -> None:
-        """Lint-fix and format the generated project in place.
-
-        Framework templates (notably ``lexigram-tasks``' task template, see
-        TASK-3 in docs/LEXIGRAM_FRAMEWORK_BUGS.md) emit code with auto-fixable
-        lint issues: trailing whitespace in Jinja blanks (W293), unsorted
-        imports (I001), ``dict.get(k, None)`` (SIM910), and dead parameter
-        locals (F841). ``ruff format`` only handles whitespace, so run
-        ``ruff check --fix`` first. ``--unsafe-fixes`` is intentional: the
-        code is freshly generated (no hand edits to protect) and the only
-        unsafe fix that fires is removing a provably-unused local.
-        """
-        ruff = shutil.which("ruff")
-        if ruff is None:
-            return
-        for argv in (
-            [ruff, "check", "--fix", "--unsafe-fixes", "."],
-            [ruff, "format", "."],
-        ):
-            subprocess.run(  # noqa: S603 - fixed argv, no shell
-                argv,
-                cwd=project_dir,
-                check=False,
-                capture_output=True,
-                timeout=60,
-            )
+    def _monorepo_root(self) -> str:
+        """Path prefix for generated [tool.uv.sources]."""
+        return self._framework_root or FRAMEWORK_REPO_REL
 
 
 # Reserved by the framework migration template (always emitted there).
@@ -1388,209 +1547,3 @@ def _fields_str(entity: EntityConfig) -> str:
             part += "?"
         parts.append(part)
     return ",".join(parts)
-
-
-def _resolve_cqrs(
-    messages: list[CqrsMessageConfig],
-    document: GraphDocument,
-    by_id: dict[str, GraphNode],
-) -> list[CqrsMessageConfig]:
-    """Fill each command/query's bound ``entity`` from its wired edge.
-
-    An ``entity -> command|query`` edge binds the handler's aggregate
-    (repository injected at registration). The node's own ``entity`` field
-    is a fallback.
-    """
-    entity_for_msg: dict[str, str] = {}
-    for edge in document.edges:
-        src = by_id.get(edge.src)
-        dst = by_id.get(edge.dst)
-        if (
-            src is not None
-            and dst is not None
-            and src.kind == "entity"
-            and dst.kind in ("command", "query")
-            and isinstance(src.config, EntityConfig)
-            and isinstance(dst.config, CqrsMessageConfig)
-        ):
-            entity_for_msg[dst.id] = src.config.name
-    resolved: list[CqrsMessageConfig] = []
-    for node in document.nodes:
-        if node.kind not in ("command", "query") or not isinstance(
-            node.config, CqrsMessageConfig
-        ):
-            continue
-        if node.config not in messages:
-            continue
-        entity_name = entity_for_msg.get(node.id) or node.config.entity
-        resolved.append(
-            CqrsMessageConfig(
-                name=node.config.name,
-                side=node.config.side,
-                entity=entity_name,
-                fields=node.config.fields,
-                enabled=True,
-                description=node.config.description,
-            )
-        )
-    return sorted(resolved, key=lambda m: (m.side, m.name))
-
-
-def _resolve_projections(
-    projections: list[ProjectionConfig],
-    document: GraphDocument,
-    by_id: dict[str, GraphNode],
-) -> list[ProjectionConfig]:
-    """Fill each projection's consumed events from its wired edges.
-
-    An ``event -> projection`` edge feeds that event into the projection's
-    read model; the projection's own ``events`` field is a fallback.
-    """
-    events_for_projection: dict[str, list[str]] = {}
-    for edge in document.edges:
-        src = by_id.get(edge.src)
-        dst = by_id.get(edge.dst)
-        if (
-            src is not None
-            and dst is not None
-            and src.kind == "event"
-            and dst.kind == "projection"
-            and isinstance(src.config, EventConfig)
-            and isinstance(dst.config, ProjectionConfig)
-        ):
-            events_for_projection.setdefault(dst.id, []).append(src.config.name)
-    resolved: list[ProjectionConfig] = []
-    for node in document.nodes:
-        if node.kind != "projection" or not isinstance(
-            node.config, ProjectionConfig
-        ):
-            continue
-        if node.config not in projections:
-            continue
-        wired = events_for_projection.get(node.id, [])
-        merged = list(dict.fromkeys([*wired, *node.config.events]))
-        if not merged:
-            # No events to consume — nothing useful to wire; skip.
-            continue
-        resolved.append(
-            ProjectionConfig(
-                name=node.config.name,
-                events=tuple(merged),
-                enabled=True,
-                description=node.config.description,
-            )
-        )
-    return sorted(resolved, key=lambda p: p.name)
-
-
-def _resolve_handlers(
-    handlers: list[EventHandlerConfig],
-    document: GraphDocument,
-    by_id: dict[str, GraphNode],
-) -> list[EventHandlerConfig]:
-    """Fill each handler's ``event`` from its wired ``event -> handler`` edge.
-
-    The handler's own config may name an event explicitly; an edge to an event
-    node takes precedence (the canvas is the source of truth for wiring).
-    """
-    # Map handler node id -> the event name it is wired to.
-    event_for_handler: dict[str, str] = {}
-    for edge in document.edges:
-        src = by_id.get(edge.src)
-        dst = by_id.get(edge.dst)
-        if (
-            src is not None
-            and dst is not None
-            and src.kind == "event"
-            and dst.kind == "event_handler"
-            and isinstance(src.config, EventConfig)
-            and isinstance(dst.config, EventHandlerConfig)
-        ):
-            event_for_handler[dst.id] = src.config.name
-    resolved: list[EventHandlerConfig] = []
-    for node in document.nodes:
-        if node.kind != "event_handler" or not isinstance(
-            node.config, EventHandlerConfig
-        ):
-            continue
-        if node.config not in handlers:
-            continue
-        wired = event_for_handler.get(node.id)
-        event_name = wired or node.config.event
-        if event_name:
-            resolved.append(
-                EventHandlerConfig(
-                    name=node.config.name,
-                    event=event_name,
-                    enabled=True,
-                    description=node.config.description,
-                )
-            )
-    return resolved
-
-
-def _ruff_autofix_text(text: str, filename: str) -> str:
-    """Run ``ruff check --fix`` on *text* in-memory, returning fixed source.
-
-    Used for generators whose templates emit auto-fixable lint noise (unused
-    imports, modern-type style). Falls back to the original text if ruff is
-    unavailable or fails, so generation never depends on the linter being
-    installed.
-    """
-    import sys
-
-    try:
-        proc = subprocess.run(
-            [sys.executable, "-m", "ruff", "check", "--fix", "-", "--stdin-filename", filename],
-            input=text,
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-    except (OSError, subprocess.SubprocessError):
-        return text
-    # ruff writes the fixed source to stdout even when it reports fixes made.
-    return proc.stdout if proc.stdout else text
-
-
-def _prune_stale_generated(project_dir: Path, *, keep: set[str]) -> None:
-    """Delete previously generated files that are no longer produced."""
-    managed_roots = [
-        project_dir / "src" / "app" / "controllers",
-        project_dir / "src" / "app" / "repositories",
-        project_dir / "src" / "app" / "models",
-        project_dir / "src" / "app" / "middleware",
-        project_dir / "src" / "app" / "tasks",
-        project_dir / "src" / "app" / "webhooks",
-        project_dir / "src" / "app" / "graphql",
-        project_dir / "src" / "app" / "healthchecks",
-        project_dir / "src" / "app" / "events",
-        project_dir / "src" / "app" / "handlers",
-        project_dir / "src" / "app" / "commands",
-        project_dir / "src" / "app" / "queries",
-        project_dir / "src" / "app" / "projections",
-        project_dir / "src" / "app" / "metrics",
-        project_dir / "src" / "app" / "sagas",
-        project_dir / "src" / "app" / "interceptors",
-        project_dir / "src" / "app" / "clients",
-        project_dir / "src" / "app" / "storage" / "backends",
-        project_dir / "src" / "app" / "features",
-        project_dir / "src" / "app" / "guards",
-        project_dir / "src" / "app" / "auth",
-        project_dir / "src" / "app" / "emails",
-        project_dir / "src" / "app" / "validators",
-        project_dir / "src" / "app" / "uploads",
-        project_dir / "src" / "app" / "policies",
-        project_dir / "src" / "app" / "contracts",
-        project_dir / "src" / "app" / "di",
-        project_dir / "migrations" / "versions",
-        project_dir / "tests",
-    ]
-    prefix_len = len(str(project_dir)) + 1
-    for root in managed_roots:
-        if not root.is_dir():
-            continue
-        for child in sorted(root.rglob("*.py")):
-            rel = str(child)[prefix_len:]
-            if rel not in keep:
-                child.unlink(missing_ok=True)

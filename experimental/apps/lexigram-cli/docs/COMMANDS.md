@@ -16,7 +16,7 @@ The `lexigram` CLI is the primary developer tool for scaffolding, running, and m
 Scaffold a new project or package.
 
 ```
-lexigram new project <name> [--template web-api] [--structure structured] [--directory .]
+lexigram new project <name> [--template web-api] [--directory .]
 lexigram new module <name> [--directory .]
 lexigram new package <name> [--output-dir packages/]
 ```
@@ -24,18 +24,17 @@ lexigram new package <name> [--output-dir packages/]
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--template`, `-t` | `web-api` | Project template (`minimal`, `api`, `web-api`, `graphql`, `worker`, `full`, `fullstack`) |
-| `--structure`, `-s` | `structured` | Project structure (`minimal` single-package, `structured` component packages, `modular` bounded contexts) |
 | `--directory`, `-d` | `.` | Output directory |
 
 **Examples:**
 
 ```bash
-lexigram new project my-api --template web-api --structure structured
-lexigram new project my-app --template api --structure minimal
-lexigram new project my-platform --template full --structure modular
+lexigram new project my-api --template web-api
+lexigram new project my-app --template api
+lexigram new project my-platform --template full
 ```
 
-`lexigram new module <name>` adds a bounded context to a modular project
+`lexigram new module <name>` adds a bounded context to a project
 (`src/<app>/modules/<name>/` with a `@module` boundary, `protocols.py`,
 `provider.py` and `services.py`, registered in `modules/__init__.py`).
 

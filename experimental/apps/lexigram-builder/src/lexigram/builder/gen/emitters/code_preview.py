@@ -67,6 +67,9 @@ from lexigram.builder.gen.emitters.storage_driver_emitter import (
 from lexigram.builder.gen.emitters.validator_emitter import (
     emit_validator_module,
 )
+from lexigram.builder.gen.layout import DEFAULT_LAYOUT, WriterLayout
+from lexigram.builder.gen.modular.placement import Placement
+from lexigram.builder.gen.node_generators import dest_for
 from lexigram.builder.graph.models import (
     ApiClientConfig,
     ApiKeyGroupConfig,
@@ -91,13 +94,21 @@ from lexigram.builder.graph.models import (
     StorageDriverConfig,
     ValidatorConfig,
 )
+from lexigram.builder.graph.modules import drop_muted
+from lexigram.builder.graph.palette import KIND_MODULE
 
 
 def emit_code_preview(document: GraphDocument) -> list[dict[str, str]]:
     """Generate preview files from a graph document.
 
     Returns a list of {path, language, content} dicts for the frontend code tab.
+
+    The preview answers "what would generation produce?", so it applies the
+    same projection generation does: muted nodes are dropped before anything
+    is emitted. A preview that shows a file the writer will not write is a
+    preview that lies.
     """
+    document = drop_muted(document)
     settings_node = None
     for node in document.nodes:
         if node.kind == "app_settings" and isinstance(node.config, AppSettingsConfig):
@@ -110,6 +121,14 @@ def emit_code_preview(document: GraphDocument) -> list[dict[str, str]]:
     cfg = settings_node.config
     assert isinstance(cfg, AppSettingsConfig)
     app_name = cfg.app_name
+    # L6: the preview must show the paths the writer will actually use --
+    # a preview that lies about locations is worse than no preview.
+    layout = WriterLayout.for_app(app_name)
+    # Same placement authority the writer uses, for the same reason: a
+    # component has no single destination once modules exist, and a preview
+    # that shows one is a preview of a different project.
+    place = Placement.of_document(document, layout)
+    mods = (layout or DEFAULT_LAYOUT).module_names()
 
     entities: list[EntityConfig] = []
     for node in document.nodes:
@@ -172,6 +191,19 @@ def emit_code_preview(document: GraphDocument) -> list[dict[str, str]]:
 
     route_bindings: list[tuple[RouteConfig, EntityConfig]] = []
     by_id: dict[str, GraphNode] = {n.id: n for n in document.nodes}
+    # L4: attribute previewed files to their node the same way the writer
+    # does -- from the config object's identity, not from the path shape.
+    node_id_by_config = {id(n.config): n.id for n in document.nodes}
+
+    def owner(config: object | None) -> str | None:
+        return None if config is None else node_id_by_config.get(id(config))
+
+    # Merged configs are rebuilt, so their node is remembered explicitly.
+    search_owner_by_entity: dict[str, str] = {}
+    audit_owner_by_entity: dict[str, str] = {}
+    upload_owner_by_route: dict[str, str] = {}
+    validator_owner_by_entity: dict[str, str] = {}
+    route_owner_by_entity: dict[str, str] = {}
     for node in document.nodes:
         if node.kind == "route" and isinstance(node.config, RouteConfig):
             for edge in document.edges:
@@ -234,6 +266,8 @@ def emit_code_preview(document: GraphDocument) -> list[dict[str, str]]:
         )
         if entity_name is None:
             continue
+        # First route wins, matching the writer's controller attribution.
+        route_owner_by_entity.setdefault(entity_name, node.id)
         for edge in document.edges:
             if edge.src != node.id:
                 continue
@@ -284,6 +318,7 @@ def emit_code_preview(document: GraphDocument) -> list[dict[str, str]]:
         ):
             continue
         scfg = dst_node.config
+        search_owner_by_entity.setdefault(src_node.config.name, dst_node.id)
         existing = search_cfg_by_entity.get(src_node.config.name)
         if existing is None:
             search_cfg_by_entity[src_node.config.name] = SearchIndexConfig(
@@ -324,6 +359,7 @@ def emit_code_preview(document: GraphDocument) -> list[dict[str, str]]:
         ):
             continue
         acfg = dst_node.config
+        audit_owner_by_entity.setdefault(src_node.config.name, dst_node.id)
         audit_existing = audit_cfg_by_entity.get(src_node.config.name)
         if audit_existing is None:
             audit_cfg_by_entity[src_node.config.name] = AuditLogConfig(
@@ -408,9 +444,11 @@ def emit_code_preview(document: GraphDocument) -> list[dict[str, str]]:
             ):
                 continue
             upload_cfg_by_route[src_node.id] = dst_node.config
+            upload_owner_by_route[src_node.id] = dst_node.id
     upload_entities: dict[str, FileUploadConfig] = {}
     upload_route_paths: dict[str, str] = {}
-    for route_id, upload_cfg in upload_cfg_by_route.items():
+    for route_id in upload_cfg_by_route:
+        upload_cfg = upload_cfg_by_route[route_id]
         up_route_node = by_id[route_id]
         up_route_cfg = up_route_node.config
         assert isinstance(up_route_cfg, RouteConfig)
@@ -444,7 +482,7 @@ def emit_code_preview(document: GraphDocument) -> list[dict[str, str]]:
         entities,
         route_bindings,
         relative_root="../../lexigram",
-        structure=cfg.structure,
+        has_modules=any(node.kind == KIND_MODULE for node in document.nodes),
         extra_dependencies=extra_deps,
         api_clients=bool(enabled_api_clients),
         storage_drivers=bool(enabled_storage_drivers),
@@ -454,12 +492,14 @@ def emit_code_preview(document: GraphDocument) -> list[dict[str, str]]:
         api_key_groups=tuple(enabled_api_key_groups),
         email_templates=tuple(enabled_email_templates),
         roles=tuple(roles),
-        policies=tuple(rate_limits),
+        policies=tuple(enabled_auth_policies),
         search_entities=tuple(sorted(search_cfg_by_entity)),
         audit_repositories=tuple(sorted(audit_cfg_by_entity)),
         upload_controllers=tuple(
-            (name, cfg.name) for name, cfg in sorted(upload_entities.items())
+            (name, cfg.name, place.imports(cfg)["uploads"])
+            for name, cfg in sorted(upload_entities.items())
         ),
+        placement=place,
     )
 
     files: list[dict[str, str]] = []
@@ -486,13 +526,14 @@ def emit_code_preview(document: GraphDocument) -> list[dict[str, str]]:
             entity_cfg,
             route_cfg,
             with_flags=entity_cfg.name in flag_gates_by_entity,
+            mods=mods,
         )
         # Contract wiring first (payload/response swaps), then flag gates,
         # then guards — mirrors the writer's _reconcile_controller order.
         wiring = contract_bindings_by_entity.get(entity_cfg.name)
         if wiring is not None:
             content = apply_contract(
-                content, ControllerContract(by_op=dict(wiring))
+                content, ControllerContract(by_op=dict(wiring)), mods
             )
         gates = flag_gates_by_entity.get(entity_cfg.name)
         if gates is not None:
@@ -532,51 +573,72 @@ def emit_code_preview(document: GraphDocument) -> list[dict[str, str]]:
                     ops=frozenset(audit.operations),
                     repo_class=f"{pascal_entity(entity_cfg.name)}AuditRepository",
                     repo_module=(
-                        "app.repositories."
+                        f"{mods['repositories']}."
                         f"{snake_case(entity_cfg.name)}_audit_repository"
                     ),
                 ),
             )
         files.append({
-            "path": f"src/app/controllers/{snake_case(entity_cfg.name)}_controller.py",
+            "path": (
+                f"{dest_for('controller', layout)}/"
+                f"{snake_case(entity_cfg.name)}_controller.py"
+            ),
             "language": "python",
             "content": content,
+            "node_id": route_owner_by_entity.get(entity_cfg.name)
+            or owner(entity_cfg),
         })
 
     # Add feature-flag definition previews (mirrors the writer's staged
     # output of the lexigram-features `feature_flag` generator).
     for flag in enabled_flags:
         files.append({
-            "path": f"src/app/features/{snake_case(flag.name)}_flag.py",
+            "path": (
+                f"{dest_for('feature_flag', layout)}/"
+                f"{snake_case(flag.name)}_flag.py"
+            ),
             "language": "python",
             "content": _flag_preview(flag),
+            "node_id": owner(flag),
         })
 
     # Guard scaffolds (mirrors the writer's staged lexigram-auth output).
     for auth in sorted(auths, key=lambda a: a.name):
         files.append({
-            "path": f"src/app/guards/{snake_case(auth.name)}_auth_guard.py",
+            "path": (
+                f"{dest_for('auth_guard', layout)}/"
+                f"{snake_case(auth.name)}_auth_guard.py"
+            ),
             "language": "python",
             "content": _auth_guard_preview(auth),
+            "node_id": owner(auth),
         })
     for role in sorted(roles, key=lambda r: r.name):
         files.append({
-            "path": f"src/app/guards/{snake_case(role.name)}_guard.py",
+            "path": (
+                f"{dest_for('auth_guard', layout)}/"
+                f"{snake_case(role.name)}_guard.py"
+            ),
             "language": "python",
             "content": _role_guard_preview(role),
+            "node_id": owner(role),
         })
     for limit in sorted(rate_limits, key=lambda r: r.name):
         wired = tuple(sorted(paths_by_rate_limit.get(limit.name, set())))
         files.append({
-            "path": f"src/app/policies/{snake_case(limit.name)}_rate_limit.py",
+            "path": (
+                f"{dest_for('middleware', layout)}/"
+                f"{snake_case(limit.name)}_rate_limit.py"
+            ),
             "language": "python",
             "content": emit_rate_limit_module(limit, paths=wired, doc=limit.description),
+            "node_id": owner(limit),
         })
 
     # Rate-limit enforcement middleware (mirrors the writer's emission).
     if rate_limits:
         files.append({
-            "path": "src/app/middleware/rate_limit.py",
+            "path": f"{dest_for('middleware', layout)}/rate_limit.py",
             "language": "python",
             "content": emit_rate_limit_middleware(
                 [
@@ -591,9 +653,10 @@ def emit_code_preview(document: GraphDocument) -> list[dict[str, str]]:
         (c for c in contracts if c.enabled), key=lambda c: c.name
     ):
         files.append({
-            "path": f"src/app/contracts/{contract.name}.py",
+            "path": f"{layout.pkg('contracts')}/{contract.name}.py",
             "language": "python",
             "content": emit_contract_module(contract),
+            "node_id": owner(contract),
         })
 
     # Validator constraint modules (mirrors the writer's emission — nodes
@@ -613,6 +676,7 @@ def emit_code_preview(document: GraphDocument) -> list[dict[str, str]]:
             or dst_node.config.name not in validator_cfg_by_name
         ):
             continue
+        validator_owner_by_entity.setdefault(src_node.config.name, dst_node.id)
         validator_rules_by_entity.setdefault(
             src_node.config.name, []
         ).extend(validator_cfg_by_name[dst_node.config.name].rules)
@@ -621,13 +685,16 @@ def emit_code_preview(document: GraphDocument) -> list[dict[str, str]]:
         if not rules:
             continue
         merged = ValidatorConfig(name=f"validate_{entity_name}", rules=rules)
+        validator_node = validator_owner_by_entity.get(entity_name)
+        validator_dir = place.pkg("validators", config=validator_node)
         files.append({
-            "path": f"src/app/validators/{entity_name}.py",
+            "path": f"{validator_dir}/{entity_name}.py",
             "language": "python",
             "content": emit_validator_module(entity_name, merged),
+            "node_id": validator_node,
         })
         files.append({
-            "path": "src/app/validators/__init__.py",
+            "path": f"{validator_dir}/__init__.py",
             "language": "python",
             "content": "# generated by lexigram-builder - do not edit\n",
         })
@@ -652,17 +719,26 @@ def emit_code_preview(document: GraphDocument) -> list[dict[str, str]]:
                     revision=revision,
                     prev_revision=search_prev_rev,
                 ),
+                "node_id": search_owner_by_entity.get(entity_name),
             })
             search_prev_rev = revision
         files.append({
-            "path": f"src/app/repositories/{entity_name}_search_repository.py",
+            "path": (
+                f"{dest_for('repository', layout)}/"
+                f"{entity_name}_search_repository.py"
+            ),
             "language": "python",
             "content": emit_search_repository(entity_name, search_cfg),
+            "node_id": search_owner_by_entity.get(entity_name),
         })
         files.append({
-            "path": f"src/app/controllers/{entity_name}_search_controller.py",
+            "path": (
+                f"{dest_for('controller', layout)}/"
+                f"{entity_name}_search_controller.py"
+            ),
             "language": "python",
-            "content": emit_search_controller(entity_name, route_path),
+            "content": emit_search_controller(entity_name, route_path, mods),
+            "node_id": search_owner_by_entity.get(entity_name),
         })
 
     # Audit-log artifacts (mirrors the writer's emission — nodes plan
@@ -681,12 +757,17 @@ def emit_code_preview(document: GraphDocument) -> list[dict[str, str]]:
                 revision=revision,
                 prev_revision=audit_prev_rev,
             ),
+            "node_id": audit_owner_by_entity.get(entity_name),
         })
         audit_prev_rev = revision
         files.append({
-            "path": f"src/app/repositories/{entity_name}_audit_repository.py",
+            "path": (
+                f"{dest_for('repository', layout)}/"
+                f"{entity_name}_audit_repository.py"
+            ),
             "language": "python",
             "content": emit_audit_repository(entity_name, audit_cfg),
+            "node_id": audit_owner_by_entity.get(entity_name),
         })
 
     # API-key artifacts (mirrors the writer's emission — nodes plan
@@ -701,44 +782,51 @@ def emit_code_preview(document: GraphDocument) -> list[dict[str, str]]:
                 revision=revision,
                 prev_revision=audit_prev_rev,
             ),
+            "node_id": owner(enabled_api_key_groups[0]),
         })
         files.append({
-            "path": "src/app/repositories/api_key_repository.py",
+            "path": f"{dest_for('repository', layout)}/api_key_repository.py",
             "language": "python",
             "content": emit_api_key_repository(),
+            "node_id": owner(enabled_api_key_groups[0]),
         })
         files.append({
-            "path": "src/app/auth/__init__.py",
+            "path": f"{layout.pkg('auth')}/__init__.py",
             "language": "python",
             "content": "# generated by lexigram-builder - do not edit\n",
         })
         files.append({
-            "path": "src/app/auth/api_keys.py",
+            "path": f"{layout.pkg('auth')}/api_keys.py",
             "language": "python",
             "content": emit_api_keys_auth_module(
                 enabled_api_key_groups[0],
                 merged_api_key_scopes(enabled_api_key_groups),
+                mods,
             ),
+            "node_id": owner(enabled_api_key_groups[0]),
         })
 
     # Email artifacts (mirrors the writer's emission — nodes plan N4.3):
     # one Mailable module per enabled template + shared mailer/init.
     if enabled_email_templates:
         files.append({
-            "path": "src/app/emails/__init__.py",
+            "path": f"{layout.pkg('emails')}/__init__.py",
             "language": "python",
-            "content": emit_emails_init(enabled_email_templates),
+            "content": emit_emails_init(enabled_email_templates, mods),
+            "node_id": owner(enabled_email_templates[0]),
         })
         files.append({
-            "path": "src/app/emails/mailer.py",
+            "path": f"{layout.pkg('emails')}/mailer.py",
             "language": "python",
             "content": emit_mailer_helper(),
+            "node_id": owner(enabled_email_templates[0]),
         })
         for template in enabled_email_templates:
             files.append({
-                "path": f"src/app/emails/{template.name}.py",
+                "path": f"{layout.pkg('emails')}/{template.name}.py",
                 "language": "python",
                 "content": emit_email_module(template),
+                "node_id": owner(template),
             })
 
     # File-upload artifacts (mirrors the writer's emission — nodes
@@ -746,22 +834,29 @@ def emit_code_preview(document: GraphDocument) -> list[dict[str, str]]:
     for entity_name, upload_cfg in sorted(upload_entities.items()):
         route_path = upload_route_paths[entity_name]
         files.append({
-            "path": f"src/app/uploads/{upload_cfg.name}_upload_storage.py",
+            "path": place.pkg(
+                "uploads",
+                f"{upload_cfg.name}_upload_storage.py",
+                config=upload_cfg,
+            ),
             "language": "python",
             "content": emit_upload_storage(entity_name, upload_cfg),
+            "node_id": upload_owner_by_route.get(route_id),
         })
         files.append({
             "path": (
-                f"src/app/controllers/{upload_cfg.name}_upload_controller.py"
+                f"{place.dest('controller', upload_cfg)}/"
+                f"{upload_cfg.name}_upload_controller.py"
             ),
             "language": "python",
             "content": emit_upload_controller(
-                entity_name, route_path, upload_cfg
+                entity_name, route_path, upload_cfg, place.imports(upload_cfg)
             ),
+            "node_id": upload_owner_by_route.get(route_id),
         })
-    if upload_entities:
+    for _slug, upload_group in place.group(list(upload_entities.values())):
         files.append({
-            "path": "src/app/uploads/__init__.py",
+            "path": place.pkg("uploads", "__init__.py", config=upload_group[0]),
             "language": "python",
             "content": (
                 "# Generated by lexigram-builder. Do not edit; regenerate"
@@ -772,26 +867,30 @@ def emit_code_preview(document: GraphDocument) -> list[dict[str, str]]:
 
     for saga in enabled_sagas:
         files.append({
-            "path": f"src/app/sagas/{snake_case(saga.name)}_saga.py",
+            "path": f"{dest_for('saga', layout)}/{snake_case(saga.name)}_saga.py",
             "language": "python",
             "content": emit_saga_module(saga),
+            "node_id": owner(saga),
         })
     for interceptor in enabled_interceptors:
         files.append({
             "path": (
-                f"src/app/interceptors/{snake_case(interceptor.name)}_interceptor.py"
+                f"{dest_for('interceptor', layout)}/"
+                f"{snake_case(interceptor.name)}_interceptor.py"
             ),
             "language": "python",
             "content": emit_interceptor_module(interceptor),
+            "node_id": owner(interceptor),
         })
     for loader in enabled_dataloaders:
         files.append(
             {
                 "path": (
-                    f"src/app/graphql/dataloaders/{snake_case(loader.name)}.py"
+                    f"{dest_for('dataloader', layout)}/"
+                    f"{snake_case(loader.name)}.py"
                 ),
                 "language": "python",
-                "content": emit_dataloader_module(loader),
+                "content": emit_dataloader_module(loader, mods),
             }
         )
 
@@ -799,24 +898,33 @@ def emit_code_preview(document: GraphDocument) -> list[dict[str, str]]:
         files.append(
             {
                 "path": (
-                    f"src/app/policies/{snake_case(policy.name)}_policy.py"
+                    f"{dest_for('auth_policy', layout)}/"
+                    f"{snake_case(policy.name)}_policy.py"
                 ),
                 "language": "python",
-                "content": emit_auth_policy_module(policy),
+                "content": emit_auth_policy_module(policy, mods),
             }
         )
 
     for client in enabled_api_clients:
         files.append({
-            "path": f"src/app/clients/{snake_case(client.name)}_client.py",
+            "path": (
+                f"{dest_for('api_client', layout)}/"
+                f"{snake_case(client.name)}_client.py"
+            ),
             "language": "python",
             "content": emit_api_client_module(client),
+            "node_id": owner(client),
         })
     for driver in enabled_storage_drivers:
         files.append({
-            "path": f"src/app/storage/backends/{snake_case(driver.name)}.py",
+            "path": (
+                f"{dest_for('storage_driver', layout)}/"
+                f"{snake_case(driver.name)}.py"
+            ),
             "language": "python",
             "content": emit_storage_driver_module(driver),
+            "node_id": owner(driver),
         })
 
     return files
@@ -871,8 +979,13 @@ def _flag_preview(flag: FeatureFlagConfig) -> str:
 
 
 def _controller_preview(
-    entity: EntityConfig, route: RouteConfig, *, with_flags: bool = False
+    entity: EntityConfig,
+    route: RouteConfig,
+    *,
+    with_flags: bool = False,
+    mods: dict[str, str] | None = None,
 ) -> str:
+    mods = mods or DEFAULT_LAYOUT.module_names()
     pascal = pascal_entity(entity.name)
     table = snake_case(entity.name)
     ops = route.ops or ("create", "get", "list", "update", "delete")
@@ -886,9 +999,12 @@ def _controller_preview(
         "from starlette.requests import Request",
         "from lexigram.web import Controller, post, get, put, delete",
         "from lexigram.web.exceptions import BadRequestError, NotFoundError",
-        f"from app.exceptions import {pascal}NotFoundError",
-        f"from app.models.{table} import {pascal}Create, {pascal}Update",
-        f"from app.repositories.{table}_repository import {pascal}Repository",
+        f"from {mods['app']}.exceptions import {pascal}NotFoundError",
+        f"from {mods['models']}.{table} import {pascal}Create, {pascal}Update",
+        (
+            f"from {mods['repositories']}.{table}_repository import "
+            f"{pascal}Repository"
+        ),
     ]
     if with_flags:
         imports.append("from lexigram.features import FlagManager")
@@ -1064,3 +1180,18 @@ def _role_guard_preview(role: RoleConfig) -> str:
         "    def __init__(self) -> None:\n"
         f'        super().__init__("{key}")\n'
     )
+
+
+def files_by_node(document: GraphDocument) -> dict[str, list[str]]:
+    """``{node_id: [previewed paths]}`` for *document*.
+
+    Recorded while the preview is emitted (task L4), so it agrees with the
+    writer's own attribution and survives non-minimal structures -- unlike
+    matching paths against a regex table.
+    """
+    tally: dict[str, set[str]] = {}
+    for entry in emit_code_preview(document):
+        node_id = entry.get("node_id")
+        if node_id:
+            tally.setdefault(node_id, set()).add(entry["path"])
+    return {node: sorted(paths) for node, paths in sorted(tally.items())}

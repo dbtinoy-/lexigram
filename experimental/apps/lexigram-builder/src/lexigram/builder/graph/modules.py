@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
-from lexigram.builder.graph.models import GraphDocument, GraphNode
+from lexigram.builder.graph.models import GraphDocument, GraphNode, ModuleConfig
 
 
 @dataclass(frozen=True, slots=True)
@@ -17,16 +17,76 @@ class ModuleCard:
     reserved: str | None = None
 
 
-def _muted(node: GraphNode) -> bool:
+def module_import_graph(document: GraphDocument) -> dict[str, set[str]]:
+    """Return ``{slug: slugs it imports}``, derived from frame-to-frame edges.
+
+    Imports are never stored on ``ModuleConfig`` (taxonomy rule M2): the
+    edges already say it, and a second copy is a second thing to keep
+    correct. Both the validator (cycle detection) and the module emitter
+    (the ``imports`` list in the boundary) read this one function, so a
+    graph can never validate as acyclic and then emit a cycle.
+
+    Self-imports are dropped rather than reported here -- diagnosing them is
+    the validator's job, and the emitter must not render one either way.
+    """
+    slug_by_id = {
+        node.id: node.config.name
+        for node in document.nodes
+        if node.kind == "module" and isinstance(node.config, ModuleConfig)
+    }
+    imports: dict[str, set[str]] = {slug: set() for slug in slug_by_id.values()}
+    for edge in document.edges:
+        importer = slug_by_id.get(edge.src)
+        imported = slug_by_id.get(edge.dst)
+        if importer is None or imported is None or importer == imported:
+            continue
+        imports[importer].add(imported)
+    return imports
+
+
+def is_muted(node: GraphNode) -> bool:
+    """True when *node* is on the canvas but excluded from generation.
+
+    Public because muting is a contract, not an implementation detail: the
+    canvas, the module map and the writer must all agree on which nodes are
+    live, and a private predicate invites each of them to re-derive it.
+    """
+    if getattr(node, "muted", False):
+        return True
+    # Canvas-shaped input (a raw dict still carrying its ``meta`` bag) can
+    # reach here from fixtures and from clients that have not been parsed
+    # yet; the parsed document is the normal path.
     meta = getattr(node, "meta", None)
     if isinstance(meta, dict):
         return bool(meta.get("muted"))
     return bool(getattr(meta, "muted", False)) if meta is not None else False
 
 
+def drop_muted(doc: GraphDocument) -> GraphDocument:
+    """*doc* with muted nodes -- and every edge touching one -- removed.
+
+    Returns a new document; muting must never mutate the graph the user is
+    editing. Edges go too, because an edge to a node that will not be
+    generated is a dangling reference the emitters would have to guess
+    about.
+
+    Only edges touching a *muted* node are removed -- an edge pointing at an
+    id that never existed is a broken graph, and dropping it here would
+    quietly delete the evidence before the validator can report it.
+    """
+    live = [node for node in doc.nodes if not is_muted(node)]
+    muted_ids = {node.id for node in doc.nodes if is_muted(node)}
+    edges = [
+        edge
+        for edge in doc.edges
+        if edge.src not in muted_ids and edge.dst not in muted_ids
+    ]
+    return replace(doc, nodes=live, edges=edges)
+
+
 def derive_modules(doc: GraphDocument) -> list[ModuleCard]:
     """Return module-map cards (mirrors playground ``modulesFromGraph``)."""
-    live = [node for node in doc.nodes if not _muted(node)]
+    live = [node for node in doc.nodes if not is_muted(node)]
     counts: dict[str, int] = {}
     for node in live:
         counts[node.kind] = counts.get(node.kind, 0) + 1

@@ -23,11 +23,13 @@ class TestGenController:
             ],
         )
         assert result.exit_code == 0
-        assert (
-            f"Created: {temp_project / 'src/controllers/pet_controller.py'}"
-            in result.output
+        created = temp_project / "src/test_project/controllers/pet_controller.py"
+        # The console hard-wraps a long path mid-word, so compare with all
+        # whitespace removed rather than on where rich broke the line.
+        assert "".join(f"Created: {created}".split()) in "".join(
+            result.output.split()
         )
-        assert (temp_project / "src/controllers/pet_controller.py").exists()
+        assert created.exists()
 
     def test_gen_controller_content(
         self,
@@ -44,6 +46,6 @@ class TestGenController:
         )
         assert result.exit_code == 0
         content = (
-            temp_project / "src/controllers/user_profile_controller.py"
+            temp_project / "src/test_project/controllers/user_profile_controller.py"
         ).read_text()
         assert "class UserProfileController(Controller):" in content

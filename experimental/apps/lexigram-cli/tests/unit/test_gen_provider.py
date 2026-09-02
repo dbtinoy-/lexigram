@@ -27,11 +27,13 @@ class TestGenProvider:
             ],
         )
         assert result.exit_code == 0
-        assert (
-            f"Created: {temp_project / 'src/providers/my_awesome_provider.py'}"
-            in result.output
+        created = temp_project / "src/test_project/shared/providers/my_awesome_provider.py"
+        # The console hard-wraps a long path mid-word, so compare with all
+        # whitespace removed rather than on where rich broke the line.
+        assert "".join(f"Created: {created}".split()) in "".join(
+            result.output.split()
         )
-        assert (temp_project / "src/providers/my_awesome_provider.py").exists()
+        assert created.exists()
 
     def test_gen_provider_content(
         self, temp_project, cli_app_with_core_generators
@@ -45,7 +47,7 @@ class TestGenProvider:
             ],
         )
         assert result.exit_code == 0
-        content = (temp_project / "src/providers/my_awesome_provider.py").read_text()
+        content = (temp_project / "src/test_project/shared/providers/my_awesome_provider.py").read_text()
         assert "class MyAwesomeProvider(Provider):" in content
 
     def test_gen_provider_is_valid_python(

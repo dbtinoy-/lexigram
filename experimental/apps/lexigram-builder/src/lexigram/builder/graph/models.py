@@ -4,13 +4,25 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from lexigram.builder.types import Diagnostic
+
 
 @dataclass(frozen=True, slots=True)
 class Position:
-    """Canvas coordinates."""
+    """Canvas coordinates.
+
+    Coordinates are coerced to ``float`` on construction. The parser
+    already does this for JSON input, so without it a document built in
+    Python with integer coordinates would serialise as ``0`` and come back
+    as ``0.0`` -- a spurious diff on every save/reload cycle.
+    """
 
     x: float
     y: float
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "x", float(self.x))
+        object.__setattr__(self, "y", float(self.y))
 
 
 # Global capability flags toggled from the Project Settings screen. These are
@@ -31,9 +43,22 @@ class AppSettingsConfig:
     app_name: str
     port: int
     db: str
-    structure: str = "minimal"
     # Set of enabled capability keys (subset of APP_FEATURE_KEYS).
     features: frozenset[str] = frozenset()
+    # Deployment profiles to emit an ``application.<profile>.yaml`` overlay
+    # for. The framework loads one on top of ``application.yaml`` when
+    # ``LEX_PROFILE`` matches (``config/base.py``). Empty by default, and
+    # emitting nothing when empty is the point: a graph that does not ask
+    # for profiles must stay byte-identical to one from before the feature
+    # existed. Ordered rather than a set so the emitted files are stable.
+    profiles: tuple[str, ...] = ()
+    # Treat a cross-module dependency on something the target module does
+    # not export as an *error* rather than a warning. Off by default, and
+    # only meaningful once the graph declares modules: with no bounded
+    # contexts there is no boundary in the generated code to enforce.
+    # Opt-in because it is a policy, not a fact -- a team can
+    # legitimately want the warning while it is still drawing.
+    strict_boundaries: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -434,7 +459,8 @@ class InterceptorConfig:
 class DataLoaderConfig:
     """A GraphQL DataLoader node (lexigram-graphql ``dataloader`` generator).
 
-    Emits ``src/app/graphql/dataloaders/<name>.py`` — a batch/cache loader
+    Emits ``<schema/dataloaders>/<name>.py`` (minimal:
+    ``src/app/schema/dataloaders/``) — a batch/cache loader
     (``DataLoaderProtocol`` / ``create_loader``). A ``graphql → dataloader``
     edge documents which schema the loader is for; v1 does **not** call
     ``SchemaBuilder.add_dataloader`` (resolvers import the loader).
@@ -847,13 +873,105 @@ class ContractConfig:
 
 
 @dataclass(frozen=True, slots=True)
+class ExportSpec:
+    """One entry in a module's public surface.
+
+    A module exports *protocols*, not classes: everything a sibling module
+    is allowed to depend on has to be named here, which is what makes the
+    boundary checkable rather than advisory.
+
+    Attributes:
+        protocol: PascalCase protocol name, e.g. ``InvoiceServiceProtocol``.
+        implementation: Node id or class name bound to it inside the module.
+        description: Free-text note shown in the canvas inspector.
+    """
+
+    protocol: str
+    implementation: str
+    description: str = ""
+
+
+@dataclass(frozen=True, slots=True)
+class ModuleConfig:
+    """A bounded context (``kind == "module"``).
+
+    Mirrors the framework's ``@module()`` metadata surface one-to-one, so
+    the canvas is a faithful picture of the compiled DI module graph rather
+    than a second, parallel description of it.
+
+    ``imports`` is deliberately **absent**: it is derived from cross-module
+    edges, never stored. Storing it would duplicate the edges and let the
+    two drift (taxonomy rule M2).
+
+    Attributes:
+        name: snake_case slug, unique across the document. Becomes the
+            directory name under ``src/<app>/modules/``.
+        description: Free-text note shown in the canvas inspector.
+        exports: The module's public protocol surface.
+        is_global: ``@module(is_global=True)`` -- visible everywhere
+            without being imported.
+        provider: Emit ``provider.py`` for this module.
+        protocols: Emit ``protocols.py`` for this module.
+        provider_priority: ``ProviderPriority`` member name. Defaults to
+            ``DOMAIN`` (50): a bounded context is business logic, so it
+            boots after infrastructure (10) and security (20).
+        health: Provider implements ``health_check``.
+    """
+
+    name: str
+    description: str = ""
+    exports: tuple[ExportSpec, ...] = ()
+    is_global: bool = False
+    provider: bool = True
+    protocols: bool = True
+    provider_priority: str = "DOMAIN"
+    health: bool = False
+
+
+@dataclass(frozen=True, slots=True)
 class GraphNode:
-    """A canvas node."""
+    """A canvas node.
+
+    Attributes:
+        id: Document-unique node id.
+        kind: Palette kind, e.g. ``entity`` or ``module``.
+        position: Canvas coordinates.
+        config: The kind's typed configuration.
+        module: Slug of the :class:`ModuleConfig` this node belongs to, or
+            ``None`` for an unscoped (shared) node. This is *scope*, not a
+            second kind -- a Module node does not contain other nodes, it
+            labels them. Under the ``modular`` structure it selects the
+            bounded context a node's files are generated into.
+        stamp_id: Id of the stamp (authoring pack) that produced this node,
+            or ``None`` if it was drawn by hand.
+        stamp_run: Id of the individual stamp application, so two runs of
+            the same stamp can be told apart.
+        muted: The node is on the canvas but excluded from generation. Kept
+            on the document rather than filtered at the door so a muted node
+            still round-trips: muting is an editing state the user expects
+            to survive a save, not a deletion.
+
+    ``stamp_id`` and ``stamp_run`` are **provenance only** (taxonomy rule
+    S1): they exist for UI grouping, re-stamp diffing and telemetry. No
+    emitter, postprocessor or scaffold function may read them -- stamps
+    expand at author time into ordinary nodes, so by generation time a
+    stamped graph is indistinguishable from a hand-drawn one. If deleting
+    all stamp metadata changed one generated byte, stamps would have become
+    a second IR.
+
+    On the wire all four live under ``meta``, matching the canvas format;
+    they are flat attributes here because that is what the validator and
+    writer actually consume.
+    """
 
     id: str
     kind: str
     position: Position
     config: NodeConfig | None
+    module: str | None = None
+    stamp_id: str | None = None
+    stamp_run: str | None = None
+    muted: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -876,9 +994,54 @@ class GraphDocument:
 
 @dataclass(frozen=True, slots=True)
 class ValidatedGraph:
-    """A graph that passed validation, with kind-filtered accessors."""
+    """A graph that passed validation, with kind-filtered accessors.
+
+    Attributes:
+        document: The **live** document -- what will be generated. Muted
+            nodes and every edge touching one have already been removed
+            (see ``modules.drop_muted``), so no emitter has to ask whether a
+            node counts: if it is here, it emits.
+        diagnostics: Non-fatal diagnostics (warnings and info) raised while
+            validating. Passing validation is not the same as having
+            nothing to say -- a cross-module dependency on an unexported
+            target is legal today and a boot failure once modular codegen
+            lands -- so they are carried here rather than discarded, and
+            the canvas can badge them.
+        authored: What the user actually drew, muted nodes included. Kept
+            because "excluded from generation" is not "deleted": anything
+            that answers a question about the *canvas* (attribution back to
+            a card, module maps, counts) needs the drawing, not the
+            projection. Defaults to ``document`` for callers that construct
+            a ``ValidatedGraph`` directly.
+    """
 
     document: GraphDocument
+    diagnostics: tuple[Diagnostic, ...] = ()
+    authored: GraphDocument | None = None
+
+    def __post_init__(self) -> None:
+        """Refuse a live document that still contains muted nodes.
+
+        The projection happens in exactly one place (``validate``), and this
+        is what keeps it that way: a caller who assembles a
+        ``ValidatedGraph`` by hand -- tests, scripts, a future endpoint --
+        cannot smuggle an excluded node into the writer. Enforcing the
+        invariant here beats re-filtering downstream, because a second
+        filter is a second opinion.
+        """
+        from lexigram.builder.graph.modules import is_muted
+
+        muted = [node.id for node in self.document.nodes if is_muted(node)]
+        if muted:
+            raise ValueError(
+                "ValidatedGraph.document must be the live graph, but these "
+                f"nodes are muted: {', '.join(sorted(muted))}. Build it with "
+                "graph.validation.validate(), which applies the projection."
+            )
+
+    def drawn(self) -> GraphDocument:
+        """Return the authored document (``document`` when none was given)."""
+        return self.authored if self.authored is not None else self.document
 
     def settings(self) -> GraphNode:
         """Return the single app_settings node."""
@@ -1070,6 +1233,7 @@ class AuditLogConfig:
 
 NodeConfig = (
     AppSettingsConfig
+    | ModuleConfig
     | EntityConfig
     | RouteConfig
     | MiddlewareConfig
