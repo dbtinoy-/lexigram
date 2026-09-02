@@ -77,5 +77,13 @@ rows checked" as "export the current filtered view": they append
   checked; the "Select at least one…" dead-ends are gone.
 - Verified: 20 new regressions green; full admin unit suite **5461
   passed / 8 skipped (76.46% coverage)**; lexigram-ui suite 1275 passed;
-  ruff check + format clean.
+  e2e **72 passed / 2 skipped**; ruff check + format clean.
+- Live-verified on the playground (curl, cookie jar + CSRF from the list
+  page's `data-csrf-token`): `scope=filtered` with empty `list_query`
+  exports all 20 seeded products as a CSV attachment (`no-store`);
+  `list_query=search=Product 1` narrows to the 10 matching rows;
+  `list_query=page=2&per_page=5` still exports the full set; an id-less
+  POST without `scope=filtered` remains 400; `ids=3&ids=7` still exports
+  exactly the selection.
+
 
