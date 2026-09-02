@@ -74,7 +74,7 @@ def _register_pages(
         if inspect.isclass(handler) and container is not None:
             handler = AdminPageHandler(handler, container)
         else:
-            handler = StructuredPageHandler(handler)
+            handler = StructuredPageHandler(handler, container=container)
         path = _internal_path(page.route_path, prefix)
         ns_name = naming_policy.namespaced(page.contributor, page.name)
         naming_policy.register("page", ns_name)
@@ -100,7 +100,7 @@ def _register_settings(
         if inspect.isclass(handler) and container is not None:
             handler = AdminPageHandler(handler, container)
         else:
-            handler = StructuredPageHandler(handler)
+            handler = StructuredPageHandler(handler, container=container)
         path = _internal_path(panel.route_path, prefix)
         ns_name = naming_policy.namespaced(panel.contributor, panel.name)
         naming_policy.register("panel", ns_name)

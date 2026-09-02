@@ -128,6 +128,17 @@ class SecuritySettings(DomainModel):
             "frame-ancestors directive govern embedding."
         ),
     )
+    csp_report_only: str = Field(
+        default="",
+        title="CSP Report-Only Candidate",
+        description=(
+            "Content-Security-Policy-Report-Only monitoring (CSP v2 "
+            "migration). Leave empty to monitor the strict candidate "
+            "policy (recommended), set to 'off' to disable monitoring, "
+            "or provide a full policy string to monitor a custom "
+            "candidate. Violations appear on the Security → CSP tab."
+        ),
+    )
 
 
 class I18nSettings(DomainModel):
