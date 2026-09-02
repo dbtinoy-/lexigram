@@ -76,8 +76,9 @@ role is editable even though it has no `admin_roles` row.
 - [x] **Phase 2 (core, R38 — doc 34):** create admin (password policy +
       duplicate-email guard), deactivate with self- and last-superadmin
       guards + session revocation, reactivate; all audited. Per-user
-      session panel shipped in R42 (doc 38). Remaining: email invites,
-      forced password reset.
+      session panel shipped in R42 (doc 38); admin-initiated password
+      reset shipped in R44 (doc 40 — pairs with "Sign out everywhere"
+      for a full forced reset). Remaining: email invites.
 - [x] **Phase 3 (R40 — doc 36):** effective-permissions preview
       (cycle-safe `inherits` resolution with per-permission provenance,
       mirroring runtime authorizer semantics) on the edit page +

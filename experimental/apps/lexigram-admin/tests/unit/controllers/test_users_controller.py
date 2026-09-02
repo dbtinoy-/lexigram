@@ -417,3 +417,87 @@ class TestRevokeAllUserSessions:
             _request(_FakeUser(is_superuser=True), form=form), "u-2"
         )
         assert "error=" in response.headers["location"]
+
+
+class TestAdminInitiatedReset:
+    """R44 (doc 40): Send password reset link from the user form."""
+
+    def _controller_with_target(self) -> Any:
+        from lexigram.contracts.core.result import Ok
+
+        c = _controller()
+        c._password_reset_service = MagicMock()
+        c._password_reset_service.request_reset = AsyncMock(return_value=Ok(None))
+        store = MagicMock()
+        store.get_user_by_id = AsyncMock(
+            return_value=SimpleNamespace(
+                user_id="u-2", email="target@example.com", roles=[]
+            )
+        )
+        c._user_store = store
+        return c
+
+    def _req(self, form: Any = None) -> MagicMock:
+        req = _request(_FakeUser(user_id="u-1", is_superuser=True), form=form)
+        req.base_url = "http://testserver/"
+        return req
+
+    @pytest.mark.asyncio
+    async def test_sends_reset_with_target_email_and_request_context(self) -> None:
+        c = self._controller_with_target()
+        form = _FakeForm({"csrf_token": ""})
+        response = await c.reset_password(self._req(form), "u-2")
+        kwargs = c._password_reset_service.request_reset.await_args.kwargs
+        assert kwargs["email"] == "target@example.com"
+        assert kwargs["ip_address"] == "127.0.0.1"
+        assert kwargs["base_url"] == "http://testserver/"
+        assert "notice=" in response.headers["location"]
+        assert "/admin/users/u-2/edit" in response.headers["location"]
+
+    @pytest.mark.asyncio
+    async def test_rate_limit_error_surfaces(self) -> None:
+        from lexigram.contracts.core.result import Err
+
+        c = self._controller_with_target()
+        c._password_reset_service.request_reset = AsyncMock(
+            return_value=Err(ValueError("Too many password reset requests."))
+        )
+        form = _FakeForm({"csrf_token": ""})
+        response = await c.reset_password(self._req(form), "u-2")
+        assert "error=" in response.headers["location"]
+        assert "Too+many" in response.headers["location"]
+
+    @pytest.mark.asyncio
+    async def test_unknown_user_redirects_to_list(self) -> None:
+        c = self._controller_with_target()
+        c._user_store.get_user_by_id = AsyncMock(return_value=None)
+        form = _FakeForm({"csrf_token": ""})
+        response = await c.reset_password(self._req(form), "ghost")
+        c._password_reset_service.request_reset.assert_not_awaited()
+        assert "error=" in response.headers["location"]
+
+    @pytest.mark.asyncio
+    async def test_no_service_friendly_error(self) -> None:
+        c = self._controller_with_target()
+        c._password_reset_service = None
+        form = _FakeForm({"csrf_token": ""})
+        response = await c.reset_password(self._req(form), "u-2")
+        assert "error=" in response.headers["location"]
+
+    def test_card_renders_with_button(self) -> None:
+        c = self._controller_with_target()
+        html = c._account_actions_html(
+            _request(_FakeUser(is_superuser=True)), "u-2", "target@example.com"
+        )
+        assert "Account actions" in html
+        assert "Send password reset link" in html
+        assert "/admin/users/u-2/reset-password" in html
+        assert "target@example.com" in html
+
+    def test_card_degrades_without_service(self) -> None:
+        c = _controller()
+        c._password_reset_service = None
+        html = c._account_actions_html(
+            _request(_FakeUser(is_superuser=True)), "u-2", "target@example.com"
+        )
+        assert "not\n available".replace("\n ", " ") in html

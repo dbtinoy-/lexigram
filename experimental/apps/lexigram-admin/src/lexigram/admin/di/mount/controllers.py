@@ -433,6 +433,23 @@ class AdminMountControllersMixin:
                             )
                         except Exception:
                             pass
+                    # Admin-initiated password reset (R44, doc 40): reuses
+                    # the self-service reset flow. Best-effort — the edit
+                    # page explains when the action is unavailable.
+                    if hasattr(ac_controller, "_password_reset_service"):
+                        try:
+                            from lexigram.admin.auth.protocols import (
+                                AdminPasswordResetServiceProtocol,
+                            )
+
+                            ac_controller._password_reset_service = (
+                                await resolver.resolve(
+                                    AdminPasswordResetServiceProtocol,
+                                    bypass_visibility=True,
+                                )
+                            )
+                        except Exception:
+                            pass
                 except Exception as exc:
                     _log.error(
                         "admin.access_control_controller_resolution_failed",

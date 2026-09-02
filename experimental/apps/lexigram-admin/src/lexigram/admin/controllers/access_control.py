@@ -811,6 +811,7 @@ class UsersController(_AccessControlController):
         # Wired best-effort at mount time (di/mount/controllers.py):
         self._password_policy: Any = None  # AdminPasswordPolicyService
         self._session_service: Any = None  # AdminSessionServiceProtocol
+        self._password_reset_service: Any = None  # AdminPasswordResetServiceProtocol
 
     # -- helpers ------------------------------------------------------------
 
@@ -1163,10 +1164,99 @@ class UsersController(_AccessControlController):
             f'<button type="submit" class="{_BTN_CLS}">Save roles</button>'
             "</form>"
         )
+        html += self._account_actions_html(request, user_id, email)
         html += await self._sessions_html(request, user_id)
         return await self._page(
             request, html, f"{email} — Users", "Users", "/admin/users", email or user_id
         )
+
+    # -- account actions (R44 — docs/09-01-2026/40-admin-initiated-reset.md) -
+
+    def _account_actions_html(
+        self, request: Request, user_id: str, email: str
+    ) -> str:
+        """Admin-initiated account actions card (password reset link)."""
+        heading = (
+            '<h2 class="text-sm font-medium text-foreground mt-8 mb-3">'
+            "Account actions</h2>"
+        )
+        if self._password_reset_service is None:
+            return heading + (
+                '<div class="bg-card border border-border rounded-xl p-5 '
+                'text-sm text-muted-foreground">Password reset is not '
+                "available — no reset service is configured.</div>"
+            )
+        base = self._admin_path(request, "/admin/users")
+        return heading + (
+            '<div class="bg-card border border-border rounded-xl p-5">'
+            '<p class="text-sm text-muted-foreground mb-3">Email '
+            f"<strong>{escape(email)}</strong> a password reset link. For a "
+            "full forced reset, also use “Sign out everywhere” below.</p>"
+            f'<form method="post" action="{escape(base)}/'
+            f'{quote_plus(user_id)}/reset-password">'
+            f'<input type="hidden" name="csrf_token" '
+            f'value="{escape(self._csrf_token(request))}">'
+            f'<button type="submit" class="{_BTN_CLS}">'
+            "Send password reset link</button></form></div>"
+        )
+
+    @post("/{user_id:str}/reset-password")
+    async def reset_password(self, request: Request, user_id: str) -> Response:
+        """Send the target admin a password reset link (CSRF, audited).
+
+        Reuses the self-service ``request_reset`` flow — hashed token
+        storage, expiry, notification template, rate limiting and the
+        service-side audit event all stay in one place (doc 40 §2.1).
+        """
+        denied = self._guard(request)
+        if denied is not None:
+            return denied
+        base = self._admin_path(request, "/admin/users")
+        back = f"{base}/{quote_plus(user_id)}/edit"
+        form = await self._form(request)
+        if not self._csrf_ok(request, str(form.get("csrf_token", ""))):
+            return self._redirect(back, "Invalid or expired form token.", True)
+        if self._password_reset_service is None:
+            return self._redirect(back, "Password reset service unavailable.", True)
+        target = await self._get_user(user_id)
+        if target is None:
+            return self._redirect(base, "Admin user not found.", True)
+        email = str(_user_field(target, "email", default="") or "")
+        if not email:
+            return self._redirect(back, "This account has no email address.", True)
+
+        from lexigram.admin.resources.urls import admin_prefix_from_request
+
+        client = getattr(request, "client", None)
+        try:
+            result = await self._password_reset_service.request_reset(
+                email=email,
+                ip_address=getattr(client, "host", "unknown"),
+                user_agent=request.headers.get("user-agent", "") or "",
+                base_url=str(request.base_url),
+                admin_prefix=admin_prefix_from_request(request),
+            )
+        except Exception:  # noqa: BLE001 — surface a friendly error, log the rest
+            logger.exception("access_control.password_reset_failed")
+            return self._redirect(back, "Could not send the reset link.", True)
+        if getattr(result, "is_err", lambda: False)():
+            return self._redirect(back, str(result.unwrap_err()), True)
+
+        actor = self.current_user(request)
+        await self._audit(
+            request,
+            AdminSecurityEventType.PASSWORD_RESET_REQUESTED,
+            True,
+            email=email,
+            initiated_by=str(getattr(actor, "user_id", "")),
+            source="user_form",
+        )
+        logger.info(
+            "access_control.password_reset_sent",
+            email=email,
+            initiated_by=str(getattr(actor, "user_id", "")),
+        )
+        return self._redirect(back, f"Password reset link sent to {email}.")
 
     # -- session panel (R42 — docs/09-01-2026/38-user-session-panel.md) -----
 
