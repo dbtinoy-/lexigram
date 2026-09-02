@@ -226,7 +226,7 @@ def render_bulk_action_button(
     Handles the deprecated private-field access pattern for bulk actions.
     """
     action_name = str(getattr(action, "name", ""))
-    if action_name in {"export", "export_csv"}:
+    if action_name in {"export", "export_csv", "export_xlsx"}:
         export_url = f"{(resource_prefix or '').rstrip('/')}/bulk"
         from lexigram.ui import ActionButton
 

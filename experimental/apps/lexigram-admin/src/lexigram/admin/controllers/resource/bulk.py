@@ -20,7 +20,11 @@ _EXPORT_BULK_ACTIONS: dict[str, str] = {
     "export": "csv",
     "export_csv": "csv",
     "export_json": "json",
+    "export_xlsx": "xlsx",
 }
+
+#: Direct-download formats the bulk export branch can encode (R29 adds xlsx).
+_EXPORT_FORMATS = ("csv", "json", "xlsx")
 
 #: Hard caps for id-less "export the filtered view" requests (R25).
 MAX_FILTERED_EXPORT_ROWS = 10_000
@@ -199,7 +203,7 @@ class ResourceBulkMixin:
 
         Args:
             ids: Selected record ids, in selection order.
-            file_format: ``csv`` (default) or ``json``.
+            file_format: ``csv`` (default), ``json``, or ``xlsx``.
 
         Returns:
             An attachment response, or an error response when the format
@@ -209,7 +213,7 @@ class ResourceBulkMixin:
             return HTMLResponse("Export is disabled for this resource", status_code=403)
 
         fmt = (file_format or "csv").strip().lower()
-        if fmt not in ("csv", "json"):
+        if fmt not in _EXPORT_FORMATS:
             return HTMLResponse(f"Unsupported export format: {fmt}", status_code=400)
 
         rows = [self._export_row(item) for item in await self._fetch_export_rows(ids)]
@@ -228,7 +232,7 @@ class ResourceBulkMixin:
 
         Args:
             list_query: Raw querystring (no leading ``?``).
-            file_format: ``csv`` (default) or ``json``.
+            file_format: ``csv`` (default), ``json``, or ``xlsx``.
 
         Returns:
             An attachment response, or an error response.
@@ -243,7 +247,7 @@ class ResourceBulkMixin:
             return HTMLResponse("Export is disabled for this resource", status_code=403)
 
         fmt = (file_format or "csv").strip().lower()
-        if fmt not in ("csv", "json"):
+        if fmt not in _EXPORT_FORMATS:
             return HTMLResponse(f"Unsupported export format: {fmt}", status_code=400)
 
         raw_query = str(list_query or "")
@@ -283,13 +287,25 @@ class ResourceBulkMixin:
         return self._export_attachment(rows, fmt)
 
     def _export_attachment(self, rows: list[dict[str, Any]], fmt: str) -> Response:
-        """Encode rows as a CSV/JSON attachment response."""
+        """Encode rows as a CSV/JSON/XLSX attachment response."""
         from datetime import UTC, datetime
         import re
 
         if fmt == "csv":
             payload = self._encode_export_csv(rows)
             media_type = "text/csv; charset=utf-8"
+        elif fmt == "xlsx":
+            from lexigram.admin.services.export.xlsx import (
+                XLSX_CONTENT_TYPE,
+                encode_rows_as_xlsx,
+            )
+
+            try:
+                payload = encode_rows_as_xlsx(rows)
+            except ImportError as exc:
+                # Optional dependency absent — a clear 501 beats a 500.
+                return HTMLResponse(str(exc), status_code=501)
+            media_type = XLSX_CONTENT_TYPE
         else:
             from lexigram.serialization import dumps_str
 

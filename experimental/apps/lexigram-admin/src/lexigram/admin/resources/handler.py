@@ -4,7 +4,7 @@ import inspect
 from typing import Any
 
 from starlette.requests import Request as StarletteRequest
-from starlette.responses import HTMLResponse, RedirectResponse
+from starlette.responses import HTMLResponse, RedirectResponse, Response
 
 from lexigram.admin.config import AdminConfig
 from lexigram.admin.exceptions import PermissionDeniedError
@@ -739,7 +739,8 @@ class BulkActionHandler:
             # "export everything matching the current list view".
             scope = str(form.get("scope", "") or "").strip().lower()
             filtered_export = (
-                execution_action in {"export", "export_csv"} and scope == "filtered"
+                execution_action in {"export", "export_csv", "export_xlsx"}
+                and scope == "filtered"
             )
             if not filtered_export:
                 return HTMLResponse("No records selected", status_code=400)
@@ -792,6 +793,7 @@ class BulkActionHandler:
             "restore",
             "export",
             "export_csv",
+            "export_xlsx",
         }:
             custom = await self._execute_declared_action(
                 request,
@@ -855,7 +857,7 @@ class BulkActionHandler:
             except Exception as exc:  # noqa: BLE001 — storage/hook details stay private
                 logger.exception("admin.bulk_purge_failed", error=str(exc))
                 return HTMLResponse("Unable to purge selected records", status_code=503)
-        elif execution_action in {"export", "export_csv"}:
+        elif execution_action in {"export", "export_csv", "export_xlsx"}:
             import csv
             from io import StringIO
 
@@ -880,23 +882,45 @@ class BulkActionHandler:
                 for key in record:
                     if key not in fieldnames:
                         fieldnames.append(str(key))
-            # Bulk CSV is an immediate download path and must retain the same
-            # spreadsheet-formula protection as the background export service.
-            from lexigram.admin.services.export.sanitize import sanitize_cell_value
 
-            records = [
-                {key: sanitize_cell_value(value) for key, value in record.items()}
-                for record in records
-            ]
-            output = StringIO()
-            if fieldnames:
-                writer = csv.DictWriter(
-                    output, fieldnames=fieldnames, extrasaction="ignore"
+            if execution_action == "export_xlsx":
+                # R29: direct-download Excel. The shared encoder sanitizes
+                # cells itself (formula guard + openpyxl type coercion).
+                from lexigram.admin.services.export.xlsx import (
+                    XLSX_CONTENT_TYPE,
+                    encode_rows_as_xlsx,
                 )
-                writer.writeheader()
-                writer.writerows(records)
-            filename = f"{resource.name or 'records'}-export.csv"
-            response = HTMLResponse(output.getvalue(), media_type="text/csv")
+
+                try:
+                    payload = encode_rows_as_xlsx(records, fieldnames or None)
+                except ImportError as exc:
+                    # Optional dependency absent — clear 501 beats a 500.
+                    return HTMLResponse(str(exc), status_code=501)
+                filename = f"{resource.name or 'records'}-export.xlsx"
+                response: Response = Response(
+                    content=payload, media_type=XLSX_CONTENT_TYPE
+                )
+            else:
+                # Bulk CSV is an immediate download path and must retain the
+                # same spreadsheet-formula protection as the background
+                # export service.
+                from lexigram.admin.services.export.sanitize import (
+                    sanitize_cell_value,
+                )
+
+                records = [
+                    {key: sanitize_cell_value(value) for key, value in record.items()}
+                    for record in records
+                ]
+                output = StringIO()
+                if fieldnames:
+                    writer = csv.DictWriter(
+                        output, fieldnames=fieldnames, extrasaction="ignore"
+                    )
+                    writer.writeheader()
+                    writer.writerows(records)
+                filename = f"{resource.name or 'records'}-export.csv"
+                response = HTMLResponse(output.getvalue(), media_type="text/csv")
             response.headers["Content-Disposition"] = (
                 f'attachment; filename="{filename}"'
             )

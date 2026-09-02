@@ -138,14 +138,21 @@ class TestBulkExportGates:
         assert response.status_code == 403
 
     async def test_unsupported_format_is_400(self) -> None:
+        # R29: xlsx became a supported direct-download format — pdf is the
+        # remaining unsupported example.
         ctl = _Controller(_FakeDataSource(_records()))
-        response = await ctl.bulk_export(["1"], "xlsx")
+        response = await ctl.bulk_export(["1"], "pdf")
         assert response.status_code == 400
 
     def test_export_actions_are_capability_gated_on_view(self) -> None:
         from lexigram.admin.controllers.resource.bulk import _EXPORT_BULK_ACTIONS
 
-        assert set(_EXPORT_BULK_ACTIONS) == {"export", "export_csv", "export_json"}
+        assert set(_EXPORT_BULK_ACTIONS) == {
+            "export",
+            "export_csv",
+            "export_json",
+            "export_xlsx",
+        }
 
 
 _PKG_ROOT = Path(__file__).resolve().parents[3]

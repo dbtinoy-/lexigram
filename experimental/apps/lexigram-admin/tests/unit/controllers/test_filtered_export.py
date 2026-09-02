@@ -144,7 +144,8 @@ class TestFilteredExport:
     @pytest.mark.asyncio
     async def test_unsupported_format_is_400(self) -> None:
         ctl = _Controller(_QueryAwareSource(_records()))
-        response = await ctl.bulk_export_filtered("", "xlsx")
+        # R29: xlsx became a supported format — pdf remains unsupported.
+        response = await ctl.bulk_export_filtered("", "pdf")
         assert response.status_code == 400
 
     @pytest.mark.asyncio
