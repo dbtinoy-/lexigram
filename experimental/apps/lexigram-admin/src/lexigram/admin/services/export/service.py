@@ -50,6 +50,7 @@ class ExportService:
         export_dir: str = "exports",
         max_file_age_days: int = 7,
         audit: AuditLoggerProtocol | None = None,
+        download_url_prefix: str = "/admin",
     ):
         from lexigram.admin.services.export.adapters.csv import CsvExportBackend
         from lexigram.admin.services.export.adapters.excel import ExcelExportBackend
@@ -63,6 +64,7 @@ class ExportService:
         self.export_dir = export_dir
         self.max_file_age_days = max_file_age_days
         self.audit = audit
+        self.download_url_prefix = (download_url_prefix or "/admin").rstrip("/")
 
         self._job_manager = job_manager or ExportJobManager()
         self._background_tasks: dict[str, asyncio.Task] = {}
@@ -267,7 +269,7 @@ class ExportService:
             job.completed_at = datetime.now(UTC)
             job.file_path = file_path
             job.file_size = await self._get_file_size(file_path)
-            job.download_url = await self._generate_download_url(file_path)
+            job.download_url = await self._generate_download_url(job)
 
             # Record export complete audit event
             await self._record_export_audit(
@@ -344,18 +346,34 @@ class ExportService:
         return Err(AdminError(message=f"Export job {job.job_id} was cancelled"))
 
     async def _get_file_size(self, file_path: str) -> int:
-        """Get file size from storage."""
+        """Get file size from storage via the blob-store ``info`` metadata call.
+
+        Fails soft: any storage error (missing file, unimplemented ``info``,
+        backend outage) logs a warning and reports ``0`` rather than failing
+        an otherwise-completed export.
+        """
         try:
-            # Placeholder: implementation depends on storage provider
-            return 0
-        except (AttributeError, OSError) as e:
+            info = await self.storage.info(file_path)
+            return int(getattr(info, "size", 0) or 0)
+        except (
+            AttributeError,
+            OSError,
+            NotImplementedError,
+            TypeError,
+            ValueError,
+        ) as e:
             logger.warning("Failed to determine file size for %s: %s", file_path, e)
             return 0
 
-    async def _generate_download_url(self, file_path: str) -> str:
-        """Generate download URL for file."""
-        # Placeholder: implementation depends on storage provider / router
-        return f"/admin/exports/download/{file_path}"
+    async def _generate_download_url(self, job: ExportJob) -> str:
+        """Generate the download URL for a completed job.
+
+        B30: keyed by the opaque job id (uuid4) — never by the storage path,
+        which must not leak into URLs. Served by the admin download route
+        mounted at ``{prefix}/exports/{job_id}/download``, which enforces
+        ownership and completion status.
+        """
+        return f"{self.download_url_prefix}/exports/{job.job_id}/download"
 
     async def stream_export(
         self,
@@ -435,10 +453,7 @@ class ExportService:
                     header_sent = True
                 for row in batch:
                     writer.writerow(
-                        {
-                            k: sanitize_cell_value(row.get(k))
-                            for k in fieldnames
-                        }
+                        {k: sanitize_cell_value(row.get(k)) for k in fieldnames}
                     )
                 yield buffer.getvalue().encode("utf-8")
             else:  # JSON

@@ -69,11 +69,11 @@ class TestAdminProvider:
 
     @pytest.mark.asyncio
     async def test_bundle_provider_has_eight_sub_providers(self) -> None:
-        """Test that all 8 required sub-providers are wired during register()."""
+        """Test that all 10 required sub-providers are wired during register()."""
         provider = AdminProvider()
         container = FakeRegistrar()
         await provider.register(container)
-        assert len(provider._sub_providers) == 9
+        assert len(provider._sub_providers) == 10
 
     def test_from_config(self) -> None:
         config = AdminConfig(title="From Config")

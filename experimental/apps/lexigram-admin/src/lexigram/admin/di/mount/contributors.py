@@ -245,6 +245,40 @@ class AdminMountContributorsMixin:
         except Exception as exc:  # noqa: BLE001 — SSE is optional
             _log.warning("admin.sse_widgets_route_skipped", reason=str(exc))
 
+    async def _mount_export_download(self, container: Any, ctx: MountContext) -> None:
+        """Register the download route for completed export jobs (B30).
+
+        Mounted at ``{prefix}/exports/{job_id}/download`` — keyed by the
+        opaque job id, with ownership/status checks inside the handler.
+
+        Args:
+            container: The admin DI resolver holding the ExportService
+                singleton registered by AdminExportSubProvider.
+            ctx: Mount pipeline state (``router`` read).
+        """
+        router = ctx.router
+        if router is None:
+            return
+        try:
+            from lexigram.admin.services.export.download import (
+                build_export_download_handler,
+            )
+            from lexigram.admin.services.export.service import ExportService
+
+            export_service: ExportService = await container.resolve(ExportService)
+            router.add_route(
+                "/exports/{job_id}/download",
+                "GET",
+                build_export_download_handler(export_service),
+                "admin_export_download",
+            )
+            _log.info(
+                "admin.export_download_route_registered",
+                path=f"{self._config.prefix}/exports/{{job_id}}/download",
+            )
+        except Exception as exc:  # noqa: BLE001 — export downloads are optional
+            _log.warning("admin.export_download_route_skipped", reason=str(exc))
+
     async def _mount_app_state(self, app: Any, ctx: MountContext) -> None:
         """Mount the router and expose nav/registry state on both apps.
 
@@ -314,8 +348,7 @@ class AdminMountContributorsMixin:
         # Expose the configured super-admin role so the shell user menu can
         # gate superadmin-only entries (Security Center — R12).
         super_admin_role = str(
-            getattr(self._config.rbac, "super_admin_role", "superadmin")
-            or "superadmin"
+            getattr(self._config.rbac, "super_admin_role", "superadmin") or "superadmin"
         )
         if hasattr(app, "state"):
             app.state.super_admin_role = super_admin_role
@@ -330,4 +363,3 @@ class AdminMountContributorsMixin:
                 app.state.saved_view_service = ctx.saved_view_service
             if admin_app is not None and hasattr(admin_app, "state"):
                 admin_app.state.saved_view_service = ctx.saved_view_service
-

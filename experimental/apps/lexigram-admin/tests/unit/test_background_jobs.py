@@ -310,7 +310,11 @@ class TestEnqueueExportWithRealService:
         assert status is not None
         assert status["status"] == "completed"
         assert status["result"]["rows_exported"] == 1
-        assert status["result"]["download_url"].startswith("/admin/exports/download")
+        # R28 (B30): download URLs are keyed by the opaque job id, not the
+        # storage path — {prefix}/exports/{job_id}/download.
+        download_url = status["result"]["download_url"]
+        assert download_url.startswith("/admin/exports/")
+        assert download_url.endswith("/download")
         assert status["result"]["export_format"] == "csv"
 
     @pytest.mark.asyncio

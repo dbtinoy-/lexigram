@@ -129,6 +129,7 @@ class AdminProvider(
         )
         from lexigram.admin.di.sub_providers.core import AdminCoreSubProvider
         from lexigram.admin.di.sub_providers.dashboard import AdminDashboardSubProvider
+        from lexigram.admin.di.sub_providers.export import AdminExportSubProvider
         from lexigram.admin.di.sub_providers.integrations import (
             AdminIntegrationsSubProvider,
         )
@@ -158,6 +159,7 @@ class AdminProvider(
             AdminResourceSubProvider(config=self._config, resources=self._resources),
             AdminUISubProvider(config=self._config),
             AdminRealtimeSubProvider(config=self._config),
+            AdminExportSubProvider(config=self._config),
             tenancy,
             AdminDashboardSubProvider(
                 config=self._config,
@@ -215,6 +217,7 @@ class AdminProvider(
         await self._mount_contributors(admin_resolver, ctx)
         await self._mount_integration(container, ctx)
         await self._mount_sse_widgets(container, ctx)
+        await self._mount_export_download(admin_resolver, ctx)
         await self._mount_app_state(app, ctx)
         _log.info("admin.mounted", prefix=self._config.prefix)
 
