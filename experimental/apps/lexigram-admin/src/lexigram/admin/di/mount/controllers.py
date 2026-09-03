@@ -574,8 +574,8 @@ class AdminMountControllersMixin:
             ctx.controllers.append(saved_views_controller)
             if getattr(saved_views_controller, "_csrf_service", None) is None:
                 try:
-                    saved_views_controller._csrf_service = (
-                        await self._get_csrf_service(resolver)
+                    saved_views_controller._csrf_service = await self._get_csrf_service(
+                        resolver
                     )
                 except Exception:
                     pass
@@ -724,9 +724,7 @@ class AdminMountControllersMixin:
                     bypass_visibility=True,
                 )
             except Exception as exc:  # noqa: BLE001 — panel links are optional
-                _log.warning(
-                    "admin.settings_panel_links_unavailable", reason=str(exc)
-                )
+                _log.warning("admin.settings_panel_links_unavailable", reason=str(exc))
 
             renderer = await resolver.resolve(
                 AdminRenderer,
@@ -740,6 +738,9 @@ class AdminMountControllersMixin:
                 registry=settings_registry,
                 rbac_config=self._config.rbac,
                 dashboard=settings_dashboard,
+                snapshot_service=ctx.snapshot_service,
+                application_config=self._config,
+                config_loader=getattr(self, "_config_loader", None),
             )
             ctx.controllers.append(settings_controller)
         except Exception as exc:

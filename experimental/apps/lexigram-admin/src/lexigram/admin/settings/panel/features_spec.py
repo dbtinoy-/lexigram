@@ -15,7 +15,11 @@ class FeaturesSpec(PydanticConfigSpec):
     namespace = "admin.features"
     label = "Feature Flags"
     icon = "toggle-on"
-    description = "Toggle admin UI and UX features."
+    description = (
+        "Toggle admin UI and UX features. Saved values are applied when the "
+        "admin configuration is loaded again (normally after a restart)."
+    )
+    runtime_status = "restart_required"
     model = AdminFeaturesConfig
     required_permissions = frozenset({"admin.settings.edit"})
     scope = "tenant"

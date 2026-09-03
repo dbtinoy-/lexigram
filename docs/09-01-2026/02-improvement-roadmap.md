@@ -198,23 +198,41 @@ The first 15 minutes decide whether a team adopts an admin framework.
   user-menu callers retain the legacy full-navigation default, while rendered
   shells request the personal-only menu. Full Plan:
   [56-sidebar-information-architecture.md](56-sidebar-information-architecture.md).
+- **R57. Settings control-plane audit and hardening.** ✅ **Done 2026-09-03** —
+  the full `/settings` surface now has source-aware effective configuration,
+  strict typed validation, honest read-only state, faithful falsy-value
+  persistence, permissions/CSRF/revision/conditional-write boundaries,
+  redacted audit history with rollback, and contributor-friendly spec
+  derivation. YAML/environment/application-owned values are visible through a
+  redacted read-only summary with source precedence, while database overrides
+  retain tenant isolation and explicit ownership. The shared settings form
+  preserves invalid input and accessible feedback, and HTMX saves use the
+  shared dismissible toast channel. Verification: 5881 admin unit tests
+  passed, 7 skipped; targeted settings/controller/UI tests passed; mypy,
+  compileall, Ruff, and `git diff --check` passed. Playground/browser
+  round-trip remains intentionally deferred. Full Plan:
+  [57-settings-control-plane-audit.md](57-settings-control-plane-audit.md).
 
 ---
 
 ## Completion status (2026-09-03)
 
-The concrete roadmap and follow-up records through R56 are implemented and
-have regression coverage. R14 phase 2 is implemented with its own verification
-record in [53-bulk-live-progress.md](53-bulk-live-progress.md); only its
-playground/browser round trip is intentionally deferred. Sidebar information
-architecture and account placement are recorded in
-[56-sidebar-information-architecture.md](56-sidebar-information-architecture.md).
+The concrete roadmap and follow-up records through R57 are implemented and
+have regression coverage. The R57 settings control-plane audit is complete;
+its browser/playground round trip remains intentionally deferred. R14 phase 2
+is implemented with its own verification record in
+[53-bulk-live-progress.md](53-bulk-live-progress.md); only its playground/browser
+round trip is intentionally deferred. Sidebar information architecture and
+account placement are recorded in
+[56-sidebar-information-architecture.md](56-sidebar-information-architecture.md),
+and the settings verification record is in
+[57-settings-control-plane-audit.md](57-settings-control-plane-audit.md).
 The repository release gate is tracked in the [reliability audit Full Plan](50-reliability-audit.md):
 targeted package suites, ruff, mypy, and the first-run scenario must remain
 green before the branch is pushed. Deliberate future projects (shared/team
-saved views, durable/distributed progress tasks and task history, optional
-chart vendoring, and the CSP v2 Alpine migration) are not silently marked
-complete; each has an explicit note in its source plan.
+saved views, durable/distributed progress tasks, optional chart vendoring, and
+the CSP v2 Alpine migration) are not silently marked complete; each has an
+explicit note in its source plan.
 
 ---
 

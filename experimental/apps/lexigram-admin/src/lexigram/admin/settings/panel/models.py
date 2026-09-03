@@ -73,6 +73,8 @@ class BrandingSettings(DomainModel):
 
     site_name: str = Field(
         default="Lexigram Admin",
+        min_length=1,
+        max_length=120,
         title="Site Name",
         description="Name shown in the topbar, login page, and document title.",
     )
@@ -81,8 +83,8 @@ class BrandingSettings(DomainModel):
         title="Primary Color",
         description="Hex color used for the primary UI accent.",
     )
-    logo_url: str = Field(default="", title="Logo URL")
-    favicon_url: str = Field(default="", title="Favicon URL")
+    logo_url: str = Field(default="", max_length=2048, title="Logo URL")
+    favicon_url: str = Field(default="", max_length=2048, title="Favicon URL")
     dark_mode: Literal["system", "light", "dark"] = Field(
         default="system",
         title="Dark Mode",
@@ -99,6 +101,7 @@ class NotificationSettings(DomainModel):
 
     email_from: str = Field(
         default="",
+        max_length=254,
         title="From address",
         description=(
             "Sender email address for verification, password-reset, and "
@@ -108,6 +111,7 @@ class NotificationSettings(DomainModel):
     )
     email_from_name: str = Field(
         default="",
+        max_length=120,
         title="From name",
         description=(
             "Sender display name shown in email clients. Leave empty to "
@@ -118,6 +122,7 @@ class NotificationSettings(DomainModel):
 
 class CacheSettings(DomainModel):
     """Response caching settings consumed by AdminCacheMiddleware."""
+
     enabled: bool = Field(
         default=True,
         title="Enabled",
@@ -172,11 +177,16 @@ class I18nSettings(DomainModel):
 
     default_locale: str = Field(
         default="en",
+        min_length=2,
+        max_length=35,
+        pattern=r"^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$",
         title="Default Locale",
         description="Fallback BCP 47 locale tag used when a request resolves no locale.",
     )
     default_timezone: str = Field(
         default="UTC",
+        min_length=1,
+        max_length=64,
         title="Default Timezone",
         description="Fallback IANA timezone name used when a request resolves no timezone.",
     )
@@ -187,6 +197,8 @@ class RbacSettings(DomainModel):
 
     default_role: str = Field(
         default="viewer",
+        min_length=1,
+        max_length=120,
         title="Default Role",
         description="Role assigned to users with no explicit role mapping.",
     )

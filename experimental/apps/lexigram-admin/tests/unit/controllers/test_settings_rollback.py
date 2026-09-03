@@ -86,13 +86,27 @@ class TestSnapshotOnSave:
         controller, snapshots, _ = _build()
 
         await controller.save_spec(
-            _request({"title": "changed", "settings_revision": await _revision(controller)})
+            _request(
+                {"title": "changed", "settings_revision": await _revision(controller)}
+            )
         )
 
         history = await snapshots.list_history(_RollbackSpec.namespace)
         assert len(history) == 1
         # The snapshot must hold the value being replaced, not the new one.
         assert history[0].values["title"] == "original"
+
+    @pytest.mark.asyncio
+    async def test_noop_save_does_not_create_history(self) -> None:
+        controller, snapshots, _ = _build()
+
+        await controller.save_spec(
+            _request(
+                {"title": "original", "settings_revision": await _revision(controller)}
+            )
+        )
+
+        assert await snapshots.list_history(_RollbackSpec.namespace) == []
 
     @pytest.mark.asyncio
     async def test_secret_values_are_not_snapshotted(self) -> None:
@@ -130,7 +144,9 @@ class TestRollback:
     async def test_restores_previous_values(self) -> None:
         controller, snapshots, _ = _build()
         await controller.save_spec(
-            _request({"title": "changed", "settings_revision": await _revision(controller)})
+            _request(
+                {"title": "changed", "settings_revision": await _revision(controller)}
+            )
         )
         assert (await _values(controller))["title"] == "changed"
 
@@ -147,11 +163,39 @@ class TestRollback:
         assert (await _values(controller))["title"] == "original"
 
     @pytest.mark.asyncio
+    async def test_rollback_restores_explicit_ownership_when_value_equals_default(
+        self,
+    ) -> None:
+        """A snapshot remembers explicit ownership, not only effective value."""
+        controller, snapshots, _ = _build()
+        store = controller._registry._stores["default"]
+        await store.set(f"{_RollbackSpec.namespace}.title", "original")
+        snapshot = await snapshots.capture(
+            _RollbackSpec.namespace,
+            {"title": "original"},
+        )
+        await store.delete(f"{_RollbackSpec.namespace}.title")
+
+        await controller.save_spec(
+            _request(
+                {
+                    "rollback_to": snapshot.snapshot_id,
+                    "settings_revision": await _revision(controller),
+                }
+            )
+        )
+
+        assert await store.contains(f"{_RollbackSpec.namespace}.title") is True
+        assert (await _values(controller))["title"] == "original"
+
+    @pytest.mark.asyncio
     async def test_rollback_is_itself_snapshotted(self) -> None:
         """A rollback is a forward change and must be reversible in turn."""
         controller, snapshots, _ = _build()
         await controller.save_spec(
-            _request({"title": "changed", "settings_revision": await _revision(controller)})
+            _request(
+                {"title": "changed", "settings_revision": await _revision(controller)}
+            )
         )
         snapshot = (await snapshots.list_history(_RollbackSpec.namespace))[0]
 
@@ -172,7 +216,9 @@ class TestRollback:
     async def test_rollback_is_audited_as_such(self) -> None:
         controller, snapshots, audit = _build()
         await controller.save_spec(
-            _request({"title": "changed", "settings_revision": await _revision(controller)})
+            _request(
+                {"title": "changed", "settings_revision": await _revision(controller)}
+            )
         )
         snapshot = (await snapshots.list_history(_RollbackSpec.namespace))[0]
 
@@ -197,12 +243,16 @@ class TestRollback:
         """Rollback is not a bypass for optimistic concurrency."""
         controller, snapshots, _ = _build()
         await controller.save_spec(
-            _request({"title": "changed", "settings_revision": await _revision(controller)})
+            _request(
+                {"title": "changed", "settings_revision": await _revision(controller)}
+            )
         )
         snapshot = (await snapshots.list_history(_RollbackSpec.namespace))[0]
 
         response = await controller.save_spec(
-            _request({"rollback_to": snapshot.snapshot_id, "settings_revision": "stale"})
+            _request(
+                {"rollback_to": snapshot.snapshot_id, "settings_revision": "stale"}
+            )
         )
 
         assert response.status_code == 409

@@ -47,10 +47,24 @@ class FormField(Component):
     def render(self) -> Any:
         # Build container attributes
         container_attrs: dict[str, Any] = {"class": "mb-6"}
+        input_id = (
+            getattr(self.input_component, "id", None)
+            or getattr(self.input_component, "input_id", None)
+            or getattr(self.input_component, "name", None)
+            or "field"
+        )
         if self.error:
-            error_id = f"{getattr(self.input_component, 'id', None) or getattr(self.input_component, 'name', None) or 'field'}-error"
+            error_id = f"{input_id}-error"
             container_attrs["aria_describedby"] = error_id
             container_attrs["aria_invalid"] = "true"
+            props = getattr(self.input_component, "props", None)
+            if isinstance(props, dict):
+                props.setdefault("aria_describedby", error_id)
+                props.setdefault("aria_invalid", "true")
+        elif self.help_text:
+            props = getattr(self.input_component, "props", None)
+            if isinstance(props, dict):
+                props.setdefault("aria_describedby", f"{input_id}-help")
 
         # Handle hidden state
         if self.hidden:
@@ -83,8 +97,7 @@ class FormField(Component):
                                 class_="text-destructive ml-1",
                                 **{"x-show": required_if},
                             ),
-                            for_=getattr(self.input_component, "id", None)
-                            or getattr(self.input_component, "name", None),
+                            for_=input_id,
                             class_="block text-sm font-medium text-foreground",
                         ),
                     )
@@ -94,8 +107,7 @@ class FormField(Component):
                             "label",
                             label_text
                             + el("span", "*", class_="text-destructive ml-1"),
-                            for_=getattr(self.input_component, "id", None)
-                            or getattr(self.input_component, "name", None),
+                            for_=input_id,
                             class_="block text-sm font-medium text-foreground",
                         ),
                     )
@@ -104,8 +116,7 @@ class FormField(Component):
                         el(
                             "label",
                             label_text,
-                            for_=getattr(self.input_component, "id", None)
-                            or getattr(self.input_component, "name", None),
+                            for_=input_id,
                             class_="block text-sm font-medium text-foreground",
                         ),
                     )
@@ -155,7 +166,7 @@ class FormField(Component):
 
         # Error message
         if self.error:
-            error_id = f"{getattr(self.input_component, 'id', None) or getattr(self.input_component, 'name', None) or 'field'}-error"
+            error_id = f"{input_id}-error"
             elements.append(
                 el(
                     "p",
@@ -172,6 +183,7 @@ class FormField(Component):
                 el(
                     "p",
                     self.help_text,
+                    id=f"{input_id}-help",
                     class_="mt-2 text-sm text-muted-foreground",
                 ),
             )

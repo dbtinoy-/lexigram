@@ -63,17 +63,20 @@ deployment, the fixes shipped on this date, and the forward-looking roadmap.
 | [53-bulk-live-progress.md](53-bulk-live-progress.md) | R14 phase 2 live bulk progress: thresholded HTMX delete/purge/restore tasks, owner-bound status/SSE streams, accessible DataTable progress UI, terminal toast metadata, and synchronous fallbacks. Playground/browser verification remains deferred. |
 | [54-tasks-test-dependency.md](54-tasks-test-dependency.md) | Tasks package test dependency closure: declares `lexigram-resilience` for the `test`/`all` extras and development test group, adds workspace source metadata, and keeps `uv.lock` aligned without adding a production dependency. |
 | [56-sidebar-information-architecture.md](56-sidebar-information-architecture.md) | Sidebar information architecture: promotes cluster centers and administration destinations into ordered sidebar sections, moves account actions to a topbar UserBox variant, and keeps Settings/system links in the utility footer with custom-prefix and permission-safe composition. |
+| [57-settings-control-plane-audit.md](57-settings-control-plane-audit.md) | Settings control-plane audit and hardening (R57): source ownership, strict typed forms, falsy DB values, redacted YAML/application visibility, permissions/concurrency, and durable history/rollback. |
 
 ## Status at time of writing
 
-- Concrete roadmap and follow-up records through **R56 are implemented** and
+- Concrete roadmap and follow-up records through **R57 are implemented** and
   each behavior change has regression coverage in the owning package. R14
   phase 2 is implemented in [53-bulk-live-progress.md](53-bulk-live-progress.md);
   its playground/browser round trip remains intentionally deferred. The tasks
   package test-install graph is closed in
-  [54-tasks-test-dependency.md](54-tasks-test-dependency.md), and the sidebar
+  [54-tasks-test-dependency.md](54-tasks-test-dependency.md), the sidebar
   placement/account work is recorded in
-  [56-sidebar-information-architecture.md](56-sidebar-information-architecture.md).
+  [56-sidebar-information-architecture.md](56-sidebar-information-architecture.md),
+  and the settings control-plane audit is complete in
+  [57-settings-control-plane-audit.md](57-settings-control-plane-audit.md).
   The final audit and release gate are recorded in
   [50-reliability-audit.md](50-reliability-audit.md).
 - The current verification matrix is maintained from the repository checkout:

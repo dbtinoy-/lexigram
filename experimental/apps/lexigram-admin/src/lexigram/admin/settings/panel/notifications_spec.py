@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from lexigram.admin.settings.panel.models import NotificationSettings
-from lexigram.admin.settings.panel.nodes import PydanticConfigSpec
+from lexigram.admin.settings.panel.nodes import EmailNode, PydanticConfigSpec
 from lexigram.admin.settings.panel.registry import ConfigRegistry
 
 __all__ = ["NotificationsSpec", "register_spec"]
@@ -24,6 +24,7 @@ class NotificationsSpec(PydanticConfigSpec):
         "notification emails. Delivery status lives on the Email page."
     )
     model = NotificationSettings
+    node_overrides = {"email_from": EmailNode}
     required_permissions = frozenset({"admin.settings.edit"})
 
 
