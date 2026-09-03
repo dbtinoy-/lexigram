@@ -72,4 +72,3 @@ default import flow.
 - Note: validation-error counts depend on the resource's import service
   config (`required_fields`/`allowed_fields`); the playground products
   resource declares none, so blank cells validate clean there.
-

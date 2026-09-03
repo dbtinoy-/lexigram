@@ -7,6 +7,10 @@ from lexigram.contracts.admin.audit_entry import AuditEntry, AuditOutcome
 from lexigram.contracts.admin.audit_logger import AdminAuditLoggerProtocol
 from lexigram.contracts.admin.cache_provider import CacheProviderProtocol
 from lexigram.contracts.admin.contributor import BaseAdminContributor
+from lexigram.contracts.admin.contributor_boot import (
+    ContributorBootFailureSummary,
+    summarize_contributor_boot_failure,
+)
 from lexigram.contracts.admin.cqrs import AdminCommand, AdminQuery
 from lexigram.contracts.admin.errors import (
     AdminError,
@@ -109,6 +113,7 @@ __all__ = [
     "CacheStatsProtocol",
     "ChartContent",
     "ChartPoint",
+    "ContributorBootFailureSummary",
     "DashboardWidgetDefinition",
     "DataSourceProtocol",
     "DlqStatsProtocol",
@@ -148,4 +153,5 @@ __all__ = [
     "WidgetParams",
     "WidgetSize",
     "WidgetViewModel",
+    "summarize_contributor_boot_failure",
 ]

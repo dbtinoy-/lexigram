@@ -1,6 +1,6 @@
 # 15 — Import Pipeline Correctness (R19 / B15–B19) (Full Plan)
 
-**Date:** 2026-09-02 · **Status:** 🚧 In progress · **Branch:** `arena/01a05b98-lexigram`
+**Date:** 2026-09-02 · **Status:** ✅ Shipped · **Branch:** `arena/01a05b98-lexigram`
 
 ## 1. Findings (all repro-confirmed against the live service)
 
@@ -53,4 +53,3 @@ row count.
 * Existing import/export tests: 52 passed unchanged.
 * Full admin unit suite: **5383 passed / 8 skipped**, cov 76.06%;
   e2e **72 passed / 2 skipped**.
-

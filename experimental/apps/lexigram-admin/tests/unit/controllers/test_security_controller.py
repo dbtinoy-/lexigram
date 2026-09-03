@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
@@ -11,6 +11,7 @@ import pytest
 from starlette.exceptions import HTTPException
 from starlette.requests import Request
 
+from lexigram.admin.auth.types import AdminSecurityEventType
 from lexigram.admin.controllers.security import (
     SecurityController,
     _fmt_ts,
@@ -274,3 +275,491 @@ class TestEmailMapping:
     async def test_no_store_returns_empty(self) -> None:
         c = _controller()
         assert await c._email_by_user_id() == {}
+
+
+class TestActiveLockoutList:
+    """R41 (doc 37): fleet-wide active-lockout table on the Lockouts tab."""
+
+    @pytest.mark.asyncio
+    async def test_rows_render_with_unlock_forms(self) -> None:
+        c = _controller()
+        c._lockout_store = MagicMock()
+        c._lockout_store.list_active_lockouts = AsyncMock(
+            return_value=[
+                {
+                    "email": "locked@example.com",
+                    "locked_at": "2026-09-02 10:00:00",
+                    "unlock_at": "2026-09-02 10:15:00",
+                    "consecutive_failures": 5,
+                    "is_permanent": 0,
+                },
+                {
+                    "email": "banned@example.com",
+                    "locked_at": "2026-09-02 09:00:00",
+                    "unlock_at": None,
+                    "consecutive_failures": 50,
+                    "is_permanent": 1,
+                },
+            ]
+        )
+        html = await c._active_lockouts_html(_request(_FakeUser(is_superuser=True)))
+        assert "Active lockouts" in html
+        assert "locked@example.com" in html
+        assert "Auto-unlocks" in html
+        assert "banned@example.com" in html
+        assert "Permanent" in html
+        assert html.count("/admin/security/lockouts/clear") == 2
+        assert html.count(">Unlock</button>") == 2
+
+    @pytest.mark.asyncio
+    async def test_empty_state(self) -> None:
+        c = _controller()
+        c._lockout_store = MagicMock()
+        c._lockout_store.list_active_lockouts = AsyncMock(return_value=[])
+        html = await c._active_lockouts_html(_request(_FakeUser(is_superuser=True)))
+        assert "No active lockouts." in html
+
+    @pytest.mark.asyncio
+    async def test_store_without_method_degrades_to_note(self) -> None:
+        c = _controller()
+        c._lockout_store = SimpleNamespace(get_active_lockout=AsyncMock())
+        html = await c._active_lockouts_html(_request(_FakeUser(is_superuser=True)))
+        assert "not supported" in html
+
+    @pytest.mark.asyncio
+    async def test_store_error_keeps_page_usable(self) -> None:
+        c = _controller()
+        c._lockout_store = MagicMock()
+        c._lockout_store.list_active_lockouts = AsyncMock(
+            side_effect=RuntimeError("db down")
+        )
+        html = await c._active_lockouts_html(_request(_FakeUser(is_superuser=True)))
+        assert "Could not load" in html
+
+    @pytest.mark.asyncio
+    async def test_no_store_renders_nothing(self) -> None:
+        c = _controller()
+        c._lockout_store = None
+        html = await c._active_lockouts_html(_request(_FakeUser(is_superuser=True)))
+        assert html == ""
+
+
+class TestLoginSparkline:
+    """R43 (doc 39): hourly login-activity sparkline on the overview."""
+
+    _NOW = datetime(2026, 9, 2, 12, 0, 0, tzinfo=UTC)
+
+    def _event(self, etype: AdminSecurityEventType, created_at: Any) -> Any:
+        return SimpleNamespace(event_type=etype, created_at=created_at)
+
+    def test_buckets_land_at_the_right_offsets(self) -> None:
+        events = [
+            # 30 min ago -> current hour (rightmost bucket)
+            self._event(
+                AdminSecurityEventType.LOGIN_SUCCESS,
+                self._NOW - timedelta(minutes=30),
+            ),
+            # 23.5 h ago -> oldest bucket (leftmost)
+            self._event(
+                AdminSecurityEventType.LOGIN_FAILURE,
+                self._NOW - timedelta(hours=23, minutes=30),
+            ),
+            # 25 h ago -> outside the window, dropped
+            self._event(
+                AdminSecurityEventType.LOGIN_FAILURE,
+                self._NOW - timedelta(hours=25),
+            ),
+        ]
+        html = SecurityController._login_sparkline_html(events, now=self._NOW)
+        assert 'data-testid="login-sparkline"' in html
+        assert "1 successful · 1 failed" in html
+        # leftmost bucket (x=0) is the failure; rightmost is the success
+        assert '<rect x="0" ' in html
+        assert 'x="276"' in html  # bucket 23 * (10 + 2)
+        assert html.count("<rect") == 2
+
+    def test_failure_bars_use_the_destructive_token(self) -> None:
+        events = [
+            self._event(AdminSecurityEventType.LOGIN_FAILURE, self._NOW)
+        ]
+        html = SecurityController._login_sparkline_html(events, now=self._NOW)
+        assert "fill:var(--destructive)" in html
+        assert "fill:var(--muted-foreground)" not in html
+
+    def test_sqlite_string_timestamps_are_parsed(self) -> None:
+        events = [
+            self._event(
+                AdminSecurityEventType.LOGIN_SUCCESS, "2026-09-02 11:45:00"
+            )
+        ]
+        html = SecurityController._login_sparkline_html(events, now=self._NOW)
+        assert "1 successful · 0 failed" in html
+
+    def test_garbage_timestamps_are_skipped_not_fatal(self) -> None:
+        events = [
+            self._event(AdminSecurityEventType.LOGIN_SUCCESS, "not-a-time"),
+            self._event(AdminSecurityEventType.LOGIN_SUCCESS, None),
+        ]
+        html = SecurityController._login_sparkline_html(events, now=self._NOW)
+        assert "No login activity" in html
+
+    def test_non_login_events_are_ignored(self) -> None:
+        events = [
+            self._event(AdminSecurityEventType.SESSION_REVOKED, self._NOW)
+        ]
+        html = SecurityController._login_sparkline_html(events, now=self._NOW)
+        assert "No login activity" in html
+
+    def test_empty_window_renders_empty_state(self) -> None:
+        html = SecurityController._login_sparkline_html([], now=self._NOW)
+        assert "No login activity" in html
+        assert "<svg" not in html
+
+    def test_cap_note_when_window_truncated(self) -> None:
+        events = [
+            self._event(AdminSecurityEventType.LOGIN_SUCCESS, self._NOW)
+            for _ in range(250)
+        ]
+        html = SecurityController._login_sparkline_html(events, now=self._NOW)
+        assert "window truncated at 250 events" in html
+
+
+class TestLiveAuditTail:
+    """Live audit tail (R47 — docs/09-01-2026/43-live-audit-tail.md)."""
+
+    @staticmethod
+    def _event(**overrides: Any) -> SimpleNamespace:
+        from lexigram.admin.auth.types import AdminSecurityEventType
+
+        defaults = {
+            "event_type": AdminSecurityEventType.LOGIN_FAILURE,
+            "success": False,
+            "admin_user_id": "u-1",
+            "ip_address": "10.0.0.9",
+            "created_at": "2026-09-02 10:00:00",
+        }
+        defaults.update(overrides)
+        return SimpleNamespace(**defaults)
+
+    def test_parse_live_flag_variants(self) -> None:
+        c = _controller()
+        for raw, expected in (
+            ("1", True),
+            ("true", True),
+            ("on", True),
+            ("", False),
+            ("0", False),
+            ("yes", False),
+        ):
+            *_, live = c._parse_audit_query({"live": raw})
+            assert live is expected, raw
+        *_, live = c._parse_audit_query({})
+        assert live is False
+
+    @pytest.mark.asyncio
+    async def test_region_without_live_has_no_polling_attrs(self) -> None:
+        c = _controller()
+        req = _request(_FakeUser(is_superuser=True))
+        html = await c._audit_table_region(req)
+        assert 'id="security-audit-table"' in html
+        assert "hx-get" not in html
+        assert "hx-trigger" not in html
+        assert "Live — refreshing" not in html
+
+    @pytest.mark.asyncio
+    async def test_live_region_polls_fragment_with_filters(self) -> None:
+        from datetime import UTC, datetime
+
+        c = _controller()
+        store = SimpleNamespace(query_recent=AsyncMock(return_value=[]))
+        c._audit_store = store
+        req = _request(
+            _FakeUser(is_superuser=True),
+            query={
+                "live": "1",
+                "window": "1h",
+                "limit": "50",
+                "event_type": "login_failure",
+                "user_id": "u-42",
+            },
+        )
+        html = await c._audit_table_region(
+            req, now=datetime(2026, 9, 2, 15, 4, 5, tzinfo=UTC)
+        )
+        assert 'hx-trigger="every 5s"' in html
+        assert 'hx-swap="outerHTML"' in html
+        assert "/admin/security/audit/table?" in html
+        assert "window=1h" in html
+        assert "limit=50" in html
+        assert "live=1" in html
+        assert "event_type=login_failure" in html
+        assert "user_id=u-42" in html
+        assert "updated 15:04:05 UTC" in html
+        # The underlying query honours the same filters.
+        kwargs = store.query_recent.await_args.kwargs
+        assert kwargs["admin_user_id"] == "u-42"
+        assert kwargs["limit"] == 50
+        assert kwargs["since_seconds"] == 3600
+
+    @pytest.mark.asyncio
+    async def test_live_region_renders_event_rows(self) -> None:
+        c = _controller()
+        c._audit_store = SimpleNamespace(
+            query_recent=AsyncMock(return_value=[self._event()])
+        )
+        req = _request(_FakeUser(is_superuser=True), query={"live": "1"})
+        html = await c._audit_table_region(req)
+        assert "login_failure" in html
+        assert ">fail</span>" in html
+        assert "10.0.0.9" in html
+
+    @pytest.mark.asyncio
+    async def test_user_filter_cannot_inject_markup(self) -> None:
+        c = _controller()
+        c._audit_store = SimpleNamespace(query_recent=AsyncMock(return_value=[]))
+        req = _request(
+            _FakeUser(is_superuser=True),
+            query={"live": "1", "user_id": '"><script>alert(1)</script>'},
+        )
+        html = await c._audit_table_region(req)
+        assert "<script>" not in html
+        # urlencode() percent-escapes the payload inside the hx-get URL.
+        assert "user_id=%22%3E%3Cscript%3E" in html
+
+    @pytest.mark.asyncio
+    async def test_store_error_degrades_to_empty_state(self) -> None:
+        c = _controller()
+        c._audit_store = SimpleNamespace(
+            query_recent=AsyncMock(side_effect=OSError("db gone"))
+        )
+        req = _request(_FakeUser(is_superuser=True), query={"live": "1"})
+        html = await c._audit_table_region(req)
+        assert "No audit events match the current filters." in html
+        assert 'hx-trigger="every 5s"' in html  # keeps polling for recovery
+
+    @pytest.mark.asyncio
+    async def test_fragment_route_returns_region_only(self) -> None:
+        c = _controller()
+        req = _request(
+            _FakeUser(is_superuser=True), path="/admin/security/audit/table"
+        )
+        response = await c.audit_table_fragment(req)
+        body = response.body.decode()
+        assert body.startswith('<div id="security-audit-table"')
+        assert "Sessions</a>" not in body  # no tabs — fragment, not a page
+
+    @pytest.mark.asyncio
+    async def test_fragment_route_gated(self) -> None:
+        """Authed non-superadmins get the same 403 as every security page."""
+        c = _controller()
+        with pytest.raises(HTTPException):
+            await c.audit_table_fragment(_request(_FakeUser()))
+
+
+class TestCspEnforcementFlip:
+    """CSP promotion workflow (R48 — docs/09-01-2026/44-csp-enforcement-flip.md)."""
+
+    @staticmethod
+    def _settings(
+        enforced: str | None = None, report_only: str | None = None
+    ) -> SimpleNamespace:
+        values = {
+            "admin.security.csp": enforced,
+            "admin.security.csp_report_only": report_only,
+        }
+
+        async def get(key: str, default: object = None) -> object:
+            return values.get(key, default)
+
+        return SimpleNamespace(get=get, set=AsyncMock())
+
+    # -- card ---------------------------------------------------------------
+
+    def test_card_monitoring_off(self) -> None:
+        from lexigram.admin.settings.panel.models import DEFAULT_CSP
+
+        c = _controller()
+        html = c._enforcement_card_html(
+            _request(_FakeUser(is_superuser=True)), DEFAULT_CSP, None
+        )
+        assert "monitoring is <strong>off</strong>" in html
+        assert "/csp/promote" not in html
+        assert "/csp/rollback" not in html
+
+    def test_card_strict_candidate_warns_and_requires_ack(self) -> None:
+        from lexigram.admin.settings.panel.models import DEFAULT_CSP, STRICT_CSP
+
+        c = _controller()
+        html = c._enforcement_card_html(
+            _request(_FakeUser(is_superuser=True)), DEFAULT_CSP, STRICT_CSP
+        )
+        assert html.count("⚠") == 3
+        assert 'name="acknowledge"' in html
+        assert "/csp/promote" in html
+
+    def test_card_candidate_already_enforced(self) -> None:
+        from lexigram.admin.settings.panel.models import DEFAULT_CSP
+
+        c = _controller()
+        html = c._enforcement_card_html(
+            _request(_FakeUser(is_superuser=True)), DEFAULT_CSP, DEFAULT_CSP
+        )
+        assert "already the enforced policy" in html
+        assert "/csp/promote" not in html
+
+    def test_card_override_offers_rollback(self) -> None:
+        c = _controller()
+        html = c._enforcement_card_html(
+            _request(_FakeUser(is_superuser=True)), "default-src 'none'", None
+        )
+        assert "/csp/rollback" in html
+        assert "settings override" in html
+
+    def test_card_shows_violation_counts(self) -> None:
+        from lexigram.admin.settings.panel.models import DEFAULT_CSP, STRICT_CSP
+
+        c = _controller()
+        c._csp_store = SimpleNamespace(
+            list_violations=lambda: [object(), object()], total_received=7
+        )
+        html = c._enforcement_card_html(
+            _request(_FakeUser(is_superuser=True)), DEFAULT_CSP, STRICT_CSP
+        )
+        assert "7 report(s) received" in html
+        assert "2 distinct violation(s)" in html
+
+    # -- promote ------------------------------------------------------------
+
+    @pytest.mark.asyncio
+    async def test_promote_without_settings_store_errors(self) -> None:
+        c = _controller()
+        req = _request(_FakeUser(is_superuser=True), form={"csrf_token": ""})
+        resp = await c.csp_promote(req)
+        assert "Settings+store+unavailable" in resp.headers["location"]
+
+    @pytest.mark.asyncio
+    async def test_promote_requires_active_monitoring(self) -> None:
+        c = _controller()
+        c._csp_settings = self._settings(report_only="off")
+        req = _request(_FakeUser(is_superuser=True), form={"csrf_token": ""})
+        resp = await c.csp_promote(req)
+        assert "no+candidate" in resp.headers["location"]
+        c._csp_settings.set.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_promote_already_enforced_is_noop(self) -> None:
+        from lexigram.admin.settings.panel.models import STRICT_CSP
+
+        c = _controller()
+        c._csp_settings = self._settings(enforced=STRICT_CSP)
+        req = _request(_FakeUser(is_superuser=True), form={"csrf_token": ""})
+        resp = await c.csp_promote(req)
+        assert "already+enforced" in resp.headers["location"]
+        c._csp_settings.set.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_promote_strict_without_ack_blocked(self) -> None:
+        c = _controller()
+        c._csp_settings = self._settings()  # default enforced, strict candidate
+        req = _request(_FakeUser(is_superuser=True), form={"csrf_token": ""})
+        resp = await c.csp_promote(req)
+        loc = resp.headers["location"]
+        assert "acknowledgement" in loc
+        assert "3+known+UI-compatibility" in loc
+        c._csp_settings.set.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_promote_strict_with_ack_writes_both_keys(self) -> None:
+        from lexigram.admin.settings.panel.models import STRICT_CSP
+
+        c = _controller()
+        c._csp_settings = self._settings()
+        audit = AsyncMock()
+        c._audit_service = SimpleNamespace(log_event=audit)
+        req = _request(
+            _FakeUser(is_superuser=True),
+            form={"csrf_token": "", "acknowledge": "1"},
+        )
+        resp = await c.csp_promote(req)
+        assert "notice=" in resp.headers["location"]
+        calls = {call.args[0]: call.args[1] for call in c._csp_settings.set.await_args_list}
+        assert calls["admin.security.csp"] == STRICT_CSP
+        assert calls["admin.security.csp_report_only"] == "off"
+        meta = audit.await_args.kwargs["metadata"]
+        assert meta["action"] == "csp_promote"
+        assert meta["acknowledged"] is True
+        assert meta["blockers"] == 3
+
+    @pytest.mark.asyncio
+    async def test_promote_compatible_candidate_needs_no_ack(self) -> None:
+        from lexigram.admin.settings.panel.models import DEFAULT_CSP
+
+        candidate = DEFAULT_CSP + "; report-to csp-endpoint"
+        c = _controller()
+        c._csp_settings = self._settings(report_only=candidate)
+        req = _request(_FakeUser(is_superuser=True), form={"csrf_token": ""})
+        resp = await c.csp_promote(req)
+        assert "notice=" in resp.headers["location"]
+        calls = {call.args[0]: call.args[1] for call in c._csp_settings.set.await_args_list}
+        assert calls["admin.security.csp"] == candidate
+
+    @pytest.mark.asyncio
+    async def test_promote_with_violations_needs_ack(self) -> None:
+        from lexigram.admin.settings.panel.models import DEFAULT_CSP
+
+        candidate = DEFAULT_CSP + "; report-to csp-endpoint"
+        c = _controller()
+        c._csp_settings = self._settings(report_only=candidate)
+        c._csp_store = SimpleNamespace(
+            list_violations=lambda: [object()], total_received=1
+        )
+        req = _request(_FakeUser(is_superuser=True), form={"csrf_token": ""})
+        resp = await c.csp_promote(req)
+        assert "1+recorded+violation" in resp.headers["location"]
+        c._csp_settings.set.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_promote_csrf_failure_rejected(self) -> None:
+        csrf = MagicMock()
+        csrf.validate_token.return_value = False
+        c = _controller(csrf_service=csrf)
+        c._csp_settings = self._settings()
+        req = _request(
+            _FakeUser(is_superuser=True),
+            session={"csrf_session_id": "sid"},
+            form={"csrf_token": "bad"},
+        )
+        resp = await c.csp_promote(req)
+        assert "error=" in resp.headers["location"]
+        c._csp_settings.set.assert_not_awaited()
+
+    # -- rollback -----------------------------------------------------------
+
+    @pytest.mark.asyncio
+    async def test_rollback_clears_override_and_restores_monitoring(self) -> None:
+        c = _controller()
+        c._csp_settings = self._settings(enforced="default-src 'none'")
+        audit = AsyncMock()
+        c._audit_service = SimpleNamespace(log_event=audit)
+        req = _request(_FakeUser(is_superuser=True), form={"csrf_token": ""})
+        resp = await c.csp_rollback(req)
+        assert "notice=" in resp.headers["location"]
+        calls = {call.args[0]: call.args[1] for call in c._csp_settings.set.await_args_list}
+        assert calls["admin.security.csp"] == ""
+        assert calls["admin.security.csp_report_only"] == ""
+        assert audit.await_args.kwargs["metadata"]["action"] == "csp_rollback"
+
+    @pytest.mark.asyncio
+    async def test_rollback_without_settings_store_errors(self) -> None:
+        c = _controller()
+        req = _request(_FakeUser(is_superuser=True), form={"csrf_token": ""})
+        resp = await c.csp_rollback(req)
+        assert "Settings+store+unavailable" in resp.headers["location"]
+
+    @pytest.mark.asyncio
+    async def test_promote_and_rollback_gated(self) -> None:
+        c = _controller()
+        with pytest.raises(HTTPException):
+            await c.csp_promote(_request(_FakeUser(), form={"csrf_token": ""}))
+        with pytest.raises(HTTPException):
+            await c.csp_rollback(_request(_FakeUser(), form={"csrf_token": ""}))

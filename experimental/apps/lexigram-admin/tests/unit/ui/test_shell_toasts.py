@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from lexigram.admin.ui.templates.shell import AdminShell
 from lexigram.ui import render_to_string
 
@@ -53,3 +55,58 @@ class TestShellFlashToasts:
         html = render_to_string(shell)
         assert "View" in html
         assert "openReport()" in html
+
+    def test_flash_zone_is_a_fixed_width_overlay(self) -> None:
+        """A first-load flash must not become part of dashboard layout flow."""
+        shell = AdminShell(
+            content="<p>hi</p>",
+            title="Test",
+            flash_messages=[{"message": "Saved", "category": "success"}],
+        )
+        html = render_to_string(shell)
+        assert '<div id="flash-container">' in html
+        assert "Saved" in html
+
+        css_path = (
+            Path(__file__).parents[3]
+            / "src"
+            / "lexigram"
+            / "admin"
+            / "static"
+            / "css"
+            / "admin.css"
+        )
+        css = css_path.read_text()
+        flash_start = css.index(".toast-container,\n#flash-container")
+        flash_rule = css[flash_start : css.index("}", flash_start) + 1]
+
+        assert "position: fixed" in flash_rule
+        assert "width: min(360px, calc(100vw - 2rem))" in flash_rule
+        assert "pointer-events: none" in flash_rule
+        assert "#flash-container > .toast" in css
+        assert "pointer-events: auto" in css
+
+    def test_client_toasts_reuse_the_server_flash_zone(self) -> None:
+        js_path = (
+            Path(__file__).parents[3]
+            / "src"
+            / "lexigram"
+            / "admin"
+            / "static"
+            / "js"
+            / "admin.js"
+        )
+        js = js_path.read_text()
+
+        assert "document.querySelector('.toast-container, #flash-container')" in js
+
+    def test_shell_toast_escapes_dynamic_message_text(self) -> None:
+        shell = AdminShell(
+            content="<p>hi</p>",
+            title="Test",
+            flash_messages=[],
+        )
+        html = render_to_string(shell)
+
+        assert "messageNode.textContent = String(message || '')" in html
+        assert "${safeMessage}" in html

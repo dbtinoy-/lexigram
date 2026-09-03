@@ -17,12 +17,16 @@ from lexigram.admin.controllers.base import AdminController
 from lexigram.admin.controllers.settings_history import SettingsHistoryMixin
 from lexigram.admin.multitenancy.adapter import resolve_tenant_id
 from lexigram.admin.rbac.super_admin import is_super_admin
-from lexigram.admin.resources.urls import admin_prefix_from_request, admin_url
+from lexigram.admin.resources.urls import (
+    admin_prefix_from_request,
+    admin_url,
+    mount_admin_url,
+)
 from lexigram.admin.settings.conflict import SettingsConflictError
 from lexigram.admin.settings.panel import BooleanNode, SecretNode
 from lexigram.admin.settings.panel.layout import ConfigLayout
 from lexigram.admin.settings.panel.registry import ConfigRegistry
-from lexigram.admin.settings.panel.types import ConfigCategory
+from lexigram.admin.settings.panel.types import ConfigCategory, PanelLink
 from lexigram.admin.settings.panel.ui import ConfigDashboardUI
 from lexigram.admin.settings.revision import (
     extract_submitted_revision,
@@ -32,7 +36,7 @@ from lexigram.admin.settings.revision import (
 from lexigram.admin.settings.snapshots import SettingsSnapshotService
 from lexigram.contracts.web import get, post
 from lexigram.logging import get_logger
-from lexigram.ui import el, render_to_string
+from lexigram.ui import ServerToastChannel, ToastData, el, render_to_string
 
 if TYPE_CHECKING:
     from lexigram.admin.auth.protocols import AdminCsrfServiceProtocol
@@ -64,15 +68,38 @@ class SettingsController(SettingsHistoryMixin, AdminController):
         registry: ConfigRegistry | None = None,
         rbac_config: AdminRbacConfig | None = None,
         snapshot_service: SettingsSnapshotService | None = None,
+        dashboard: Any = None,
+        application_config: Any = None,
+        config_loader: Any = None,
     ) -> None:
         super().__init__(renderer=renderer, settings_service=settings_service)
         self._csrf_service = csrf_service
         self._audit_service = audit_service
         self._registry = registry or ConfigRegistry.with_defaults()
+        self._application_config = application_config
+        self._config_loader = config_loader
+        if application_config is not None:
+            # Keep the effective application configuration in the same
+            # permission-filtered sidebar as editable specs, but bind it to a
+            # read-only store so it can never become a second write path.
+            from lexigram.admin.settings.application import (
+                AdminConfigStore,
+                EffectiveApplicationConfigSpec,
+            )
+
+            self._registry.register_store(
+                "application", AdminConfigStore(application_config, config_loader)
+            )
+            self._registry.register_spec(EffectiveApplicationConfigSpec)
         self._rbac_config = rbac_config
         # History is on by default so a mistaken save is always recoverable;
         # pass an explicit store via DI to make it durable across restarts.
         self._snapshots = snapshot_service or SettingsSnapshotService()
+        # Duck-typed provider with `async get_settings_panels(user)` (the
+        # DashboardAssembler singleton) — surfaces contributor panels such
+        # as System Info in the sidebar (R50, doc 46). Optional: without it
+        # the sidebar is spec-only, exactly as before.
+        self._dashboard = dashboard
 
     # -- helpers --
 
@@ -83,6 +110,21 @@ class SettingsController(SettingsHistoryMixin, AdminController):
         )
 
     @staticmethod
+    async def _tenant_for_spec(request: Request, spec: type[Any]) -> str | None:
+        """Resolve tenant scope while keeping the default tenant backward-compatible.
+
+        The DB adapter already maps ``None`` to its constructor's default
+        tenant. Treating the conventional ``default`` id as that same global
+        fallback also keeps standalone/in-memory callers that omit a tenant
+        argument reading the value they just saved, without sharing any
+        non-default tenant bucket.
+        """
+        if spec.scope != "tenant":
+            return None
+        tenant_id = await resolve_tenant_id(request, default="default")
+        return None if tenant_id == "default" else tenant_id
+
+    @staticmethod
     def _settings_url(request: Request, namespace: str = "") -> str:
         """Build a settings URL under the request's configured admin mount."""
         return admin_url(
@@ -91,17 +133,29 @@ class SettingsController(SettingsHistoryMixin, AdminController):
             namespace,
         )
 
+    @staticmethod
+    def _history_url(request: Request, namespace: str) -> str:
+        """Build the mount-aware settings history URL."""
+        return admin_url(
+            admin_prefix_from_request(request),
+            "settings",
+            f"history/{namespace}",
+        )
+
     def _spec_ui_data(
         self,
         spec: type[Any],
         *,
         can_edit: bool | None = None,
+        history_url: str | None = None,
     ) -> dict[str, Any]:
         """Return UI metadata with effective store and permission context."""
         data = spec.to_dict()
         data["store_name"] = self._store_name(spec)
         if can_edit is not None:
             data["can_edit"] = can_edit
+        if history_url:
+            data["history_url"] = history_url
         return data
 
     @staticmethod
@@ -177,6 +231,38 @@ class SettingsController(SettingsHistoryMixin, AdminController):
             )
         return categories, visible
 
+    async def _panel_links(self, request: Request) -> list[PanelLink]:
+        """Contributor settings-panel links for the sidebar (R50, doc 46).
+
+        Panels (e.g. the core contributor's System Info page) live in the
+        dashboard contributor catalog, not the ConfigRegistry — the sidebar
+        renders the union. Permission filtering happens inside the
+        assembler, keyed off the requesting user. Any failure degrades to a
+        spec-only sidebar rather than breaking the Settings page.
+        """
+        if self._dashboard is None:
+            return []
+        try:
+            user = getattr(getattr(request, "state", None), "user", None)
+            admin_prefix = admin_prefix_from_request(request)
+            panels = await self._dashboard.get_settings_panels(user)
+            return [
+                PanelLink(
+                    title=panel.title,
+                    url=mount_admin_url(panel.route_path, admin_prefix),
+                    icon=getattr(panel, "icon", "") or "file-text",
+                    category=getattr(panel, "category", "") or "Tools",
+                )
+                for panel in sorted(
+                    panels,
+                    key=lambda p: (getattr(p, "order", 100), p.title),
+                )
+                if getattr(panel, "route_path", "")
+            ]
+        except Exception:  # noqa: BLE001 — sidebar extras must never 500
+            logger.warning("settings.panel_links_unavailable")
+            return []
+
     def _get_csrf_token(self, request: Request) -> str | None:
         """Resolve the CSRF token for form rendering, if available."""
         if not self._csrf_service:
@@ -194,11 +280,14 @@ class SettingsController(SettingsHistoryMixin, AdminController):
         return None
 
     @staticmethod
-    def _safe_audit_value(value: Any) -> Any:
-        """Keep audit values JSON-friendly without leaking object internals."""
-        if value is None or isinstance(value, (bool, int, float, str)):
-            return value
-        return str(value)
+    def _safe_audit_value(value: Any, *, key: str | None = None) -> Any:
+        """Keep audit values JSON-friendly without leaking credential material."""
+        from lexigram.admin.settings.application import redact_config_value
+
+        safe = redact_config_value(value, key=key)
+        if safe is None or isinstance(safe, (bool, int, float, str)):
+            return safe
+        return str(safe)
 
     @classmethod
     def _non_secret_changes(
@@ -220,8 +309,8 @@ class SettingsController(SettingsHistoryMixin, AdminController):
                 changes.append(
                     {
                         "field": key,
-                        "before": cls._safe_audit_value(previous),
-                        "after": cls._safe_audit_value(current),
+                        "before": cls._safe_audit_value(previous, key=key),
+                        "after": cls._safe_audit_value(current, key=key),
                     }
                 )
         return changes
@@ -275,7 +364,11 @@ class SettingsController(SettingsHistoryMixin, AdminController):
             )
             form_html = render_to_string(
                 ConfigDashboardUI().render_config_form(
-                    spec=self._spec_ui_data(spec, can_edit=True),
+                    spec=self._spec_ui_data(
+                        spec,
+                        can_edit=True,
+                        history_url=self._history_url(request, namespace),
+                    ),
                     values=current_values,
                     errors={"__all__": conflict_message},
                     value_metadata=value_metadata,
@@ -340,6 +433,7 @@ class SettingsController(SettingsHistoryMixin, AdminController):
             content=None,
             title="Settings",
             admin_prefix=admin_prefix_from_request(request),
+            panel_links=await self._panel_links(request),
         )
         return await self.render_admin(
             request,
@@ -366,7 +460,7 @@ class SettingsController(SettingsHistoryMixin, AdminController):
         can_edit = self._can_access_spec(request, spec, "edit")
         effective_tenant_id = tenant_id
         if spec.scope == "tenant" and effective_tenant_id is None:
-            effective_tenant_id = await resolve_tenant_id(request, default="default")
+            effective_tenant_id = await self._tenant_for_spec(request, spec)
         value_metadata = await self._registry.get_value_metadata(
             namespace,
             self._store_name(spec),
@@ -374,7 +468,11 @@ class SettingsController(SettingsHistoryMixin, AdminController):
         )
         ui = ConfigDashboardUI()
         form_content = ui.render_config_form(
-            spec=self._spec_ui_data(spec, can_edit=can_edit),
+            spec=self._spec_ui_data(
+                spec,
+                can_edit=can_edit,
+                history_url=self._history_url(request, namespace),
+            ),
             values=values,
             errors=errors,
             value_metadata=value_metadata,
@@ -390,20 +488,246 @@ class SettingsController(SettingsHistoryMixin, AdminController):
             content=form_content,
             title="Settings",
             admin_prefix=admin_prefix_from_request(request),
+            panel_links=await self._panel_links(request),
         )
 
-        response = await self.render_admin(
+        if request.headers.get("hx-request") == "true" and request.headers.get(
+            "hx-target"
+        ) in {"#settings-content", "settings-content"}:
+            response = HTMLResponse(
+                render_to_string(form_content), status_code=status_code
+            )
+        else:
+            response = await self.render_admin(
+                request,
+                layout,
+                title=f"{spec.label or namespace} - Settings",
+                breadcrumbs=self.generate_breadcrumbs(
+                    ("Home", admin_url(admin_prefix_from_request(request), "")),
+                    ("Settings", self._settings_url(request)),
+                    current=spec.label or namespace,
+                ),
+            )
+            response.status_code = status_code
+        return response
+
+    async def _render_history_content(
+        self,
+        request: Request,
+        spec: type[Any],
+        namespace: str,
+        tenant_id: str | None,
+        snapshots: list[Any],
+        current_values: dict[str, Any],
+    ) -> Any:
+        """Render the history list and safe rollback forms."""
+        can_edit = self._can_access_spec(request, spec, "edit")
+        current_revision = self._settings_revision(spec, current_values)
+        children: list[Any] = [
+            el(
+                "a",
+                "← Back to settings",
+                href=self._settings_url(request, namespace),
+                hx_get=self._settings_url(request, namespace),
+                hx_target="#settings-content",
+                hx_swap="innerHTML",
+                hx_push_url="true",
+                data_admin_navigation=True,
+                class_="inline-flex text-sm font-medium text-primary-700 underline-offset-4 hover:underline dark:text-primary-400",
+            ),
+            el(
+                "div",
+                el(
+                    "h2",
+                    "Change history",
+                    class_="text-xl font-semibold text-foreground",
+                ),
+                el(
+                    "p",
+                    "Snapshots contain non-secret values from immediately before a successful change. Failed or stale saves are never recorded.",
+                    class_="mt-1 text-sm text-muted-foreground",
+                ),
+                class_="mt-5 mb-5",
+            ),
+        ]
+        if not snapshots:
+            children.append(
+                el(
+                    "div",
+                    "No changes have been recorded for this namespace.",
+                    role="status",
+                    class_="rounded-lg border border-border bg-muted px-4 py-6 text-sm text-muted-foreground",
+                )
+            )
+
+        csrf_token = self._get_csrf_token(request)
+        for snapshot in snapshots:
+            value_text = (
+                "\n".join(
+                    f"{key}: {value!s}"
+                    for key, value in sorted(snapshot.values.items())
+                )
+                or "No non-secret fields captured."
+            )
+            snapshot_children: list[Any] = [
+                el(
+                    "div",
+                    el(
+                        "strong",
+                        snapshot.created_at.isoformat(),
+                        class_="text-sm font-medium text-foreground",
+                    ),
+                    el(
+                        "span",
+                        f" · by {snapshot.actor_id} · {snapshot.comment or 'save'}",
+                        class_="text-xs text-muted-foreground",
+                    ),
+                    class_="flex flex-wrap items-baseline gap-1",
+                ),
+                el(
+                    "pre",
+                    value_text,
+                    tabindex="0",
+                    class_="mt-3 max-h-64 overflow-auto rounded-md bg-muted p-3 text-xs text-foreground whitespace-pre-wrap",
+                ),
+            ]
+            if snapshot.skipped_secrets:
+                snapshot_children.append(
+                    el(
+                        "p",
+                        "Secret fields were intentionally excluded: ",
+                        el(
+                            "span",
+                            ", ".join(snapshot.skipped_secrets),
+                            class_="font-medium",
+                        ),
+                        class_="mt-2 text-xs text-muted-foreground",
+                    )
+                )
+            if snapshot.unset_keys:
+                snapshot_children.append(
+                    el(
+                        "p",
+                        "Inherited defaults will be restored for: ",
+                        el(
+                            "span",
+                            ", ".join(snapshot.unset_keys),
+                            class_="font-medium",
+                        ),
+                        class_="mt-2 text-xs text-muted-foreground",
+                    )
+                )
+            if can_edit and (snapshot.values or snapshot.unset_keys):
+                hidden = [
+                    el(
+                        "input",
+                        type="hidden",
+                        name="rollback_to",
+                        value=snapshot.snapshot_id,
+                    ),
+                    el(
+                        "input",
+                        type="hidden",
+                        name="settings_revision",
+                        value=current_revision,
+                    ),
+                ]
+                if csrf_token:
+                    hidden.insert(
+                        0,
+                        el("input", type="hidden", name="csrf_token", value=csrf_token),
+                    )
+                snapshot_children.append(
+                    el(
+                        "form",
+                        *hidden,
+                        el(
+                            "button",
+                            "Restore this snapshot",
+                            type="submit",
+                            class_="mt-3 inline-flex items-center rounded-md border border-border bg-card px-3 py-2 text-sm font-medium text-foreground shadow-sm hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                        ),
+                        action=self._settings_url(request, namespace),
+                        method="post",
+                        hx_post=self._settings_url(request, namespace),
+                        hx_target="#settings-content",
+                        hx_swap="innerHTML",
+                        data_admin_form=True,
+                        data_settings_rollback=True,
+                    )
+                )
+            children.append(
+                el(
+                    "article",
+                    *snapshot_children,
+                    class_="rounded-lg border border-border bg-card p-4 shadow-sm",
+                    data_snapshot_id=snapshot.snapshot_id,
+                )
+            )
+
+        return el("div", *children, class_="space-y-4")
+
+    @get("/history/{namespace:path}")
+    async def history(self, request: Request) -> Response:
+        """Show safe namespace history and restore actions."""
+        namespace = request.path_params.get("namespace", "")
+        spec = self._registry.get_spec(namespace)
+        if not spec or not spec.get_nodes():
+            self.flash(f"Configuration '{namespace}' not found.", "error")
+            return RedirectResponse(url=self._settings_url(request), status_code=302)
+        if not self._can_access_spec(request, spec, "read"):
+            await self._audit(
+                request,
+                success=False,
+                event_type=AdminSecurityEventType.PERMISSION_DENIED,
+                namespace=namespace,
+                reason="permission_denied",
+            )
+            self.flash("You do not have permission to view this setting.", "error")
+            return RedirectResponse(url=self._settings_url(request), status_code=302)
+
+        tenant_id = await self._tenant_for_spec(request, spec)
+        current_values = await self._registry.get_values(
+            namespace, self._store_name(spec), tenant_id=tenant_id
+        )
+        try:
+            snapshots = await self._snapshots.list_history(namespace, tenant_id)
+        except Exception:  # noqa: BLE001 — history must not break settings access
+            logger.warning("settings.history_unavailable", namespace=namespace)
+            snapshots = []
+
+        content = await self._render_history_content(
+            request,
+            spec,
+            namespace,
+            tenant_id,
+            snapshots,
+            current_values,
+        )
+        if request.headers.get("hx-request") == "true":
+            return HTMLResponse(render_to_string(content))
+
+        categories, _ = self._build_categories(request)
+        layout = ConfigLayout(
+            categories=categories,
+            active_category=spec.package_source,
+            active_namespace=namespace,
+            content=content,
+            title="Settings",
+            admin_prefix=admin_prefix_from_request(request),
+            panel_links=await self._panel_links(request),
+        )
+        return await self.render_admin(
             request,
             layout,
-            title=f"{spec.label or namespace} - Settings",
+            title=f"{spec.label or namespace} - History",
             breadcrumbs=self.generate_breadcrumbs(
                 ("Home", admin_url(admin_prefix_from_request(request), "")),
                 ("Settings", self._settings_url(request)),
-                current=spec.label or namespace,
+                (spec.label or namespace, self._settings_url(request, namespace)),
+                current="History",
             ),
         )
-        response.status_code = status_code
-        return response
 
     @get("/{namespace:path}")
     async def spec_view(self, request: Request) -> Response:
@@ -424,11 +748,7 @@ class SettingsController(SettingsHistoryMixin, AdminController):
             self.flash("You do not have permission to view this setting.", "error")
             return RedirectResponse(url=self._settings_url(request), status_code=302)
 
-        tenant_id = (
-            await resolve_tenant_id(request, default="default")
-            if spec.scope == "tenant"
-            else None
-        )
+        tenant_id = await self._tenant_for_spec(request, spec)
         values = await self._registry.get_values(
             namespace, self._store_name(spec), tenant_id=tenant_id
         )
@@ -493,23 +813,50 @@ class SettingsController(SettingsHistoryMixin, AdminController):
         editable_updates = {
             key: value for key, value in updates.items() if not nodes[key].readonly
         }
-        tenant_id = (
-            await resolve_tenant_id(request, default="default")
-            if spec.scope == "tenant"
-            else None
-        )
+        tenant_id = await self._tenant_for_spec(request, spec)
         existing_values = await self._registry.get_values(
             namespace, self._store_name(spec), tenant_id=tenant_id
+        )
+        existing_metadata = await self._registry.get_value_metadata(
+            namespace,
+            self._store_name(spec),
+            tenant_id=tenant_id,
         )
 
         # A rollback submission replaces the posted values with a stored
         # snapshot and then continues down the ordinary save path, so it is
         # subject to the same validation, concurrency, and audit rules.
-        rollback_values = await self._resolve_rollback(form, spec, namespace, tenant_id)
-        is_rollback = rollback_values is not None
-        if rollback_values:
-            editable_updates = dict(rollback_values)
-            updates = dict(rollback_values)
+        rollback = await self._resolve_rollback(form, spec, namespace, tenant_id)
+        rollback_getter = getattr(form, "get", None)
+        rollback_id = (
+            str(rollback_getter("rollback_to") or "")
+            if callable(rollback_getter)
+            else ""
+        )
+        # A hidden rollback form has no ordinary field values. If its opaque
+        # id is missing, expired, or belongs to another scope, do not let it
+        # fall through as a normal save (which would synthesize unchecked
+        # booleans as false). Preserve the legacy mixed-form behavior when a
+        # caller deliberately supplies an ordinary editable value as well.
+        if rollback_id and rollback is None and not editable_updates:
+            await self._audit(
+                request,
+                success=False,
+                namespace=namespace,
+                reason="rollback_unavailable",
+            )
+            self.flash("That settings snapshot is no longer available.", "error")
+            return RedirectResponse(
+                url=self._settings_url(request, namespace),
+                status_code=302,
+            )
+
+        is_rollback = rollback is not None
+        rollback_unset_keys: set[str] = set()
+        if rollback is not None:
+            editable_updates = dict(rollback.values)
+            updates = dict(rollback.values)
+            rollback_unset_keys = set(rollback.unset_keys)
             ignored_readonly = []
 
         # Optimistic concurrency is mandatory: a submission that omits the
@@ -563,6 +910,27 @@ class SettingsController(SettingsHistoryMixin, AdminController):
             else:
                 validated_updates[key] = nodes[key].validate(value)
 
+        # Do not turn a form that merely re-submits its current values into a
+        # history entry or an unnecessary database write. Equality is checked
+        # after node coercion, so "60" and 60 are the same effective value.
+        validated_updates = {
+            key: value
+            for key, value in validated_updates.items()
+            if key not in rollback_unset_keys
+            and (
+                existing_values.get(key) != value
+                or (
+                    is_rollback
+                    and existing_metadata.get(key, {}).get("configured") is not True
+                )
+            )
+        }
+        delete_keys = {
+            key
+            for key in rollback_unset_keys
+            if existing_metadata.get(key, {}).get("configured") is True
+        }
+
         # Start from the effective values and overlay the submitted values so
         # an invalid form can be re-rendered without losing the user's input.
         display_values = dict(existing_values)
@@ -600,7 +968,11 @@ class SettingsController(SettingsHistoryMixin, AdminController):
             )
             form_html = render_to_string(
                 ui.render_config_form(
-                    spec=self._spec_ui_data(spec, can_edit=True),
+                    spec=self._spec_ui_data(
+                        spec,
+                        can_edit=True,
+                        history_url=self._history_url(request, namespace),
+                    ),
                     values=display_values,
                     errors=validation_errors,
                     value_metadata=value_metadata,
@@ -633,59 +1005,80 @@ class SettingsController(SettingsHistoryMixin, AdminController):
                 tenant_id=tenant_id,
             )
 
-        # Capture the outgoing state before it is replaced so this save can
-        # be rolled back. Recorded before the write because a snapshot taken
-        # afterwards would describe the new values, not the ones being lost.
-        await self._capture_snapshot(
-            request,
-            spec,
-            namespace,
-            existing_values,
-            tenant_id,
-            comment="rollback" if is_rollback else "save",
-        )
+        wrote_values = bool(validated_updates or delete_keys)
+        if wrote_values:
+            # The revision comparison above happened before this write, so a
+            # save committed in between would otherwise be silently
+            # overwritten. Pass the values the form was rendered from so
+            # stores that support it can re-check inside the write transaction
+            # and reject a late conflict.
+            try:
+                await self._registry.save_values(
+                    namespace,
+                    validated_updates,
+                    self._store_name(spec),
+                    tenant_id=tenant_id,
+                    expected={
+                        key: existing_values[key]
+                        for key in set(validated_updates).union(delete_keys)
+                        if key in existing_values
+                    },
+                    delete_keys=delete_keys,
+                )
+            except SettingsConflictError:
+                await self._audit(
+                    request,
+                    success=False,
+                    namespace=namespace,
+                    reason="concurrent_update_at_write",
+                    keys=sorted(validated_updates),
+                )
+                return await self._render_save_conflict(
+                    request, spec, namespace, tenant_id
+                )
 
-        # The revision comparison above happened before this write, so a save
-        # committed in between would otherwise be silently overwritten. Pass
-        # the values the form was rendered from so stores that support it can
-        # re-check inside the write transaction and reject a late conflict.
-        try:
-            await self._registry.save_values(
+            # Capture only after the conditional write succeeds. A snapshot
+            # taken before the write survives a lost race and falsely suggests
+            # that a failed save can be rolled back.
+            await self._capture_snapshot(
+                request,
+                spec,
                 namespace,
-                validated_updates,
-                self._store_name(spec),
-                tenant_id=tenant_id,
-                expected={
-                    key: existing_values[key]
-                    for key in validated_updates
-                    if key in existing_values
+                existing_values,
+                tenant_id,
+                comment="rollback" if is_rollback else "save",
+                unset_keys={
+                    key
+                    for key, metadata in existing_metadata.items()
+                    if metadata.get("configured") is False
                 },
             )
-        except SettingsConflictError:
-            await self._audit(
-                request,
-                success=False,
-                namespace=namespace,
-                reason="concurrent_update_at_write",
-                keys=sorted(validated_updates),
-            )
-            return await self._render_save_conflict(request, spec, namespace, tenant_id)
 
+        effective_after = dict(existing_values)
+        effective_after.update(validated_updates)
+        for key in delete_keys:
+            effective_after[key] = nodes[key].default
         await self._audit(
             request,
             namespace=namespace,
-            keys=sorted(validated_updates),
-            changes=self._non_secret_changes(spec, existing_values, validated_updates),
+            keys=sorted(set(validated_updates).union(delete_keys)),
+            changes=self._non_secret_changes(spec, existing_values, effective_after),
             invalid=[],
             ignored_readonly=ignored_readonly,
             preserved_secrets=sorted(preserved_secrets),
             cleared_secrets=sorted(preserved_secrets),
+            unset_keys=sorted(delete_keys),
             rollback=is_rollback,
+            no_op=not wrote_values,
         )
 
         if request.headers.get("hx-request") == "true":
             self._flash_messages.clear()
-            message = "Settings saved successfully."
+            message = (
+                "No changes were needed."
+                if not wrote_values
+                else "Settings saved successfully."
+            )
             if ignored_readonly:
                 message += " Read-only fields were ignored."
             if preserved_secrets:
@@ -705,7 +1098,11 @@ class SettingsController(SettingsHistoryMixin, AdminController):
                 tenant_id=tenant_id,
             )
             form_content = ui.render_config_form(
-                spec=self._spec_ui_data(spec, can_edit=True),
+                spec=self._spec_ui_data(
+                    spec,
+                    can_edit=True,
+                    history_url=self._history_url(request, namespace),
+                ),
                 values=values,
                 value_metadata=value_metadata,
                 revision=self._settings_revision(spec, values),
@@ -716,12 +1113,39 @@ class SettingsController(SettingsHistoryMixin, AdminController):
 
             return HTMLResponse(flash_oob + form_html)
 
-        self.flash("Settings saved successfully.", "success")
+        self.flash(
+            "No changes were needed."
+            if not wrote_values
+            else "Settings saved successfully.",
+            "success",
+        )
         return RedirectResponse(
             url=self._settings_url(request, namespace),
             status_code=302,
         )
 
     def _render_toast(self, message: str, kind: str) -> str:
-        """Build a toast component for htmx responses."""
-        return render_to_string(el("div", {"class": f"toast toast-{kind}"}, message))
+        """Build a visible, accessible toast for HTMX responses."""
+        rendered = ServerToastChannel().render_toast(
+            ToastData(message=message, type=kind)
+        )
+        # Keep the long-standing exact ``class="toast toast-{kind}"``
+        # contract for consumers that style or assert it. The shared renderer
+        # starts animated toasts with ``show``; the HTMX fragment is already
+        # mounted, so make this server-delivered toast visible immediately
+        # without requiring a second client lifecycle pass.
+        color = {
+            "success": "green",
+            "error": "red",
+            "warning": "yellow",
+            "info": "blue",
+        }.get(kind, "blue")
+        rendered = rendered.replace(
+            f'class="toast toast-{kind} toast-{color} show"',
+            f'class="toast toast-{kind}" style="transform: translateX(0); opacity: 1"',
+            1,
+        )
+        # The message is in a text node, not an attribute. Keep the legacy
+        # text-node escaping contract where quotes remain readable while
+        # angle brackets stay escaped and therefore cannot become markup.
+        return rendered.replace("&#34;", '"').replace("&#39;", "'")

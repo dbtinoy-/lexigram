@@ -42,6 +42,7 @@ class SettingsPanelAssembler:
                     handler=panel.handler,
                     icon=panel.icon,
                     category=panel.category,
+                    order=panel.order,
                     permission=panel.permission,
                 )
                 collected.append(p)

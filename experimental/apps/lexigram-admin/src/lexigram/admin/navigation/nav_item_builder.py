@@ -114,9 +114,12 @@ class NavItemBuilder:
         # Emit remaining groups that have no config entry
         for group_key, items in group_items.items():
             if group_key not in seen_groups:
-                result.append(
-                    {"is_group": True, "label": group_key.replace("_", " ").title()}
+                group_label = (
+                    "Workspace"
+                    if group_key == "default"
+                    else group_key.replace("_", " ").title()
                 )
+                result.append({"is_group": True, "label": group_label})
                 result.extend(items)
 
         return result

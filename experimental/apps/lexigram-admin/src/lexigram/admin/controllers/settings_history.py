@@ -6,12 +6,16 @@ readable and the file stays within its size budget.
 
 from __future__ import annotations
 
+from collections.abc import Collection
 from typing import Any
 
 from starlette.requests import Request
 
 from lexigram.admin.settings.panel import SecretNode
-from lexigram.admin.settings.snapshots import SettingsSnapshotService
+from lexigram.admin.settings.snapshots import (
+    SettingsRollback,
+    SettingsSnapshotService,
+)
 from lexigram.logging import get_logger
 
 logger = get_logger(__name__)
@@ -49,6 +53,7 @@ class SettingsHistoryMixin:
         values: dict[str, Any],
         tenant_id: str | None,
         comment: str = "",
+        unset_keys: Collection[str] | None = None,
     ) -> None:
         """Record pre-change values, never failing the save if history breaks."""
         try:
@@ -59,6 +64,7 @@ class SettingsHistoryMixin:
                 tenant_id=tenant_id,
                 actor_id=self._actor_id(request),
                 comment=comment,
+                unset_keys=unset_keys,
             )
         except Exception:  # noqa: BLE001 — history is auxiliary to the save
             logger.warning("admin.settings_snapshot_failed", namespace=namespace)
@@ -69,7 +75,7 @@ class SettingsHistoryMixin:
         spec: type[Any],
         namespace: str,
         tenant_id: str | None,
-    ) -> dict[str, Any] | None:
+    ) -> SettingsRollback | None:
         """Return submitted rollback values, or ``None`` for a normal save.
 
         A rollback re-enters the ordinary save path rather than writing
@@ -81,17 +87,23 @@ class SettingsHistoryMixin:
         if not snapshot_id:
             return None
 
-        values = await self._snapshots.rollback_values(
+        rollback = await self._snapshots.rollback_state(
             snapshot_id, namespace=namespace, tenant_id=tenant_id
         )
-        if values is None:
+        if rollback is None:
             return None
 
         # Only currently-declared, editable, non-secret nodes may be restored.
         nodes = spec.get_nodes()
         secrets = self._secret_keys(spec)
-        return {
-            key: value
-            for key, value in values.items()
-            if key in nodes and not nodes[key].readonly and key not in secrets
+        eligible = {
+            key
+            for key, node in nodes.items()
+            if not node.readonly and key not in secrets
         }
+        return SettingsRollback(
+            values={
+                key: value for key, value in rollback.values.items() if key in eligible
+            },
+            unset_keys=frozenset(key for key in rollback.unset_keys if key in eligible),
+        )

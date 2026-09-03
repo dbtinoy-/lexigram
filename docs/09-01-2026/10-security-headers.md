@@ -144,4 +144,3 @@ and body messages pass through untouched (SSE streaming unaffected — only
   `ReactiveSseBridgeProtocol`), so streaming was not live-testable; by
   construction the wrapper only touches `http.response.start` and the
   pass-through unit test covers body/stream messages.
-

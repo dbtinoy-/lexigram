@@ -264,6 +264,9 @@ class OAuth2Manager:
         except (KeyError, TypeError, ValueError) as e:
             logger.exception("Unexpected error during OAuth2 user info retrieval")
             raise ValueError(f"Unexpected error: {e!s}") from e
+        except Exception as e:  # noqa: BLE001 — provider clients use varied exception types
+            logger.exception("Failed to get user info from OAuth2 provider")
+            raise ValueError(f"Failed to get user info: {e!s}") from e
 
 
 class OAuth2AuthProvider:

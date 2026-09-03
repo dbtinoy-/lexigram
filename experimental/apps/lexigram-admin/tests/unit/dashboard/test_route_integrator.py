@@ -250,6 +250,44 @@ class TestClusterAliases:
         assert "/infrastructure/auth" not in paths
 
 
+class TestRegisterSettingsContext:
+    def test_settings_panel_wrapper_receives_mount_aware_settings_url(self) -> None:
+        from lexigram.admin.dashboard.page_handlers import StructuredPageHandler
+        from lexigram.admin.dashboard.route_integrator import _register_settings
+        from lexigram.contracts.admin import SettingsPanelDefinition
+
+        class _Page:
+            async def handle(self, request: object) -> object:
+                return None
+
+        collected: list[object] = []
+
+        class _FakeRouter:
+            def add_route(
+                self, path: str, method: str, handler: object, name: str
+            ) -> None:
+                collected.append(handler)
+
+        _register_settings(
+            _FakeRouter(),  # type: ignore[arg-type]
+            NamingPolicy(),
+            "/backoffice",
+            [
+                SettingsPanelDefinition(
+                    name="system",
+                    title="System",
+                    contributor="core",
+                    route_path="/admin/system/info",
+                    handler=_Page(),
+                )
+            ],
+        )
+
+        assert len(collected) == 1
+        assert isinstance(collected[0], StructuredPageHandler)
+        assert collected[0]._settings_url == "/backoffice/settings"  # type: ignore[attr-defined]
+
+
 class TestResolvePrimaryColor:
     @pytest.mark.asyncio
     async def test_returns_saved_branding_color(self) -> None:

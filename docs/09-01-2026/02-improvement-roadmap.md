@@ -16,16 +16,18 @@ The first 15 minutes decide whether a team adopts an admin framework.
 
 - **R1. One-call bootstrap — DONE.** `create_app()` now returns a working,
   mounted app with sane SQLite defaults; `container=`/`database_url=`
-  escape hatches for real deployments. *Follow-up:* a `lexigram admin dev`
-  CLI command that runs `create_app` + uvicorn with auto-reload.
+  escape hatches for real deployments. The CLI's `lexigram dev` command
+  provides the documented auto-detected development-server path; the admin
+  package remains usable without installing the optional CLI package.
 - **R2. Un-brickable first run — DONE.** Setup-token-verified first admin
   (B3), truthful setup outcome on all drivers (B8), super-admin actually
   super (B1/B2). *Acceptance:* fresh DB → setup → login → CRUD with all
   defaults, zero config beyond a session secret and setup token — verified
   live, keep a scenario test guarding it (see R5).
 - **R3. Self-contained frontend — DONE.** All shell/standalone assets served
-  from the admin's static mount, pinned (B6). Remaining: doc 03 migration
-  for optional Trix/Chart.js/Plotly features.
+  from the admin's static mount, pinned (B6). Trix is vendored; optional
+  chart renderers remain explicitly configurable because they are not loaded
+  by the default shell (see doc 03's optional-asset note).
 
 ## Phase 2 — Trust: errors, observability, coherence
 
@@ -122,13 +124,16 @@ The first 15 minutes decide whether a team adopts an admin framework.
   save-current-view, delete, and active-view highlighting. Full plan and
   follow-ups (shared views, default view) in
   [08-saved-views.md](08-saved-views.md).
-- **R14. Bulk-action UX hardening.** ✅ **Done 2026-09-02** — per-row
-  outcome accounting for bulk delete/purge/restore: honest toasts
-  ("Deleted 47 of 50 item(s) - 3 failed: …") with severity
-  success/warning/error, row-failure isolation (one bad row no longer
-  aborts the batch or mis-reports completed work), and the silent
-  bulk-purge no-op fixed to a proper 503. Progress-bar SSE wiring is the
-  documented phase 2. Full plan in [09-bulk-ux.md](09-bulk-ux.md).
+- **R14. Bulk-action UX hardening.** ✅ **Done 2026-09-02; phase 2
+  implemented 2026-09-03** — per-row outcome accounting for bulk
+  delete/purge/restore: honest toasts ("Deleted 47 of 50 item(s) - 3 failed:
+  …") with severity success/warning/error, row-failure isolation (one bad
+  row no longer aborts the batch or mis-reports completed work), the silent
+  bulk-purge no-op fixed to a proper 503, and thresholded live progress for
+  large HTMX mutations through owner-bound SSE/status streams. Short and
+  unsupported requests remain synchronous. Playground/browser verification is
+  intentionally deferred. Full plans in [09-bulk-ux.md](09-bulk-ux.md) and
+  [53-bulk-live-progress.md](53-bulk-live-progress.md).
 - **Security headers wired.** ✅ **Done 2026-09-02** — the orphaned
   `SecurityHeadersMiddleware` (flagged in doc 01) now sits outermost in the
   admin stack, so every response carries the OWASP set (HSTS, CSP,
@@ -152,13 +157,97 @@ The first 15 minutes decide whether a team adopts an admin framework.
   `AdminSessionService` revocation paths invalidate it, so same-process
   revocation is immediate and the TTL only bounds cross-worker staleness.
   Full plan in [12-session-user-cache.md](12-session-user-cache.md).
-- **R17. Accessibility pass.** Keyboard navigation through sidebar/tables/
-  modals, `aria-*` on Alpine components, focus traps in slide-overs,
-  color-contrast check of the token palette in both themes.
-- **R18. Design-token consolidation.** Several inline `<style>` blocks and
-  ad-hoc animation CSS live in templates; fold into the token/stylesheet
-  pipeline so themes stay consistent and CSP can drop `unsafe-inline`
-  (pairs with doc 03's CSP tightening).
+- **R17. Accessibility pass — DONE (2026-09-02).** B13's dead Alpine
+  attributes were removed, command-palette combobox semantics and focus
+  trapping were added, row ids are unique, notifications are named, result
+  counts are live regions, and decorative SVGs are hidden from assistive
+  technology. Full record: [13-a11y-and-dead-handlers.md](13-a11y-and-dead-handlers.md).
+- **R18. Design-token/CSP correctness — DONE (2026-09-02).** The enforced
+  CSP now permits the standard vendored Alpine/htmx builds to execute and
+  adds `object-src`, `base-uri`, and `form-action` hardening. The existing
+  UI token pipeline guards the remaining inline dynamic values; the larger
+  Alpine CSP-build migration is deliberately tracked as a future breaking
+  project rather than pretending the current UI is compatible. Full record:
+  [14-csp-correctness.md](14-csp-correctness.md).
+- **R53. First-load toast overlay layout.** ✅ **Done 2026-09-03** — the
+  server-rendered `#flash-container` now shares the fixed, viewport-bounded
+  overlay contract with `.toast-container`; direct toasts retain interaction
+  while the empty overlay does not intercept dashboard controls. Client toast
+  insertion reuses either zone, and a shell regression protects the selector
+  and sizing contract. Full record in
+  [51-toast-overlay-layout.md](51-toast-overlay-layout.md).
+- **R54. Default saved view.** ✅ **Done 2026-09-03** — extends the R13
+  per-user saved-view records with one optional default, safe star/unstar
+  controls, and one-time auto-apply only for clean full-page visits. Explicit
+  query state, HTMX fragments, and mutation notices remain authoritative.
+  Full Plan: [52-default-saved-view.md](52-default-saved-view.md).
+- **R55. Tasks test dependency closure.** ✅ **Done 2026-09-03** — the
+  `lexigram-tasks` package's `test` and `all` extras and development `test`
+  group now declare the existing `lexigram-resilience` test dependency, with
+  workspace source and lock metadata synchronized. The production dependency
+  graph remains unchanged, and the package suite collects without the former
+  resilience import error. Full Plan:
+  [54-tasks-test-dependency.md](54-tasks-test-dependency.md).
+- **R56. Sidebar information architecture and account placement.** ✅ **Done
+  2026-09-03** — the navigation manager now composes an ordered Overview →
+  Workspace → Operations → Security/Integrations → Tools → Administration
+  sidebar while preserving contributor groups, permissions, active state, and
+  custom prefixes. Registered cluster centers are first-class Operations
+  links; Settings and supplied system links remain in the utility footer;
+  Profile and Sign out move to a reusable topbar UserBox variant. Direct
+  user-menu callers retain the legacy full-navigation default, while rendered
+  shells request the personal-only menu. Full Plan:
+  [56-sidebar-information-architecture.md](56-sidebar-information-architecture.md).
+- **R57. Settings control-plane audit and hardening.** ✅ **Done 2026-09-03** —
+  the full `/settings` surface now has source-aware effective configuration,
+  strict typed validation, honest read-only state, faithful falsy-value
+  persistence, permissions/CSRF/revision/conditional-write boundaries,
+  redacted audit history with rollback, and contributor-friendly spec
+  derivation. YAML/environment/application-owned values are visible through a
+  redacted read-only summary with source precedence, while database overrides
+  retain tenant isolation and explicit ownership. The shared settings form
+  preserves invalid input and accessible feedback, and HTMX saves use the
+  shared dismissible toast channel. Verification: 5881 admin unit tests
+  passed, 7 skipped; targeted settings/controller/UI tests passed; mypy,
+  compileall, Ruff, and `git diff --check` passed. Playground/browser
+  round-trip remains intentionally deferred. Full Plan:
+  [57-settings-control-plane-audit.md](57-settings-control-plane-audit.md).
+- **R58. Sidebar branding control and Framework menu consolidation.** ✅ **Done
+  2026-09-03** — the collapse toggle now sits beside the logo/site name in the
+  sidebar header and mini mode hides both branding nodes while retaining the
+  accessible toggle. Cluster centers, Plugins, and privileged administration
+  destinations now share one active-aware, collapsible `Framework` section;
+  contributor groups, deduplication, permissions, badges, custom prefixes,
+  topbar account ownership, and footer system utilities remain intact. Group
+  icon/default-expansion metadata is preserved for future contributors.
+  Verification: 5884 admin unit tests passed, 8 skipped; focused
+  navigation/sidebar tests passed; mypy, compileall, Ruff, and
+  `git diff --check` passed. Playground/browser round-trip remains
+  intentionally deferred. Full Plan:
+  [58-sidebar-branding-and-framework-menu.md](58-sidebar-branding-and-framework-menu.md).
+
+---
+
+## Completion status (2026-09-03)
+
+The concrete roadmap and follow-up records through R58 are implemented and
+have regression coverage. The R58 sidebar branding and Framework menu work is
+complete; its browser/playground round trip remains intentionally deferred.
+The R57 settings control-plane audit is complete;
+its browser/playground round trip remains intentionally deferred. R14 phase 2
+is implemented with its own verification record in
+[53-bulk-live-progress.md](53-bulk-live-progress.md); only its playground/browser
+round trip is intentionally deferred. Sidebar information architecture and
+account placement are recorded in
+[56-sidebar-information-architecture.md](56-sidebar-information-architecture.md),
+and the settings verification record is in
+[57-settings-control-plane-audit.md](57-settings-control-plane-audit.md).
+The repository release gate is tracked in the [reliability audit Full Plan](50-reliability-audit.md):
+targeted package suites, ruff, mypy, and the first-run scenario must remain
+green before the branch is pushed. Deliberate future projects (shared/team
+saved views, durable/distributed progress tasks, optional chart vendoring, and
+the CSP v2 Alpine migration) are not silently marked complete; each has an
+explicit note in its source plan.
 
 ---
 

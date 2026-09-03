@@ -48,6 +48,7 @@ from lexigram.admin.dashboard.page_handlers import (
     _placeholder_page,
     _resolve_handler,
 )
+from lexigram.admin.resources.urls import admin_url
 
 
 def _register_pages(
@@ -97,10 +98,19 @@ def _register_settings(
         handler = _resolve_handler(panel.handler)
         if handler is None:
             continue
+        settings_url = admin_url(prefix, "settings")
         if inspect.isclass(handler) and container is not None:
-            handler = AdminPageHandler(handler, container)
+            handler = AdminPageHandler(
+                handler,
+                container,
+                settings_url=settings_url,
+            )
         else:
-            handler = StructuredPageHandler(handler, container=container)
+            handler = StructuredPageHandler(
+                handler,
+                container=container,
+                settings_url=settings_url,
+            )
         path = _internal_path(panel.route_path, prefix)
         ns_name = naming_policy.namespaced(panel.contributor, panel.name)
         naming_policy.register("panel", ns_name)

@@ -263,6 +263,38 @@ class AdminAccountLockoutSqlStore:
         await self._db.execute(sql, (email,))
         logger.debug("lockout.cleared", email=email)
 
+    async def list_active_lockouts(self, limit: int = 100) -> list[dict[str, Any]]:
+        """Return currently active lockouts across all accounts (R41, doc 37).
+
+        Sweeps expired temporary lockouts first (the fleet-wide version
+        of the per-email expiry check in :meth:`get_active_lockout`,
+        using the DB clock) so every returned row is genuinely in
+        effect.
+
+        Args:
+            limit: Maximum number of rows to return.
+
+        Returns:
+            Raw row dicts ordered by ``locked_at`` descending.
+        """
+        await self.ensure_schema()
+        sweep_sql = (
+            "UPDATE admin_account_lockouts "  # noqa: S608 — now_expr yields fixed NOW()/CURRENT_TIMESTAMP, no user data interpolated
+            f"SET is_active = FALSE, deactivated_at = {now_expr(self._db)} "
+            "WHERE is_active = TRUE AND is_permanent = FALSE "
+            f"AND unlock_at <= {now_expr(self._db)}"
+        )
+        await self._db.execute(sweep_sql, [])
+        sql = (
+            "SELECT email, locked_at, unlock_at, consecutive_failures, is_permanent "
+            "FROM admin_account_lockouts "
+            "WHERE is_active = TRUE "
+            "ORDER BY locked_at DESC "
+            f"LIMIT {int(limit)}"  # int() guards LIMIT injection (session-store pattern)
+        )
+        result = await self._db.execute_query(sql, [])
+        return [dict(r) for r in self._extract_rows(result)]
+
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------

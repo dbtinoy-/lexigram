@@ -15,6 +15,9 @@ from lexigram.cache.config import (
 from lexigram.cache.service.health import get_health_status as _get_health_status
 from lexigram.cache.service.health import get_metrics as _get_metrics
 from lexigram.cache.service.stampede import StampedeProtectedCache
+from lexigram.contracts.admin.contributor_boot import (
+    summarize_contributor_boot_failure,
+)
 from lexigram.contracts.core import (
     HealthCheckCategory,
     HealthCheckResult,
@@ -151,8 +154,23 @@ class CacheProvider(
         try:
             contributor = await container.resolve(CacheAdminContributor)
             await contributor.on_admin_boot(container)
-        except Exception:  # noqa: BLE001
-            logger.warning("cache_admin_contributor_boot_failed")
+        except Exception as exc:  # noqa: BLE001
+            failure = summarize_contributor_boot_failure(exc)
+            if failure.expected:
+                logger.info(
+                    "admin.contributor_disabled",
+                    contributor="cache",
+                    feature="admin contributor",
+                    reason=failure.reason,
+                    missing=failure.summary,
+                )
+            else:
+                logger.warning(
+                    "cache_admin_contributor_boot_failed",
+                    error=failure.summary,
+                    error_type=type(exc).__name__,
+                    exc_info=True,
+                )
 
         logger.info("Lexigram Cache provider started successfully")
 

@@ -85,10 +85,13 @@ class SystemBox(Component):
 
             # Use any attributes supplied on the menu item (e.g., data-test hooks)
             attrs = dict(m.get("attrs", {}))
+            active = bool(m.get("active"))
 
             # Block style (full-width) items are rendered in dropdown or as block anchors
             if m.get("render") == "block":
-                # Create SidebarItem-like structure for block items
+                # Create SidebarItem-like structure for block items. Utility
+                # links can opt into the same active-state contract as the
+                # primary sidebar without needing request access here.
                 first_letter = label[0] if label else ""
 
                 # Check if icon is available for this item to optionally invoke it?
@@ -131,6 +134,8 @@ class SystemBox(Component):
                     # Merge other attrs
                     **attrs,
                 }
+                if active:
+                    block_link_attrs["aria-current"] = "page"
                 if href and href != "#":
                     block_link_attrs["href"] = href
                 block_items.append(
@@ -147,7 +152,18 @@ class SystemBox(Component):
                         # Mini Label (First Letter)
                         first_letter_node,
                         class_=(
-                            "group flex items-center px-3 py-2 rounded-xl text-sm font-medium transition-colors duration-200 text-muted-foreground dark:text-muted-foreground hover:bg-muted dark:hover:bg-card/50 hover:text-primary-600 dark:hover:text-primary-400"
+                            "group flex items-center px-3 py-2 rounded-xl text-sm font-medium "
+                            "transition-colors duration-200 focus-visible:outline-none "
+                            "focus-visible:ring-2 focus-visible:ring-ring "
+                            "focus-visible:ring-offset-1 "
+                            + (
+                                "bg-primary-50 text-primary-700 dark:bg-primary-900/20 "
+                                "dark:text-primary-400"
+                                if active
+                                else "text-muted-foreground dark:text-muted-foreground "
+                                "hover:bg-muted dark:hover:bg-card/50 "
+                                "hover:text-primary-600 dark:hover:text-primary-400"
+                            )
                         ),
                         **block_link_attrs,
                     ),
@@ -156,10 +172,21 @@ class SystemBox(Component):
                 compact_link_attrs = {
                     "title": label,
                     "class_": (
-                        "inline-flex items-center justify-center p-2 rounded-md text-muted-foreground hover:bg-muted dark:text-foreground dark:hover:bg-card"
+                        "inline-flex items-center justify-center p-2 rounded-md "
+                        "focus-visible:outline-none focus-visible:ring-2 "
+                        "focus-visible:ring-ring focus-visible:ring-offset-1 "
+                        + (
+                            "bg-primary-50 text-primary-700 dark:bg-primary-900/20 "
+                            "dark:text-primary-400"
+                            if active
+                            else "text-muted-foreground hover:bg-muted "
+                            "dark:text-foreground dark:hover:bg-card"
+                        )
                     ),
                     **attrs,
                 }
+                if active:
+                    compact_link_attrs["aria-current"] = "page"
                 if href and href != "#":
                     compact_link_attrs["href"] = href
                 compact_nodes.append(
@@ -191,5 +218,5 @@ class SystemBox(Component):
             "div",
             block_area,
             compact_bar,
-            class_="flex flex-col px-3 py-2 border-b border-border",
+            class_="admin-sidebar-utilities flex flex-col px-3 py-2 border-b border-border",
         )

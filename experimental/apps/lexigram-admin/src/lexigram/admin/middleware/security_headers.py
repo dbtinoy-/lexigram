@@ -76,8 +76,7 @@ class AdminSecurityHeaders:
                 # ``report-uri`` for the widest browser support plus the
                 # modern Reporting API pair (report-to + Reporting-Endpoints).
                 policy = (
-                    f"{policy}; report-uri {report_endpoint}; "
-                    "report-to csp-endpoint"
+                    f"{policy}; report-uri {report_endpoint}; report-to csp-endpoint"
                 )
                 self._headers["Reporting-Endpoints"] = (
                     f'csp-endpoint="{report_endpoint}"'
@@ -171,10 +170,20 @@ class SecurityHeadersMiddleware:
                 report_only = await self._settings_store.get(
                     "admin.security.csp_report_only"
                 )
-                if csp or hsts or frame is not None or report_only is not None:
+                if (
+                    csp
+                    or hsts is not None
+                    or frame is not None
+                    or report_only is not None
+                ):
                     service = AdminSecurityHeaders(
+                        # An empty CSP intentionally means "use the safe
+                        # compile-time policy"; unlike HSTS, it must not
+                        # disable a security boundary through a blank form.
                         csp=str(csp) if csp else DEFAULT_CSP,
-                        hsts_max_age=int(hsts) if hsts else 63072000,
+                        # max-age=0 is a valid, explicit operator choice and
+                        # must not be replaced by the two-year default.
+                        hsts_max_age=int(hsts) if hsts is not None else 63072000,
                         frame_options="DENY" if frame is None else str(frame),
                         report_only_csp=resolve_report_only_csp(report_only),
                         report_endpoint=self._report_endpoint,
@@ -216,7 +225,9 @@ class SecurityHeadersMiddleware:
                 raw_headers: list[tuple[bytes, bytes]] = list(
                     message.get("headers", [])
                 )
-                existing_lower = {name.decode("latin-1").lower() for name, _ in raw_headers}
+                existing_lower = {
+                    name.decode("latin-1").lower() for name, _ in raw_headers
+                }
                 additions = [
                     (name.encode("latin-1"), value.encode("latin-1"))
                     for name, value in service.apply({}).items()

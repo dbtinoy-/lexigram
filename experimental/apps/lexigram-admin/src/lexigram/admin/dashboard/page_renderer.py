@@ -69,21 +69,72 @@ def _render_pagination(pagination: PaginationContent) -> str:
     )
 
 
-def render_page_content(content: PageContent) -> HTMLResponse:
-    """Render structured page content to an HTML response."""
+def render_page_content(
+    content: PageContent,
+    *,
+    back_url: str | None = None,
+) -> HTMLResponse:
+    """Render structured page content to an HTML response.
+
+    Args:
+        content: Structured page title, body, and optional pagination.
+        back_url: Optional host-owned contextual return URL. Used for
+            standalone contributor settings panels; ordinary management
+            pages leave it unset and retain their existing markup.
+    """
     body_html = render_content(content.body)
     pagination_html = (
         _render_pagination(content.pagination) if content.pagination else ""
     )
-    html = render_to_string(
+    back_link = (
+        el(
+            "a",
+            el(
+                "span",
+                "←",
+                aria_hidden=True,
+                class_="text-base leading-none",
+            ),
+            "Back to Settings",
+            href=back_url,
+            hx_get=back_url,
+            hx_target="#main-content",
+            hx_swap="innerHTML",
+            hx_push_url="true",
+            data_admin_navigation=True,
+            data_settings_back=True,
+            class_=(
+                "inline-flex items-center gap-2 text-sm font-medium "
+                "text-muted-foreground hover:text-foreground focus-visible:outline-none "
+                "focus-visible:ring-2 focus-visible:ring-ring rounded"
+            ),
+        )
+        if back_url
+        else None
+    )
+    title_block = (
         el(
             "div",
-            {"class": "space-y-6"},
+            {"class": "space-y-2"},
+            back_link,
             el(
                 "h1",
                 {"class": "text-2xl font-semibold tracking-tight"},
                 content.title,
             ),
+        )
+        if back_link
+        else el(
+            "h1",
+            {"class": "text-2xl font-semibold tracking-tight"},
+            content.title,
+        )
+    )
+    html = render_to_string(
+        el(
+            "div",
+            {"class": "space-y-6"},
+            title_block,
             el(
                 "div",
                 {"id": "table-data"},

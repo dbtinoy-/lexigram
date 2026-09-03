@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from lexigram.contracts.admin.contributor_boot import (
+    summarize_contributor_boot_failure,
+)
 from lexigram.contracts.core.provider import ProviderPriority
 from lexigram.di.provider import Provider
 from lexigram.logging import get_logger
@@ -68,8 +71,20 @@ class AuthAdminProvider(Provider):
             contributor = await container.resolve(AuthAdminContributor)
             await contributor.on_admin_boot(container)
             logger.info("auth_admin_contributor.booted")
-        except Exception as e:  # noqa: BLE001
-            logger.warning(
-                "auth_admin_contributor.boot_failed",
-                error=str(e),
-            )
+        except Exception as exc:  # noqa: BLE001
+            failure = summarize_contributor_boot_failure(exc)
+            if failure.expected:
+                logger.info(
+                    "admin.contributor_disabled",
+                    contributor="auth",
+                    feature="admin contributor",
+                    reason=failure.reason,
+                    missing=failure.summary,
+                )
+            else:
+                logger.warning(
+                    "auth_admin_contributor.boot_failed",
+                    error=failure.summary,
+                    error_type=type(exc).__name__,
+                    exc_info=True,
+                )

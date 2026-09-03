@@ -108,4 +108,3 @@ covers those; queue item remains).
 - **Deliberately unchanged:** the B21 cancellation checks in
   `execute_export`; the bulk-action direct-download exports (R25) — the job
   flow is additive infrastructure, and a jobs UI page remains a queue item.
-

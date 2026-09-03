@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
+import re
 from typing import Any
 
 from starlette.requests import Request
@@ -15,6 +16,26 @@ from lexigram.contracts.admin.types import WidgetContent
 from lexigram.logging import get_logger
 
 logger = get_logger(__name__)
+
+
+def _friendly_error(error: object) -> str:
+    """Operator-facing text for a widget render error (R49, doc 45).
+
+    Structured "handler not wired" errors get a plain-language message;
+    anything whose string form looks like a Python repr (``Name(...)``)
+    is generalised too, so internals never leak into dashboard cards no
+    matter which contributor misbehaves. The full error is always logged
+    by the caller.
+    """
+    from lexigram.contracts.admin.errors import WidgetNotFoundError
+
+    if isinstance(error, WidgetNotFoundError):
+        return "This widget's data source is not available in this deployment."
+    text = str(error)
+    stripped = text.strip()
+    if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*\(.*\)", stripped, flags=re.DOTALL):
+        return "This widget failed to render — see the server log for details."
+    return text
 
 
 async def render_widget_fragment(
@@ -97,7 +118,7 @@ async def render_widget_fragment(
     )
     return HTMLResponse(
         render_error_card(
-            str(error),
+            _friendly_error(error),
             contributor_id=contributor_id,
             widget_name=widget_name,
         ),

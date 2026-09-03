@@ -25,9 +25,9 @@ Example:
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
-from typing import Protocol, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
 
 class ProgressStatus(str, Enum):
@@ -53,6 +53,8 @@ class ProgressSnapshot:
         status: Current lifecycle state.
         message: Human-readable status message.
         error: Error description when ``status`` is ``FAILED``; empty otherwise.
+        metadata: Optional JSON-safe terminal/result metadata. Implementations
+            may leave this empty when they do not persist extra fields.
     """
 
     task_id: str
@@ -61,6 +63,7 @@ class ProgressSnapshot:
     status: ProgressStatus
     message: str = ""
     error: str = ""
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     @property
     def percent(self) -> float:
@@ -116,7 +119,12 @@ class ProgressTrackerProtocol(Protocol):
         """
         ...
 
-    async def complete(self, task_id: str, result: str = "") -> None:
+    async def complete(
+        self,
+        task_id: str,
+        result: str = "",
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
         """Mark a task as successfully completed.
 
         Closes all active subscriptions for ``task_id`` after broadcasting the
@@ -125,10 +133,16 @@ class ProgressTrackerProtocol(Protocol):
         Args:
             task_id: Unique identifier for the task.
             result: Optional human-readable completion message.
+            metadata: Optional JSON-safe result metadata.
         """
         ...
 
-    async def fail(self, task_id: str, error: str) -> None:
+    async def fail(
+        self,
+        task_id: str,
+        error: str,
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
         """Mark a task as failed.
 
         Closes all active subscriptions for ``task_id`` after broadcasting the
@@ -137,6 +151,7 @@ class ProgressTrackerProtocol(Protocol):
         Args:
             task_id: Unique identifier for the task.
             error: Description of the failure.
+            metadata: Optional JSON-safe failure metadata.
         """
         ...
 

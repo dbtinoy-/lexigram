@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import inspect
-from typing import Any
+from typing import Any, cast
 
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, RedirectResponse, Response
@@ -137,7 +137,10 @@ class ResourceBulkMixin:
             if form_data is None:
                 form_data = await request.form()
             action = form_data.get("action")
-            ids = form_data.getlist("ids")
+            # Starlette's multipart form typing includes UploadFile, but this
+            # field is intentionally an ID-only control. Reject non-string
+            # values rather than coercing an uploaded file into an ID.
+            ids = [value for value in form_data.getlist("ids") if isinstance(value, str)]
 
             # R25: an export submitted with scope=filtered and no ids means
             # "export everything matching the current list view".
@@ -175,9 +178,9 @@ class ResourceBulkMixin:
                     return await self.bulk_export_filtered(
                         str(form_data.get("list_query") or ""), file_format
                     )
-                return await self.bulk_export(list(ids), file_format)
+                return await self.bulk_export(ids, file_format)
 
-            result = await self.execute_bulk_action(str(action), ids)  # type: ignore[arg-type]
+            result = await self.execute_bulk_action(str(action), ids)
             message = str(result)
 
             ToastNotification.make(message).success().title("Bulk action").send()
@@ -256,7 +259,9 @@ class ResourceBulkMixin:
 
         try:
             params = QueryParams(raw_query.lstrip("?"))
-            state = URLState.from_request(SimpleNamespace(query_params=params))
+            state = URLState.from_request(
+                cast("Request", SimpleNamespace(query_params=params))
+            )
         except (ValueError, TypeError):
             return HTMLResponse("Invalid list query", status_code=400)
         # Cursor pagination belongs to the interactive list; exports page

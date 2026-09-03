@@ -15,7 +15,12 @@ class RateLimitSpec(PydanticConfigSpec):
     namespace = "admin.rate_limit"
     label = "Rate Limiting"
     icon = "hand-raised"
-    description = "Authentication rate limits by window and action."
+    description = (
+        "Authentication rate limits by window and action. Changes are "
+        "applied when authentication services are rebuilt, normally after a "
+        "restart."
+    )
+    runtime_status = "restart_required"
     model = AdminRateLimitConfig
     required_permissions = frozenset({"admin.settings.edit"})
 

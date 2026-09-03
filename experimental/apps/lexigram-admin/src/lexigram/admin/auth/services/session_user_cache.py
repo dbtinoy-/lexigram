@@ -21,8 +21,9 @@ Security posture (see docs/09-01-2026/12-session-user-cache.md):
 
 from __future__ import annotations
 
+from collections.abc import Callable
 import time
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
 from lexigram.logging import get_logger
 
@@ -158,4 +159,4 @@ class SessionUserCache:
         return len(self._entries)
 
 
-__all__ = ["SessionUserCache", "DEFAULT_TTL_SECONDS", "DEFAULT_MAX_ENTRIES"]
+__all__ = ["DEFAULT_MAX_ENTRIES", "DEFAULT_TTL_SECONDS", "SessionUserCache"]
