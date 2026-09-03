@@ -41,7 +41,7 @@ Changelog = "https://github.com/dbtinoy-/lexigram/blob/main/CHANGELOG.md"
 [project.optional-dependencies]
 mongodb = ["motor>=3.0", "pymongo>=4.6.0"]
 dynamodb = ["aioboto3>=11.0.0"]
-firestore = ["google-cloud-firestore>=2.19.0"]
+firestore = ["google-cloud-firestore>=2.29.0"]
 test = [
     "lexigram-testing>=0.1.4",
     "pytest>=8.0.0",
