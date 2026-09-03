@@ -50,7 +50,7 @@ gcp = [
     "google-cloud-secret-manager>=2.0.0",
 ]
 azure = [
-    "azure-keyvault-secrets>=4.0.0",
+    "azure-keyvault-secrets>=4.11.2",
     "azure-identity>=1.0.0",
 ]
 all = [
