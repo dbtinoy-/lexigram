@@ -527,14 +527,35 @@
 
 
 /* ========== Toast Notifications ========== */
-.toast-container {
+/*
+ * The initial flash zone is named #flash-container while the client-created
+ * zone is named .toast-container. Both are global overlays. Keeping the
+ * flash zone fixed is important: it is rendered as a sibling of the main
+ * content and must never become a flex/block participant that changes the
+ * dashboard's available width on the first response.
+ */
+.toast-container,
+#flash-container {
   position: fixed;
   top: 1rem;
   right: 1rem;
   z-index: 9999;
   display: flex;
   flex-direction: column;
+  align-items: flex-end;
   gap: 0.5rem;
+  width: min(360px, calc(100vw - 2rem));
+  max-width: calc(100vw - 2rem);
+  pointer-events: none;
+}
+
+.toast-container > .toast,
+#flash-container > .toast {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 360px;
+  min-width: 0;
+  pointer-events: auto;
 }
 
 .toast {

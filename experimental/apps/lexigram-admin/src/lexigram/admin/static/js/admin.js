@@ -124,7 +124,12 @@
       type = type || 'info';
       duration = duration || 3000;
       
-      const container = document.querySelector('.toast-container') || createToastContainer();
+      // The server-rendered flash zone is #flash-container; client-created
+      // toasts use .toast-container. Reuse either global overlay so a flash
+      // response never leaves a second container in document flow.
+      const container =
+        document.querySelector('.toast-container, #flash-container') ||
+        createToastContainer();
       const toast = document.createElement('div');
       toast.className = 'toast toast-' + type;
       toast.innerHTML = '<span class="toast-message">' + escapeHtml(message) + '</span>' +

@@ -166,12 +166,19 @@ The first 15 minutes decide whether a team adopts an admin framework.
   Alpine CSP-build migration is deliberately tracked as a future breaking
   project rather than pretending the current UI is compatible. Full record:
   [14-csp-correctness.md](14-csp-correctness.md).
+- **R53. First-load toast overlay layout.** ✅ **Done 2026-09-03** — the
+  server-rendered `#flash-container` now shares the fixed, viewport-bounded
+  overlay contract with `.toast-container`; direct toasts retain interaction
+  while the empty overlay does not intercept dashboard controls. Client toast
+  insertion reuses either zone, and a shell regression protects the selector
+  and sizing contract. Full record in
+  [51-toast-overlay-layout.md](51-toast-overlay-layout.md).
 
 ---
 
 ## Completion status (2026-09-03)
 
-The concrete roadmap and follow-up records through R52 are implemented and
+The concrete roadmap and follow-up records through R53 are implemented and
 have regression coverage. The repository release gate is tracked in the
 [reliability audit Full Plan](50-reliability-audit.md): targeted package
 suites, ruff, mypy, and the first-run scenario must remain green before the
