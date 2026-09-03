@@ -131,24 +131,32 @@ class SidebarSection(Component):
     A labeled group of sidebar items.
     """
 
-    def __init__(self, title: str, items: list[SidebarItem], **props) -> None:
-        super().__init__(title=title, items=items, **props)
+    def __init__(
+        self,
+        title: str,
+        items: list[SidebarItem],
+        icon: str | None = None,
+        default_expanded: bool | None = None,
+        **props,
+    ) -> None:
+        super().__init__(
+            title=title,
+            items=items,
+            icon=icon,
+            default_expanded=default_expanded,
+            **props,
+        )
         self.title = title
         self.items = items
+        self.icon = icon
+        self.default_expanded = default_expanded
 
     def render(self) -> Any:
         from lexigram.ui import get_icon
 
-        # Group Icon Logic
-        # If group has an icon, use it. If not, use a dot.
-        group_icon_node = ""
-        bool(
-            self.items and hasattr(self, "icon") and self.icon,
-        )  # Check if passed in init? SidebarSection doesn't capture icon in init explicitly in previous code, let's fix that or assume it might be in props
-
-        # The provider passes 'icon' in props usually.
-        # Let's check props for icon
-        icon_name = getattr(self, "icon", None) or self.props.get("icon")
+        # Group icon logic: framework and contributor sections may provide an
+        # icon; ordinary custom groups retain the compact dot fallback.
+        icon_name = self.icon or self.props.get("icon")
 
         if icon_name:
             # Remove mr-2 from icon itself, wrapper handles spacing
@@ -163,6 +171,18 @@ class SidebarSection(Component):
             )
 
         section_key = self.title.lower().replace(" ", "-").replace("/", "-")
+        if self.default_expanded is None:
+            initially_expanded = any(
+                bool(getattr(item, "active", False)) for item in self.items
+            )
+        else:
+            initially_expanded = self.default_expanded
+        default_expanded = "true" if initially_expanded else "false"
+        stored_expanded = f"localStorage.getItem('section-{section_key}') === 'true'"
+        initial_state = (
+            f"localStorage.getItem('section-{section_key}') === null ? "
+            f"{default_expanded} : {stored_expanded}"
+        )
 
         # Collapsible Header
         header = el(
@@ -233,9 +253,7 @@ class SidebarSection(Component):
             items_container,
             class_="sidebar-section",
             **{
-                "x-data": "{ expanded: localStorage.getItem('section-"
-                + section_key
-                + "') === 'true' }",
+                "x-data": "{ expanded: " + initial_state + " }",
                 "x-init": "$watch('expanded', val => localStorage.setItem('section-"
                 + section_key
                 + "', val))",
@@ -248,8 +266,7 @@ class Sidebar(Component):
     Main Sidebar container with Logo, Navigation Sections, and utilities.
 
     Account identity and account actions are rendered by the topbar; the
-    footer remains dedicated to application utilities and the collapse
-    control.
+    footer remains dedicated to persistent application utilities.
     """
 
     def __init__(
@@ -302,7 +319,10 @@ class Sidebar(Component):
     def render(self) -> Any:
         from lexigram.ui import SystemBox
 
-        # Logo Icon - Navigates to /admin dashboard
+        # Logo Icon - Navigates to the admin dashboard. Both branding nodes
+        # disappear in mini mode; the header then contains only the collapse
+        # control rather than a misleading partial brand.
+        brand_label = f"Go to {self.logo_text or 'Lexigram'} home"
         if self.logo_url:
             logo_icon = el(
                 "a",
@@ -314,13 +334,21 @@ class Sidebar(Component):
                 ),
                 class_="block flex-shrink-0",
                 href=self.admin_prefix,
+                aria_label=brand_label,
+                x_show="!sidebarMini",
             )
         else:
             logo_icon = el(
                 "a",
-                el("span", self.logo_text[0].upper(), class_="text-white"),
+                el(
+                    "span",
+                    (self.logo_text or "Lexigram")[0].upper(),
+                    class_="text-white",
+                ),
                 class_="w-10 h-10 bg-primary-600 rounded-xl flex items-center justify-center shadow-lg shadow-primary-500/20 flex-shrink-0 cursor-pointer hover:bg-primary-700 transition-colors",
                 href=self.admin_prefix,
+                aria_label=brand_label,
+                x_show="!sidebarMini",
             )
 
         # Toggle Button - chevron to collapse/expand sidebar
@@ -343,16 +371,24 @@ class Sidebar(Component):
 
         header = el(
             "div",
-            # Icon Area
+            # Brand mark and name are hidden together when the sidebar is mini.
             logo_icon,
-            # Text (Hidden in mini)
             el(
                 "span",
                 self.logo_text,
                 class_="font-bold text-xl text-foreground tracking-tight ml-3 whitespace-nowrap",
                 x_show="!sidebarMini",
             ),
+            # Keep the control beside the brand in the full state and centered
+            # as the only header control in mini mode.
+            el(
+                "div",
+                toggle_btn,
+                class_="flex items-center",
+                **{"x-bind:class": "sidebarMini ? 'ml-0' : 'ml-auto'"},
+            ),
             class_="p-4 flex items-center h-16 border-b border-border",
+            **{"x-bind:class": "sidebarMini ? 'justify-center' : ''"},
         )
 
         # Navigation Area
@@ -375,11 +411,6 @@ class Sidebar(Component):
         footer = el(
             "div",
             system_menu_bar,
-            el(
-                "div",
-                toggle_btn,
-                class_="flex items-center justify-end gap-1 px-2 py-2",
-            ),
             class_="admin-sidebar-footer mt-auto border-t border-border dark:border-border",
         )
 

@@ -42,10 +42,15 @@ def _primary_menu_entry(
     prefix: str,
     suffix: str,
     icon: str,
+    *,
+    current_path: str | None = None,
 ) -> dict[str, Any]:
     """Build a generated primary entry with explicit auth semantics."""
     entry: dict[str, Any] = _menu_entry(label, prefix, suffix, icon).to_dict()
     entry["skip_permission_inference"] = True
+    if current_path is not None:
+        href = str(entry["href"])
+        entry["active"] = current_path == href or current_path.startswith(href + "/")
     return entry
 
 
@@ -54,7 +59,8 @@ def _primary_menu_entry(
 # sidebar without being silently reordered alphabetically.
 _PRIMARY_GROUP_ORDER: dict[str, int] = {
     "workspace": 10,
-    "operations": 20,
+    "framework": 20,
+    "operations": 25,
     "security": 30,
     "integrations": 40,
     "search": 50,
@@ -100,29 +106,20 @@ def _order_primary_nav(items: list[Any]) -> list[Any]:
     return leading + [item for _rank, _index, block in blocks for item in block]
 
 
-def _append_unique_group(
-    items: list[Any],
-    label: str,
+def _unique_entries(
     entries: list[dict[str, Any]],
-) -> None:
-    """Append a labeled group while avoiding duplicate destinations."""
-    existing_hrefs = {
-        str(item.get("href", "")).strip()
-        for item in items
-        if isinstance(item, dict) and item.get("href")
-    }
+    seen_hrefs: set[str],
+) -> list[dict[str, Any]]:
+    """Return generated entries not already represented by another source."""
     unique_entries: list[dict[str, Any]] = []
     for entry in entries:
         href = str(entry.get("href", "")).strip()
-        if href and href in existing_hrefs:
+        if href and href in seen_hrefs:
             continue
         unique_entries.append(entry)
         if href:
-            existing_hrefs.add(href)
-
-    if unique_entries:
-        items.append({"is_group": True, "label": label})
-        items.extend(unique_entries)
+            seen_hrefs.add(href)
+    return unique_entries
 
 
 class NavigationManager:
@@ -239,16 +236,20 @@ class NavigationManager:
 
         cluster_nav: list | None = None
         cluster_landing_items: list[tuple[int, int, dict[str, Any]]] = []
+        framework_items: list[dict[str, Any]] = []
         items_by_cluster: dict[Any, list] = {}
         for cluster_index, cluster in enumerate(self._cluster_registry.all()):
             items = cluster_items(self._assembler_groups, cluster=cluster)
             # A registered center is a destination even when no contributor
             # has populated it yet; its controller can render an empty state.
             items_by_cluster[cluster] = items
-            cluster_slug = str(
-                getattr(cluster, "slug", None)
-                or getattr(cluster, "name", "cluster")
-            ).strip("/") or "cluster"
+            cluster_slug = (
+                str(
+                    getattr(cluster, "slug", None)
+                    or getattr(cluster, "name", "cluster")
+                ).strip("/")
+                or "cluster"
+            )
             cluster_label = (
                 getattr(cluster, "label", None)
                 or getattr(cluster, "name", None)
@@ -344,12 +345,7 @@ class NavigationManager:
             for _order, _index, item in cluster_landing_items
             if not item["href"] or item["href"] not in seen_hrefs
         ]
-        for item in visible_cluster_items:
-            if item.get("href"):
-                seen_hrefs.add(str(item["href"]))
-        if visible_cluster_items:
-            top_items.append({"is_group": True, "label": "Operations"})
-            top_items.extend(visible_cluster_items)
+        framework_items.extend(_unique_entries(visible_cluster_items, seen_hrefs))
 
         merged = top_items + merged
 
@@ -388,43 +384,105 @@ class NavigationManager:
                 group_labels.setdefault(current_group, set()).add(label)
             merged.append(item)
 
-        # Plugins is a destination, not an account action. Keep it visible in
-        # the sidebar while preserving the existing user-menu API for direct
-        # integrations that still request the full navigation set.
-        _append_unique_group(
-            merged,
-            "Tools",
-            [
-                _primary_menu_entry(
-                    "Plugins",
-                    self._admin_prefix,
-                    "plugins",
-                    "plugins",
-                ),
-            ],
+        # Framework-owned destinations are one sidebar surface rather than
+        # three unrelated top-level groups. Keep the legacy user-menu API
+        # below unchanged; this consolidation applies only to the primary
+        # rendered sidebar.
+        framework_items.extend(
+            _unique_entries(
+                [
+                    _primary_menu_entry(
+                        "Plugins",
+                        self._admin_prefix,
+                        "plugins",
+                        "plugins",
+                        current_path=current_path,
+                    ),
+                ],
+                seen_hrefs,
+            )
         )
 
         # Administrative destinations are deliberately request-gated here so
         # the shell never renders a privileged link to a regular operator.
         if self._is_super_admin():
-            _append_unique_group(
-                merged,
-                "Administration",
-                [
-                    _primary_menu_entry(
-                        "Users", self._admin_prefix, "users", "users"
-                    ),
-                    _primary_menu_entry(
-                        "Roles", self._admin_prefix, "roles", "shield-check"
-                    ),
-                    _primary_menu_entry(
-                        "Security", self._admin_prefix, "security", "shield"
-                    ),
-                    _primary_menu_entry(
-                        "Email", self._admin_prefix, "email", "mail"
-                    ),
-                ],
+            framework_items.extend(
+                _unique_entries(
+                    [
+                        _primary_menu_entry(
+                            "Users",
+                            self._admin_prefix,
+                            "users",
+                            "users",
+                            current_path=current_path,
+                        ),
+                        _primary_menu_entry(
+                            "Roles",
+                            self._admin_prefix,
+                            "roles",
+                            "shield-check",
+                            current_path=current_path,
+                        ),
+                        _primary_menu_entry(
+                            "Security",
+                            self._admin_prefix,
+                            "security",
+                            "shield",
+                            current_path=current_path,
+                        ),
+                        _primary_menu_entry(
+                            "Email",
+                            self._admin_prefix,
+                            "email",
+                            "mail",
+                            current_path=current_path,
+                        ),
+                    ],
+                    seen_hrefs,
+                )
             )
+
+        if framework_items:
+            framework_header = {
+                "is_group": True,
+                "label": "Framework",
+                "icon": "layers",
+                "default_expanded": any(
+                    bool(item.get("active")) for item in framework_items
+                ),
+            }
+            framework_index = next(
+                (
+                    index
+                    for index, item in enumerate(merged)
+                    if isinstance(item, dict)
+                    and item.get("is_group")
+                    and str(item.get("label", "")).strip().casefold() == "framework"
+                ),
+                None,
+            )
+            if framework_index is None:
+                merged.append(framework_header)
+                merged.extend(framework_items)
+            else:
+                # A contributor may already use the reserved Framework label.
+                # Keep one visible section and preserve that contributor's
+                # metadata/items while adding generated entries to its block.
+                existing_header = merged[framework_index]
+                if isinstance(existing_header, dict):
+                    existing_header.setdefault("icon", framework_header["icon"])
+                    if existing_header.get("default_expanded") is None:
+                        existing_header["default_expanded"] = framework_header[
+                            "default_expanded"
+                        ]
+                insertion_index = framework_index + 1
+                while insertion_index < len(merged):
+                    if isinstance(merged[insertion_index], dict) and merged[
+                        insertion_index
+                    ].get("is_group"):
+                        break
+                    insertion_index += 1
+                merged[insertion_index:insertion_index] = framework_items
 
         return _order_primary_nav(merged), system_menu_items, cluster_nav
 

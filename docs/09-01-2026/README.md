@@ -64,10 +64,11 @@ deployment, the fixes shipped on this date, and the forward-looking roadmap.
 | [54-tasks-test-dependency.md](54-tasks-test-dependency.md) | Tasks package test dependency closure: declares `lexigram-resilience` for the `test`/`all` extras and development test group, adds workspace source metadata, and keeps `uv.lock` aligned without adding a production dependency. |
 | [56-sidebar-information-architecture.md](56-sidebar-information-architecture.md) | Sidebar information architecture: promotes cluster centers and administration destinations into ordered sidebar sections, moves account actions to a topbar UserBox variant, and keeps Settings/system links in the utility footer with custom-prefix and permission-safe composition. |
 | [57-settings-control-plane-audit.md](57-settings-control-plane-audit.md) | Settings control-plane audit and hardening (R57): source ownership, strict typed forms, falsy DB values, redacted YAML/application visibility, permissions/concurrency, and durable history/rollback. |
+| [58-sidebar-branding-and-framework-menu.md](58-sidebar-branding-and-framework-menu.md) | Sidebar branding and Framework menu consolidation (R58): header collapse toggle, mini-mode branding behavior, one active-aware Framework dropdown, contributor-safe deduplication, metadata preservation, and unchanged topbar/footer ownership. |
 
 ## Status at time of writing
 
-- Concrete roadmap and follow-up records through **R57 are implemented** and
+- Concrete roadmap and follow-up records through **R58 are implemented** and
   each behavior change has regression coverage in the owning package. R14
   phase 2 is implemented in [53-bulk-live-progress.md](53-bulk-live-progress.md);
   its playground/browser round trip remains intentionally deferred. The tasks
@@ -77,6 +78,8 @@ deployment, the fixes shipped on this date, and the forward-looking roadmap.
   [56-sidebar-information-architecture.md](56-sidebar-information-architecture.md),
   and the settings control-plane audit is complete in
   [57-settings-control-plane-audit.md](57-settings-control-plane-audit.md).
+  The sidebar branding and Framework menu follow-up is complete in
+  [58-sidebar-branding-and-framework-menu.md](58-sidebar-branding-and-framework-menu.md).
   The final audit and release gate are recorded in
   [50-reliability-audit.md](50-reliability-audit.md).
 - The current verification matrix is maintained from the repository checkout:

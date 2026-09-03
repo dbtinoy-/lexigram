@@ -227,8 +227,8 @@ def collapse_cluster_in_primary(
     """Remove the cluster group from the primary sidebar.
 
     The group header (``cluster.label``) and all of its items are dropped
-    entirely; the center is represented by the Operations landing entry and
-    its secondary sidebar. Items outside the group are preserved in order.
+    entirely; the center is represented by the generated Framework section
+    and its secondary sidebar. Items outside the group are preserved in order.
 
     Args:
         flat_items: Flat primary nav items.

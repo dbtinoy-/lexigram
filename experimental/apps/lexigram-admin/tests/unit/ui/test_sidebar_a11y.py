@@ -32,3 +32,34 @@ class TestSidebarA11y:
         html = render_to_string(section)
         assert 'type="button"' in html
         assert "focus-visible:ring-2" in html
+
+
+def test_sidebar_branding_and_toggle_share_the_header() -> None:
+    from lexigram.admin.ui.organisms.sidebar import Sidebar
+
+    html = render_to_string(Sidebar(items=[], logo_text="Lexigram"))
+    header_end = html.index('class="admin-sidebar-footer')
+    toggle_index = html.index('aria-label="Toggle sidebar"')
+
+    assert toggle_index < header_end
+    assert html.count('aria-label="Toggle sidebar"') == 1
+    assert 'x-show="!sidebarMini"' in html
+    assert 'aria-label="Go to Lexigram home"' in html
+    assert "justify-center" in html
+
+
+def test_sidebar_section_preserves_active_item_as_initial_expansion() -> None:
+    html = render_to_string(
+        SidebarSection(
+            "Framework",
+            [SidebarItem("Plugins", "/admin/plugins", active=True)],
+            icon="layers",
+        )
+    )
+
+    assert 'x-data="{ expanded:' in html
+    assert "section-framework" in html
+    assert "=== null ? true" in html
+    assert 'aria-controls="section-framework-items"' in html
+    assert "aria-expanded" in html
+    assert 'aria-current="page"' in html

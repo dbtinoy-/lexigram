@@ -57,7 +57,7 @@ def test_default_resource_group_is_presented_as_workspace() -> None:
     assert items[1]["label"] == "Orders"
 
 
-def test_registered_centers_are_primary_operations_destinations() -> None:
+def test_registered_centers_are_primary_framework_destinations() -> None:
     registry = ClusterRegistry.with_defaults()
     request = _request(
         path="/admin/infrastructure/web",
@@ -66,8 +66,8 @@ def test_registered_centers_are_primary_operations_destinations() -> None:
 
     nav, system, secondary = NavigationManager(request).resolve_nav()
     labels = [item["label"] for item in nav]
-    operations_index = labels.index("Operations")
-    infrastructure = nav[operations_index + 1]
+    framework_index = labels.index("Framework")
+    infrastructure = nav[framework_index + 1]
 
     assert infrastructure["label"] == "Infrastructure"
     assert infrastructure["href"] == "/admin/infrastructure"
@@ -137,20 +137,20 @@ def test_supplied_system_links_are_mounted_deduplicated_and_active() -> None:
     assert system[1]["href"] == "/backoffice/health"
 
 
-def test_superadmin_destinations_are_gated_and_ordered_after_tools() -> None:
+def test_superadmin_destinations_are_gated_inside_framework() -> None:
     request = _request(superuser=True)
 
     nav, _system, _secondary = NavigationManager(request).resolve_nav()
     labels = [item["label"] for item in nav]
 
-    assert labels.index("Tools") < labels.index("Administration")
-    administration_index = labels.index("Administration")
-    assert labels[administration_index + 1 : administration_index + 5] == [
+    framework_index = labels.index("Framework")
+    assert labels[framework_index + 1 : framework_index + 5] == [
+        "Plugins",
         "Users",
         "Roles",
         "Security",
-        "Email",
     ]
+    assert labels[framework_index + 5] == "Email"
 
     regular_nav, _regular_system, _regular_secondary = NavigationManager(
         _request(superuser=False)
@@ -174,7 +174,7 @@ def test_known_contributor_sections_follow_information_architecture_order() -> N
     nav, _system, _secondary = NavigationManager(request).resolve_nav()
     group_labels = [item["label"] for item in nav if item.get("is_group")]
 
-    assert group_labels == ["Security", "Integrations", "Tools"]
+    assert group_labels == ["Framework", "Security", "Integrations"]
 
 
 def test_custom_registered_cluster_retains_order_and_primary_active_state() -> None:
@@ -194,3 +194,51 @@ def test_custom_registered_cluster_retains_order_and_primary_active_state() -> N
         "Operations Hub",
     ]
     assert center_links[0]["active"] is True
+
+
+def test_generated_framework_items_merge_with_reserved_contributor_group() -> None:
+    request = _request(
+        assembler_items=[
+            {"is_group": True, "label": "Framework"},
+            {"label": "Contributor page", "href": "/admin/framework/contributor"},
+        ]
+    )
+
+    nav, _system, _secondary = NavigationManager(request).resolve_nav()
+    groups = [item for item in nav if item.get("is_group")]
+    framework_index = next(
+        index for index, item in enumerate(nav) if item.get("label") == "Framework"
+    )
+    framework_items = [
+        item for item in nav[framework_index + 1 :] if not item.get("is_group")
+    ]
+
+    assert [item["label"] for item in groups].count("Framework") == 1
+    assert [item["label"] for item in framework_items] == [
+        "Contributor page",
+        "Plugins",
+    ]
+
+
+def test_framework_destinations_are_one_primary_group_with_active_expansion() -> None:
+    request = _request(
+        path="/admin/plugins",
+        registry=ClusterRegistry.with_defaults(),
+        superuser=True,
+    )
+
+    nav, _system, _secondary = NavigationManager(request).resolve_nav()
+    groups = [item for item in nav if item.get("is_group")]
+    framework = next(item for item in groups if item["label"] == "Framework")
+    framework_index = nav.index(framework)
+
+    assert [item["label"] for item in groups].count("Framework") == 1
+    assert "Operations" not in [item["label"] for item in groups]
+    assert "Tools" not in [item["label"] for item in groups]
+    assert "Administration" not in [item["label"] for item in groups]
+    assert framework["icon"] == "layers"
+    assert framework["default_expanded"] is True
+    assert nav[framework_index + 1]["label"] == "Infrastructure"
+    assert nav[framework_index + 1]["active"] is False
+    assert nav[framework_index + 2]["label"] == "Plugins"
+    assert nav[framework_index + 2]["active"] is True

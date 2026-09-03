@@ -212,13 +212,28 @@ The first 15 minutes decide whether a team adopts an admin framework.
   compileall, Ruff, and `git diff --check` passed. Playground/browser
   round-trip remains intentionally deferred. Full Plan:
   [57-settings-control-plane-audit.md](57-settings-control-plane-audit.md).
+- **R58. Sidebar branding control and Framework menu consolidation.** ✅ **Done
+  2026-09-03** — the collapse toggle now sits beside the logo/site name in the
+  sidebar header and mini mode hides both branding nodes while retaining the
+  accessible toggle. Cluster centers, Plugins, and privileged administration
+  destinations now share one active-aware, collapsible `Framework` section;
+  contributor groups, deduplication, permissions, badges, custom prefixes,
+  topbar account ownership, and footer system utilities remain intact. Group
+  icon/default-expansion metadata is preserved for future contributors.
+  Verification: 5884 admin unit tests passed, 8 skipped; focused
+  navigation/sidebar tests passed; mypy, compileall, Ruff, and
+  `git diff --check` passed. Playground/browser round-trip remains
+  intentionally deferred. Full Plan:
+  [58-sidebar-branding-and-framework-menu.md](58-sidebar-branding-and-framework-menu.md).
 
 ---
 
 ## Completion status (2026-09-03)
 
-The concrete roadmap and follow-up records through R57 are implemented and
-have regression coverage. The R57 settings control-plane audit is complete;
+The concrete roadmap and follow-up records through R58 are implemented and
+have regression coverage. The R58 sidebar branding and Framework menu work is
+complete; its browser/playground round trip remains intentionally deferred.
+The R57 settings control-plane audit is complete;
 its browser/playground round trip remains intentionally deferred. R14 phase 2
 is implemented with its own verification record in
 [53-bulk-live-progress.md](53-bulk-live-progress.md); only its playground/browser

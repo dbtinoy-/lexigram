@@ -55,6 +55,7 @@ class SidebarNavItem:
     badge: str | None = None
     active: bool = False
     is_group: bool = False
+    default_expanded: bool | None = None
     permission: str | None = None
     feature: str | None = None
 
@@ -69,6 +70,8 @@ class SidebarNavItem:
         }
         if self.is_group:
             d["is_group"] = True
+        if self.default_expanded is not None:
+            d["default_expanded"] = self.default_expanded
         if self.permission:
             d["permission"] = self.permission
         if self.feature:

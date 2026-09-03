@@ -82,7 +82,12 @@ def prepare_navigation(
 
         # Handle Group Header
         if item.get("is_group"):
-            current_section = SidebarSection(title=item.get("label", ""), items=[])
+            current_section = SidebarSection(
+                title=item.get("label", ""),
+                items=[],
+                icon=item.get("icon"),
+                default_expanded=item.get("default_expanded"),
+            )
             items.append(current_section)  # type: ignore[arg-type]
             continue
 

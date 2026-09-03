@@ -52,7 +52,7 @@ class TestResolveNav:
         nav, system, cluster_nav = NavigationManager(_request()).resolve_nav()
         labels = [i["label"] for i in nav]
         assert labels[0] == "Dashboard"
-        assert labels[-2:] == ["Tools", "Plugins"]
+        assert labels[-2:] == ["Framework", "Plugins"]
         assert system == [{"label": "Settings", "href": "/admin/settings"}]
         assert cluster_nav is None
 
