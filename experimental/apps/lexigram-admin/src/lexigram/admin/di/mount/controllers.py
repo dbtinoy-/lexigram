@@ -674,6 +674,10 @@ class AdminMountControllersMixin:
             except Exception:
                 progress_controller = ProgressController(tracker=LocalProgressTracker())
             ctx.controllers.append(progress_controller)
+            # Resource handlers resolve these values from the mounted app
+            # state, avoiding a direct admin -> tasks package dependency.
+            ctx.progress_tracker = getattr(progress_controller, "tracker", None)
+            ctx.progress_access = getattr(progress_controller, "access_registry", None)
         except ModuleNotFoundError as exc:
             _log.info(
                 "admin.progress_controller_skipped",

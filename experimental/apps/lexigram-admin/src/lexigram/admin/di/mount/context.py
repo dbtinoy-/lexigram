@@ -20,6 +20,8 @@ class MountContext:
     contributors: list[Any] = field(default_factory=list)
     settings_service: Any | None = None
     saved_view_service: Any | None = None
+    progress_tracker: Any | None = None
+    progress_access: Any | None = None
     contributor_registry: Any | None = None
     cluster_registry: Any | None = None
     nav_builder: Any | None = None

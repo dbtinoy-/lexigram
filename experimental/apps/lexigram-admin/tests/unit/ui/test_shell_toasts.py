@@ -99,3 +99,14 @@ class TestShellFlashToasts:
         js = js_path.read_text()
 
         assert "document.querySelector('.toast-container, #flash-container')" in js
+
+    def test_shell_toast_escapes_dynamic_message_text(self) -> None:
+        shell = AdminShell(
+            content="<p>hi</p>",
+            title="Test",
+            flash_messages=[],
+        )
+        html = render_to_string(shell)
+
+        assert "messageNode.textContent = String(message || '')" in html
+        assert "${safeMessage}" in html

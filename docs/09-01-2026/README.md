@@ -60,13 +60,16 @@ deployment, the fixes shipped on this date, and the forward-looking roadmap.
 | [50-reliability-audit.md](50-reliability-audit.md) | Reliability audit and release gate (2026-09-03): closes the accumulated roadmap implementation with provider-exception normalization, protocol-complete local export fallback, static/type cleanup, reproducible dependency setup, and the final verification matrix. |
 | [51-toast-overlay-layout.md](51-toast-overlay-layout.md) | First-load toast overlay layout (R53): keeps the server-rendered flash zone fixed and viewport-bounded, reuses it for client toasts, and prevents notification markup from changing dashboard width. |
 | [52-default-saved-view.md](52-default-saved-view.md) | Default saved view (R54): adds a per-user/resource default marker, safe set/clear controls, and one-time auto-apply on clean full-page list visits without overriding explicit state. |
+| [53-bulk-live-progress.md](53-bulk-live-progress.md) | R14 phase 2 live bulk progress: thresholded HTMX delete/purge/restore tasks, owner-bound status/SSE streams, accessible DataTable progress UI, terminal toast metadata, and synchronous fallbacks. Playground/browser verification remains deferred. |
 
 ## Status at time of writing
 
 - Concrete roadmap and follow-up records through **R54 are implemented** and
-  each behavior change has regression coverage in the owning package. The
-  final audit and
-  release gate are recorded in [50-reliability-audit.md](50-reliability-audit.md).
+  each behavior change has regression coverage in the owning package. R14
+  phase 2 is implemented in [53-bulk-live-progress.md](53-bulk-live-progress.md);
+  its playground/browser round trip remains intentionally deferred. The final
+  audit and release gate are recorded in
+  [50-reliability-audit.md](50-reliability-audit.md).
 - The current verification matrix is maintained from the repository checkout:
   the admin, UI, auth, cache, events, queue, SQL, core, contracts, webhook,
   and related package suites are run with the workspace dependencies selected
@@ -80,9 +83,10 @@ deployment, the fixes shipped on this date, and the forward-looking roadmap.
   The last successful boot showed concise expected contributor-disabled INFO
   events and only the documented optional SSE route warning.
 - Deliberate future projects are explicitly retained rather than misreported
-  as complete: shared/team saved views, bulk-progress SSE, optional chart
-  vendoring, and the Alpine CSP-build migration. Their constraints and
-  upgrade paths are documented in docs 03, 08, 09, and 14.
+  as complete: shared/team saved views, durable/distributed bulk-task
+  infrastructure and task history, optional chart vendoring, and the Alpine
+  CSP-build migration. Their constraints and upgrade paths are documented in
+  docs 03, 08, 09, and 14.
 
 ## Guiding principles (applies to all follow-up work)
 

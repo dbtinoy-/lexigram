@@ -188,6 +188,20 @@ class TestInMemoryProgressTrackerBasics:
         assert snap.error == "disk full"
 
     @pytest.mark.asyncio
+    async def test_terminal_metadata_is_preserved(self) -> None:
+        tracker = InMemoryProgressTracker()
+        await tracker.update("t1", 1, 1)
+        await tracker.complete(
+            "t1",
+            result="done",
+            metadata={"toast_type": "success", "refresh": True},
+        )
+
+        snap = await tracker.get("t1")
+        assert snap is not None
+        assert snap.metadata == {"toast_type": "success", "refresh": True}
+
+    @pytest.mark.asyncio
     async def test_fail_preserves_current_and_total(self) -> None:
         tracker = InMemoryProgressTracker()
         await tracker.update("t1", 4, 10)

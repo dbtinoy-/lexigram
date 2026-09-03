@@ -124,13 +124,16 @@ The first 15 minutes decide whether a team adopts an admin framework.
   save-current-view, delete, and active-view highlighting. Full plan and
   follow-ups (shared views, default view) in
   [08-saved-views.md](08-saved-views.md).
-- **R14. Bulk-action UX hardening.** ✅ **Done 2026-09-02** — per-row
-  outcome accounting for bulk delete/purge/restore: honest toasts
-  ("Deleted 47 of 50 item(s) - 3 failed: …") with severity
-  success/warning/error, row-failure isolation (one bad row no longer
-  aborts the batch or mis-reports completed work), and the silent
-  bulk-purge no-op fixed to a proper 503. Progress-bar SSE wiring is the
-  documented phase 2. Full plan in [09-bulk-ux.md](09-bulk-ux.md).
+- **R14. Bulk-action UX hardening.** ✅ **Done 2026-09-02; phase 2
+  implemented 2026-09-03** — per-row outcome accounting for bulk
+  delete/purge/restore: honest toasts ("Deleted 47 of 50 item(s) - 3 failed:
+  …") with severity success/warning/error, row-failure isolation (one bad
+  row no longer aborts the batch or mis-reports completed work), the silent
+  bulk-purge no-op fixed to a proper 503, and thresholded live progress for
+  large HTMX mutations through owner-bound SSE/status streams. Short and
+  unsupported requests remain synchronous. Playground/browser verification is
+  intentionally deferred. Full plans in [09-bulk-ux.md](09-bulk-ux.md) and
+  [53-bulk-live-progress.md](53-bulk-live-progress.md).
 - **Security headers wired.** ✅ **Done 2026-09-02** — the orphaned
   `SecurityHeadersMiddleware` (flagged in doc 01) now sits outermost in the
   admin stack, so every response carries the OWASP set (HSTS, CSP,
@@ -184,12 +187,15 @@ The first 15 minutes decide whether a team adopts an admin framework.
 ## Completion status (2026-09-03)
 
 The concrete roadmap and follow-up records through R54 are implemented and
-have regression coverage. The repository release gate is tracked in the
-[reliability audit Full Plan](50-reliability-audit.md): targeted package
-suites, ruff, mypy, and the first-run scenario must remain green before the
-branch is pushed. Deliberate future projects (shared/team saved views,
-progress SSE, optional chart vendoring, and the CSP v2 Alpine migration) are
-not silently marked complete; each has an explicit note in its source plan.
+have regression coverage. R14 phase 2 is implemented with its own verification
+record in [53-bulk-live-progress.md](53-bulk-live-progress.md); only its
+playground/browser round trip is intentionally deferred. The repository release
+gate is tracked in the [reliability audit Full Plan](50-reliability-audit.md):
+targeted package suites, ruff, mypy, and the first-run scenario must remain
+green before the branch is pushed. Deliberate future projects (shared/team
+saved views, durable/distributed progress tasks and task history, optional
+chart vendoring, and the CSP v2 Alpine migration) are not silently marked
+complete; each has an explicit note in its source plan.
 
 ---
 
