@@ -8,7 +8,8 @@ Design: docs/09-01-2026/08-saved-views.md.
 Storage shape (JSON via tenant_configs)::
 
     key   = admin.saved_views.{user_id}.{resource}
-    value = [{"name": str, "query": str, "created_at": iso8601}, ...]
+    value = [{"name": str, "query": str, "created_at": iso8601,
+              "default": bool}, ...]
 """
 
 from __future__ import annotations
@@ -60,6 +61,7 @@ _RESOURCE_RE = re.compile(r"^[a-z0-9_-]{1,64}$")
 _CONTROL_CHARS_RE = re.compile(r"[\x00-\x1f\x7f]")
 
 _KEY_NAMESPACE = "saved_views"
+SavedView = dict[str, Any]
 
 
 class SavedViewError(ValueError):
@@ -143,11 +145,12 @@ class SavedViewService:
         return f"{_KEY_NAMESPACE}.{user_id}.{resource}"
 
     @staticmethod
-    def _coerce_views(raw: Any) -> list[dict[str, str]]:
-        """Tolerate corrupt payloads: keep only well-formed view entries."""
-        views: list[dict[str, str]] = []
+    def _coerce_views(raw: Any) -> list[SavedView]:
+        """Tolerate corrupt payloads and keep at most one default marker."""
+        views: list[SavedView] = []
         if not isinstance(raw, list):
             return views
+        default_seen = False
         for item in raw:
             if not isinstance(item, dict):
                 continue
@@ -155,18 +158,28 @@ class SavedViewService:
             query = str(item.get("query") or "")
             if not name:
                 continue
+            # JSON booleans are the only valid persisted representation. Do
+            # not treat arbitrary truthy strings such as "false" as enabled.
+            requested_default = item.get("default") is True
+            is_default = (
+                requested_default
+                and not default_seen
+                and bool(SavedViewService.sanitize_query(query))
+            )
+            default_seen = default_seen or is_default
             views.append(
                 {
                     "name": name[:MAX_NAME_LENGTH],
                     "query": query[:MAX_QUERY_LENGTH],
                     "created_at": str(item.get("created_at") or ""),
+                    "default": is_default,
                 }
             )
         return views
 
     # -- public API ----------------------------------------------------------
 
-    async def list_views(self, user_id: str, resource: str) -> list[dict[str, str]]:
+    async def list_views(self, user_id: str, resource: str) -> list[SavedView]:
         """Return the user's saved views for a resource (sorted by name).
 
         Never raises: storage errors and corrupt payloads degrade to ``[]``.
@@ -187,9 +200,90 @@ class SavedViewService:
         views.sort(key=lambda v: v["name"].casefold())
         return views
 
+    async def get_default_view(self, user_id: str, resource: str) -> SavedView | None:
+        """Return a usable default view, or ``None`` when none is configured.
+
+        The list path is deliberately fail-soft: a missing settings provider,
+        corrupt payload, or invalid stored query must not make a resource list
+        unavailable. ``list_views`` already normalizes legacy records and
+        storage read failures to an empty list.
+        """
+        for view in await self.list_views(user_id, resource):
+            if view.get("default") is not True:
+                continue
+            query = self.sanitize_query(str(view.get("query") or ""))
+            if not query:
+                return None
+            return {**view, "query": query, "default": True}
+        return None
+
+    async def set_default_view(
+        self, user_id: str, resource: str, name: str | None
+    ) -> bool:
+        """Select one saved view as default or clear the current default.
+
+        Args:
+            user_id: Owning admin user id.
+            resource: Resource slug.
+            name: Case-insensitive view name to select, or ``None`` to clear.
+
+        Returns:
+            ``True`` when the requested selection/clear changed a marker;
+            ``False`` when clearing was already clear.
+
+        Raises:
+            SavedViewError: Invalid input, missing target, or unavailable
+                storage.
+        """
+        if self._settings is None:
+            raise SavedViewError("Saved views storage is unavailable.")
+        user = self._validate_user_id(user_id)
+        slug = self._validate_resource(resource)
+        target = self._validate_name(name) if name is not None else None
+        try:
+            raw = await self._settings.get(self._tenant_id, self._key(user, slug))
+        except Exception as exc:  # noqa: BLE001 — surface a friendly message
+            logger.error("saved_views.read_for_default_failed", error=str(exc))
+            raise SavedViewError(
+                "Could not update the default view — try again."
+            ) from exc
+        views = self._coerce_views(raw)
+
+        if target is not None and not any(
+            view["name"].casefold() == target.casefold() for view in views
+        ):
+            raise SavedViewError("View not found.")
+
+        changed = False
+        for view in views:
+            should_be_default = (
+                target is not None and view["name"].casefold() == target.casefold()
+            )
+            if view.get("default") is not should_be_default:
+                view["default"] = should_be_default
+                changed = True
+
+        if not changed:
+            return False
+        try:
+            await self._settings.set(self._tenant_id, self._key(user, slug), views)
+        except Exception as exc:  # noqa: BLE001 — surface a friendly message
+            logger.error("saved_views.default_write_failed", error=str(exc))
+            raise SavedViewError(
+                "Could not update the default view — try again."
+            ) from exc
+        logger.info(
+            "saved_views.default_updated",
+            user_id=user,
+            resource=slug,
+            name=target,
+            cleared=target is None,
+        )
+        return True
+
     async def save_view(
         self, user_id: str, resource: str, name: str, query: str
-    ) -> dict[str, str]:
+    ) -> SavedView:
         """Create or update (by case-insensitive name) a saved view.
 
         Args:
@@ -221,15 +315,17 @@ class SavedViewService:
         views = self._coerce_views(
             await self._settings.get(self._tenant_id, self._key(user, slug))
         )
-        entry = {
+        entry: SavedView = {
             "name": cleaned_name,
             "query": sanitized,
             "created_at": datetime.now(UTC).isoformat(),
+            "default": False,
         }
         replaced = False
         for idx, view in enumerate(views):
             if view["name"].casefold() == cleaned_name.casefold():
                 entry["created_at"] = view.get("created_at") or entry["created_at"]
+                entry["default"] = view.get("default") is True
                 views[idx] = entry
                 replaced = True
                 break
@@ -279,9 +375,7 @@ class SavedViewService:
         if len(remaining) == len(views):
             return False
         try:
-            await self._settings.set(
-                self._tenant_id, self._key(user, slug), remaining
-            )
+            await self._settings.set(self._tenant_id, self._key(user, slug), remaining)
         except Exception as exc:  # noqa: BLE001
             logger.error("saved_views.delete_failed", error=str(exc))
             raise SavedViewError("Could not delete the view — try again.") from exc

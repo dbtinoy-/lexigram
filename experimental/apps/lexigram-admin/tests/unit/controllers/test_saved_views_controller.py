@@ -239,9 +239,7 @@ class TestDelete:
     async def test_delete_existing_view(self) -> None:
         service = _service()
         await service.save_view("u-1", "users", "Mine", "search=a")
-        request = _request(
-            _FakeUser(), form={"csrf_token": "", "name": "Mine"}
-        )
+        request = _request(_FakeUser(), form={"csrf_token": "", "name": "Mine"})
         response = await _controller(service).delete(request, "users")
         assert response.status_code == 302
         assert "notice=" in response.headers["location"]
@@ -273,3 +271,60 @@ class TestDelete:
         request = _request(_FakeUser(), form={"csrf_token": "", "name": "V"})
         response = await _controller(service).delete(request, "users")
         assert "error=boom" in response.headers["location"]
+
+
+class TestDefault:
+    @pytest.mark.asyncio
+    async def test_set_default_redirects_with_notice(self) -> None:
+        service = _service()
+        await service.save_view("u-1", "users", "Mine", "search=a")
+        request = _request(
+            _FakeUser(), form={"csrf_token": "", "name": "Mine", "default": "1"}
+        )
+        response = await _controller(service).set_default(request, "users")
+        assert response.status_code == 302
+        assert "notice=" in response.headers["location"]
+        default = await service.get_default_view("u-1", "users")
+        assert default is not None
+        assert default["name"] == "Mine"
+
+    @pytest.mark.asyncio
+    async def test_clear_default_redirects_with_notice(self) -> None:
+        service = _service()
+        await service.save_view("u-1", "users", "Mine", "search=a")
+        await service.set_default_view("u-1", "users", "Mine")
+        request = _request(
+            _FakeUser(), form={"csrf_token": "", "name": "Mine", "default": "0"}
+        )
+        response = await _controller(service).set_default(request, "users")
+        assert "notice=" in response.headers["location"]
+        assert await service.get_default_view("u-1", "users") is None
+
+    @pytest.mark.asyncio
+    async def test_missing_default_target_errors(self) -> None:
+        request = _request(
+            _FakeUser(), form={"csrf_token": "", "name": "Missing", "default": "1"}
+        )
+        response = await _controller(_service()).set_default(request, "users")
+        assert "error=View+not+found." in response.headers["location"]
+
+    @pytest.mark.asyncio
+    async def test_invalid_csrf_rejects_default_change(self) -> None:
+        csrf = MagicMock()
+        csrf.validate_token.return_value = False
+        request = _request(
+            _FakeUser(),
+            form={"csrf_token": "bad", "name": "Mine", "default": "1"},
+            session={"csrf_session_id": "sid"},
+        )
+        response = await _controller(_service(), csrf_service=csrf).set_default(
+            request, "users"
+        )
+        assert "error=Invalid+or+expired+form+token." in response.headers["location"]
+
+    @pytest.mark.asyncio
+    async def test_guest_cannot_change_default(self) -> None:
+        response = await _controller(_service()).set_default(
+            _request(_FakeUser(user_id="guest")), "users"
+        )
+        assert "login" in response.headers["location"]

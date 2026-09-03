@@ -173,16 +173,21 @@ The first 15 minutes decide whether a team adopts an admin framework.
   insertion reuses either zone, and a shell regression protects the selector
   and sizing contract. Full record in
   [51-toast-overlay-layout.md](51-toast-overlay-layout.md).
+- **R54. Default saved view.** ✅ **Done 2026-09-03** — extends the R13
+  per-user saved-view records with one optional default, safe star/unstar
+  controls, and one-time auto-apply only for clean full-page visits. Explicit
+  query state, HTMX fragments, and mutation notices remain authoritative.
+  Full Plan: [52-default-saved-view.md](52-default-saved-view.md).
 
 ---
 
 ## Completion status (2026-09-03)
 
-The concrete roadmap and follow-up records through R53 are implemented and
+The concrete roadmap and follow-up records through R54 are implemented and
 have regression coverage. The repository release gate is tracked in the
 [reliability audit Full Plan](50-reliability-audit.md): targeted package
 suites, ruff, mypy, and the first-run scenario must remain green before the
-branch is pushed. Deliberate future projects (shared/default saved views,
+branch is pushed. Deliberate future projects (shared/team saved views,
 progress SSE, optional chart vendoring, and the CSP v2 Alpine migration) are
 not silently marked complete; each has an explicit note in its source plan.
 
