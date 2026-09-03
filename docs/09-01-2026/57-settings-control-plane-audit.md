@@ -200,7 +200,7 @@ Verification completed:
 - [x] Focused settings/controller suite: `269 passed, 4 warnings`; shared
   UI form/accessibility suite: `98 passed, 4 warnings`.
 - [x] Full admin unit suite: `pytest -q --no-cov tests/unit` — `5881 passed,
-  7 skipped, 16 warnings in 35.31s`.
+  7 skipped, 16 warnings in 35.96s`.
 - [x] Targeted mypy over 31 changed production files: passed.
 - [x] Admin/shared-UI `compileall`: passed.
 - [x] Ruff and `git diff --check`: passed.
