@@ -154,6 +154,19 @@ class TestControllerPanelLinks:
         ]
 
     @pytest.mark.asyncio
+    async def test_panel_urls_follow_custom_admin_prefix(self) -> None:
+        dashboard = SimpleNamespace(
+            get_settings_panels=AsyncMock(return_value=[_panel()])
+        )
+        controller = self._controller(dashboard=dashboard)
+        request = _mock_request()
+        request.scope = {"admin_prefix": "/backoffice"}
+
+        links = await controller._panel_links(request)
+
+        assert [link.url for link in links] == ["/backoffice/system/info"]
+
+    @pytest.mark.asyncio
     async def test_current_user_forwarded_for_permission_filtering(self) -> None:
         user = SimpleNamespace(permissions=frozenset(), roles=[])
         dashboard = SimpleNamespace(get_settings_panels=AsyncMock(return_value=[]))

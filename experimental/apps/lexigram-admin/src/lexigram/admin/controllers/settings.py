@@ -17,7 +17,11 @@ from lexigram.admin.controllers.base import AdminController
 from lexigram.admin.controllers.settings_history import SettingsHistoryMixin
 from lexigram.admin.multitenancy.adapter import resolve_tenant_id
 from lexigram.admin.rbac.super_admin import is_super_admin
-from lexigram.admin.resources.urls import admin_prefix_from_request, admin_url
+from lexigram.admin.resources.urls import (
+    admin_prefix_from_request,
+    admin_url,
+    mount_admin_url,
+)
 from lexigram.admin.settings.conflict import SettingsConflictError
 from lexigram.admin.settings.panel import BooleanNode, SecretNode
 from lexigram.admin.settings.panel.layout import ConfigLayout
@@ -196,11 +200,12 @@ class SettingsController(SettingsHistoryMixin, AdminController):
             return []
         try:
             user = getattr(getattr(request, "state", None), "user", None)
+            admin_prefix = admin_prefix_from_request(request)
             panels = await self._dashboard.get_settings_panels(user)
             return [
                 PanelLink(
                     title=panel.title,
-                    url=panel.route_path,
+                    url=mount_admin_url(panel.route_path, admin_prefix),
                     icon=getattr(panel, "icon", "") or "file-text",
                     category=getattr(panel, "category", "") or "Tools",
                 )
