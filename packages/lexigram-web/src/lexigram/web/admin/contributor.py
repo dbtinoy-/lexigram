@@ -8,6 +8,9 @@ from collections.abc import Sequence
 from typing import TYPE_CHECKING, cast
 
 from lexigram.contracts.admin.contributor import BaseAdminContributor
+from lexigram.contracts.admin.contributor_boot import (
+    summarize_contributor_boot_failure,
+)
 from lexigram.contracts.admin.errors import AdminError, WidgetNotFoundError
 from lexigram.contracts.admin.types import (
     AdminActionDefinition,
@@ -153,6 +156,7 @@ class WebAdminContributor(BaseAdminContributor):
             ServerStatusWidgetHandler,
         )
 
+        self._handlers = {}
         try:
             self._handlers = {
                 "server_status": await container.resolve(ServerStatusWidgetHandler),
@@ -162,7 +166,22 @@ class WebAdminContributor(BaseAdminContributor):
                 "request_rate": await container.resolve(RequestRateWidgetHandler),
             }
         except Exception as exc:  # noqa: BLE001
-            logger.warning("web_contributor.handlers_unavailable", error=str(exc))
+            failure = summarize_contributor_boot_failure(exc)
+            if failure.expected:
+                logger.info(
+                    "admin.contributor_disabled",
+                    contributor=self.name,
+                    feature="widget handlers",
+                    reason=failure.reason,
+                    missing=failure.summary,
+                )
+            else:
+                logger.warning(
+                    "web_contributor.handlers_unavailable",
+                    error=failure.summary,
+                    error_type=type(exc).__name__,
+                    exc_info=True,
+                )
 
     def get_routes(self) -> Sequence[AdminRouteSpec]:
         return [

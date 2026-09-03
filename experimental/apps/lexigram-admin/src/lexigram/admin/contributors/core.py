@@ -133,6 +133,8 @@ class CoreAdminContributor(BaseAdminContributor):
         self._health = health
         self._metrics = metrics
         self._hub = hub
+        self._resource_inventory: Any | None = None
+        self._export_center_url: str | None = None
         self._activity_cache: deque[AdminEvent] = deque(maxlen=50)
         self._background_tasks: set[asyncio.Task[Any]] = set()
         self._start_activity_tail()
@@ -188,8 +190,21 @@ class CoreAdminContributor(BaseAdminContributor):
         async for event in self._hub.subscribe():
             self._activity_cache.append(event)
 
+    def set_resource_inventory(self, inventory: Any) -> None:
+        """Receive the mounted-resource inventory from the mount pipeline.
+
+        Called at mount time (duck-typed hook, see
+        ``AdminProvider._mount_contributors``) with a
+        :class:`~lexigram.admin.dashboard.resource_inventory.ResourceInventory`
+        so the Resource Overview widget can report live record counts.
+
+        Args:
+            inventory: The resource inventory built over mounted resources.
+        """
+        self._resource_inventory = inventory
+
     def get_dashboard_widgets(self) -> Sequence[DashboardWidgetDefinition]:
-        """Return core dashboard widgets: health overview, recent activity, and metrics."""
+        """Return core dashboard widgets: health, resource overview, activity, and metrics."""
         return [
             DashboardWidgetDefinition(
                 name="health",
@@ -203,6 +218,21 @@ class CoreAdminContributor(BaseAdminContributor):
                 order=0,
                 icon="heart-pulse",
                 description="Aggregated health status of all framework providers.",
+            ),
+            DashboardWidgetDefinition(
+                name="resources",
+                title="Resource Overview",
+                contributor="core",
+                render_endpoint=admin_url(
+                    DEFAULT_ADMIN_PREFIX, "core/widgets/resources"
+                ),
+                size=WidgetSize.FULL,
+                category=WidgetCategory.RESOURCES,
+                view_kind=WidgetKind.STAT,
+                refresh_interval_seconds=60,
+                order=10,
+                icon="database",
+                description="Live record counts for each registered resource.",
             ),
             DashboardWidgetDefinition(
                 name="activity",
@@ -237,9 +267,22 @@ class CoreAdminContributor(BaseAdminContributor):
             ),
         ]
 
+    def enable_export_center(self, url: str) -> None:
+        """Enable the Exports sidebar entry.
+
+        Called at mount time (duck-typed hook, see
+        ``AdminProvider._mount_export_center``) only after the export
+        center routes registered successfully, so the nav item never
+        points at a missing page.
+
+        Args:
+            url: Absolute admin path of the exports page.
+        """
+        self._export_center_url = url
+
     def get_navigation_items(self) -> Sequence[NavigationContribution]:
-        """Return core navigation: Dashboard link."""
-        return [
+        """Return core navigation: Dashboard, plus Exports when mounted."""
+        items = [
             NavigationContribution(
                 label="Dashboard",
                 url=f"{DEFAULT_ADMIN_PREFIX}/",
@@ -248,6 +291,17 @@ class CoreAdminContributor(BaseAdminContributor):
                 order=0,
             ),
         ]
+        if self._export_center_url:
+            items.append(
+                NavigationContribution(
+                    label="Exports",
+                    url=self._export_center_url,
+                    icon="download",
+                    group="",
+                    order=5,
+                ),
+            )
+        return items
 
     def get_health_definitions(self) -> Sequence[AdminHealthDefinition]:
         """Return core health definitions."""
@@ -324,6 +378,8 @@ class CoreAdminContributor(BaseAdminContributor):
                     )
                 ),
             )
+        if widget_name == "resources":
+            return await self._render_resource_overview()
         if widget_name == "activity":
             if self._hub is None and resolver is not None:
                 try:
@@ -379,6 +435,38 @@ class CoreAdminContributor(BaseAdminContributor):
             Err(WidgetNotFoundError(self.name, widget_name)),
         )
         return result
+
+    async def _render_resource_overview(
+        self,
+    ) -> Result[WidgetViewModel, AdminError]:
+        """Render live per-resource record counts as stat cards.
+
+        Uses the mount-time resource inventory; unavailable counts are
+        shown as ``—`` so a single failing data source never hides the
+        other resources.
+
+        Returns:
+            Ok containing a WidgetViewModel with StatContent, or the
+            EmptyContent placeholder when no resources are mounted.
+        """
+        inventory = self._resource_inventory
+        if inventory is None or inventory.is_empty():
+            return self._empty("Resource overview", "No resources registered.")
+        counts = await inventory.snapshot()
+        if not counts:
+            return self._empty("Resource overview", "No resources registered.")
+        stats = tuple(
+            Stat(
+                label=item.label,
+                value=f"{item.count:,}" if item.count is not None else "—",
+                icon=item.icon,
+            )
+            for item in counts
+        )
+        return cast(
+            "Result[WidgetViewModel, AdminError]",
+            Ok(WidgetViewModel(content=StatContent(stats=stats))),
+        )
 
     def _chart_metrics_content(self) -> ChartContent:
         """Return the framework metrics as structured chart content."""

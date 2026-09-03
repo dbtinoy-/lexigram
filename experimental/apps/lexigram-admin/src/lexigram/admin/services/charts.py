@@ -51,6 +51,11 @@ class IChartRenderer(Protocol):
 class ChartJSRenderer:
     """Chart.js backend renderer."""
 
+    # Pinned by policy (docs/09-01-2026/03-frontend-asset-policy.md): never
+    # float on an unversioned CDN URL. Override the class attribute to point
+    # at a vendored/self-hosted copy in egress-restricted deployments.
+    script_url = "https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"
+
     def render(self, chart_type: ChartType, data: ChartData, **options) -> str:
         """Render Chart.js chart."""
 
@@ -88,7 +93,7 @@ class ChartJSRenderer:
         <div style="width: {escape(str(width), quote=True)}; height: {escape(str(height), quote=True)};">
             <canvas id="{escape(str(chart_id), quote=True)}"></canvas>
         </div>
-        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <script src="{escape(self.script_url, quote=True)}"></script>
         <script>
             (function() {{
                 const ctx = document.getElementById({js_string(chart_id)}).getContext('2d');
@@ -100,6 +105,9 @@ class ChartJSRenderer:
 
 class PlotlyRenderer:
     """Plotly backend renderer."""
+
+    # Pinned by policy; override to self-host (see ChartJSRenderer).
+    script_url = "https://cdn.plot.ly/plotly-2.27.0.min.js"
 
     def render(self, chart_type: ChartType, data: ChartData, **options) -> str:
         """Render Plotly chart."""
@@ -133,7 +141,7 @@ class PlotlyRenderer:
 
         return f"""
         <div id="{escape(str(chart_id), quote=True)}" style="width: {escape(str(width), quote=True)}; height: {escape(str(height), quote=True)};"></div>
-        <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+        <script src="{escape(self.script_url, quote=True)}"></script>
         <script>
             Plotly.newPlot({js_string(chart_id)}, {data_json}, {layout_json}, {{responsive: true}});
         </script>

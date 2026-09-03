@@ -122,6 +122,16 @@ class AdminAuthConfig(DomainModel):
     logout_url: str = Field(default="/admin/logout")
     session_lifetime: int = Field(default=86400, ge=300)  # 5 min minimum
     permission_cache_ttl: int = Field(default=300, ge=0)  # 5 minutes
+    session_cache_ttl: int = Field(
+        default=5,
+        ge=0,
+        description=(
+            "Seconds to cache the per-request session→user lookup in "
+            "process (R16). 0 disables the cache. Same-process revocation "
+            "invalidates immediately; this TTL only bounds staleness "
+            "across other workers."
+        ),
+    )
 
     # Security settings
     idle_timeout: int = Field(

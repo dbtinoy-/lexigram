@@ -50,6 +50,7 @@ class ExportService:
         export_dir: str = "exports",
         max_file_age_days: int = 7,
         audit: AuditLoggerProtocol | None = None,
+        download_url_prefix: str = "/admin",
     ):
         from lexigram.admin.services.export.adapters.csv import CsvExportBackend
         from lexigram.admin.services.export.adapters.excel import ExcelExportBackend
@@ -63,6 +64,7 @@ class ExportService:
         self.export_dir = export_dir
         self.max_file_age_days = max_file_age_days
         self.audit = audit
+        self.download_url_prefix = (download_url_prefix or "/admin").rstrip("/")
 
         self._job_manager = job_manager or ExportJobManager()
         self._background_tasks: dict[str, asyncio.Task] = {}
@@ -214,6 +216,13 @@ class ExportService:
             chunk_size = 1000
 
             while offset < job.total_records:
+                # B21: observe manager-level cancellation. Without this
+                # check a cancel_job() call was silently clobbered — the
+                # loop ran to completion and overwrote CANCELLED with
+                # COMPLETED.
+                if job.status is ExportStatus.CANCELLED:
+                    return await self._finish_cancelled(job)
+
                 chunk = await data_source.get_export_data(
                     filters=job.filters,
                     columns=job.columns,
@@ -239,15 +248,13 @@ class ExportService:
                 if progress_callback:
                     try:
                         progress_callback(progress)
-                    except Exception as _cb_err:  # noqa: BLE001 — progress callbacks are user-supplied and may raise anything; failure is non-fatal
-                        # Emit explicit ERROR text first (helps caplog message matching)
+                    except Exception:  # noqa: BLE001 — progress callbacks are user-supplied and may raise anything; failure is non-fatal
                         logger.exception("Progress callback failed for job %s", job_id)
-                        # Also emit a simple job-level error to be robust for different logging setups
-                        logger.exception("Progress callback failed for job %s", job_id)
-                        # Keep traceback for diagnostics
-                        logger.exception(
-                            "Progress callback callback exception for job %s", job_id
-                        )
+
+            # B21: a cancel that landed after the last chunk must not be
+            # overwritten by the COMPLETED transition below.
+            if job.status is ExportStatus.CANCELLED:
+                return await self._finish_cancelled(job)
 
             # Generate file via backend
             file_path = await backend.generate_file(
@@ -262,7 +269,7 @@ class ExportService:
             job.completed_at = datetime.now(UTC)
             job.file_path = file_path
             job.file_size = await self._get_file_size(file_path)
-            job.download_url = await self._generate_download_url(file_path)
+            job.download_url = await self._generate_download_url(job)
 
             # Record export complete audit event
             await self._record_export_audit(
@@ -314,19 +321,59 @@ class ExportService:
 
             return Err(AdminError(message=job.error_message or "Export failed"))
 
+    async def _finish_cancelled(self, job: ExportJob) -> Result[ExportJob, AdminError]:
+        """Finalize a job whose CANCELLED status was observed mid-execution.
+
+        B21: keeps the CANCELLED status authoritative (never overwritten by
+        COMPLETED), stamps ``completed_at`` if the canceller didn't, and
+        records an audit event.
+
+        Args:
+            job: The export job marked cancelled while executing.
+
+        Returns:
+            ``Err`` describing the cancellation.
+        """
+        if job.completed_at is None:
+            job.completed_at = datetime.now(UTC)
+        await self._record_export_audit(
+            job=job,
+            action="admin.export.cancelled",
+            outcome="failure",
+            severity=AuditEventSeverity.MEDIUM,
+            processed_records=job.processed_records,
+        )
+        return Err(AdminError(message=f"Export job {job.job_id} was cancelled"))
+
     async def _get_file_size(self, file_path: str) -> int:
-        """Get file size from storage."""
+        """Get file size from storage via the blob-store ``info`` metadata call.
+
+        Fails soft: any storage error (missing file, unimplemented ``info``,
+        backend outage) logs a warning and reports ``0`` rather than failing
+        an otherwise-completed export.
+        """
         try:
-            # Placeholder: implementation depends on storage provider
-            return 0
-        except (AttributeError, OSError) as e:
+            info = await self.storage.info(file_path)
+            return int(getattr(info, "size", 0) or 0)
+        except (
+            AttributeError,
+            OSError,
+            NotImplementedError,
+            TypeError,
+            ValueError,
+        ) as e:
             logger.warning("Failed to determine file size for %s: %s", file_path, e)
             return 0
 
-    async def _generate_download_url(self, file_path: str) -> str:
-        """Generate download URL for file."""
-        # Placeholder: implementation depends on storage provider / router
-        return f"/admin/exports/download/{file_path}"
+    async def _generate_download_url(self, job: ExportJob) -> str:
+        """Generate the download URL for a completed job.
+
+        B30: keyed by the opaque job id (uuid4) — never by the storage path,
+        which must not leak into URLs. Served by the admin download route
+        mounted at ``{prefix}/exports/{job_id}/download``, which enforces
+        ownership and completion status.
+        """
+        return f"{self.download_url_prefix}/exports/{job.job_id}/download"
 
     async def stream_export(
         self,
@@ -336,19 +383,53 @@ class ExportService:
         columns: list[str] | None = None,
         batch_size: int = 1000,
     ) -> AsyncIterator[bytes]:
-        """
-        High-performance streaming export for large datasets.
-        Yields chunks of bytes to avoid memory overhead.
-        """
-        backend = self._backends.get(export_format)
-        if not backend:
-            raise ValueError(f"Unsupported export format: {export_format}")
+        """Stream an export as encoded bytes without buffering the dataset.
 
-        # In a real implementation, the backend would need a 'stream_batch' method
-        # and we would yield bytes from it. For this demo, we yield mock bytes.
+        B22: this previously yielded literal mock bytes ("encoded batch
+        chunk") for every batch. It now produces real output for the
+        streamable formats:
+
+        * ``CSV`` — header row once (explicit ``columns`` or the first
+          batch's keys), then sanitized rows per batch (same
+          formula-injection guard as the file backends).
+        * ``JSON`` — a single valid JSON array streamed incrementally.
+
+        Args:
+            data_source: Source implementing the export protocol.
+            export_format: ``ExportFormat.CSV`` or ``ExportFormat.JSON``;
+                other formats need a file layout and must go through
+                :meth:`execute_export`.
+            filters: Optional filter mapping passed to the data source.
+            columns: Optional explicit column list (CSV column order,
+                JSON key subset).
+            batch_size: Rows fetched per data-source call.
+
+        Yields:
+            Encoded UTF-8 chunks, one or two per batch.
+
+        Raises:
+            ValueError: For formats without a streaming encoder.
+        """
+        import csv as csv_module
+        import io
+
+        from lexigram.admin.services.export.sanitize import sanitize_cell_value
+        from lexigram.serialization import dumps_str
+
+        if export_format not in (ExportFormat.CSV, ExportFormat.JSON):
+            raise ValueError(
+                f"Streaming is not supported for format {export_format.value!r}; "
+                "use execute_export for file-based formats."
+            )
 
         total = await data_source.get_export_count(filters or {})
         offset = 0
+        fieldnames: list[str] = list(columns or [])
+        header_sent = False
+        first_json_row = True
+
+        if export_format == ExportFormat.JSON:
+            yield b"["
 
         while offset < total:
             batch = await data_source.get_export_data(
@@ -360,9 +441,33 @@ class ExportService:
             if not batch:
                 break
 
-            # Yield a chunk (this is a simplification)
-            yield b"encoded batch chunk"
+            if export_format == ExportFormat.CSV:
+                if not fieldnames:
+                    fieldnames = list(batch[0].keys())
+                buffer = io.StringIO()
+                writer = csv_module.DictWriter(
+                    buffer, fieldnames=fieldnames, extrasaction="ignore"
+                )
+                if not header_sent:
+                    writer.writeheader()
+                    header_sent = True
+                for row in batch:
+                    writer.writerow(
+                        {k: sanitize_cell_value(row.get(k)) for k in fieldnames}
+                    )
+                yield buffer.getvalue().encode("utf-8")
+            else:  # JSON
+                for row in batch:
+                    if columns:
+                        row = {k: v for k, v in row.items() if k in columns}
+                    prefix = b"" if first_json_row else b","
+                    first_json_row = False
+                    yield prefix + dumps_str(row).encode("utf-8")
+
             offset += len(batch)
+
+        if export_format == ExportFormat.JSON:
+            yield b"]"
 
     # -------------------------------------------------------------------------
     # Background Processing
@@ -410,7 +515,12 @@ class ExportService:
             task.cancel()
             self._job_manager.cancel_job(job_id)
             return True
-        return False
+        # B21b: no live background task (job still PENDING, or executing
+        # synchronously via execute_export). Fall back to manager-level
+        # cancellation: pending jobs become CANCELLED immediately and
+        # in-flight synchronous executions observe the flag at the next
+        # chunk boundary.
+        return self._job_manager.cancel_job(job_id)
 
     # -------------------------------------------------------------------------
     # Scheduled Exports
@@ -423,9 +533,14 @@ class ExportService:
         next_run: datetime,
     ) -> str:
         """Schedule a recurring export job."""
-        job_id = self.create_job(  # type: ignore[call-arg]
+        # B20: this previously passed ``format=`` to create_job (whose
+        # parameter is ``file_format``) — every call raised TypeError.
+        file_format = job_config["format"]
+        if not isinstance(file_format, ExportFormat):
+            file_format = ExportFormat(file_format)
+        job_id = self.create_job(
             resource_name=job_config["resource_name"],
-            format=job_config["format"],
+            file_format=file_format,
             filters=job_config.get("filters", {}),
             columns=job_config.get("columns", []),
             template_name=job_config.get("template_name"),

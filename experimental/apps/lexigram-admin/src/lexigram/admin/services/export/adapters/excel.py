@@ -1,30 +1,29 @@
 from __future__ import annotations
 
 from datetime import UTC
-import io
 from typing import TYPE_CHECKING, Any
 
-from lexigram.admin.services.export.sanitize import sanitize_cell_value
 from lexigram.admin.services.export.service import IExportBackend
+from lexigram.admin.services.export.xlsx import (
+    HAS_OPENPYXL,
+    OPENPYXL_MISSING_MESSAGE,
+    XLSX_CONTENT_TYPE,
+    encode_rows_as_xlsx,
+)
 
 if TYPE_CHECKING:
     from lexigram.admin.services.export.scheduler import ExportJob
 
-try:
-    import openpyxl  # type: ignore[import-untyped]
-    from openpyxl.styles import (  # type: ignore[import-untyped]
-        Alignment,
-        Font,
-        PatternFill,
-    )
-
-    HAS_OPENPYXL = True
-except ImportError:
-    HAS_OPENPYXL = False
-
 
 class ExcelExportBackend(IExportBackend):
-    """Backend for Excel exports."""
+    """Backend for Excel exports.
+
+    R29: workbook construction lives in the shared
+    :func:`~lexigram.admin.services.export.xlsx.encode_rows_as_xlsx`
+    encoder (also used by the direct-download bulk exports), which
+    sanitizes formula-injection payloads and coerces cell values openpyxl
+    cannot store natively (dict/list/bytes/…) instead of crashing.
+    """
 
     async def generate_file(
         self,
@@ -35,7 +34,7 @@ class ExcelExportBackend(IExportBackend):
     ) -> str:
         """Export data to Excel format."""
         if not HAS_OPENPYXL:
-            raise ImportError("openpyxl is required for Excel export")
+            raise ImportError(OPENPYXL_MISSING_MESSAGE)
 
         from datetime import datetime
 
@@ -43,57 +42,11 @@ class ExcelExportBackend(IExportBackend):
         filename = f"{job.resource_name}_export_{timestamp}.xlsx"
         file_path = f"{export_dir}/{filename}"
 
-        workbook = openpyxl.Workbook()
-        worksheet = workbook.active
-        worksheet.title = "Export"
-
-        if data:
-            # Determine columns
-            fieldnames = job.columns or list(data[0].keys())
-
-            # Write headers
-            for col_num, header in enumerate(fieldnames, 1):
-                cell = worksheet.cell(row=1, column=col_num, value=header)
-                cell.font = Font(bold=True)
-                cell.fill = PatternFill(
-                    start_color="FFE6E6FA",
-                    end_color="FFE6E6FA",
-                    fill_type="solid",
-                )
-
-            # Write data
-            for row_num, row in enumerate(data, 2):
-                for col_num, field in enumerate(fieldnames, 1):
-                    value = sanitize_cell_value(row.get(field, ""))
-                    cell = worksheet.cell(row=row_num, column=col_num, value=value)
-
-                    # Basic formatting
-                    if isinstance(value, (int, float)):
-                        cell.alignment = Alignment(horizontal="right")
-                    elif isinstance(value, datetime):
-                        cell.number_format = "YYYY-MM-DD HH:MM:SS"
-
-            # Auto-adjust column widths
-            for col_num, field in enumerate(fieldnames, 1):
-                column_letter = openpyxl.utils.get_column_letter(col_num)
-                max_length = len(field)  # Start with header length
-
-                for row in data[:100]:  # Sample first 100 rows
-                    value = str(row.get(field, ""))
-                    max_length = max(max_length, len(value))
-
-                worksheet.column_dimensions[column_letter].width = min(
-                    max_length + 2,
-                    50,
-                )
-
-        # Save to storage
-        buffer = io.BytesIO()
-        workbook.save(buffer)
+        payload = encode_rows_as_xlsx(data, fieldnames=job.columns or None)
         await storage.upload(
             file_path,
-            buffer.getvalue(),
-            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            payload,
+            content_type=XLSX_CONTENT_TYPE,
         )
 
         return file_path

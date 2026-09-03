@@ -182,6 +182,12 @@ class Pagination(Component):
                     "div",
                     el(
                         "p",
+                        {
+                            # Announce result-count changes after HTMX swaps
+                            # (filter/sort/pagination) to screen readers.
+                            "role": "status",
+                            "aria-live": "polite",
+                        },
                         "Showing ",
                         el("span", str(start_item), class_="font-bold"),
                         " to ",

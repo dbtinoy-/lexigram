@@ -133,3 +133,72 @@ async def test_direct_sql_claim_first_admin_concurrent_single_insert() -> None:
     assert len(errs) == 1
     assert isinstance(errs[0].unwrap_err(), SetupAlreadyCompletedError)
     assert insert_calls == 2
+
+
+@pytest.mark.asyncio
+async def test_direct_sql_claim_verifies_insert_when_row_count_unreported() -> None:
+    """Drivers reporting row_count=0 for successful INSERTs must not Err.
+
+    Some drivers (e.g. aiosqlite through the query pipeline) return
+    ``row_count=0`` even when the ``INSERT ... SELECT ... WHERE NOT EXISTS``
+    actually inserted the row. The store must fall back to selecting the
+    per-call UUID back to distinguish "inserted" from "lost the race".
+    """
+    from lexigram.admin.auth.store.direct_sql import DirectSQLAdminUserStore
+
+    inserted_ids: list[str] = []
+
+    async def fake_execute(sql: str, params: list | None = None) -> _QueryResult:
+        if "INSERT" in sql.strip().upper():
+            inserted_ids.append(params[0])
+            return _QueryResult(row_count=0)  # driver under-reports
+        return _QueryResult()
+
+    async def fake_execute_query(sql: str, params: list | None = None) -> _QueryResult:
+        # The row IS present — this call inserted it.
+        if params and params[0] in inserted_ids:
+            return _QueryResult(
+                rows=[{"id": params[0], "name": "Admin A", "email": "a@test.com"}]
+            )
+        return _QueryResult()
+
+    db_provider = MagicMock()
+    db_provider.execute = AsyncMock(side_effect=fake_execute)
+    db_provider.execute_query = AsyncMock(side_effect=fake_execute_query)
+
+    store = DirectSQLAdminUserStore(db_provider=db_provider)
+    result = await store.claim_first_admin(
+        name="Admin A",
+        email="a@test.com",
+        hashed_password="hash-a",
+        roles=["superadmin"],
+    )
+
+    assert result.is_ok()
+    created = result.unwrap()
+    assert str(getattr(created, "id", "") or getattr(created, "user_id", ""))
+    assert created.email == "a@test.com"
+
+
+@pytest.mark.asyncio
+async def test_direct_sql_claim_errs_when_row_absent_after_zero_count() -> None:
+    """row_count=0 AND the per-call UUID absent → genuinely lost the race."""
+    from lexigram.admin.auth.store.direct_sql import DirectSQLAdminUserStore
+
+    async def fake_execute(sql: str, params: list | None = None) -> _QueryResult:
+        return _QueryResult(row_count=0)
+
+    db_provider = MagicMock()
+    db_provider.execute = AsyncMock(side_effect=fake_execute)
+    db_provider.execute_query = AsyncMock(return_value=_QueryResult())
+
+    store = DirectSQLAdminUserStore(db_provider=db_provider)
+    result = await store.claim_first_admin(
+        name="Admin B",
+        email="b@test.com",
+        hashed_password="hash-b",
+        roles=["superadmin"],
+    )
+
+    assert result.is_err()
+    assert isinstance(result.unwrap_err(), SetupAlreadyCompletedError)

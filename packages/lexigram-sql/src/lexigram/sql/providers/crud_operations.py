@@ -62,7 +62,15 @@ class OperationResult:
 
 
 class DatabaseOperationContext:
-    """Context manager for database operations with timing, logging, and error handling."""
+    """Context manager for database operations with timing and error handling.
+
+    Responsibilities are deliberately narrow: acquire/release the connection,
+    measure wall-clock time for the whole operation, and normalise errors to
+    :class:`DatabaseError`.  Query logging is **not** done here — the query
+    executor's ``execute_query``/``execute_modify`` already emit exactly one
+    log entry per statement, and logging here as well used to produce
+    duplicate console lines for every INSERT/UPDATE/DELETE.
+    """
 
     def __init__(
         self,
@@ -90,16 +98,6 @@ class DatabaseOperationContext:
         exc_tb: types.TracebackType | None,
     ) -> None:
         self.execution_time = ambient_clock.monotonic() - self.start_time
-        success = exc_type is None
-        error_message = str(exc_val) if exc_val else None
-
-        await self.query_executor._log_query(
-            self.sql,
-            self.params,
-            self.execution_time,
-            success,
-            error_message,
-        )
 
         # Close the connection
         await self.conn_cm.__aexit__(exc_type, exc_val, exc_tb)

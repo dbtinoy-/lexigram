@@ -196,3 +196,75 @@ class TestSecurityHeadersMiddleware:
         start_call = send_mock.call_args_list[0][0][0]
         injected = {k.decode(): v.decode() for k, v in start_call["headers"]}
         assert injected.get("X-Custom") == "yes"
+
+    @pytest.mark.asyncio
+    async def test_duplicate_set_cookie_headers_preserved(self) -> None:
+        """The raw header list must survive verbatim — dict rebuilds collapse
+        repeated names such as multiple Set-Cookie headers."""
+        existing_headers = [
+            (b"set-cookie", b"a=1; Path=/"),
+            (b"set-cookie", b"b=2; Path=/admin"),
+        ]
+        app = self._make_app(raw_headers=existing_headers)
+        send_mock = AsyncMock()
+        middleware = SecurityHeadersMiddleware(app)
+
+        await middleware({"type": "http"}, AsyncMock(), send_mock)
+
+        start_call = send_mock.call_args_list[0][0][0]
+        cookies = [v for k, v in start_call["headers"] if k == b"set-cookie"]
+        assert cookies == [b"a=1; Path=/", b"b=2; Path=/admin"]
+        # Security headers were still appended.
+        names = {k.decode().lower() for k, _ in start_call["headers"]}
+        assert "content-security-policy" in names
+
+    @pytest.mark.asyncio
+    async def test_existing_header_respected_case_insensitively(self) -> None:
+        """A lowercase route-set header must suppress the canonical-case
+        security header instead of producing a duplicate."""
+        existing_headers = [(b"content-security-policy", b"default-src 'none'")]
+        app = self._make_app(raw_headers=existing_headers)
+        send_mock = AsyncMock()
+        middleware = SecurityHeadersMiddleware(app)
+
+        await middleware({"type": "http"}, AsyncMock(), send_mock)
+
+        start_call = send_mock.call_args_list[0][0][0]
+        csp_values = [
+            v
+            for k, v in start_call["headers"]
+            if k.decode().lower() == "content-security-policy"
+        ]
+        assert csp_values == [b"default-src 'none'"]
+
+    @pytest.mark.asyncio
+    async def test_original_headers_come_first(self) -> None:
+        """Appended security headers must follow the app's own headers."""
+        existing_headers = [(b"content-type", b"text/html")]
+        app = self._make_app(raw_headers=existing_headers)
+        send_mock = AsyncMock()
+        middleware = SecurityHeadersMiddleware(app)
+
+        await middleware({"type": "http"}, AsyncMock(), send_mock)
+
+        start_call = send_mock.call_args_list[0][0][0]
+        assert start_call["headers"][0] == (b"content-type", b"text/html")
+
+
+class TestFrameOptions:
+    """Tests for the frame_options knob on AdminSecurityHeaders."""
+
+    def test_default_is_deny(self) -> None:
+        headers = AdminSecurityHeaders().apply({})
+        assert headers["X-Frame-Options"] == "DENY"
+
+    def test_sameorigin_supported(self) -> None:
+        headers = AdminSecurityHeaders(frame_options="SAMEORIGIN").apply({})
+        assert headers["X-Frame-Options"] == "SAMEORIGIN"
+
+    def test_empty_omits_header(self) -> None:
+        headers = AdminSecurityHeaders(frame_options="").apply({})
+        assert "X-Frame-Options" not in headers
+        # Everything else still applies.
+        assert "Content-Security-Policy" in headers
+        assert "Strict-Transport-Security" in headers

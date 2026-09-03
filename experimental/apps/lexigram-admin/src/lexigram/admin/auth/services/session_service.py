@@ -41,6 +41,7 @@ class AdminSessionService:
         session_lifetime: int = 86400,
         idle_timeout: int = 3600,
         fingerprint_secret: str = "",
+        session_cache: Any | None = None,
     ) -> None:
         """Initialize with repository and lifetime configuration.
 
@@ -54,10 +55,15 @@ class AdminSessionService:
                 touched within this window is treated as expired.
             fingerprint_secret: HMAC key for fingerprint signing.
                 When empty, signing is skipped (backward compatibility).
+            session_cache: Optional ``SessionUserCache`` (R16). Revocation
+                methods invalidate it so a revoked session can never be
+                re-served from the in-process cache. Duck-typed (needs
+                ``invalidate``/``invalidate_user``) so custom caches work.
         """
         self._repo = session_repo
         self._session_lifetime = session_lifetime
         self._idle_timeout = idle_timeout
+        self._session_cache = session_cache
         self._fingerprint_key: bytes = (
             hashlib.sha256(fingerprint_secret.encode()).digest()
             if fingerprint_secret
@@ -154,6 +160,7 @@ class AdminSessionService:
         expires_at = _parse_dt(row.get("expires_at"))
         if expires_at is not None and expires_at <= now:
             await self._repo.revoke(session_id)
+            self._invalidate_cache(session_id=session_id)
             logger.debug("session.expired_absolute", session_id=session_id)
             return None
 
@@ -163,6 +170,7 @@ class AdminSessionService:
             idle_deadline = last_active_at + timedelta(seconds=self._idle_timeout)
             if idle_deadline <= now:
                 await self._repo.revoke(session_id)
+                self._invalidate_cache(session_id=session_id)
                 logger.debug("session.expired_idle", session_id=session_id)
                 return None
 
@@ -188,6 +196,7 @@ class AdminSessionService:
                     session_id=session_id,
                 )
                 await self._repo.revoke(session_id)
+                self._invalidate_cache(session_id=session_id)
                 return None
 
         return result
@@ -238,10 +247,14 @@ class AdminSessionService:
     async def revoke_session(self, session_id: str) -> None:
         """Revoke a single session (logout).
 
+        Also drops the session from the in-process session→user cache
+        (when wired) so same-process revocation takes effect immediately.
+
         Args:
             session_id: Session to revoke.
         """
         await self._repo.revoke(session_id)
+        self._invalidate_cache(session_id=session_id)
         logger.info("session.revoked", session_id=session_id)
 
     async def revoke_all_user_sessions(self, user_id: str) -> None:
@@ -249,12 +262,89 @@ class AdminSessionService:
 
         Delegates to the repository's ``revoke_all`` which issues a single
         bulk UPDATE rather than fetching and revoking sessions individually.
+        Also drops every cached session→user entry for the user (when the
+        cache is wired).
 
         Args:
             user_id: Admin user UUID whose sessions are to be revoked.
         """
         await self._repo.revoke_all(user_id)
+        self._invalidate_cache(user_id=user_id)
         logger.info("session.revoked_all", user_id=user_id)
+
+    def _invalidate_cache(
+        self, session_id: str | None = None, user_id: str | None = None
+    ) -> None:
+        """Best-effort invalidation of the in-process session→user cache.
+
+        The cache is a pure-python optimization; a failure here must never
+        break a revocation, so any exception is logged and swallowed.
+
+        Args:
+            session_id: Single session to drop, if given.
+            user_id: User whose entries should all be dropped, if given.
+        """
+        cache = self._session_cache
+        if cache is None:
+            return
+        try:
+            if session_id is not None:
+                cache.invalidate(session_id)
+            if user_id is not None:
+                cache.invalidate_user(user_id)
+        except Exception:  # noqa: BLE001 — cache must never break revocation
+            logger.warning("session_cache.invalidate_failed", exc_info=True)
+
+    async def list_active_sessions(self, limit: int = 100) -> list[dict[str, Any]]:
+        """Return active, non-expired sessions across ALL users.
+
+        Powers the Security Center fleet view
+        (docs/09-01-2026/05-security-center.md). Not part of
+        ``AdminSessionServiceProtocol`` — the protocol is runtime-checkable
+        and extending it would break third-party implementations; callers
+        duck-type via ``getattr`` and degrade gracefully when absent.
+
+        Args:
+            limit: Maximum number of sessions to return.
+
+        Returns:
+            Raw session row dicts ordered by ``last_active_at`` descending;
+            empty list when the repository does not support fleet listing.
+        """
+        list_active = getattr(self._repo, "list_active", None)
+        if list_active is None:
+            logger.debug("session.list_active_unsupported")
+            return []
+        now = datetime.now(UTC)
+        return list(await list_active(now, limit))
+
+    async def list_user_sessions(
+        self, user_id: str, limit: int = 50
+    ) -> list[dict[str, Any]]:
+        """Return active, non-expired sessions for ONE user (R42, doc 38).
+
+        Powers the per-user session panel on the user edit page. Like
+        :meth:`list_active_sessions`, this is deliberately NOT part of
+        ``AdminSessionServiceProtocol`` (runtime-checkable — extending it
+        would break third-party implementations); callers duck-type via
+        ``getattr`` and degrade gracefully when absent.
+
+        Args:
+            user_id: Owner identifier.
+            limit: Maximum number of sessions to return.
+
+        Returns:
+            Raw session row dicts ordered by ``last_active_at``
+            descending; empty list when the repository does not support
+            per-user listing.
+        """
+        finder = getattr(self._repo, "find_active_by_user", None)
+        if finder is None:
+            logger.debug("session.find_active_by_user_unsupported")
+            return []
+        now = datetime.now(UTC)
+        rows = list(await finder(user_id, now))
+        return rows[: int(limit)]
 
 
 # ---------------------------------------------------------------------------

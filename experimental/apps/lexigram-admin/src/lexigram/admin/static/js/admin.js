@@ -13,6 +13,77 @@
     initKeyboardShortcuts();
   });
 
+  // ========== Bulk export download (B28) ==========
+  // Export buttons render onclick="return window.LexigramDownloadBulk(this)"
+  // with data-bulk-download-url / data-bulk-action attributes. CSV/JSON
+  // responses carry Content-Disposition and must bypass HTMX (whose swap
+  // would inject the file into the page), so we fetch and download a blob.
+  window.LexigramDownloadBulk = function(btn) {
+    downloadBulk(btn);
+    return false;
+  };
+
+  async function downloadBulk(btn) {
+    function toast(message, type) {
+      if (window.showToast) window.showToast(message, type);
+    }
+    try {
+      const url = btn.getAttribute('data-bulk-download-url');
+      if (!url) return;
+      const action = btn.getAttribute('data-bulk-action') || 'export';
+      const checked = document.querySelectorAll('input[name="ids"]:checked');
+      const filtered = !checked.length;
+      const body = new FormData();
+      body.append('action', action);
+      if (filtered) {
+        // R25: no selection means "export everything matching the current
+        // view" — forward the list's URL state to the server.
+        body.append('scope', 'filtered');
+        body.append('list_query', window.location.search.replace(/^\?/, ''));
+      } else {
+        checked.forEach(function(box) { body.append('ids', box.value); });
+      }
+      const csrfInput = document.querySelector('input[name="csrf_token"]');
+      const csrfEl = document.querySelector('[data-csrf-token]');
+      const csrf = window.__lexigramCsrfToken ||
+        (csrfInput && csrfInput.value) ||
+        (csrfEl && csrfEl.getAttribute('data-csrf-token'));
+      if (csrf) body.append('csrf_token', csrf);
+      const headers = {};
+      if (csrf) headers['X-CSRF-Token'] = csrf;
+
+      const response = await fetch(url, {
+        method: 'POST',
+        body: body,
+        headers: headers,
+        credentials: 'same-origin'
+      });
+      if (!response.ok) {
+        toast('Export failed (' + response.status + ').', 'error');
+        return;
+      }
+      const blob = await response.blob();
+      const disposition = response.headers.get('Content-Disposition') || '';
+      const match = disposition.match(/filename="?([^";]+)"?/i);
+      const filename = match ? match[1] : 'export.csv';
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(function() { URL.revokeObjectURL(link.href); }, 4000);
+      toast(
+        filtered
+          ? 'Exported all records matching the current view.'
+          : 'Exported ' + checked.length + ' record' + (checked.length === 1 ? '' : 's') + '.',
+        'success'
+      );
+    } catch (err) {
+      toast('Export failed.', 'error');
+    }
+  }
+
   // ========== Sidebar ==========
   function initSidebar() {
     const sidebar = document.querySelector('.admin-sidebar');
@@ -148,6 +219,19 @@
 
   // ========== Forms ==========
   function initForms() {
+    // Saved views (R13): the "save current view" form is rendered outside
+    // the HTMX swap zones, so its server-rendered `query` value goes stale
+    // after client-side filtering. Sync it with the live URL at submit time
+    // (delegated — survives any DOM swaps; the server re-sanitizes anyway).
+    document.addEventListener('submit', function(e) {
+      const form = e.target.closest ? e.target.closest('form[data-saved-view-save]') : null;
+      if (!form) return;
+      const queryInput = form.querySelector('input[name="query"]');
+      if (queryInput) {
+        queryInput.value = window.location.search.replace(/^\?/, '');
+      }
+    });
+
     // Form validation feedback
     document.querySelectorAll('form[data-validate]').forEach(function(form) {
       form.addEventListener('submit', function(e) {

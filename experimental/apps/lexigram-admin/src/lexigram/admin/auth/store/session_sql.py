@@ -216,6 +216,33 @@ class AdminSessionSqlRepository:
         result = await self._db.execute_query(sql, [user_id, cutoff])
         return [self._decode_fingerprint(dict(r)) for r in self._extract_rows(result)]
 
+    async def list_active(
+        self,
+        cutoff: datetime,
+        limit: int = 100,
+    ) -> list[dict[str, Any]]:
+        """Return non-expired, active sessions across ALL users.
+
+        Powers the Security Center's fleet-wide session view
+        (docs/09-01-2026/05-security-center.md).
+
+        Args:
+            cutoff: Sessions expiring at-or-before this timestamp are excluded.
+            limit: Maximum number of rows to return.
+
+        Returns:
+            List of raw row dicts ordered by ``last_active_at`` descending.
+        """
+        await self.ensure_schema()
+        sql = (
+            f"SELECT * FROM {self._TABLE} "  # noqa: S608 — table name is constant class attr Table("admin_sessions"), never user input
+            "WHERE is_active = TRUE AND expires_at > ? "
+            "ORDER BY last_active_at DESC "
+            f"LIMIT {int(limit)}"
+        )
+        result = await self._db.execute_query(sql, [cutoff])
+        return [self._decode_fingerprint(dict(r)) for r in self._extract_rows(result)]
+
     async def revoke(self, session_id: str) -> None:
         """Deactivate a single session.
 

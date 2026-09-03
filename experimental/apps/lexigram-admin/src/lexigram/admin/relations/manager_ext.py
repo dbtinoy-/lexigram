@@ -76,6 +76,75 @@ class RelationManager(AbstractRelationManager):
         """Check whether the user can detach the given related record."""
         return Ok(None)
 
+    async def create_record(self, data: dict[str, Any]) -> Any:
+        """Persist a new related record (B32).
+
+        Default: delegate to the attached data source's ``create``.
+        Override for custom persistence.
+
+        Args:
+            data: Submitted form data (``csrf_token`` already stripped).
+
+        Returns:
+            The created record.
+
+        Raises:
+            NotImplementedError: When no persistence is available.
+        """
+        data_source = self._data_source
+        if data_source is not None and hasattr(data_source, "create"):
+            return await data_source.create(dict(data))
+        raise NotImplementedError(
+            "Inline create is not supported for this relation; attach a data "
+            "source or override create_record()."
+        )
+
+    async def update_record(self, record_id: str, data: dict[str, Any]) -> Any:
+        """Persist changes to a related record (B32).
+
+        Default: delegate to the attached data source's ``update``.
+
+        Args:
+            record_id: ID of the related record.
+            data: Submitted form data (``csrf_token`` already stripped).
+
+        Returns:
+            The updated record.
+
+        Raises:
+            NotImplementedError: When no persistence is available.
+        """
+        data_source = self._data_source
+        if data_source is not None and hasattr(data_source, "update"):
+            return await data_source.update(record_id, dict(data))
+        raise NotImplementedError(
+            "Inline update is not supported for this relation; attach a data "
+            "source or override update_record()."
+        )
+
+    async def delete_record(self, record_id: str) -> Any:
+        """Delete a related record (B32).
+
+        Default: delegate to the attached data source's ``delete`` (or
+        ``bulk_delete`` fallback).
+
+        Args:
+            record_id: ID of the related record.
+
+        Raises:
+            NotImplementedError: When no persistence is available.
+        """
+        data_source = self._data_source
+        if data_source is not None:
+            if hasattr(data_source, "delete"):
+                return await data_source.delete(record_id)
+            if hasattr(data_source, "bulk_delete"):
+                return await data_source.bulk_delete([record_id])
+        raise NotImplementedError(
+            "Inline delete is not supported for this relation; attach a data "
+            "source or override delete_record()."
+        )
+
     async def render(self, request: Any, resource_name: str = "") -> str:
         """Render the relation panel as HTML."""
         items = await self.get_query()
@@ -85,13 +154,17 @@ class RelationManager(AbstractRelationManager):
 
         rows: list[Any] = []
         for item in items:
-            item_id = getattr(item, "id", str(id(item)))
+            # B26: dict-aware row access — SQL data sources return dicts.
+            raw_id = self._row_id(item)
+            item_id = str(raw_id) if raw_id is not None else str(id(item))
             cells: list[Any] = []
             cols = self.table()
             if cols:
                 for col in cols:
-                    value = getattr(item, col.name, "") if hasattr(col, "name") else ""
-                    cells.append(el("td", value))
+                    value = (
+                        self._row_value(item, col.name) if hasattr(col, "name") else ""
+                    )
+                    cells.append(el("td", "" if value is None else value))
             else:
                 cells.append(el("td", item))
 

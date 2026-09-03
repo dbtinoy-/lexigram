@@ -246,6 +246,17 @@ def register_new_auth_services(
     if isinstance(_fingerprint_secret, SecretStr):
         _fingerprint_secret = _fingerprint_secret.get_secret_value()
 
+    # ── SessionUserCache (R16) — one shared instance ──────────────────
+    # Registered as a singleton so AdminAuthMiddleware (read path, wired at
+    # mount) and AdminSessionService (revocation invalidation) share it.
+    # admin.auth.session_cache_ttl = 0 disables caching entirely.
+    from lexigram.admin.auth.services.session_user_cache import SessionUserCache
+
+    _session_cache = SessionUserCache(
+        ttl_seconds=float(getattr(_auth_cfg, "session_cache_ttl", 5) or 0)
+    )
+    container.singleton(SessionUserCache, _session_cache)
+
     @inject
     class _AdminSessionServiceConfigured(AdminSessionService):
         """Admin-scoped SessionService with config-driven lifetimes."""
@@ -259,6 +270,7 @@ def register_new_auth_services(
                 session_lifetime=_session_lifetime,
                 idle_timeout=_idle_timeout,
                 fingerprint_secret=_fingerprint_secret,
+                session_cache=_session_cache,
             )
 
     container.singleton(AdminSessionServiceProtocol, _AdminSessionServiceConfigured)
@@ -361,6 +373,26 @@ def register_new_auth_services(
         AdminEmailOtpConfig,
         AdminEmailVerificationConfig,
     )
+
+    # ── Console mailer fallback (debug only — R11, doc 07) ────────────
+    # A fresh install has no MailerProtocol bound, which breaks the
+    # verification/reset/OTP flows silently. In debug mode, fall back to
+    # a log-only console mailer so those flows are completable from the
+    # server log. Never overrides an explicitly bound backend, and never
+    # registers outside debug — production must stay explicit.
+    from lexigram.contracts.mailer.protocols import MailerProtocol
+
+    if getattr(config, "debug", False) is True and not container.has(MailerProtocol):
+        from lexigram.admin.services.notifications.console_mailer import (
+            AdminConsoleMailer,
+        )
+
+        container.singleton(MailerProtocol, AdminConsoleMailer())
+        logger.info(
+            "admin.mailer_console_fallback",
+            reason="debug mode and no MailerProtocol bound",
+            backend="AdminConsoleMailer",
+        )
 
     container.singleton(AdminNotificationService, AdminNotificationService)
 

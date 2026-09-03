@@ -129,6 +129,7 @@ class AdminProvider(
         )
         from lexigram.admin.di.sub_providers.core import AdminCoreSubProvider
         from lexigram.admin.di.sub_providers.dashboard import AdminDashboardSubProvider
+        from lexigram.admin.di.sub_providers.export import AdminExportSubProvider
         from lexigram.admin.di.sub_providers.integrations import (
             AdminIntegrationsSubProvider,
         )
@@ -158,6 +159,7 @@ class AdminProvider(
             AdminResourceSubProvider(config=self._config, resources=self._resources),
             AdminUISubProvider(config=self._config),
             AdminRealtimeSubProvider(config=self._config),
+            AdminExportSubProvider(config=self._config),
             tenancy,
             AdminDashboardSubProvider(
                 config=self._config,
@@ -215,6 +217,8 @@ class AdminProvider(
         await self._mount_contributors(admin_resolver, ctx)
         await self._mount_integration(container, ctx)
         await self._mount_sse_widgets(container, ctx)
+        await self._mount_export_center(admin_resolver, ctx)
+        await self._mount_csp_reporting(ctx)
         await self._mount_app_state(app, ctx)
         _log.info("admin.mounted", prefix=self._config.prefix)
 
@@ -318,6 +322,25 @@ class AdminProvider(
         # Dependencies resolved in boot(); a missing binding fails startup.
         from lexigram.admin.middleware.auth import AdminAuthMiddleware
 
+        # R16: session→user cache is an optimization, never a boot blocker —
+        # resolve best-effort and degrade to uncached on any failure.
+        session_user_cache = None
+        try:
+            from lexigram.admin.auth.services.session_user_cache import (
+                SessionUserCache,
+            )
+
+            session_user_cache = await admin_resolver.resolve(
+                SessionUserCache,
+                bypass_visibility=True,
+            )
+            if session_user_cache is not None and session_user_cache.enabled:
+                _log.debug("admin.session_user_cache_wired")
+            else:
+                _log.debug("admin.session_user_cache_disabled")
+        except Exception as exc:  # noqa: BLE001 — cache is optional
+            _log.debug("admin.session_user_cache_unavailable", reason=str(exc))
+
         middleware_stack.append(
             (
                 AdminAuthMiddleware,
@@ -325,6 +348,10 @@ class AdminProvider(
                     "user_store": self._user_store,
                     "session_service": self._session_service,
                     "require_auth": False,
+                    "super_admin_role": (
+                        self._config.rbac or AdminRbacConfig()
+                    ).super_admin_role,
+                    "session_cache": session_user_cache,
                 },
             )
         )
@@ -349,6 +376,9 @@ class AdminProvider(
                     # later in the mount pipeline receive the same boundary
                     # authorization as built-in resources.
                     "resource_names": ctx.resources.keys(),
+                    "super_admin_role": (
+                        self._config.rbac or AdminRbacConfig()
+                    ).super_admin_role,
                 },
             )
         )
@@ -391,6 +421,43 @@ class AdminProvider(
 
         middleware_stack.append((AdminNavPushMiddleware, {}))
         _log.debug("admin.nav_push_middleware_wired")
+
+        # Wire security headers outermost (index 0 = outermost of the admin
+        # stack) so OWASP headers cover every admin response, including
+        # setup/CSRF/auth-guard short-circuits and error pages. Best-effort:
+        # the middleware degrades to compile-time defaults without a
+        # settings store, and the admin runs without security headers only
+        # if wiring itself fails.
+        try:
+            from lexigram.admin.middleware.security_headers import (
+                SecurityHeadersMiddleware,
+            )
+
+            settings_store: Any = None
+            if ctx.settings_service is not None:
+                from lexigram.admin.settings.store import TenantConfigStore
+
+                settings_store = TenantConfigStore(ctx.settings_service)
+            report_endpoint = (
+                f"{str(self._config.prefix or '/admin').rstrip('/')}"
+                "/security/csp-report"
+            )
+            middleware_stack.insert(
+                0,
+                (
+                    SecurityHeadersMiddleware,
+                    {
+                        "settings_store": settings_store,
+                        "report_endpoint": report_endpoint,
+                    },
+                ),
+            )
+            _log.debug("admin.security_headers_middleware_wired")
+        except Exception as exc:  # noqa: BLE001 — security headers are best-effort
+            _log.warning(
+                "admin.security_headers_middleware_skipped",
+                reason=str(exc),
+            )
 
         ctx.middlewares = middleware_stack
 

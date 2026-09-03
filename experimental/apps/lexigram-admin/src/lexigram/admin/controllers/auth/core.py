@@ -33,16 +33,21 @@ _SEE_DOCS_RE = re.compile(r"\n\s*→\s*See:.*$")
 def _humanize_error(message: str) -> str:
     """Strip framework error prefixes from a message for user display.
 
+    Delegates to the shared :func:`lexigram.admin.controllers._errors.humanize_error`,
+    which removes ``[LEX_ERR_*]`` codes and ``→ Fix:`` / ``→ See:``
+    annotations anywhere in the string (chained errors embed them
+    mid-message, not just at the start).
+
     Args:
-        message: Raw error message, possibly including a ``[LEX_ERR_*]``
-            prefix and a trailing ``→ See:`` documentation line.
+        message: Raw error message, possibly including ``[LEX_ERR_*]``
+            prefixes and ``→ Fix:`` / ``→ See:`` annotation lines.
 
     Returns:
-        The message with the prefix and docs line removed, stripped.
+        The cleaned, single-line message.
     """
-    if not message:
-        return ""
-    return _SEE_DOCS_RE.sub("", _LEX_ERR_RE.sub("", message)).strip()
+    from lexigram.admin.controllers._errors import humanize_error
+
+    return humanize_error(message)
 
 
 logger = get_logger(__name__)

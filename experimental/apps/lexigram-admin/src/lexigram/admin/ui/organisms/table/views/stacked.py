@@ -29,6 +29,7 @@ class StackedView(AbstractDataView):
                         "div",
                         Checkbox(
                             name="ids",
+                            id=f"stacked-select-{rid}",
                             value=rid,
                             x_model="selectedIds",
                             aria_label=f"Select {rid}",

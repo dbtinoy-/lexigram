@@ -22,6 +22,7 @@ from lexigram.primitives import clock
 
 if TYPE_CHECKING:
     from lexigram.admin.auth.protocols import AdminSessionServiceProtocol
+    from lexigram.admin.auth.services.session_user_cache import SessionUserCache
 
 logger = get_logger(__name__)
 
@@ -49,6 +50,8 @@ class AdminAuthMiddleware:
         session_service: AdminSessionServiceProtocol | None = None,
         require_auth: bool = False,
         excluded_paths: list[str] | None = None,
+        super_admin_role: str | None = None,
+        session_cache: SessionUserCache | None = None,
     ):
         """Initialize auth middleware.
 
@@ -58,12 +61,24 @@ class AdminAuthMiddleware:
             session_service: AdminSessionServiceProtocol for TTL enforcement
             require_auth: If True, redirect unauthenticated users
             excluded_paths: Paths that don't require authentication
+            super_admin_role: Configured super-admin role name
+                (``AdminRbacConfig.super_admin_role``). Users holding this
+                role are marked ``is_superuser`` so every downstream
+                permission check (authorization middleware, nav filtering,
+                lexigram-auth bypass) recognizes them consistently.
+            session_cache: Optional short-TTL in-process cache for the
+                session→user pair (R16). A cache hit skips both per-request
+                DB lookups; revocation paths invalidate it (see
+                docs/09-01-2026/12-session-user-cache.md). ``None`` keeps
+                the uncached behaviour.
         """
         self.app = app
         self.user_store = user_store
         self._session_service = session_service
         self.require_auth = require_auth
         self.excluded_paths = excluded_paths or []
+        self._super_admin_role = super_admin_role
+        self._session_cache = session_cache
 
     def _is_path_excluded(self, path: str) -> bool:
         """Check if path is excluded from auth requirements.
@@ -108,6 +123,7 @@ class AdminAuthMiddleware:
 
         # Load user from session
         user = await self._load_user(request)
+        self._mark_super_admin(user)
 
         # Check if authentication is required
         if self.require_auth and (
@@ -130,6 +146,37 @@ class AdminAuthMiddleware:
             await self.app(scope, receive, send)
         finally:
             pass
+
+    def _mark_super_admin(self, user: AuthenticatedUserProtocol | None) -> None:
+        """Flag users holding the configured super-admin role as superusers.
+
+        The setup wizard grants the first account
+        ``AdminRbacConfig.super_admin_role`` (default ``"superadmin"``), but
+        permission engines only bypass for ``is_superuser`` / ``admin`` /
+        ``superuser``.  Marking the record here — the single place every
+        authenticated request passes through — keeps the authorization
+        middleware, sidebar filtering, and lexigram-auth checks consistent.
+
+        Guest users and users without the role are left untouched.
+
+        Args:
+            user: The user record loaded for this request (may be ``None``
+                or the shared guest sentinel).
+        """
+        if user is None or user is GUEST_USER or not self._super_admin_role:
+            return
+        if getattr(user, "user_id", "guest") in (None, "guest"):
+            return
+        from lexigram.admin.rbac.super_admin import is_super_admin
+
+        if is_super_admin(user, self._super_admin_role):
+            try:
+                user.is_superuser = True  # type: ignore[attr-defined]
+            except AttributeError:
+                logger.debug(
+                    "auth.super_admin_mark_unsupported",
+                    user_type=type(user).__name__,
+                )
 
     async def _load_user(self, request: Request) -> AuthenticatedUserProtocol | None:
         """Load user from request session or return guest user.
@@ -158,15 +205,29 @@ class AdminAuthMiddleware:
                     # Service-bound deployment without a service-managed
                     # session: never consult the legacy fallback.
                     return GUEST_USER
+
+                # R16: short-TTL in-process cache — a hit skips both the
+                # session and the user SELECT for this request. Revocation
+                # paths invalidate the entry, so a dead session is never
+                # re-served from cache in this process.
+                if self._session_cache is not None:
+                    cached = self._session_cache.get(session_id)
+                    if cached is not None:
+                        return cached
+
                 session_data = await self._session_service.get_session(session_id)
                 if session_data is None:
                     # Session expired or revoked — clear cookie
+                    if self._session_cache is not None:
+                        self._session_cache.invalidate(session_id)
                     request.session.clear()
                     logger.debug("session.expired_or_revoked", session_id=session_id)
                     return GUEST_USER
 
                 admin_id = session_data.get("admin_id")
                 if admin_id is None:
+                    if self._session_cache is not None:
+                        self._session_cache.invalidate(session_id)
                     request.session.clear()
                     return GUEST_USER
 
@@ -177,8 +238,13 @@ class AdminAuthMiddleware:
                 )
                 if user is None or not user.is_active:
                     await self._session_service.revoke_session(session_id)
+                    if self._session_cache is not None:
+                        self._session_cache.invalidate(session_id)
                     request.session.clear()
                     return GUEST_USER
+
+                if self._session_cache is not None:
+                    self._session_cache.put(session_id, user)
 
                 logger.debug(
                     "Successfully loaded user %s from session (TTL-validated)",

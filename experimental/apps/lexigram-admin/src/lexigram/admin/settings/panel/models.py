@@ -9,21 +9,61 @@ from lexigram.validation import Field
 
 __all__ = [
     "DEFAULT_CSP",
+    "STRICT_CSP",
     "BrandingSettings",
     "CacheSettings",
     "I18nSettings",
+    "NotificationSettings",
     "ProfilerSettings",
     "RbacSettings",
     "SecuritySettings",
 ]
 
+# Strict-by-default CSP: every first-party asset (htmx, Alpine, lucide,
+# Sortable, Trix, Tailwind build) is vendored under the admin static mount,
+# so no third-party origins are needed.
+#
+# ``'unsafe-eval'`` is REQUIRED (B14): the vendored ``alpine.min.js`` is the
+# standard Alpine build, which compiles every directive expression through
+# the ``AsyncFunction`` constructor; htmx ``hx-on-*`` handlers use
+# ``new Function``. Browsers classify both as eval, so without this source
+# every Alpine/htmx expression throws ``EvalError`` and the admin UI is
+# dead. Removing it requires the Alpine CSP-build migration (docs
+# 09-01-2026/14, "CSP v2").
+#
+# ``'unsafe-inline'`` remains until the inline <style>/<script> blocks move
+# into the token/stylesheet pipeline (same CSP v2 roadmap).
+#
+# Operators using external chart CDNs (services/charts.py) must extend
+# ``script-src`` via the security settings panel.
 DEFAULT_CSP = (
     "default-src 'self'; "
-    "script-src 'self' 'unsafe-inline' https://unpkg.com; "
-    "style-src 'self' 'unsafe-inline' https://unpkg.com; "
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
+    "style-src 'self' 'unsafe-inline'; "
     "img-src 'self' data:; "
     "font-src 'self'; "
-    "connect-src 'self' https://unpkg.com; "
+    "connect-src 'self'; "
+    "object-src 'none'; "
+    "base-uri 'self'; "
+    "form-action 'self'; "
+    "frame-ancestors 'none';"
+)
+
+# The CSP v2 *candidate* policy (docs/09-01-2026/14 §3): what the enforced
+# policy should become once the inline-script/style migration lands. Shipped
+# by default as ``Content-Security-Policy-Report-Only`` so real deployments
+# surface every would-be violation without breaking anything. Do NOT enforce
+# this while the standard Alpine build + inline blocks remain in use.
+STRICT_CSP = (
+    "default-src 'self'; "
+    "script-src 'self'; "
+    "style-src 'self'; "
+    "img-src 'self' data:; "
+    "font-src 'self'; "
+    "connect-src 'self'; "
+    "object-src 'none'; "
+    "base-uri 'self'; "
+    "form-action 'self'; "
     "frame-ancestors 'none';"
 )
 
@@ -50,9 +90,34 @@ class BrandingSettings(DomainModel):
     )
 
 
+class NotificationSettings(DomainModel):
+    """Outbound email sender identity consumed by AdminNotificationService.
+
+    Empty values mean "keep the code-configured default" — a fresh save
+    with untouched fields changes nothing (doc 35).
+    """
+
+    email_from: str = Field(
+        default="",
+        title="From address",
+        description=(
+            "Sender email address for verification, password-reset, and "
+            "notification emails. Leave empty to keep the configured "
+            "default."
+        ),
+    )
+    email_from_name: str = Field(
+        default="",
+        title="From name",
+        description=(
+            "Sender display name shown in email clients. Leave empty to "
+            "keep the configured default."
+        ),
+    )
+
+
 class CacheSettings(DomainModel):
     """Response caching settings consumed by AdminCacheMiddleware."""
-
     enabled: bool = Field(
         default=True,
         title="Enabled",
@@ -79,6 +144,26 @@ class SecuritySettings(DomainModel):
         ge=0,
         title="HSTS Max Age (seconds)",
         description="Strict-Transport-Security max-age.",
+    )
+    frame_options: str = Field(
+        default="DENY",
+        title="X-Frame-Options",
+        description=(
+            "X-Frame-Options header value (DENY or SAMEORIGIN). "
+            "Leave empty to omit the header and let the CSP "
+            "frame-ancestors directive govern embedding."
+        ),
+    )
+    csp_report_only: str = Field(
+        default="",
+        title="CSP Report-Only Candidate",
+        description=(
+            "Content-Security-Policy-Report-Only monitoring (CSP v2 "
+            "migration). Leave empty to monitor the strict candidate "
+            "policy (recommended), set to 'off' to disable monitoring, "
+            "or provide a full policy string to monitor a custom "
+            "candidate. Violations appear on the Security → CSP tab."
+        ),
     )
 
 

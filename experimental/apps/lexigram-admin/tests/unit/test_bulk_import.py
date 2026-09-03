@@ -93,7 +93,8 @@ class TestAdminImportServiceCSV:
     @pytest.mark.asyncio
     async def test_parse_unsupported_format(self) -> None:
         svc = AdminImportService(data_source=self._make_ds())
-        result = await svc.parse(b"data", "data.xlsx")
+        # R26: .xlsx is now supported — use a genuinely unknown format.
+        result = await svc.parse(b"data", "data.parquet")
 
         assert result.is_err()
         assert "Unsupported" in result.unwrap_err().message

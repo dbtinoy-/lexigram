@@ -20,10 +20,7 @@ class DataTableScriptRenderer:
             window.LexigramDownloadBulk = window.LexigramDownloadBulk || function(button) {{
                 const table = document.querySelector('{Zones.TABLE.selector}');
                 const checked = table ? table.querySelectorAll('input[name="ids"]:checked') : [];
-                if (!checked.length) {{
-                    if (window.alert) window.alert('Select at least one record.');
-                    return false;
-                }}
+                const filtered = !checked.length;
 
                 const form = document.createElement('form');
                 form.method = 'post';
@@ -39,13 +36,101 @@ class DataTableScriptRenderer:
                     form.appendChild(input);
                 }};
                 add('action', button.dataset.bulkAction || 'export');
-                checked.forEach((checkbox) => add('ids', checkbox.value));
+                if (filtered) {{
+                    // R25: no selection means "export everything matching
+                    // the current view" — forward the list's URL state.
+                    add('scope', 'filtered');
+                    add('list_query', window.location.search.replace(/^\\?/, ''));
+                }} else {{
+                    checked.forEach((checkbox) => add('ids', checkbox.value));
+                }}
                 const csrf = table && table.querySelector('input[name="csrf_token"]');
                 if (csrf) add('csrf_token', csrf.value);
 
                 document.body.appendChild(form);
                 form.submit();
                 form.remove();
+                return false;
+            }};
+
+            // Import uploads (B31): the Import header action button carries
+            // data-import-upload-url / data-import-accept. Open a file
+            // picker, then POST the file with the CSRF token. fetch (not a
+            // native form) so the JSON/HTML fragment response can surface a
+            // toast instead of navigating away from the list.
+            window.LexigramImportUpload = window.LexigramImportUpload || function(button) {{
+                const url = button.dataset.importUploadUrl || '';
+                if (!url) return false;
+                const notify = function(message, type) {{
+                    if (window.showToast) window.showToast(message, type);
+                    else if (window.alert) window.alert(message);
+                }};
+                const picker = document.createElement('input');
+                picker.type = 'file';
+                picker.accept = button.dataset.importAccept || '.csv,.json,.jsonl,.xlsx';
+                picker.style.display = 'none';
+                picker.addEventListener('change', async function() {{
+                    const file = picker.files && picker.files[0];
+                    picker.remove();
+                    if (!file) return;
+                    try {{
+                        const table = document.querySelector('{Zones.TABLE.selector}');
+                        const csrfInput = table && table.querySelector('input[name="csrf_token"]');
+                        const csrfEl = document.querySelector('[data-csrf-token]');
+                        const csrf = (csrfInput && csrfInput.value) ||
+                            window.__lexigramCsrfToken ||
+                            (csrfEl && csrfEl.getAttribute('data-csrf-token'));
+                        const headers = {{ 'HX-Request': 'true' }};
+                        if (csrf) headers['X-CSRF-Token'] = csrf;
+                        const buildBody = function(dryRun) {{
+                            const body = new FormData();
+                            body.append('file', file, file.name);
+                            if (dryRun) body.append('dry_run', '1');
+                            if (csrf) body.append('csrf_token', csrf);
+                            return body;
+                        }};
+                        const post = function(dryRun) {{
+                            return fetch(url, {{
+                                method: 'POST',
+                                body: buildBody(dryRun),
+                                headers: headers,
+                                credentials: 'same-origin'
+                            }});
+                        }};
+
+                        // R27: validate first (server-side dry run), then
+                        // confirm with the summary before committing.
+                        const preview = await post(true);
+                        const previewText = await preview.text();
+                        if (!preview.ok) {{
+                            const detail = previewText.replace(/<[^>]*>/g, ' ').trim().slice(0, 200);
+                            notify('Import failed: ' + (detail || preview.status), 'error');
+                            return;
+                        }}
+                        const summary = previewText.replace(/<[^>]*>/g, ' ').trim().slice(0, 300);
+                        const proceed = window.confirm(
+                            (summary || 'File validated.') + '\\n\\nProceed with import?'
+                        );
+                        if (!proceed) {{
+                            notify('Import cancelled — nothing was written.', 'info');
+                            return;
+                        }}
+
+                        const response = await post(false);
+                        const text = await response.text();
+                        if (!response.ok) {{
+                            const detail = text.replace(/<[^>]*>/g, ' ').trim().slice(0, 200);
+                            notify('Import failed: ' + (detail || response.status), 'error');
+                            return;
+                        }}
+                        notify('Import finished. Reloading…', 'success');
+                        setTimeout(function() {{ window.location.reload(); }}, 600);
+                    }} catch (err) {{
+                        notify('Import failed.', 'error');
+                    }}
+                }});
+                document.body.appendChild(picker);
+                picker.click();
                 return false;
             }};
 

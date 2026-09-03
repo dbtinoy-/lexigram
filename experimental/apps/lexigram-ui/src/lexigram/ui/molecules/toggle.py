@@ -63,7 +63,7 @@ class Toggle(Component):
             "aria_describedby": " ".join(described_by) if described_by else None,
             "disabled": self.disabled or self.readonly,
             "x_data": f"{{ enabled: {'true' if self.checked else 'false'} }}",
-            "x_on_click": "enabled = !enabled; $refs.hiddenInput.checked = enabled",
+            "x-on:click": "enabled = !enabled; $refs.hiddenInput.checked = enabled",
             "x_bind__class": "enabled ? 'bg-primary' : 'bg-input'",
             "class_": wrapper_cls,
             **self.props,

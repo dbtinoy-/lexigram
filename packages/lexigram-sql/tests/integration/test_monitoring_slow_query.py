@@ -163,11 +163,15 @@ class TestMonitoringIntegration:
         assert txn_stats["rollback_count"] == 0
 
     @pytest.mark.asyncio
-    async def test_health_check_workflow(self):
+    async def test_health_check_workflow(self, tmp_path):
         collector = InMemoryDbMetricsCollector()
         monitor = DatabaseMonitor(collector)
 
-        health_result = await monitor.perform_health_check("sqlite:///test.db")
+        # tmp_path-backed file: a bare test.db resolves against the process
+        # CWD and leaks a stray file at the package root.
+        health_result = await monitor.perform_health_check(
+            f"sqlite:///{tmp_path / 'health.db'}"
+        )
 
         assert "overall_status" in health_result
         assert "checks" in health_result

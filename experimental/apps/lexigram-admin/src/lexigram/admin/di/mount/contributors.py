@@ -163,6 +163,29 @@ class AdminMountContributorsMixin:
         except Exception:  # noqa: BLE001 — resource collection is non-fatal
             _log.warning("admin.contributors_resource_collection_failed", exc_info=True)
 
+        # Give contributors a countable view over the mounted resources.
+        # Duck-typed opt-in hook: any contributor exposing
+        # ``set_resource_inventory`` receives the inventory (the core
+        # contributor uses it for the Resource Overview widget).
+        try:
+            from lexigram.admin.dashboard.resource_inventory import ResourceInventory
+
+            inventory = ResourceInventory(ctx.resources)
+            wired = 0
+            for contributor in contributors:
+                hook = getattr(contributor, "set_resource_inventory", None)
+                if callable(hook):
+                    hook(inventory)
+                    wired += 1
+            if wired:
+                _log.info(
+                    "admin.resource_inventory_wired",
+                    contributors=wired,
+                    resources=len(ctx.resources),
+                )
+        except Exception:  # noqa: BLE001 — inventory wiring is best-effort
+            _log.warning("admin.resource_inventory_wiring_failed", exc_info=True)
+
     async def _mount_integration(self, container: Any, ctx: MountContext) -> None:
         """Build the admin router and integrate contributor routes.
 
@@ -245,6 +268,186 @@ class AdminMountContributorsMixin:
         except Exception as exc:  # noqa: BLE001 — SSE is optional
             _log.warning("admin.sse_widgets_route_skipped", reason=str(exc))
 
+    async def _mount_export_center(self, container: Any, ctx: MountContext) -> None:
+        """Register the export center routes (R28 download + R30 pages).
+
+        Mounts, all fixed-path and behind the admin auth guard:
+
+        * ``GET  /exports`` — jobs page (full admin shell).
+        * ``POST /exports`` — create + start a background export.
+        * ``POST /exports/{job_id}/cancel`` — cancel a running job.
+        * ``GET  /exports/{job_id}/download`` — artifact download (R28),
+          keyed by the opaque job id with ownership/status checks inside
+          the handler.
+
+        Args:
+            container: The admin DI resolver holding the ExportService
+                singleton registered by AdminExportSubProvider.
+            ctx: Mount pipeline state (``router`` and ``resources`` read).
+        """
+        router = ctx.router
+        if router is None:
+            return
+        try:
+            from lexigram.admin.services.export.download import (
+                build_export_download_handler,
+            )
+            from lexigram.admin.services.export.pages import ExportCenter
+            from lexigram.admin.services.export.service import ExportService
+
+            export_service: ExportService = await container.resolve(ExportService)
+
+            renderer: Any = None
+            try:
+                from lexigram.admin.engine.renderer import (
+                    AdminRenderer as EngineAdminRenderer,
+                )
+
+                renderer = await container.resolve(EngineAdminRenderer)
+            except Exception:  # noqa: BLE001 — fall back to a fresh renderer
+                from lexigram.admin.engine.renderer import AdminRenderer
+
+                renderer = AdminRenderer()
+
+            permission_service: Any = None
+            try:
+                from lexigram.admin.rbac.service import PermissionService
+
+                permission_service = await container.resolve(PermissionService)
+            except Exception:  # noqa: BLE001 — creation falls back to superuser-only
+                permission_service = None
+
+            center = ExportCenter(
+                export_service=export_service,
+                resources=ctx.resources or {},
+                config=self._config,
+                renderer=renderer,
+                permission_service=permission_service,
+            )
+            router.add_route("/exports", "GET", center.page, "admin_exports_page")
+            router.add_route("/exports", "POST", center.create, "admin_exports_create")
+            router.add_route(
+                "/exports/jobs",
+                "GET",
+                center.jobs_fragment,
+                "admin_exports_jobs",
+            )
+            router.add_route(
+                "/exports/{job_id}/cancel",
+                "POST",
+                center.cancel,
+                "admin_exports_cancel",
+            )
+            router.add_route(
+                "/exports/{job_id}/download",
+                "GET",
+                build_export_download_handler(export_service),
+                "admin_export_download",
+            )
+            _log.info(
+                "admin.export_center_routes_registered",
+                path=f"{self._config.prefix}/exports",
+            )
+
+            # Surface the page in the sidebar: any contributor exposing the
+            # duck-typed enable_export_center hook gains an "Exports" nav
+            # item, gated on the routes above actually registering.
+            exports_url = f"{self._config.prefix.rstrip('/')}/exports"
+            for contributor in getattr(ctx, "contributors", None) or []:
+                hook = getattr(contributor, "enable_export_center", None)
+                if callable(hook):
+                    try:
+                        hook(exports_url)
+                        _log.info(
+                            "admin.export_center_nav_enabled", url=exports_url
+                        )
+                    except Exception:  # noqa: BLE001 — nav is best-effort
+                        _log.warning(
+                            "admin.export_center_nav_hook_failed", exc_info=True
+                        )
+        except Exception as exc:  # noqa: BLE001 — export center is optional
+            _log.warning("admin.export_center_routes_skipped", reason=str(exc))
+
+    async def _mount_csp_reporting(self, ctx: MountContext) -> None:
+        """Register CSP violation reporting + wire the Security CSP tab.
+
+        Mounts, fixed-path (docs 30 + 31 — CSP v2 groundwork):
+
+        * ``POST /security/csp-report`` — browser violation report sink
+          (CSRF/auth-guard exempt; size-capped; always terse).
+        * ``GET  /security/csp-reports`` — superuser-only JSON summary.
+
+        The Security Center controller's CSP tab (``GET /security/csp``,
+        R12 controller + doc 31) renders the same store: after the sink
+        registers, the store and a settings reader are attached to the
+        ``SecurityController`` instance in ``ctx.controllers``
+        (best-effort, mirroring how its audit/lockout stores attach in
+        ``di/mount/controllers.py``). If attachment fails the tab still
+        renders with a "reporting not wired" note.
+
+        Args:
+            ctx: Mount pipeline state (``router``, ``controllers`` and
+                ``settings_service`` read).
+        """
+        router = ctx.router
+        if router is None:
+            return
+        try:
+            from lexigram.admin.services.security.csp_reports import (
+                CspReportEndpoint,
+                CspReportStore,
+            )
+
+            store = CspReportStore()
+            endpoint = CspReportEndpoint(store)
+            router.add_route(
+                "/security/csp-report",
+                "POST",
+                endpoint.ingest,
+                "admin_csp_report_ingest",
+            )
+            router.add_route(
+                "/security/csp-reports",
+                "GET",
+                endpoint.list_reports,
+                "admin_csp_reports_list",
+            )
+            _log.info(
+                "admin.csp_reporting_registered",
+                path=f"{self._config.prefix}/security/csp-report",
+            )
+        except Exception as exc:  # noqa: BLE001 — reporting is optional
+            _log.warning("admin.csp_reporting_skipped", reason=str(exc))
+            return
+
+        try:
+            settings_store: Any = None
+            if ctx.settings_service is not None:
+                from lexigram.admin.settings.store import TenantConfigStore
+
+                settings_store = TenantConfigStore(ctx.settings_service)
+
+            from lexigram.admin.controllers.security import SecurityController
+
+            wired = False
+            for controller in ctx.controllers or []:
+                if isinstance(controller, SecurityController):
+                    controller._csp_store = store  # noqa: SLF001 — mount-time wiring, same pattern as _audit_store
+                    controller._csp_settings = settings_store  # noqa: SLF001
+                    wired = True
+            if wired:
+                _log.info(
+                    "admin.security_csp_tab_wired",
+                    path=f"{self._config.prefix}/security/csp",
+                )
+            else:
+                _log.warning(
+                    "admin.security_csp_tab_skipped",
+                    reason="SecurityController not mounted",
+                )
+        except Exception as exc:  # noqa: BLE001 — the tab is optional
+            _log.warning("admin.security_csp_tab_skipped", reason=str(exc))
+
     async def _mount_app_state(self, app: Any, ctx: MountContext) -> None:
         """Mount the router and expose nav/registry state on both apps.
 
@@ -310,3 +513,22 @@ class AdminMountContributorsMixin:
                 app.state.cluster_registry = ctx.cluster_registry
             if admin_app is not None and hasattr(admin_app, "state"):
                 admin_app.state.cluster_registry = ctx.cluster_registry
+
+        # Expose the configured super-admin role so the shell user menu can
+        # gate superadmin-only entries (Security Center — R12).
+        super_admin_role = str(
+            getattr(self._config.rbac, "super_admin_role", "superadmin") or "superadmin"
+        )
+        if hasattr(app, "state"):
+            app.state.super_admin_role = super_admin_role
+        if admin_app is not None and hasattr(admin_app, "state"):
+            admin_app.state.super_admin_role = super_admin_role
+
+        # Expose the saved-view service (R13) so ListRenderer — which has no
+        # DI access at render time — can read per-user saved views from
+        # request.app.state on both the outer and mounted apps.
+        if ctx.saved_view_service is not None:
+            if hasattr(app, "state"):
+                app.state.saved_view_service = ctx.saved_view_service
+            if admin_app is not None and hasattr(admin_app, "state"):
+                admin_app.state.saved_view_service = ctx.saved_view_service

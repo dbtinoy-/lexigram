@@ -62,6 +62,37 @@ class AbstractRelationManager(ABC):
         """Attach a data source for pivot persistence operations."""
         self._data_source = data_source
 
+    @staticmethod
+    def _row_id(row: Any) -> Any:
+        """Extract a row's primary key (dict- and attribute-aware).
+
+        Args:
+            row: A related record — mapping or object.
+
+        Returns:
+            The ``id`` (falling back to ``pk``) value, or ``None``.
+        """
+        if isinstance(row, dict):
+            value = row.get("id")
+            return value if value is not None else row.get("pk")
+        value = getattr(row, "id", None)
+        return value if value is not None else getattr(row, "pk", None)
+
+    @staticmethod
+    def _row_value(row: Any, field: str) -> Any:
+        """Extract a field value from a record (dict- and attribute-aware).
+
+        Args:
+            row: A related record — mapping or object.
+            field: Field name to read.
+
+        Returns:
+            The field value, or ``None`` when absent.
+        """
+        if isinstance(row, dict):
+            return row.get(field)
+        return getattr(row, field, None)
+
     async def get_parent(self) -> Any:
         """Resolve the parent entity for this relationship.
 
@@ -142,6 +173,11 @@ class AbstractRelationManager(ABC):
         items = await self.get_query()
         if not items:
             return []
+
+        # B34: equality filters were previously accepted and silently
+        # ignored. Apply them (dict- and attribute-aware) before paging.
+        for field, expected in filters.items():
+            items = [item for item in items if self._row_value(item, field) == expected]
 
         start = (page - 1) * per_page
         end = start + per_page

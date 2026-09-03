@@ -136,3 +136,30 @@ async def test_clear_token_issues_update() -> None:
     assert "UPDATE" in sql
     assert "token_hash" in sql
     assert params == ["user-001"]
+
+
+@pytest.mark.asyncio
+async def test_mark_verified_upserts_and_clears_token() -> None:
+    provider = FakeProvider()
+    store = AdminEmailVerificationSqlStore(provider)
+
+    await store.mark_verified("user-001")
+
+    sql, params = provider.executed[0]
+    assert "INSERT INTO admin_email_verifications" in sql
+    assert "ON CONFLICT (user_id) DO UPDATE" in sql
+    assert "email_verified_at" in sql
+    assert "token_hash = NULL" in sql
+    assert params == ["user-001"]
+
+
+@pytest.mark.asyncio
+async def test_mark_verified_preserves_existing_verified_at() -> None:
+    """Re-marking an already-verified user must not reset the timestamp."""
+    provider = FakeProvider()
+    store = AdminEmailVerificationSqlStore(provider)
+
+    await store.mark_verified("user-001")
+
+    sql, _ = provider.executed[0]
+    assert "COALESCE" in sql

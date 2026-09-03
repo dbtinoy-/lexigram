@@ -12,6 +12,7 @@ from lexigram.contracts.admin.types import (
     PageCategory,
 )
 from lexigram.contracts.core.di import ContainerResolverProtocol
+from lexigram.contracts.exceptions.container import UnresolvableDependencyError
 from lexigram.logging.factory import get_logger
 
 if TYPE_CHECKING:
@@ -119,6 +120,16 @@ class WebhookAdminContributor(BaseAdminContributor):
             )
             self._delivery_store = await resolver.resolve(WebhookDeliveryStoreProtocol)
             self._config = await resolver.resolve(WebhookConfig)
+        except UnresolvableDependencyError as exc:
+            # Expected on deployments that don't register the webhook stores:
+            # the admin panel simply runs without the webhook pages. One
+            # readable line, no traceback — boot output is the operator's
+            # first impression.
+            logger.info(
+                "webhook.admin_contributor_disabled",
+                reason="webhook stores not registered",
+                missing=str(getattr(exc, "args", [""])[0])[:120],
+            )
         except Exception:  # noqa: BLE001
             logger.warning("webhook.admin_contributor_boot_failed", exc_info=True)
 

@@ -50,6 +50,7 @@ class GridView(AbstractDataView):
                     action_nodes.append(
                         Checkbox(
                             name="ids",
+                            id=f"grid-select-{rid}",
                             value=rid,
                             x_model="selectedIds",
                             class_="absolute top-2 left-2 z-10",

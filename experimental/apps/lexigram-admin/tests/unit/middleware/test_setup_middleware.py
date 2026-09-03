@@ -115,3 +115,61 @@ async def test_skips_setup_path():
     body_msg = next((m for m in messages if m["type"] == "http.response.body"), None)
     assert body_msg is not None
     assert b"setup page" in body_msg.get("body", b"")
+
+
+@pytest.mark.asyncio
+async def test_positive_count_is_cached_across_requests():
+    """Once an admin exists, subsequent requests skip the COUNT query."""
+
+    class _CountingStore:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        async def get_admin_count(self) -> int:
+            self.calls += 1
+            return 1
+
+    store = _CountingStore()
+
+    async def ok_app(scope: Any, receive: Any, send: Any) -> None:
+        response = PlainTextResponse("ok")
+        await response(scope, receive, send)
+
+    async def collect_send(message: dict[str, Any]) -> None:
+        pass
+
+    middleware = SetupMiddleware(ok_app, store)
+    for _ in range(3):
+        await middleware(_make_scope(), _noop_receive, collect_send)
+
+    assert store.calls == 1
+
+
+@pytest.mark.asyncio
+async def test_zero_count_keeps_checking_until_admin_exists():
+    """While no admin exists the check re-runs; it caches once one appears."""
+
+    class _GrowingStore:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        async def get_admin_count(self) -> int:
+            self.calls += 1
+            # First two requests: no admins yet; third: admin created.
+            return 0 if self.calls <= 2 else 1
+
+    store = _GrowingStore()
+
+    async def ok_app(scope: Any, receive: Any, send: Any) -> None:
+        response = PlainTextResponse("ok")
+        await response(scope, receive, send)
+
+    async def collect_send(message: dict[str, Any]) -> None:
+        pass
+
+    middleware = SetupMiddleware(ok_app, store)
+    for _ in range(5):
+        await middleware(_make_scope(), _noop_receive, collect_send)
+
+    # 2 zero-count checks + 1 positive check, then cached.
+    assert store.calls == 3

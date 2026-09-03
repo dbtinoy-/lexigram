@@ -55,6 +55,8 @@ class AdminRoleServiceProtocol(Protocol):
         description: str,
         permissions: list[str],
         inherits: list[str],
+        *,
+        actor_id: str | None = None,
     ) -> Result[RoleDefinition, RoleDuplicateError | AdminRoleError]:
         """Create a role and mirror it into the authorizer."""
         ...
@@ -65,12 +67,14 @@ class AdminRoleServiceProtocol(Protocol):
         description: str,
         permissions: list[str],
         inherits: list[str],
+        *,
+        actor_id: str | None = None,
     ) -> Result[RoleDefinition, RoleNotFoundError | SystemRoleError | AdminRoleError]:
         """Update a role (system roles may not be renamed)."""
         ...
 
     async def delete_role(
-        self, name: str
+        self, name: str, *, actor_id: str | None = None
     ) -> Result[None, RoleNotFoundError | SystemRoleError | AdminRoleError]:
         """Delete a role (system roles may not be deleted)."""
         ...

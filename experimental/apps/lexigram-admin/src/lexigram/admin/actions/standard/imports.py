@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import csv
 import io
+import re
 from typing import TYPE_CHECKING, Any
 
 from lexigram.admin.actions.base import BulkAction, HeaderAction
@@ -21,21 +22,72 @@ from lexigram.result import Err, Ok, Result
 if TYPE_CHECKING:
     from lexigram.admin.services.import_ import AdminImportService
 
+_SAFE_FILENAME_CHARS = re.compile(r"[^A-Za-z0-9._-]+")
+_MAX_FILENAME_STEM = 100
+
+
+def _safe_filename_stem(source_filename: str) -> str:
+    """Derive a header-safe filename stem from an uploaded filename.
+
+    B18: upload filenames are attacker-influencable and end up inside
+    ``Content-Disposition: attachment; filename="…"``. Quotes, CR/LF, or
+    path separators there mean header breakage/injection. Allowlist to
+    ``[A-Za-z0-9._-]``, cap the length, and fall back to ``"import"``.
+
+    Args:
+        source_filename: Original uploaded filename (may be hostile).
+
+    Returns:
+        A safe, non-empty stem without the file extension.
+    """
+    stem = source_filename.rpartition(".")[0] or source_filename
+    cleaned = _SAFE_FILENAME_CHARS.sub("_", stem).strip("._") or "import"
+    return cleaned[:_MAX_FILENAME_STEM]
+
 
 async def _run_import(
     service: AdminImportService,
     content: bytes,
     filename: str,
+    *,
+    dry_run: bool = False,
 ) -> Result[Any, Any]:
-    """Parse and commit an import, returning the result summary."""
+    """Parse and commit an import, returning the result summary.
+
+    With ``dry_run`` (R27), stop after the non-destructive parse step and
+    return a validation summary instead — nothing is written. Validation
+    errors are stored as a normal downloadable report.
+    """
     parsed = await service.parse(content, filename)
     if parsed.is_err():
         return Err(parsed.unwrap_err())
-    committed = await service.commit(parsed.unwrap())
+    job = parsed.unwrap()
+
+    if dry_run:
+        failed = len({e.row for e in job.errors})
+        valid = len(job.valid_rows)
+        payload: dict[str, Any] = {
+            "message": (
+                f"Validated {job.total_rows} row(s): {valid} ready to import, "
+                f"{failed} with error(s). Nothing was imported."
+            ),
+            "created": 0,
+            "failed": failed,
+            "total": job.total_rows,
+            "dry_run": True,
+        }
+        if failed:
+            report = service.store_validation_report(job)
+            stem = _safe_filename_stem(report.source_filename)
+            payload["report_id"] = report.id
+            payload["report_filename"] = f"{stem}-import-errors.csv"
+        return Ok(payload)
+
+    committed = await service.commit(job)
     if committed.is_err():
         return Err(committed.unwrap_err())
     result = committed.unwrap()
-    payload: dict[str, Any] = {
+    payload = {
         "message": f"Imported {result.created} of {result.total} record(s)",
         "created": result.created,
         "failed": result.failed,
@@ -45,7 +97,7 @@ async def _run_import(
         reports = service.reports()
         if reports:
             report = reports[-1]
-            stem = report.source_filename.rpartition(".")[0] or "import"
+            stem = _safe_filename_stem(report.source_filename)
             payload["report_id"] = report.id
             payload["report_filename"] = f"{stem}-import-errors.csv"
     return Ok(payload)
@@ -94,12 +146,15 @@ class _ImportReportMixin:
         report = service.get_report(report_id)
         if report is None:
             return None
-        stem = report.source_filename.rpartition(".")[0] or "import"
+        stem = _safe_filename_stem(report.source_filename)
         return f"{stem}-import-errors.csv"
 
 
 class ImportAction(_ImportReportMixin, HeaderAction):
     """Import records into a resource through the admin import service."""
+
+    #: File extensions the admin import service can parse.
+    DEFAULT_ACCEPT_EXTENSIONS = (".csv", ".json", ".jsonl", ".xlsx")
 
     def __init__(
         self,
@@ -111,6 +166,7 @@ class ImportAction(_ImportReportMixin, HeaderAction):
         filename: str | None = None,
         example_columns: list[str] | None = None,
         example_filename: str = "import-example.csv",
+        accept_extensions: list[str] | None = None,
     ) -> None:
         super().__init__(
             name=name,
@@ -124,6 +180,28 @@ class ImportAction(_ImportReportMixin, HeaderAction):
         self._filename = filename
         self._example_columns = example_columns or []
         self._example_filename = example_filename
+        self._accept_extensions = list(
+            accept_extensions or self.DEFAULT_ACCEPT_EXTENSIONS
+        )
+
+    def _get_htmx_attrs(
+        self, url: str, record: None, ctx: ActionContext
+    ) -> dict[str, str]:
+        """Render as a file-upload trigger instead of an htmx GET.
+
+        B31: the inherited default rendered ``hx-get {prefix}/import``
+        into the data zone — a route that did not exist, so clicking
+        Import swapped a 404 into the table. Both the toolbar and the
+        default :meth:`render_button` consume these attributes, handing
+        off to the shared ``LexigramImportUpload`` script, which opens a
+        file picker and POSTs the file to the upload route.
+        """
+        return {
+            "type": "button",
+            "data_import_upload_url": url,
+            "data_import_accept": ",".join(self._accept_extensions),
+            "onclick": "return window.LexigramImportUpload(this);",
+        }
 
     def example_csv(self) -> str:
         """Build a header-only example CSV from ``example_columns``.
@@ -165,7 +243,12 @@ class ImportAction(_ImportReportMixin, HeaderAction):
             from lexigram.admin.services.import_ import AdminImportService
 
             service = AdminImportService(data_source=data_source)
-        return await _run_import(service, content, filename)
+            # B19: keep the lazily created service so failed-import
+            # reports advertised via report_id stay downloadable through
+            # report_csv()/report_filename() after this request.
+            self._import_service = service
+        dry_run = bool(ctx.metadata.get("dry_run"))
+        return await _run_import(service, content, filename, dry_run=dry_run)
 
 
 class ImportBulkAction(_ImportReportMixin, BulkAction):
@@ -214,4 +297,9 @@ class ImportBulkAction(_ImportReportMixin, BulkAction):
             from lexigram.admin.services.import_ import AdminImportService
 
             service = AdminImportService(data_source=data_source)
-        return await _run_import(service, content, filename)
+            # B19: keep the lazily created service so failed-import
+            # reports advertised via report_id stay downloadable through
+            # report_csv()/report_filename() after this request.
+            self._import_service = service
+        dry_run = bool(ctx.metadata.get("dry_run"))
+        return await _run_import(service, content, filename, dry_run=dry_run)

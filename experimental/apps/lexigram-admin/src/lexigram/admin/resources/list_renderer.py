@@ -8,8 +8,10 @@ list view for an admin resource.
 """
 
 from copy import copy
+from html import escape
 import inspect
 from typing import Any
+from urllib.parse import parse_qsl, urlencode
 
 from starlette.responses import HTMLResponse
 
@@ -229,11 +231,16 @@ class ListRenderer:
                 "can_delete": False,
             }
 
+        from lexigram.admin.auth.permission_scheme import candidate_permissions
+
+        def _granted(action: str) -> bool:
+            return any(has(perm) for perm in candidate_permissions(resource, action))
+
         return {
-            "can_view": bool(has(f"{resource}.view") or has(f"{resource}.list")),
-            "can_create": bool(has(f"{resource}.create")),
-            "can_update": bool(has(f"{resource}.edit") or has(f"{resource}.update")),
-            "can_delete": bool(has(f"{resource}.delete")),
+            "can_view": _granted("view"),
+            "can_create": _granted("create"),
+            "can_update": _granted("update"),
+            "can_delete": _granted("delete"),
         }
 
     @staticmethod
@@ -521,7 +528,7 @@ class ListRenderer:
             if hx_target == Zones.DATA.id:
                 dt.props["htmx_request"] = True
 
-            content = render_to_string(dt)
+            fragment_content = render_to_string(dt)
             resp_headers = {}
 
             # Synchronization: Force the browser URL to match the clean server-side state.
@@ -530,11 +537,18 @@ class ListRenderer:
             if request.headers.get("HX-Push-Url") != "false":
                 resp_headers["HX-Push-Url"] = state.to_url(resource_prefix)
 
-            return HTMLResponse(content, headers=resp_headers)
+            return HTMLResponse(fragment_content, headers=resp_headers)
 
         # Direct navigation — return full page via AdminRenderer (Jinja2 + nav population).
+        # Saved views (R13): prepend the per-user views bar when available.
+        saved_views_bar = await self._render_saved_views_bar(
+            request, state, resource_prefix, admin_prefix
+        )
+        content: Any = dt
+        if saved_views_bar:
+            content = saved_views_bar + render_to_string(dt)
         return self._renderer.render_page(
-            dt,
+            content,
             request=request,
             title=label,
             breadcrumbs=[
@@ -542,6 +556,114 @@ class ListRenderer:
                 {"label": label, "url": resource_prefix},
             ],
         )
+
+    async def _render_saved_views_bar(
+        self,
+        request: Any,
+        state: TableState,
+        resource_prefix: str,
+        admin_prefix: str,
+    ) -> str:
+        """Render the per-user saved-views bar (R13), or ``""``.
+
+        Reads the mount-wired service from ``request.app.state`` (the list
+        renderer has no DI access at render time — doc 06). Any failure
+        degrades to no bar; the list page must never break because of it.
+        """
+        try:
+            from lexigram.admin.services.saved_views import SavedViewService
+
+            app_state = getattr(getattr(request, "app", None), "state", None)
+            service = getattr(app_state, "saved_view_service", None)
+            user = getattr(getattr(request, "state", None), "user", None)
+            user_id = str(getattr(user, "user_id", "") or "")
+            if service is None or not user_id or user_id == "guest":
+                return ""
+
+            views = await service.list_views(user_id, self.resource_name)
+            csrf_token = str(
+                getattr(getattr(request, "state", None), "csrf_token", "") or ""
+            )
+            current_query = SavedViewService.sanitize_query(
+                urlencode(state.to_query_params(exclude=["page", "cursor"]))
+            )
+            # Active-view matching must ignore params that merely restate the
+            # resource defaults (to_query_params drops defaults for clean
+            # URLs, but a saved query may spell them out explicitly).
+            defaults = dict(getattr(state, "_defaults", None) or {})
+            key_map = {"data_view": "view", "layout_type": "layout"}
+
+            def _comparable(query: str) -> frozenset:
+                pairs = []
+                for key, value in parse_qsl(query):
+                    default = defaults.get(key_map.get(key, key))
+                    if default is not None and str(default) == str(value):
+                        continue
+                    pairs.append((key, value))
+                return frozenset(pairs)
+
+            current_params = _comparable(current_query)
+
+            pills: list[str] = []
+            for view in views:
+                name = escape(view["name"])
+                query = SavedViewService.sanitize_query(view["query"])
+                active = bool(query) and _comparable(query) == current_params
+                pill_cls = (
+                    "border-primary text-primary bg-primary/5"
+                    if active
+                    else "border-border bg-card text-foreground"
+                )
+                pills.append(
+                    f'<span class="inline-flex items-center rounded-full border '
+                    f'{pill_cls}" data-saved-view>'
+                    f'<a href="{resource_prefix}?{escape(query)}" '
+                    f'class="pl-3 pr-1 py-1 text-sm hover:text-primary" '
+                    f'title="Apply view">{name}</a>'
+                    f'<form method="post" '
+                    f'action="{admin_prefix}/views/{self.resource_name}/delete" '
+                    f'class="inline-flex">'
+                    f'<input type="hidden" name="csrf_token" '
+                    f'value="{escape(csrf_token)}">'
+                    f'<input type="hidden" name="name" value="{name}">'
+                    f'<button type="submit" class="px-2 py-1 text-muted-foreground '
+                    f'hover:text-destructive text-sm" title="Delete view" '
+                    f'aria-label="Delete view {name}">&times;</button>'
+                    f"</form></span>"
+                )
+
+            save_form = (
+                f'<form method="post" '
+                f'action="{admin_prefix}/views/{self.resource_name}/save" '
+                f'data-saved-view-save class="inline-flex items-center gap-1.5">'
+                f'<input type="hidden" name="csrf_token" '
+                f'value="{escape(csrf_token)}">'
+                f'<input type="hidden" name="query" '
+                f'value="{escape(current_query)}">'
+                f'<input type="text" name="name" required maxlength="64" '
+                f'placeholder="Save current view as…" '
+                f'class="rounded-lg border border-border bg-background px-2.5 '
+                f'py-1 text-sm w-44">'
+                f'<button type="submit" class="rounded-lg border border-border '
+                f'bg-card px-2.5 py-1 text-sm font-medium hover:bg-accent">'
+                f"Save view</button></form>"
+            )
+
+            return (
+                '<div class="flex flex-wrap items-center gap-2 mb-4" '
+                'data-saved-views>'
+                '<span class="text-xs font-medium text-muted-foreground '
+                'uppercase tracking-wide">Views</span>'
+                + "".join(pills)
+                + f'<span class="ml-auto">{save_form}</span></div>'
+            )
+        except Exception as exc:  # noqa: BLE001 — bar must never break the list page
+            logger.warning(
+                "list_renderer.saved_views_bar_failed",
+                resource=self.resource_name,
+                error=str(exc),
+            )
+            return ""
 
 
 __all__ = ["ListRenderer"]

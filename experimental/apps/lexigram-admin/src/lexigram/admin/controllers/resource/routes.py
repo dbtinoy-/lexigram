@@ -22,6 +22,7 @@ class ResourceRouteMixin:
     bulk_restore_confirm: Any
     import_example: Any
     import_report: Any
+    import_upload: Any
     detail: Any
     edit_form: Any
     delete_confirm: Any
@@ -59,6 +60,8 @@ class ResourceRouteMixin:
             ),
             Route(f"{prefix}/import-example", self.import_example, methods=["GET"]),
             Route(f"{prefix}/import-report", self.import_report, methods=["GET"]),
+            # Import upload (B31). POST-only: imports create records.
+            Route(f"{prefix}/import", self.import_upload, methods=["POST"]),
             Route(f"{prefix}/{{id}}", self.detail, methods=["GET"]),
             Route(f"{prefix}/{{id}}/edit", self.edit_form, methods=["GET"]),
             Route(

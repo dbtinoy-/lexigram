@@ -165,6 +165,28 @@ class AdminEmailVerificationSqlStore:
             return int(row_count) > 0
         return True
 
+    async def mark_verified(self, user_id: str) -> None:
+        """Mark a user's email verified without a token round-trip.
+
+        Upserts the verification row with ``email_verified_at`` set and any
+        pending token cleared. Used for accounts whose email ownership is
+        proven out-of-band (e.g. the setup wizard's first admin).
+        """
+        await self._db.execute(
+            f"""
+            INSERT INTO {_TABLE} (user_id, email_verified_at)
+            VALUES (?, {now_expr(self._db)})
+            ON CONFLICT (user_id) DO UPDATE SET
+                email_verified_at = COALESCE(
+                    {_TABLE}.email_verified_at, excluded.email_verified_at
+                ),
+                token_hash = NULL,
+                token_expires_at = NULL,
+                updated_at = {now_expr(self._db)}
+            """,  # noqa: S608 — table name is module constant, now_expr yields fixed NOW()/CURRENT_TIMESTAMP
+            [user_id],
+        )
+
     async def clear_token(self, user_id: str) -> None:
         """Remove the pending verification token for a user."""
         await self._db.execute(

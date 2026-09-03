@@ -217,11 +217,17 @@ class AuthLoginMixin(AuthCoreMixin):
                         )
                     )
                     if verify_result.is_err():
-                        error_msg = str(verify_result.unwrap_err())
+                        # Log the full chained error for the operator, but
+                        # never leak framework error codes / docs links into
+                        # the user-facing query string.
                         logger.error(
                             "auth.login_verification_send_failed",
                             user_id=auth_result.user_id,
-                            reason=error_msg,
+                            reason=str(verify_result.unwrap_err()),
+                        )
+                        error_msg = (
+                            "We couldn't send the verification email right now. "
+                            "Please try again later or contact your administrator."
                         )
                 logger.info(
                     "auth.login_verification_required",

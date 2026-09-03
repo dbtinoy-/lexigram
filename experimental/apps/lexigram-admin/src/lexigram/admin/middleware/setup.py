@@ -32,6 +32,12 @@ class SetupMiddleware:
     Paths that are always allowed through (bypass the redirect):
         - ``/setup`` and any path ending in ``/setup``
         - ``/static`` paths (asset serving must never redirect)
+
+    Once at least one admin account is observed, the result is cached on the
+    instance and the per-request ``COUNT`` query stops: admin accounts are
+    never bulk-deleted in normal operation, and even if the last account is
+    removed the worst case is skipping the setup redirect until restart —
+    while the cache saves a database round-trip on every admin request.
     """
 
     def __init__(
@@ -41,6 +47,7 @@ class SetupMiddleware:
     ) -> None:
         self.app = app
         self._store = admin_user_store
+        self._setup_complete = False
 
     async def __call__(
         self,
@@ -66,6 +73,12 @@ class SetupMiddleware:
             return
 
         prefix = scope.get("root_path", "")
+        if self._setup_complete:
+            # An admin account has already been observed — skip the
+            # per-request COUNT query entirely.
+            await self.app(scope, receive, send)
+            return
+
         try:
             admin_count = await self._store.get_admin_count()
             logger.debug(
@@ -76,6 +89,7 @@ class SetupMiddleware:
                 response = RedirectResponse(url=f"{prefix}/setup")
                 await response(scope, receive, send)
                 return
+            self._setup_complete = True
         except (
             RuntimeError,
             ValueError,

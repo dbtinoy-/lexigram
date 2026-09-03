@@ -127,7 +127,7 @@ class TableToolbar(Component):
                 # download, so use the shared native-submit helper while still
                 # carrying the checked row IDs and CSRF field.
                 action_name = str(getattr(action, "name", ""))
-                if action_name in {"export", "export_csv"}:
+                if action_name in {"export", "export_csv", "export_xlsx"}:
                     export_url = (
                         f"{(self.config.resource_prefix or '').rstrip('/')}/bulk"
                     )

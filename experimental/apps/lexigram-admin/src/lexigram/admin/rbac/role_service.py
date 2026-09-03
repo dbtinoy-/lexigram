@@ -56,8 +56,14 @@ class AdminRoleService:
         description: str,
         permissions: list[str],
         inherits: list[str],
+        *,
+        actor_id: str | None = None,
     ) -> Result[RoleDefinition, RoleDuplicateError | AdminRoleError]:
-        """Create a role, mirror it, and audit (see protocol docs)."""
+        """Create a role, mirror it, and audit (see protocol docs).
+
+        Args:
+            actor_id: Optional acting admin user id for audit attribution.
+        """
         name = name.strip()
         existing = await self._role_store.get_role(name)
         if existing is not None:
@@ -74,7 +80,7 @@ class AdminRoleService:
         )
         await self._role_store.create_role(role)
         self._mirror(role)
-        await self._audit(AdminSecurityEventType.ROLE_CREATED, {"role": name})
+        await self._audit(AdminSecurityEventType.ROLE_CREATED, {"role": name}, actor_id)
         logger.info("admin.role_created", role=name)
         return Ok(role)
 
@@ -84,8 +90,14 @@ class AdminRoleService:
         description: str,
         permissions: list[str],
         inherits: list[str],
+        *,
+        actor_id: str | None = None,
     ) -> Result[RoleDefinition, RoleNotFoundError | SystemRoleError | AdminRoleError]:
-        """Update a role; system roles keep their name (see protocol docs)."""
+        """Update a role; system roles keep their name (see protocol docs).
+
+        Args:
+            actor_id: Optional acting admin user id for audit attribution.
+        """
         name = name.strip()
         role = await self._role_store.get_role(name)
         if role is None:
@@ -102,14 +114,18 @@ class AdminRoleService:
         )
         await self._role_store.update_role(updated)
         self._mirror(updated)
-        await self._audit(AdminSecurityEventType.ROLE_UPDATED, {"role": name})
+        await self._audit(AdminSecurityEventType.ROLE_UPDATED, {"role": name}, actor_id)
         logger.info("admin.role_updated", role=name)
         return Ok(updated)
 
     async def delete_role(
-        self, name: str
+        self, name: str, *, actor_id: str | None = None
     ) -> Result[None, RoleNotFoundError | SystemRoleError | AdminRoleError]:
-        """Delete a role; system roles are protected (see protocol docs)."""
+        """Delete a role; system roles are protected (see protocol docs).
+
+        Args:
+            actor_id: Optional acting admin user id for audit attribution.
+        """
         name = name.strip()
         role = await self._role_store.get_role(name)
         if role is None:
@@ -119,7 +135,7 @@ class AdminRoleService:
 
         await self._role_store.delete_role(name)
         self._unmirror(name)
-        await self._audit(AdminSecurityEventType.ROLE_DELETED, {"role": name})
+        await self._audit(AdminSecurityEventType.ROLE_DELETED, {"role": name}, actor_id)
         logger.info("admin.role_deleted", role=name)
         return Ok(None)
 
@@ -146,7 +162,12 @@ class AdminRoleService:
             return
         self._authorization_service.remove_role(name)
 
-    async def _audit(self, event_type: AdminSecurityEventType, metadata: dict) -> None:
+    async def _audit(
+        self,
+        event_type: AdminSecurityEventType,
+        metadata: dict,
+        actor_id: str | None = None,
+    ) -> None:
         """Fire an audit event when an audit service is bound."""
         if self._audit_service is None:
             return
@@ -155,6 +176,7 @@ class AdminRoleService:
             ip_address="",
             user_agent="",
             success=True,
+            admin_user_id=actor_id,
             metadata=metadata,
         )
 

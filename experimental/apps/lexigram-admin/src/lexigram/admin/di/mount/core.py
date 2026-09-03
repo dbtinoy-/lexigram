@@ -118,3 +118,14 @@ class AdminMountCoreMixin:
             except Exception as exc:  # noqa: BLE001 — fallback is best-effort
                 _log.warning("admin.settings_service_fallback_failed", reason=str(exc))
         ctx.settings_service = admin_settings_service
+
+        # Saved list views (R13, docs/09-01-2026/08-saved-views.md) reuse the
+        # settings storage — build the service alongside it so contributors
+        # can expose it on app state and controllers can be wired with it.
+        if admin_settings_service is not None:
+            try:
+                from lexigram.admin.services.saved_views import SavedViewService
+
+                ctx.saved_view_service = SavedViewService(admin_settings_service)
+            except Exception as exc:  # noqa: BLE001 — feature is best-effort
+                _log.warning("admin.saved_view_service_init_failed", reason=str(exc))

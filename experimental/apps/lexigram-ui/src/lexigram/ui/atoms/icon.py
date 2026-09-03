@@ -39,8 +39,12 @@ class Icon(Component):
         extra: dict[str, Any] = {}
         if self.aria_hidden:
             extra["aria_hidden"] = "true"
-        elif self.aria_label is not None:
-            extra["aria_label"] = self.aria_label
+        else:
+            if self.aria_label is not None:
+                extra["aria_label"] = self.aria_label
+            # Explicit opt-out: suppress get_icon's decorative default
+            # (el() drops None-valued attributes at render time).
+            extra["aria-hidden"] = None
 
         return get_icon(
             self.name,

@@ -160,6 +160,15 @@ def get_icon(
     if not isinstance(name, str):
         return name
 
+    # A11y default: icons are decorative unless the caller gives them an
+    # accessible identity. Hide them from the accessibility tree and keep
+    # them out of the (IE/legacy SVG) tab order.
+    if not any(
+        k in attrs for k in ("aria_label", "aria-label", "role", "aria_hidden")
+    ) and "aria-hidden" not in attrs:
+        attrs["aria-hidden"] = "true"
+        attrs["focusable"] = "false"
+
     content = ICONS.get(name)
     if content:
         # Check if content looks like a single path d string (old style compat) containing no tags

@@ -81,6 +81,13 @@ _PAGE_HEADER_RE = re.compile(
 )
 
 
+def _settings_back_url(request: StarletteRequest, settings_url: str | None) -> str | None:
+    """Return a contextual settings link unless the sidebar is still visible."""
+    if not settings_url or request.headers.get("HX-Target") == "settings-content":
+        return None
+    return settings_url
+
+
 class AdminPageHandler:
     """ASGI adapter that resolves a management page handler from the DI
     container at request time and delegates to its ``handle()`` method.
@@ -98,9 +105,12 @@ class AdminPageHandler:
         self,
         page_cls: type,
         container: ContainerResolverProtocol,
+        *,
+        settings_url: str | None = None,
     ) -> None:
         self._page_cls = page_cls
         self._container = container
+        self._settings_url = settings_url
 
     async def __call__(self, scope: Any, receive: Any, send: Any) -> None:
         request = StarletteRequest(scope, receive, send)
@@ -114,7 +124,10 @@ class AdminPageHandler:
                 from lexigram.contracts.admin.page_content import PageContent
 
                 if isinstance(response, PageContent):
-                    response = render_page_content(response)
+                    response = render_page_content(
+                        response,
+                        back_url=_settings_back_url(request, self._settings_url),
+                    )
                 else:
                     logger.error(
                         "admin_page_contract_violation",
@@ -134,212 +147,16 @@ class AdminPageHandler:
         except KeyError:
             is_htmx = False
         if isinstance(response, HTMLResponse):
-            response = await self._apply_cluster_header(request, response)
+            response = await apply_cluster_header(request, response)
         if not is_htmx and isinstance(response, HTMLResponse):
-            response = await self._wrap_in_shell(request, response)
+            response = await wrap_page_in_shell(
+                request,
+                response,
+                title=self._page_cls.__name__.removesuffix("Page"),
+                container=self._container,
+            )
 
         await response(scope, receive, send)
-
-    async def _apply_cluster_header(
-        self,
-        request: StarletteRequest,
-        response: HTMLResponse,
-    ) -> HTMLResponse:
-        """Drop the page's own inline title/description block.
-
-        Cluster pages receive a single top-level header rendered above
-        the whole center layout (see ``_cluster_header_html``), so the
-        page's inline header is removed. Only applies to pages living
-        inside a cluster center (e.g. ``/admin/infrastructure/...``).
-        """
-        state = getattr(request, "app", None)
-        groups = (
-            getattr(state.state, "assembler_groups", None)
-            if state and hasattr(state, "state")
-            else None
-        )
-        from lexigram.admin.resources.urls import admin_prefix_from_request
-
-        if not is_cluster_path(
-            request.url.path,
-            cluster_items(groups),
-            admin_prefix=admin_prefix_from_request(request),
-        ):
-            return response
-
-        content = (
-            response.body.decode()
-            if isinstance(response.body, bytes)
-            else str(response.body)
-        )
-        return HTMLResponse(_PAGE_HEADER_RE.sub("", content, count=1))
-
-    async def _wrap_in_shell(
-        self,
-        request: StarletteRequest,
-        response: HTMLResponse,
-    ) -> HTMLResponse:
-        from pathlib import Path
-
-        from starlette.templating import Jinja2Templates
-
-        from lexigram.admin.engine.renderer import resolve_admin_nav
-        from lexigram.admin.navigation.manager import NavigationManager
-        from lexigram.admin.ui.templates.shell import AdminShell
-        from lexigram.ui import raw, render_to_string
-
-        content = (
-            response.body.decode()
-            if isinstance(response.body, bytes)
-            else str(response.body)
-        )
-
-        title = self._page_cls.__name__.removesuffix("Page")
-
-        user = (
-            getattr(request.state, "user", None) if hasattr(request, "state") else None
-        )
-        nav_items, system_menu_items, secondary_nav = resolve_admin_nav(request)
-        state = getattr(request, "app", None)
-        groups = (
-            getattr(state.state, "assembler_groups", None)
-            if state and hasattr(state, "state")
-            else None
-        )
-        from lexigram.admin.resources.urls import admin_prefix_from_request, admin_url
-
-        admin_prefix = admin_prefix_from_request(request)
-        is_cluster = is_cluster_path(
-            request.url.path,
-            cluster_items(groups),
-            admin_prefix=admin_prefix,
-        )
-        active_cluster = NavigationManager(request).active_cluster()
-        cluster_label = getattr(active_cluster, "label", CLUSTER_LABEL)
-        cluster_url = admin_url(
-            admin_prefix,
-            getattr(active_cluster, "slug", None)
-            or CLUSTER_URL.rstrip("/").rsplit("/", 1)[-1],
-        )
-        if secondary_nav:
-            from lexigram.admin.ui.organisms.secondary_nav import ClusterLayout
-
-            content = render_to_string(
-                ClusterLayout(items=secondary_nav, content=raw(content))
-            )
-            if is_cluster:
-                content = _cluster_header_html() + content
-
-        breadcrumbs: list[dict[str, str]] | None = None
-        if secondary_nav and is_cluster:
-            breadcrumbs = [
-                {"label": "Home", "url": admin_url(admin_prefix, "")},
-                {"label": cluster_label, "url": cluster_url},
-            ]
-            path = request.url.path
-            for item in secondary_nav:
-                item_href = item.get("href", "")
-                if path == item_href:
-                    breadcrumbs.append({"label": item.get("label", ""), "url": ""})
-                    title = item.get("label", title)
-                    break
-                child = next(
-                    (c for c in item.get("children", []) if path == c.get("href", "")),
-                    None,
-                )
-                if child is not None:
-                    breadcrumbs.append(
-                        {"label": item.get("label", ""), "url": item_href}
-                    )
-                    breadcrumbs.append({"label": child.get("label", ""), "url": ""})
-                    title = child.get("label", title)
-                    break
-
-        theme_css = ""
-        try:
-            from lexigram.admin.theme.service import AdminThemeService
-
-            service = AdminThemeService(
-                primary_color=await _resolve_primary_color(self._container)
-            )
-            theme_css = service.generate_theme_css()
-        except Exception:  # noqa: BLE001, S110 — non-fatal
-            pass
-
-        from lexigram.admin.navigation.manager import NavigationManager
-
-        user_menu_items: list[dict[str, str | None]] = (
-            NavigationManager(request).user_menu_items() if request is not None else []
-        )
-
-        branding: dict[str, str] = {}
-        try:
-            from lexigram.admin.multitenancy.adapter import resolve_tenant_id
-            from lexigram.admin.services.settings_service import (
-                resolve_admin_settings_service,
-            )
-
-            container = (
-                getattr(request.state, "root_container", None)
-                or getattr(request.state, "container", None)
-                or getattr(request.app.state, "container", None)
-                or self._container
-            )
-            settings_service = await resolve_admin_settings_service(container)
-            if settings_service is not None:
-                tenant = await resolve_tenant_id(request, default="default")
-                overrides = await settings_service.get_all(tenant)
-                for field in ("primary_color", "site_name", "logo_url", "dark_mode"):
-                    value = overrides.get(field) or overrides.get(
-                        f"admin.branding.{field}"
-                    )
-                    if value:
-                        branding[field] = value
-                if branding.get("primary_color"):
-                    from lexigram.admin.theme.service import AdminThemeService
-
-                    theme_css = AdminThemeService(
-                        primary_color=branding["primary_color"]
-                    ).generate_theme_css()
-        except Exception:  # noqa: BLE001, S110 — non-fatal
-            pass
-
-        from lexigram.admin.resources.urls import admin_prefix_from_request
-
-        shell = AdminShell(
-            content=content,
-            title=title,
-            user=user,
-            nav_items=nav_items,
-            system_menu_items=system_menu_items,
-            user_menu_items=user_menu_items,
-            breadcrumbs=breadcrumbs,
-            theme_css=theme_css,
-            admin_prefix=(
-                admin_prefix_from_request(request) if request is not None else "/admin"
-            ),
-            **cast(
-                "Any",
-                {
-                    k: v
-                    for k, v in branding.items()
-                    if k in ("dark_mode", "site_name", "logo_url")
-                },
-            ),
-        )
-        shell_html = render_to_string(shell)
-
-        templates_dir = Path(__file__).resolve().parent.parent / "views" / "templates"
-        templates = Jinja2Templates(directory=str(templates_dir))
-        return templates.TemplateResponse(
-            request,
-            "admin_shell.html",
-            context={
-                "content": Markup(shell_html),  # noqa: S704 — framework-composed trusted HTML
-                "title": title,
-                "dark_mode": branding.get("dark_mode", ""),
-            },
-        )
 
     async def _resolve_page(self) -> Any:
         """Resolve page instance from container.
@@ -386,6 +203,221 @@ class AdminPageHandler:
         return self._page_cls(**kwargs)
 
 
+async def apply_cluster_header(
+    request: StarletteRequest,
+    response: HTMLResponse,
+) -> HTMLResponse:
+    """Drop the page's own inline title/description block.
+
+    Cluster pages receive a single top-level header rendered above
+    the whole center layout (see ``_cluster_header_html``), so the
+    page's inline header is removed. Only applies to pages living
+    inside a cluster center (e.g. ``/admin/infrastructure/...``).
+    """
+    state = getattr(request, "app", None)
+    groups = (
+        getattr(state.state, "assembler_groups", None)
+        if state and hasattr(state, "state")
+        else None
+    )
+    from lexigram.admin.resources.urls import admin_prefix_from_request
+
+    if not is_cluster_path(
+        request.url.path,
+        cluster_items(groups),
+        admin_prefix=admin_prefix_from_request(request),
+    ):
+        return response
+
+    content = (
+        response.body.decode()
+        if isinstance(response.body, bytes)
+        else str(response.body)
+    )
+    return HTMLResponse(_PAGE_HEADER_RE.sub("", content, count=1))
+
+
+async def wrap_page_in_shell(
+    request: StarletteRequest,
+    response: HTMLResponse,
+    *,
+    title: str,
+    container: Any = None,
+) -> HTMLResponse:
+    """Wrap a page-body response in the full admin shell.
+
+    Shared by ``AdminPageHandler`` (class handlers; title from the page
+    class name) and ``StructuredPageHandler`` (instance handlers; title
+    from ``PageContent.title``). ``container`` is optional — every use
+    sits inside best-effort blocks with request-state fallbacks, so
+    ``None`` degrades to theme/branding defaults.
+    """
+    from pathlib import Path
+
+    from starlette.templating import Jinja2Templates
+
+    from lexigram.admin.engine.renderer import resolve_admin_nav
+    from lexigram.admin.navigation.manager import NavigationManager
+    from lexigram.admin.ui.templates.shell import AdminShell
+    from lexigram.ui import raw, render_to_string
+
+    content = (
+        response.body.decode()
+        if isinstance(response.body, bytes)
+        else str(response.body)
+    )
+
+    user = (
+        getattr(request.state, "user", None) if hasattr(request, "state") else None
+    )
+    nav_items, system_menu_items, secondary_nav = resolve_admin_nav(request)
+    state = getattr(request, "app", None)
+    groups = (
+        getattr(state.state, "assembler_groups", None)
+        if state and hasattr(state, "state")
+        else None
+    )
+    from lexigram.admin.resources.urls import admin_prefix_from_request, admin_url
+
+    admin_prefix = admin_prefix_from_request(request)
+    is_cluster = is_cluster_path(
+        request.url.path,
+        cluster_items(groups),
+        admin_prefix=admin_prefix,
+    )
+    active_cluster = NavigationManager(request).active_cluster()
+    cluster_label = getattr(active_cluster, "label", CLUSTER_LABEL)
+    cluster_url = admin_url(
+        admin_prefix,
+        getattr(active_cluster, "slug", None)
+        or CLUSTER_URL.rstrip("/").rsplit("/", 1)[-1],
+    )
+    if secondary_nav:
+        from lexigram.admin.ui.organisms.secondary_nav import ClusterLayout
+
+        content = render_to_string(
+            ClusterLayout(items=secondary_nav, content=raw(content))
+        )
+        if is_cluster:
+            content = _cluster_header_html() + content
+
+    breadcrumbs: list[dict[str, str]] | None = None
+    if secondary_nav and is_cluster:
+        breadcrumbs = [
+            {"label": "Home", "url": admin_url(admin_prefix, "")},
+            {"label": cluster_label, "url": cluster_url},
+        ]
+        path = request.url.path
+        for item in secondary_nav:
+            item_href = item.get("href", "")
+            if path == item_href:
+                breadcrumbs.append({"label": item.get("label", ""), "url": ""})
+                title = item.get("label", title)
+                break
+            child = next(
+                (c for c in item.get("children", []) if path == c.get("href", "")),
+                None,
+            )
+            if child is not None:
+                breadcrumbs.append(
+                    {"label": item.get("label", ""), "url": item_href}
+                )
+                breadcrumbs.append({"label": child.get("label", ""), "url": ""})
+                title = child.get("label", title)
+                break
+
+    theme_css = ""
+    try:
+        if container is not None:
+            from lexigram.admin.theme.service import AdminThemeService
+
+            service = AdminThemeService(
+                primary_color=await _resolve_primary_color(container)
+            )
+            theme_css = service.generate_theme_css()
+    except Exception:  # noqa: BLE001, S110 — non-fatal
+        pass
+
+    from lexigram.admin.navigation.manager import NavigationManager
+
+    user_menu_items: list[dict[str, str | None]] = (
+        NavigationManager(request).user_menu_items() if request is not None else []
+    )
+
+    branding: dict[str, str] = {}
+    try:
+        from lexigram.admin.multitenancy.adapter import resolve_tenant_id
+        from lexigram.admin.services.settings_service import (
+            resolve_admin_settings_service,
+        )
+
+        container = (
+            getattr(request.state, "root_container", None)
+            or getattr(request.state, "container", None)
+            or getattr(request.app.state, "container", None)
+            or container
+        )
+        settings_service = (
+            await resolve_admin_settings_service(container)
+            if container is not None
+            else None
+        )
+        if settings_service is not None:
+            tenant = await resolve_tenant_id(request, default="default")
+            overrides = await settings_service.get_all(tenant)
+            for field in ("primary_color", "site_name", "logo_url", "dark_mode"):
+                value = overrides.get(field) or overrides.get(
+                    f"admin.branding.{field}"
+                )
+                if value:
+                    branding[field] = value
+            if branding.get("primary_color"):
+                from lexigram.admin.theme.service import AdminThemeService
+
+                theme_css = AdminThemeService(
+                    primary_color=branding["primary_color"]
+                ).generate_theme_css()
+    except Exception:  # noqa: BLE001, S110 — non-fatal
+        pass
+
+    from lexigram.admin.resources.urls import admin_prefix_from_request
+
+    shell = AdminShell(
+        content=content,
+        title=title,
+        user=user,
+        nav_items=nav_items,
+        system_menu_items=system_menu_items,
+        user_menu_items=user_menu_items,
+        breadcrumbs=breadcrumbs,
+        theme_css=theme_css,
+        admin_prefix=(
+            admin_prefix_from_request(request) if request is not None else "/admin"
+        ),
+        **cast(
+            "Any",
+            {
+                k: v
+                for k, v in branding.items()
+                if k in ("dark_mode", "site_name", "logo_url")
+            },
+        ),
+    )
+    shell_html = render_to_string(shell)
+
+    templates_dir = Path(__file__).resolve().parent.parent / "views" / "templates"
+    templates = Jinja2Templates(directory=str(templates_dir))
+    return templates.TemplateResponse(
+        request,
+        "admin_shell.html",
+        context={
+            "content": Markup(shell_html),  # noqa: S704 — framework-composed trusted HTML
+            "title": title,
+            "dark_mode": branding.get("dark_mode", ""),
+        },
+    )
+
+
 def _resolve_handler(handler: Any) -> Any:
     """Resolve a string dotted-path handler to the actual callable."""
     if not isinstance(handler, str):
@@ -413,8 +445,16 @@ class StructuredPageHandler:
     violation: it is logged and replaced with an error page.
     """
 
-    def __init__(self, handler: Any) -> None:
+    def __init__(
+        self,
+        handler: Any,
+        container: Any = None,
+        *,
+        settings_url: str | None = None,
+    ) -> None:
         self._handler = handler
+        self._container = container
+        self._settings_url = settings_url
 
     async def __call__(self, scope: Any, receive: Any, send: Any) -> None:
         from lexigram.admin.dashboard.page_renderer import render_page_content
@@ -424,7 +464,10 @@ class StructuredPageHandler:
         callable_handler = handler.handle if hasattr(handler, "handle") else handler
         result = await callable_handler(request)
         if isinstance(result, PageContent):
-            response = render_page_content(result)
+            response = render_page_content(
+                result,
+                back_url=_settings_back_url(request, self._settings_url),
+            )
         else:
             logger.error(
                 "page_contract_violation",
@@ -442,6 +485,27 @@ class StructuredPageHandler:
                         ),
                         icon="alert-triangle",
                     ),
-                )
+                ),
+                back_url=_settings_back_url(request, self._settings_url),
+            )
+
+        # Same response ladder as AdminPageHandler: cluster pages get the
+        # shared header treatment, and full-page navigations get the admin
+        # shell — only HTMX fragment requests receive the bare fragment.
+        try:
+            is_htmx = wants_fragment(request)
+        except KeyError:
+            is_htmx = False
+        response = await apply_cluster_header(request, response)
+        if not is_htmx:
+            response = await wrap_page_in_shell(
+                request,
+                response,
+                title=(
+                    result.title
+                    if isinstance(result, PageContent) and result.title
+                    else "Admin"
+                ),
+                container=self._container,
             )
         await response(scope, receive, send)

@@ -19,6 +19,7 @@ class MountContext:
     middlewares: list[tuple[type, dict[str, Any]]] = field(default_factory=list)
     contributors: list[Any] = field(default_factory=list)
     settings_service: Any | None = None
+    saved_view_service: Any | None = None
     contributor_registry: Any | None = None
     cluster_registry: Any | None = None
     nav_builder: Any | None = None

@@ -44,6 +44,11 @@ def register_relation_routes(
         The list of Starlette routes for the relation manager.
     """
     prefix = f"/{resource_name}"
+    # B25: embed the manager's concrete relationship name in the paths.
+    # A `{rel_name}` wildcard made every relation manager mount at the
+    # SAME path — the first one served requests for every relation and
+    # the rest were unreachable.
+    rel = manager_class.get_relationship_name()
 
     async def _handle_list(request: Request) -> HTMLResponse:
         parent_id = request.path_params.get("parent_id", "")
@@ -89,7 +94,19 @@ def register_relation_routes(
         check = await _check(mgr.can_create, request, audit_service)
         if check:
             return check
-        await mgr.get_query()
+        # B32: this handler used to ignore the submitted form entirely and
+        # re-render the panel — a 200 that silently discarded the input.
+        if not getattr(mgr, "inline_create", True):
+            return HTMLResponse(
+                "Inline create is disabled for this relation", status_code=403
+            )
+        data = await _read_form_data(request)
+        if not data:
+            return HTMLResponse("No form data submitted", status_code=400)
+        try:
+            await mgr.create_record(data)
+        except NotImplementedError as exc:
+            return HTMLResponse(str(exc), status_code=501)
         html = await mgr.render(request, resource_name)
         return HTMLResponse(html)
 
@@ -133,6 +150,18 @@ def register_relation_routes(
         check = await _check(mgr.can_edit, request, audit_service, record)
         if check:
             return check
+        # B32: previously ignored the submitted form and re-rendered.
+        if not getattr(mgr, "inline_edit", True):
+            return HTMLResponse(
+                "Inline edit is disabled for this relation", status_code=403
+            )
+        data = await _read_form_data(request)
+        if not data:
+            return HTMLResponse("No form data submitted", status_code=400)
+        try:
+            await mgr.update_record(record_id, data)
+        except NotImplementedError as exc:
+            return HTMLResponse(str(exc), status_code=501)
         html = await mgr.render(request, resource_name)
         return HTMLResponse(html)
 
@@ -152,40 +181,113 @@ def register_relation_routes(
         check = await _check(mgr.can_delete, request, audit_service, record)
         if check:
             return check
+        # B32: previously returned an empty 200 without deleting anything.
+        if not getattr(mgr, "inline_delete", True):
+            return HTMLResponse(
+                "Inline delete is disabled for this relation", status_code=403
+            )
+        try:
+            await mgr.delete_record(record_id)
+        except NotImplementedError as exc:
+            return HTMLResponse(str(exc), status_code=501)
         return HTMLResponse("")
 
-    return [
+    async def _run_pivot_handler(
+        request: Request,
+        handler_name: str,
+    ) -> HTMLResponse:
+        """Shared gate + dispatch for the pivot POST handlers (B27)."""
+        from lexigram.admin.relations.errors import RelationPersistenceError
+
+        parent_id = request.path_params.get("parent_id", "")
+        denied = await _require_user(request, audit_service)
+        if denied:
+            return denied
+        mgr = _create_manager(manager_class, parent_id)
+        parent, denied = await _require_parent(mgr, parent_data_source)
+        if denied:
+            return denied
+        if parent is not None:
+            check = await _check(mgr.can_view_parent, request, audit_service, parent)
+            if check:
+                return check
+        try:
+            return await getattr(mgr, handler_name)(request, resource_name)
+        except RelationPersistenceError as exc:
+            return HTMLResponse(str(exc), status_code=400)
+
+    async def _handle_toggle(request: Request) -> HTMLResponse:
+        return await _run_pivot_handler(request, "handle_toggle")
+
+    async def _handle_sync(request: Request) -> HTMLResponse:
+        return await _run_pivot_handler(request, "handle_sync")
+
+    async def _handle_pivot_update(request: Request) -> HTMLResponse:
+        return await _run_pivot_handler(request, "handle_pivot_update")
+
+    routes = [
         Route(
-            path=f"{prefix}/{{parent_id}}/relations/{{rel_name}}",
+            path=f"{prefix}/{{parent_id}}/relations/{rel}",
             endpoint=_handle_list,
             methods=["GET"],
         ),
         Route(
-            path=f"{prefix}/{{parent_id}}/relations/{{rel_name}}/new",
+            path=f"{prefix}/{{parent_id}}/relations/{rel}/new",
             endpoint=_handle_create_form,
             methods=["GET"],
         ),
         Route(
-            path=f"{prefix}/{{parent_id}}/relations/{{rel_name}}",
+            path=f"{prefix}/{{parent_id}}/relations/{rel}",
             endpoint=_handle_create,
             methods=["POST"],
         ),
         Route(
-            path=f"{prefix}/{{parent_id}}/relations/{{rel_name}}/{{record_id}}/edit",
+            path=f"{prefix}/{{parent_id}}/relations/{rel}/{{record_id}}/edit",
             endpoint=_handle_edit_form,
             methods=["GET"],
         ),
         Route(
-            path=f"{prefix}/{{parent_id}}/relations/{{rel_name}}/{{record_id}}",
+            path=f"{prefix}/{{parent_id}}/relations/{rel}/{{record_id}}",
             endpoint=_handle_update,
             methods=["PUT"],
         ),
         Route(
-            path=f"{prefix}/{{parent_id}}/relations/{{rel_name}}/{{record_id}}",
+            path=f"{prefix}/{{parent_id}}/relations/{rel}/{{record_id}}",
             endpoint=_handle_delete,
             methods=["DELETE"],
         ),
     ]
+
+    # B27: mount the pivot surface (attach/detach toggle, bulk sync,
+    # inline pivot edits) for managers that provide it. These handlers
+    # previously existed only inside get_pivot_routes(), which nothing
+    # mounted — the rendered checkboxes/Save button/pivot inputs all
+    # posted into 404s.
+    if all(
+        hasattr(manager_class, name)
+        for name in ("handle_toggle", "handle_sync", "handle_pivot_update")
+    ):
+        routes.extend(
+            [
+                Route(
+                    path=f"{prefix}/{{parent_id}}/relations/{rel}/toggle",
+                    endpoint=_handle_toggle,
+                    methods=["POST"],
+                ),
+                Route(
+                    path=f"{prefix}/{{parent_id}}/relations/{rel}/sync",
+                    endpoint=_handle_sync,
+                    methods=["POST"],
+                ),
+                Route(
+                    path=f"{prefix}/{{parent_id}}/relations/{rel}/pivot/{{related_id}}",
+                    endpoint=_handle_pivot_update,
+                    methods=["POST"],
+                ),
+            ]
+        )
+
+    return routes
 
 
 def _create_manager(
@@ -194,10 +296,38 @@ def _create_manager(
     return manager_class(parent_id=parent_id)
 
 
+async def _read_form_data(request: Any) -> dict[str, Any]:
+    """Read submitted form data for inline mutations (B32).
+
+    Prefers the CSRF-middleware-parsed ``admin_form_data`` (a bare
+    ``await request.form()`` hangs under the admin middleware chain),
+    strips the ``csrf_token`` field, and tolerates request stubs without
+    a scope or form.
+
+    Args:
+        request: The incoming request (or a test stub).
+
+    Returns:
+        Submitted fields minus ``csrf_token``; empty when nothing was
+        submitted.
+    """
+    scope = getattr(request, "scope", None)
+    form: Any = scope.get("admin_form_data") if isinstance(scope, dict) else None
+    if form is None:
+        form_getter = getattr(request, "form", None)
+        if callable(form_getter):
+            form = await form_getter()
+    if form is None:
+        return {}
+    return {key: value for key, value in dict(form).items() if key != "csrf_token"}
+
+
 async def _get_record(mgr: RelationManager, record_id: str) -> Any:
     items = await mgr.get_query()
     for item in items:
-        if str(getattr(item, "id", "")) == record_id:
+        # B26: dict-aware — SQL data sources return dict rows.
+        rid = mgr._row_id(item)
+        if rid is not None and str(rid) == record_id:
             return item
     return None
 

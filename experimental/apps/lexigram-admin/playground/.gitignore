@@ -1,0 +1,3 @@
+# Local SQLite files only — serve.py and this file are committed dev assets.
+playground.db
+playground.db-*

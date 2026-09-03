@@ -9,6 +9,9 @@ from typing import TYPE_CHECKING, Any, cast
 
 from lexigram.contracts import Result
 from lexigram.contracts.admin.contributor import BaseAdminContributor
+from lexigram.contracts.admin.contributor_boot import (
+    summarize_contributor_boot_failure,
+)
 from lexigram.contracts.admin.errors import AdminError, WidgetNotFoundError
 from lexigram.contracts.admin.types import (
     AdminActionDefinition,
@@ -160,6 +163,7 @@ class AuthAdminContributor(BaseAdminContributor):
             TokenRefreshRateWidgetHandler,
         )
 
+        self._handlers = {}
         try:
             self._handlers = {
                 "active_sessions": await container.resolve(ActiveSessionsWidgetHandler),
@@ -169,7 +173,22 @@ class AuthAdminContributor(BaseAdminContributor):
                 "failed_logins": await container.resolve(FailedLoginsWidgetHandler),
             }
         except Exception as exc:  # noqa: BLE001
-            logger.warning("auth_contributor.handlers_unavailable", error=str(exc))
+            failure = summarize_contributor_boot_failure(exc)
+            if failure.expected:
+                logger.info(
+                    "admin.contributor_disabled",
+                    contributor=self.name,
+                    feature="widget handlers",
+                    reason=failure.reason,
+                    missing=failure.summary,
+                )
+            else:
+                logger.warning(
+                    "auth_contributor.handlers_unavailable",
+                    error=failure.summary,
+                    error_type=type(exc).__name__,
+                    exc_info=True,
+                )
 
     def get_dashboard_widgets(self) -> Sequence[DashboardWidgetDefinition]:
         """Return the dashboard widget definitions for this contributor."""

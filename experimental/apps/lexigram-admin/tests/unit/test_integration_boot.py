@@ -59,13 +59,13 @@ class TestAdminProviderBootLifecycle:
 
     @pytest.mark.asyncio
     async def test_provider_has_eight_sub_providers(self, provider):
-        """AdminProvider should wire all 8 sub-providers during register()."""
+        """AdminProvider should wire all 10 sub-providers during register()."""
         assert hasattr(provider, "_sub_providers")
         # Sub-providers are empty until register() is called
         assert len(provider._sub_providers) == 0
         container = FakeRegistrar()
         await provider.register(container)
-        assert len(provider._sub_providers) == 9
+        assert len(provider._sub_providers) == 10
 
     @pytest.mark.asyncio
     async def test_register_all_sub_providers(self, provider):
@@ -93,7 +93,7 @@ class TestAdminProviderBootLifecycle:
         result = await provider.health_check()
         assert result.component == "admin"
         assert result.details is not None
-        assert len(result.details) == 9
+        assert len(result.details) == 10
 
     @pytest.mark.asyncio
     async def test_shutdown_proceeds_without_error(self, provider):

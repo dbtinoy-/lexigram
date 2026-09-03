@@ -50,9 +50,17 @@ class TestSpecs:
 
     def test_security_spec_nodes(self) -> None:
         nodes = SecuritySpec.get_nodes()
-        assert set(nodes) == {"csp", "hsts_max_age"}
+        assert set(nodes) == {
+            "csp",
+            "hsts_max_age",
+            "frame_options",
+            "csp_report_only",
+        }
         assert isinstance(nodes["hsts_max_age"], IntNode)
         assert "default-src" in nodes["csp"].default
+        assert nodes["frame_options"].default == "DENY"
+        # R36: empty default keeps the R34 strict candidate monitored.
+        assert nodes["csp_report_only"].default == ""
 
     def test_newly_bound_specs_have_real_nodes(self) -> None:
         from lexigram.admin.settings.panel import (
@@ -114,6 +122,7 @@ class TestSpecs:
             "admin.security",
             "admin.features",
             "admin.i18n",
+            "admin.notifications",
             "admin.profiler",
             "admin.rate_limit",
             "admin.rbac",

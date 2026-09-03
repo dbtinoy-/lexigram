@@ -260,6 +260,28 @@ class AdminEmailVerificationService:
             )
         return Ok(True)
 
+    async def mark_verified(self, user_id: str) -> None:
+        """Mark a user's email verified without sending a verification link.
+
+        Used when email ownership is proven out-of-band — the setup wizard's
+        first admin presented the deployment setup token, so gating that
+        account on an emailed link (possibly with no mailer configured yet)
+        would lock the operator out of a fresh install.
+
+        Args:
+            user_id: Admin user UUID.
+        """
+        await self._store.mark_verified(user_id)
+        if self._audit_service is not None:
+            await self._audit_service.log_event(
+                event_type=AdminSecurityEventType.EMAIL_VERIFIED,
+                ip_address="",
+                user_agent="",
+                success=True,
+                admin_user_id=user_id,
+                metadata={"reason": "out_of_band_setup"},
+            )
+
     async def resend_verification(
         self,
         user_id: str,

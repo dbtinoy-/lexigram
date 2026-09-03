@@ -7,5 +7,6 @@ def test_section_collapsible_uses_alpine_js():
     html = render_to_string(s)
 
     # Collapse button should use Alpine.js x-on:click attribute
-    assert "x-on-click" in html or "x_on_click" in html
+    # B13: canonical Alpine syntax — `x-on-click` was a dead attribute.
+    assert 'x-on:click="collapsed = !collapsed"' in html
     assert "collapsed = !collapsed" in html

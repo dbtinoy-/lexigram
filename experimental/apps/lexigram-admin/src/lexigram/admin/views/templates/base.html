@@ -103,6 +103,7 @@
 
     <!-- Scripts -->
     <script src="{{ static_prefix | default('/admin') }}/static/js/htmx.min.js"></script>
+    <script src="{{ static_prefix | default('/admin') }}/static/js/lucide.min.js"></script>
     <script src="{{ static_prefix | default('/admin') }}/static/js/alpine-focus.min.js" defer></script>
     <script src="{{ static_prefix | default('/admin') }}/static/js/alpine.min.js" defer></script>
     <script defer>var origToggle=Element.prototype._x_toggleAndCascadeWithTransitions;origToggle&&(Element.prototype._x_toggleAndCascadeWithTransitions=function(e,t,r,n){var o=origToggle.call(this,e,t,r,n);if(!t&&this._x_hidePromise)this._x_hidePromise.catch(function(a){});return o})</script>
@@ -144,6 +145,11 @@
 
         document.addEventListener("htmx:afterSwap", function () {
             document.body.classList.remove('overflow-hidden');
+            if (window.lucide) lucide.createIcons();
+        });
+
+        document.addEventListener("DOMContentLoaded", function () {
+            if (window.lucide) lucide.createIcons();
         });
 
         window.addEventListener("beforeunload", function () {

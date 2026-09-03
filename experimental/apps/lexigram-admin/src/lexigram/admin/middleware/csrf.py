@@ -20,6 +20,9 @@ _CSRF_BYPASS_PATHS: frozenset[str] = frozenset(
         "/login",
         "/setup",
         "/health",
+        # Browsers POST CSP violation reports without CSRF tokens; the
+        # handler only appends to a capped in-memory buffer (doc 30).
+        "/security/csp-report",
     }
 )
 

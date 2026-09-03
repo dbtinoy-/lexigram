@@ -286,10 +286,17 @@ class SetupController(AdminController):
         except Exception as exc:
             # Treat any persistence failure (duplicate email, DB error, etc.)
             # as a non-fatal setup error that is shown back to the user.
+            # Full detail goes to the log; the page gets a humanized message
+            # (no [LEX_ERR_*] codes or docs links).
+            from lexigram.admin.controllers._errors import humanize_error
+
             logger.error("setup.create_user_failed", email=email, error=str(exc))
             html = self._render_setup_page(
                 request,
-                error=f"Failed to create account: {exc}",
+                error=(
+                    "Failed to create account: "
+                    + humanize_error(str(exc), fallback="an internal error occurred.")
+                ),
                 csrf_token=self._fresh_csrf(request),
                 setup_token_required=bool(required_token),
             )
@@ -323,30 +330,52 @@ class SetupController(AdminController):
             and user_id
             and await self._email_verification_service.is_required(user_id)
         ):
-            send_result = await self._email_verification_service.send_verification(
-                user_id=user_id,
-                email=email,
-                user_name=name,
-                base_url=str(request.base_url),
-                ip_address=ip,
-                admin_prefix=admin_prefix_from_request(request),
+            # The operator just proved control of this deployment with the
+            # setup token — that is a stronger ownership proof than an
+            # emailed link. Mark the first admin verified directly instead
+            # of gating the only account on email delivery (a fresh install
+            # frequently has no mailer configured yet, which would lock the
+            # operator out entirely).
+            mark_verified = getattr(
+                self._email_verification_service, "mark_verified", None
             )
-            if send_result.is_ok():
-                notice = (
-                    f"Account created successfully — a verification email was "
-                    f"sent to {email}. Please verify your email before signing in."
-                )
+            if callable(mark_verified):
+                try:
+                    await mark_verified(user_id)
+                    logger.info("setup.first_admin_email_auto_verified", email=email)
+                except Exception as exc:  # noqa: BLE001 — never fail setup on this
+                    logger.error(
+                        "setup.first_admin_auto_verify_failed",
+                        email=email,
+                        error=str(exc),
+                    )
             else:
-                logger.error(
-                    "setup.verification_send_failed",
+                # Custom verification service without mark_verified — fall
+                # back to the legacy email flow.
+                send_result = await self._email_verification_service.send_verification(
+                    user_id=user_id,
                     email=email,
-                    error=str(send_result.unwrap_err()),
+                    user_name=name,
+                    base_url=str(request.base_url),
+                    ip_address=ip,
+                    admin_prefix=admin_prefix_from_request(request),
                 )
-                notice = (
-                    "Account created successfully — email verification is "
-                    "enabled, and you will be asked to verify your email "
-                    "before signing in."
-                )
+                if send_result.is_ok():
+                    notice = (
+                        f"Account created successfully — a verification email was "
+                        f"sent to {email}. Please verify your email before signing in."
+                    )
+                else:
+                    logger.error(
+                        "setup.verification_send_failed",
+                        email=email,
+                        error=str(send_result.unwrap_err()),
+                    )
+                    notice = (
+                        "Account created successfully — email verification is "
+                        "enabled, and you will be asked to verify your email "
+                        "before signing in."
+                    )
 
         admin_home = self._admin_path(request)
         url = f"{self._admin_path(request, '/admin/login')}?next={admin_home}"

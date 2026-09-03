@@ -69,11 +69,11 @@ class TestAdminProvider:
 
     @pytest.mark.asyncio
     async def test_bundle_provider_has_eight_sub_providers(self) -> None:
-        """Test that all 8 required sub-providers are wired during register()."""
+        """Test that all 10 required sub-providers are wired during register()."""
         provider = AdminProvider()
         container = FakeRegistrar()
         await provider.register(container)
-        assert len(provider._sub_providers) == 9
+        assert len(provider._sub_providers) == 10
 
     def test_from_config(self) -> None:
         config = AdminConfig(title="From Config")
@@ -199,6 +199,55 @@ class TestAdminProvider:
         middleware_stack = captured.get("middleware_stack")
         assert isinstance(middleware_stack, list)
         assert len(middleware_stack) >= 2
+
+    @pytest.mark.asyncio
+    async def test_mount_to_app_wires_security_headers_outermost(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """SecurityHeadersMiddleware must sit at index 0 (outermost)."""
+        from lexigram.admin.middleware.security_headers import (
+            SecurityHeadersMiddleware,
+        )
+
+        class _Resolver:
+            async def resolve(
+                self,
+                token: object,
+                *,
+                bypass_visibility: bool = False,
+            ) -> object:
+                return SimpleNamespace()
+
+        captured: dict[str, object] = {}
+
+        class _FakeRouter:
+            def __init__(self, **kwargs: object) -> None:
+                captured.update(kwargs)
+
+            def mount(self, app: object) -> object:
+                return app
+
+        provider = AdminProvider(
+            config=AdminConfig.from_dict(
+                {"auth": {"security": {"setup_token": "test-setup-token"}}}
+            )
+        )
+        await provider.register(FakeRegistrar())
+        await provider.boot(_Resolver())
+        app = SimpleNamespace(state=SimpleNamespace())
+        monkeypatch.setattr(
+            "lexigram.admin.core.routing.AdminRouter",
+            _FakeRouter,
+        )
+
+        await provider.mount_to_app(app, _Resolver())
+
+        middleware_stack = captured.get("middleware_stack")
+        assert isinstance(middleware_stack, list)
+        assert middleware_stack[0][0] is SecurityHeadersMiddleware
+        # The settings store is passed through (may be None without a DB).
+        assert "settings_store" in middleware_stack[0][1]
 
     @pytest.mark.asyncio
     async def test_mount_to_app_does_not_require_nav_builder_from_web_scope(
