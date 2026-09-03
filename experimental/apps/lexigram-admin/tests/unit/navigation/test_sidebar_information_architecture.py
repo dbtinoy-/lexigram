@@ -9,6 +9,7 @@ from lexigram.admin.clusters import Cluster, ClusterRegistry
 from lexigram.admin.config import AdminConfig
 from lexigram.admin.navigation.manager import NavigationManager
 from lexigram.admin.navigation.nav_item_builder import NavItemBuilder
+from lexigram.admin.ui.templates.shell_sections import prepare_navigation
 
 
 def _request(
@@ -74,6 +75,25 @@ def test_registered_centers_are_primary_operations_destinations() -> None:
     assert [item["label"] for item in system] == ["Settings"]
     assert system[0]["render"] == "block"
     assert secondary == []
+
+
+def test_generated_destinations_do_not_trigger_resource_permission_inference() -> None:
+    user = SimpleNamespace(permissions={"orders.view"}, is_superuser=False)
+
+    items = prepare_navigation(
+        [
+            {
+                "label": "Infrastructure",
+                "href": "/admin/infrastructure",
+                "skip_permission_inference": True,
+            }
+        ],
+        features={},
+        user=user,
+    )
+
+    assert len(items) == 1
+    assert items[0].href == "/admin/infrastructure"
 
 
 def test_primary_navigation_uses_custom_prefix_for_generated_destinations() -> None:

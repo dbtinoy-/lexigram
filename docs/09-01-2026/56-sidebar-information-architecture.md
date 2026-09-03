@@ -98,6 +98,9 @@ links are not duplicated there in the rendered shell.
 - Keep user normalization tolerant of dict-shaped users, AdminUser records,
   and protocol-compatible objects. No authentication or authorization logic
   moves into the UI component.
+- Keep generated cluster/tool/administration entries under the manager's
+  existing authorization boundary rather than accidentally treating their
+  landing paths as resource permissions.
 - Keep SystemBox permission filtering and add active-state styling for direct
   utility links.
 - Rename the default resource group from Default to Workspace at the
@@ -123,6 +126,7 @@ links are not duplicated there in the rendered shell.
 | `admin/ui/organisms/topbar.py` | Render the authenticated UserBox in the topbar. |
 | `lexigram-ui/ui/organisms/userbox.py` | Add a reusable topbar variant without sidebar-state coupling. |
 | `admin/ui/organisms/systembox.py` | Active utility presentation and aria-current support. |
+| `admin/ui/templates/shell_sections.py` | Preserve explicit manager authorization for generated shell destinations while retaining resource permission inference. |
 | `admin/engine/renderer.py`, page wrappers | Request personal-only user menu for the rendered shell. |
 | `admin/static/css/admin.css` | Account, utility, section, and responsive polish. |
 | `admin/tests/unit/...` | Navigation placement, permissions, deduplication, user-menu compatibility, and rendered shell regressions. |

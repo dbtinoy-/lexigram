@@ -37,6 +37,18 @@ def _menu_entry(
     return MenuItem(label=label, href=href, icon=icon)
 
 
+def _primary_menu_entry(
+    label: str,
+    prefix: str,
+    suffix: str,
+    icon: str,
+) -> dict[str, Any]:
+    """Build a generated primary entry with explicit auth semantics."""
+    entry = _menu_entry(label, prefix, suffix, icon).to_dict()
+    entry["skip_permission_inference"] = True
+    return entry
+
+
 # Known shell groups get a stable visual order. Unknown consumer groups retain
 # their relative order after these sections, so contributors can extend the
 # sidebar without being silently reordered alphabetically.
@@ -250,6 +262,10 @@ class NavigationManager:
                         "label": cluster_label,
                         "href": f"{self._admin_prefix}/{cluster_slug}",
                         "icon": getattr(cluster, "icon", None) or "server",
+                        # Cluster centers and their global auth boundary are
+                        # managed by the registry/middleware, not inferred as
+                        # resource permissions from their landing URL.
+                        "skip_permission_inference": True,
                         "active": is_cluster_path(
                             current_path,
                             items,
@@ -379,12 +395,12 @@ class NavigationManager:
             merged,
             "Tools",
             [
-                _menu_entry(
+                _primary_menu_entry(
                     "Plugins",
                     self._admin_prefix,
                     "plugins",
                     "plugins",
-                ).to_dict(),
+                ),
             ],
         )
 
@@ -395,16 +411,18 @@ class NavigationManager:
                 merged,
                 "Administration",
                 [
-                    _menu_entry(
+                    _primary_menu_entry(
                         "Users", self._admin_prefix, "users", "users"
-                    ).to_dict(),
-                    _menu_entry(
+                    ),
+                    _primary_menu_entry(
                         "Roles", self._admin_prefix, "roles", "shield-check"
-                    ).to_dict(),
-                    _menu_entry(
+                    ),
+                    _primary_menu_entry(
                         "Security", self._admin_prefix, "security", "shield"
-                    ).to_dict(),
-                    _menu_entry("Email", self._admin_prefix, "email", "mail").to_dict(),
+                    ),
+                    _primary_menu_entry(
+                        "Email", self._admin_prefix, "email", "mail"
+                    ),
                 ],
             )
 

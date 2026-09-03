@@ -107,6 +107,7 @@ def prepare_navigation(
         inferred_permissions: list[str] = []
         if (
             not required_permission
+            and not item.get("skip_permission_inference")
             and href
             and href.startswith(admin_prefix.rstrip("/") + "/")
         ):
