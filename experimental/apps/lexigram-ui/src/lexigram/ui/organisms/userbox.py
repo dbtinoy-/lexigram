@@ -27,6 +27,11 @@ class UserBox(Component):
         collapse_var: str | None = "sidebarMini",
         **props: Any,
     ) -> None:
+        # A topbar control must be independent of the sidebar's Alpine state,
+        # even when callers only opt into ``variant="topbar"``.
+        if variant == "topbar":
+            collapse_var = None
+
         super().__init__(
             username=username,
             avatar_url=avatar_url,
