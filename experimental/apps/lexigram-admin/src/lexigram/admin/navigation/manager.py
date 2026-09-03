@@ -44,7 +44,7 @@ def _primary_menu_entry(
     icon: str,
 ) -> dict[str, Any]:
     """Build a generated primary entry with explicit auth semantics."""
-    entry = _menu_entry(label, prefix, suffix, icon).to_dict()
+    entry: dict[str, Any] = _menu_entry(label, prefix, suffix, icon).to_dict()
     entry["skip_permission_inference"] = True
     return entry
 
