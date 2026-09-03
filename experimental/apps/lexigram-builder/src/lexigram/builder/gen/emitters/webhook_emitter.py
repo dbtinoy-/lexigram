@@ -27,6 +27,7 @@ def emit_webhook_controllers(
     webhooks: list[WebhookConfig] | tuple[WebhookConfig, ...],
     *,
     package: str = "app",
+    controllers_dir: str | None = None,
     jobs_by_trigger: dict[str, list[str]] | None = None,
 ) -> dict[str, str]:
     """Return ``{path: content}`` for each webhook's controller wrapper.
@@ -34,6 +35,10 @@ def emit_webhook_controllers(
     Args:
         webhooks: Enabled webhook configs.
         package: Root import package for the generated app.
+        controllers_dir: Project-relative directory the wrappers land in,
+            from the layout. Defaults to the app package's ``controllers``,
+            which is where an unscoped controller lives -- the caller passes
+            the resolved directory when the webhook belongs to a module.
         jobs_by_trigger: Mapping of webhook name -> snake_case task names of
             the background jobs enqueued when the webhook fires.
 
@@ -41,11 +46,12 @@ def emit_webhook_controllers(
         Mapping of project-relative file paths to their source.
     """
     jobs_by_trigger = jobs_by_trigger or {}
+    directory = controllers_dir or f"src/{package}/controllers"
     files: dict[str, str] = {}
     for hook in sorted(webhooks, key=lambda w: w.name):
         stem = snake_case(hook.name)
         jobs = sorted(jobs_by_trigger.get(hook.name, []))
-        files[f"src/{package}/controllers/{stem}_webhook_controller.py"] = (
+        files[f"{directory}/{stem}_webhook_controller.py"] = (
             _webhook_controller(hook, stem, package, jobs)
         )
     return files

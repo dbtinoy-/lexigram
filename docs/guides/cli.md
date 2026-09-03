@@ -38,19 +38,18 @@ Global flags work on every subcommand:
 generator→path map as `lexigram gen`:
 
 ```bash
-lexigram new project my-app --structure structured   # default: component packages
-lexigram new project my-app --template api --structure minimal
-lexigram new project my-platform --template full --structure modular
+lexigram new project my-app                      # default template: web-api
+lexigram new project my-app --template api
+lexigram new project my-platform --template full
 ```
 
 | Flag | Default | Notes |
 | --- | --- | --- |
 | `--template`, `-t` | `web-api` | one of `minimal`, `api`, `web-api`, `graphql`, `worker`, `full`, `fullstack` |
-| `--structure`, `-s` | `structured` | `minimal` (single package), `structured` (generator-native), `modular` (bounded contexts) |
 | `--directory`, `-d` | `.` | parent directory for the new project |
 | `--interactive`, `-i` | `false` | prompts for the template |
 
-For modular projects, `lexigram new module <name>` creates a feature module
+`lexigram new module <name>` creates a feature module
 (`protocols.py`, `provider.py`, `services.py`) and registers it with the
 composition root; `lexigram gen controller users --module auth` writes
 module-local components (`auth/controllers/users_controller.py`) while

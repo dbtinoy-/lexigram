@@ -19,16 +19,20 @@ def _resolve_default_output(
     generator: str,
     module: str | None,
 ) -> str:
-    """Resolve a generator default against the project's declared structure."""
+    """Resolve a generator default against the project it is run in.
+
+    Falls back to sniffing ``src/`` when the project declares no
+    ``[tool.lexigram]`` metadata at all -- a directory the builder did not
+    create, where the app package has to be guessed rather than read.
+    """
     from lexigram.cli.layout import read_project_layout, resolve_output_dir
 
     layout = read_project_layout()
-    if not layout.structure_declared:
+    if not layout.declared:
         return _detect_src_dir(default)
     try:
         return resolve_output_dir(
             default,
-            structure=layout.structure,
             app_package=layout.app_package,
             module=module,
             generator=generator,
@@ -101,7 +105,7 @@ class CommandAssembler:
                 typer.Option(
                     "--module",
                     "-m",
-                    help="Feature module (modular structure only)",
+                    help="Bounded context this belongs to (omit for app-level code)",
                 ),
             ] = None,
             dry_run: Annotated[

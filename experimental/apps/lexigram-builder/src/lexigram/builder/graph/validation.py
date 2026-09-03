@@ -22,6 +22,7 @@ from lexigram.builder.graph.models import (
     GraphNode,
     JobConfig,
     MiddlewareConfig,
+    ModuleConfig,
     RateLimitConfig,
     RoleConfig,
     RouteConfig,
@@ -31,15 +32,18 @@ from lexigram.builder.graph.models import (
     ValidatorConfig,
     WebhookConfig,
 )
+from lexigram.builder.graph.modules import drop_muted, module_import_graph
 from lexigram.builder.graph.palette import (
     ALLOWED_EDGES,
     AUTH_PROVIDERS,
     DB_PRESETS,
     ENTITY_OPS,
     FIELD_TYPES,
+    KIND_MODULE,
     MIDDLEWARE_TYPES,
-    PROJECT_STRUCTURES,
+    MODULE_SCOPED_KINDS,
     RATE_LIMIT_STRATEGIES,
+    SHARED_KINDS,
     is_known_kind,
     is_snake_case_identifier,
     is_valid_port,
@@ -53,7 +57,18 @@ def validate(document: GraphDocument) -> Result[ValidatedGraph, GraphValidationE
 
     All rules run; diagnostics are aggregated (no fail-fast) so the canvas
     can badge every offending node in one pass.
+
+    **Muting is applied here, once.** A muted node is excluded from
+    generation, so it is excluded from validation too: the alternative --
+    validating what will not be built -- makes mute useless for its main
+    purpose, which is parking something half-drawn while the rest of the
+    app keeps generating. This is the single seam where the authored graph
+    becomes the live one; the writer, the preview and the module map all
+    read the result rather than each deciding for itself. The drawing is
+    not lost: it rides along as ``ValidatedGraph.authored``.
     """
+    authored = document
+    document = drop_muted(document)
     diagnostics: list[Diagnostic] = []
 
     by_id: dict[str, GraphNode] = {}
@@ -92,8 +107,11 @@ def validate(document: GraphDocument) -> Result[ValidatedGraph, GraphValidationE
             )
 
     entity_names: dict[str, str] = {}
+    #: Which module first claimed each entity name, so a cross-module clash
+    #: can say why the boundary does not protect it.
+    entity_modules: dict[str, str | None] = {}
     for node in document.nodes:
-        diagnostics.extend(_check_node(node, entity_names))
+        diagnostics.extend(_check_node(node, entity_names, entity_modules))
 
     node_ids = set(by_id)
     for edge in document.edges:
@@ -122,16 +140,39 @@ def validate(document: GraphDocument) -> Result[ValidatedGraph, GraphValidationE
             )
 
     connected_route_ids = {e.src for e in document.edges if e.src in node_ids}
+    # A route can also be orphaned *by muting*: it is wired on the canvas,
+    # to something that will not be generated. Saying "wire this to an
+    # entity" there is a diagnostic about a graph the user cannot see, so
+    # the muted cause is named instead. Muting does not cascade -- excluding
+    # nodes the user did not exclude is a worse surprise than an error that
+    # says exactly what to do.
+    muted_targets: dict[str, list[str]] = {}
+    muted_ids = {node.id for node in authored.nodes} - {
+        node.id for node in document.nodes
+    }
+    for edge in authored.edges:
+        if edge.dst in muted_ids and edge.src not in muted_ids:
+            muted_targets.setdefault(edge.src, []).append(edge.dst)
     for node in document.nodes:
         if node.kind == "route" and node.id not in connected_route_ids:
+            muted_deps = muted_targets.get(node.id)
+            message = (
+                "Route is wired to muted node(s) "
+                f"{', '.join(sorted(muted_deps))}, which are excluded from "
+                "generation -- mute this route too, or unmute them"
+                if muted_deps
+                else "Route nodes must be wired to an entity"
+            )
             diagnostics.append(
                 Diagnostic(
                     node_id=node.id,
                     severity=DiagnosticSeverity.ERROR,
                     code="orphan-route",
-                    message="Route nodes must be wired to an entity",
+                    message=message,
                 )
             )
+
+    diagnostics.extend(_check_modules(document, by_id))
 
     errors = [d for d in diagnostics if d.severity is DiagnosticSeverity.ERROR]
     if errors:
@@ -141,10 +182,20 @@ def validate(document: GraphDocument) -> Result[ValidatedGraph, GraphValidationE
                 diagnostics=tuple(diagnostics),
             )
         )
-    return Ok(ValidatedGraph(document=document))
+    return Ok(
+        ValidatedGraph(
+            document=document,
+            diagnostics=tuple(diagnostics),
+            authored=authored,
+        )
+    )
 
 
-def _check_node(node: GraphNode, entity_names: dict[str, str]) -> list[Diagnostic]:
+def _check_node(
+    node: GraphNode,
+    entity_names: dict[str, str],
+    entity_modules: dict[str, str | None] | None = None,
+) -> list[Diagnostic]:
     """Kind-dispatch a single node's config checks."""
     if not is_known_kind(node.kind):
         return [
@@ -158,7 +209,7 @@ def _check_node(node: GraphNode, entity_names: dict[str, str]) -> list[Diagnosti
     if isinstance(node.config, AppSettingsConfig):
         return _check_app_settings(node)
     if isinstance(node.config, EntityConfig):
-        return _check_entity(node, entity_names)
+        return _check_entity(node, entity_names, entity_modules)
     if isinstance(node.config, RouteConfig):
         return _check_route(node)
     if isinstance(node.config, MiddlewareConfig):
@@ -650,9 +701,15 @@ def _check_middleware(node: GraphNode) -> list[Diagnostic]:
     return out
 
 
-def _diag(node: GraphNode, code: str, message: str) -> Diagnostic:
+def _diag(
+    node: GraphNode, code: str, message: str, hint: str | None = None
+) -> Diagnostic:
     return Diagnostic(
-        node_id=node.id, severity=DiagnosticSeverity.ERROR, code=code, message=message
+        node_id=node.id,
+        severity=DiagnosticSeverity.ERROR,
+        code=code,
+        message=message,
+        hint=hint,
     )
 
 
@@ -693,14 +750,6 @@ def _check_app_settings(node: GraphNode) -> list[Diagnostic]:
         out.append(
             _diag(node, "port-out-of-range", f"port {config.port} outside 1024-65535")
         )
-    if config.structure not in PROJECT_STRUCTURES:
-        out.append(
-            _diag(
-                node,
-                "unknown-structure",
-                f"structure must be one of {sorted(PROJECT_STRUCTURES)}",
-            )
-        )
     if config.db not in DB_PRESETS:
         out.append(
             _diag(
@@ -709,24 +758,74 @@ def _check_app_settings(node: GraphNode) -> list[Diagnostic]:
                 f"db must be one of {sorted(DB_PRESETS)}",
             )
         )
+    out.extend(_check_profiles(node, config))
     return out
 
 
-def _check_entity(node: GraphNode, entity_names: dict[str, str]) -> list[Diagnostic]:
+#: A profile name becomes part of a filename (``application.<p>.yaml``) and
+#: the value of ``LEX_PROFILE``. Restricting it to this shape is what stops
+#: a canvas field from being a path: ``../../etc/passwd`` or ``a/b`` would
+#: otherwise decide where the writer puts a file.
+_PROFILE_RE = re.compile(r"^[a-z][a-z0-9_]*$")
+
+
+def _check_profiles(node: GraphNode, config: AppSettingsConfig) -> list[Diagnostic]:
+    """Reject profile names that cannot safely become a filename."""
+    out: list[Diagnostic] = []
+    for profile in config.profiles:
+        if _PROFILE_RE.match(profile):
+            continue
+        out.append(
+            _diag(
+                node,
+                "app.invalid-profile",
+                f"profile {profile!r} must be lowercase letters, digits and "
+                f"underscores, starting with a letter",
+                hint=(
+                    "The name is used verbatim as `application.<profile>.yaml` "
+                    "and as the value of LEX_PROFILE."
+                ),
+            )
+        )
+    return out
+
+
+def _check_entity(
+    node: GraphNode,
+    entity_names: dict[str, str],
+    entity_modules: dict[str, str | None] | None = None,
+) -> list[Diagnostic]:
     config: EntityConfig = node.config  # type: ignore[assignment]
     out: list[Diagnostic] = []
     if not is_snake_case_identifier(config.name):
         out.append(_diag(node, "invalid-entity-name", "name must be snake_case"))
     elif config.name in entity_names:
+        # Worth spelling out when the two entities sit in different bounded
+        # contexts: the module boundary makes it look safe, and it is not.
+        # Modules are a Python-package boundary, not a database one -- one
+        # schema, one alembic history, so two `invoice` entities compete for
+        # one table however far apart they are drawn.
+        other = entity_names[config.name]
+        hint = None
+        claimed_by = (entity_modules or {}).get(config.name)
+        if node.module is not None and claimed_by not in (None, node.module):
+            hint = (
+                f"Modules {claimed_by!r} and "
+                f"{node.module!r} would share one table: table names are "
+                f"global. Rename one entity."
+            )
         out.append(
             _diag(
                 node,
                 "duplicate-entity-name",
-                f"Entity name {config.name!r} already used by {entity_names[config.name]}",
+                f"Entity name {config.name!r} already used by {other}",
+                hint=hint,
             )
         )
     else:
         entity_names[config.name] = node.id
+        if entity_modules is not None:
+            entity_modules[config.name] = node.module
 
     if not config.fields:
         out.append(_diag(node, "no-fields", "Entities require at least one field"))
@@ -1063,3 +1162,330 @@ def _check_storage_driver(node: GraphNode) -> list[Diagnostic]:
             )
         )
     return out
+
+
+#: Slugs a module may not use: each already names a directory the modular
+#: layout generates, so a module of the same name would collide with it.
+RESERVED_MODULE_SLUGS: frozenset[str] = frozenset(
+    {"shared", "infrastructure", "modules", "app", "tests", "migrations", "seeds"}
+)
+
+
+def _import_cycles(imports: dict[str, set[str]]) -> list[tuple[str, ...]]:
+    """Return one canonical representative per import cycle.
+
+    Reported once per cycle rather than once per participating edge: a
+    two-module cycle is one mistake, and two diagnostics describing the
+    same loop from different ends read like two problems.
+
+    Iterative depth-first search with an explicit stack -- a graph drawn by
+    a user can be wide, and recursion depth is not a budget worth spending
+    on a linter.
+    """
+    cycles: list[tuple[str, ...]] = []
+    seen: set[frozenset[str]] = set()
+    finished: set[str] = set()
+
+    for root in sorted(imports):
+        if root in finished:
+            continue
+        path: list[str] = []
+        on_path: set[str] = set()
+        stack: list[tuple[str, bool]] = [(root, False)]
+        while stack:
+            node, leaving = stack.pop()
+            if leaving:
+                on_path.discard(path.pop())
+                finished.add(node)
+                continue
+            if node in on_path:
+                loop = tuple(path[path.index(node):])
+                key = frozenset(loop)
+                if key not in seen:
+                    seen.add(key)
+                    cycles.append((*loop, node))
+                continue
+            if node in finished:
+                continue
+            path.append(node)
+            on_path.add(node)
+            stack.append((node, True))
+            for nxt in sorted(imports.get(node, ()), reverse=True):
+                stack.append((nxt, False))
+    return cycles
+
+
+def _check_modules(
+    document: GraphDocument, by_id: dict[str, GraphNode]
+) -> list[Diagnostic]:
+    """Validate Module nodes and the module scope other nodes point at.
+
+    A Module is a scope, not an emitter, so every rule here is about
+    *references* holding together: slugs are well-formed and unique, every
+    scope points at a real module, and cross-module dependencies stay
+    inside the exported surface.
+
+    Severities follow ``01-NODE_TAXONOMY.md`` §4. ``boundary_unexported`` is
+    a warning while modules are visual-only; it becomes an error when
+    modular codegen lands, because from then on the generated app would
+    fail to boot and a canvas that lets you draw an unbootable app is worse
+    than one that stops you.
+    """
+    diagnostics: list[Diagnostic] = []
+    module_nodes = [n for n in document.nodes if n.kind == KIND_MODULE]
+
+    slugs: dict[str, str] = {}
+    for node in module_nodes:
+        config = node.config
+        if not isinstance(config, ModuleConfig):
+            continue
+        name = config.name
+
+        if not is_snake_case_identifier(name):
+            diagnostics.append(
+                Diagnostic(
+                    node_id=node.id,
+                    severity=DiagnosticSeverity.ERROR,
+                    code="module.name_invalid",
+                    message=(
+                        f"Module slug {name!r} is not snake_case; it becomes a "
+                        f"Python package directory"
+                    ),
+                    hint="Use lowercase words joined by underscores, e.g. 'sales'.",
+                )
+            )
+        elif name in RESERVED_MODULE_SLUGS:
+            diagnostics.append(
+                Diagnostic(
+                    node_id=node.id,
+                    severity=DiagnosticSeverity.ERROR,
+                    code="module.reserved",
+                    message=(
+                        f"Module slug {name!r} is reserved by the modular layout"
+                    ),
+                    hint=(
+                        "Pick a name that is not one of: "
+                        f"{', '.join(sorted(RESERVED_MODULE_SLUGS))}."
+                    ),
+                )
+            )
+
+        if name in slugs:
+            diagnostics.append(
+                Diagnostic(
+                    node_id=node.id,
+                    severity=DiagnosticSeverity.ERROR,
+                    code="module.duplicate",
+                    message=f"Module slug {name!r} is already used by another module",
+                    hint="Module slugs must be unique; they name a directory.",
+                )
+            )
+        else:
+            slugs[name] = node.id
+
+        if node.module is not None:
+            diagnostics.append(
+                Diagnostic(
+                    node_id=node.id,
+                    severity=DiagnosticSeverity.ERROR,
+                    code="module.nested",
+                    message="A module cannot itself belong to a module",
+                    hint=(
+                        "Modules are peers. Draw a module-to-module edge to "
+                        "express a dependency instead of nesting."
+                    ),
+                )
+            )
+
+    # ── every scope reference resolves ───────────────────────────────────
+    for node in document.nodes:
+        if node.module is not None and node.module not in slugs:
+            diagnostics.append(
+                Diagnostic(
+                    node_id=node.id,
+                    severity=DiagnosticSeverity.ERROR,
+                    code="module.unknown_ref",
+                    message=(
+                        f"Node is scoped to module {node.module!r}, which does "
+                        f"not exist"
+                    ),
+                    hint=(
+                        "Add a module node with that slug, or clear the node's "
+                        "module scope to make it shared."
+                    ),
+                )
+            )
+
+    # ── cross-module dependencies stay inside the exported surface ───────
+    #
+    # Severity is a policy the graph carries. With ``strict_boundaries`` on,
+    # an unexported cross-module dependency is an error: the generated app
+    # really does hide that name behind ``protocols.py``, so the canvas would
+    # otherwise let you draw an import that cannot exist. Otherwise it stays
+    # a warning -- a graph mid-draw should not be blocked from saving.
+    settings_node = next(
+        (n for n in document.nodes if n.kind == "app_settings"), None
+    )
+    settings_config = settings_node.config if settings_node is not None else None
+    boundary_severity = (
+        DiagnosticSeverity.ERROR
+        if getattr(settings_config, "strict_boundaries", False)
+        else DiagnosticSeverity.WARNING
+    )
+
+    exports_by_slug: dict[str, set[str]] = {}
+    for node in module_nodes:
+        if isinstance(node.config, ModuleConfig):
+            exports_by_slug[node.config.name] = {
+                export.implementation for export in node.config.exports
+            } | {export.protocol for export in node.config.exports}
+
+    for edge in document.edges:
+        src = by_id.get(edge.src)
+        dst = by_id.get(edge.dst)
+        if src is None or dst is None or src.module == dst.module:
+            continue
+
+        if src.module is None and dst.module is not None:
+            diagnostics.append(
+                Diagnostic(
+                    node_id=edge.src,
+                    severity=DiagnosticSeverity.WARNING,
+                    code="module.shared_depends_on_module",
+                    message=(
+                        f"Shared node depends on {dst.module!r}, inverting the "
+                        f"dependency direction"
+                    ),
+                    hint=(
+                        "Shared code should not know about a bounded context. "
+                        "Move the node into the module, or depend on a "
+                        "protocol the module exports."
+                    ),
+                )
+            )
+            continue
+
+        if dst.module is None:
+            continue  # depending on shared code is always allowed
+
+        exported = exports_by_slug.get(dst.module, set())
+        target_name = getattr(dst.config, "name", None)
+        if dst.id not in exported and (
+            target_name is None or target_name not in exported
+        ):
+            diagnostics.append(
+                Diagnostic(
+                    node_id=edge.src,
+                    severity=boundary_severity,
+                    code="module.boundary_unexported",
+                    message=(
+                        f"Module {src.module!r} depends on something "
+                        f"{dst.module!r} does not export"
+                    ),
+                    hint=(
+                        f"Add it to {dst.module!r}'s exports, mark that module "
+                        f"is_global, or depend on a protocol it already "
+                        f"exports."
+                        + (
+                            ""
+                            if boundary_severity is DiagnosticSeverity.WARNING
+                            else " (strict boundaries are on for this project.)"
+                        )
+                    ),
+                )
+            )
+
+    # ── a shared component cannot live inside a bounded context ──────────
+    for node in document.nodes:
+        if node.module is not None and node.kind in SHARED_KINDS:
+            diagnostics.append(
+                Diagnostic(
+                    node_id=node.id,
+                    severity=DiagnosticSeverity.WARNING,
+                    code="module.shared_kind_scoped",
+                    message=(
+                        f"{node.kind!r} is a cross-cutting component, so it is "
+                        f"generated into shared/ regardless of the "
+                        f"{node.module!r} scope"
+                    ),
+                    hint=(
+                        "Clear the module scope to match where the file "
+                        "actually lands, or keep it as canvas grouping only."
+                    ),
+                )
+            )
+
+    # A module-local kind with no module used to be an error here: under
+    # the old ``modular`` structure there was nowhere to put unscoped
+    # feature code, so the graph had to be rejected. There is now: it lands
+    # at the app root, and joining a module moves it. The rule is not fixed,
+    # it is unnecessary.
+
+    # ── import edges between frames (taxonomy T6) ────────────────────────
+    #
+    # A module -> module edge is an import declaration, and Python import
+    # cycles between packages are the framework's least legible failure: the
+    # app raises a partially initialised module deep in DI wiring, far from
+    # the two frames that caused it. Catching it on the canvas is the entire
+    # value of drawing imports.
+    slug_by_id = {
+        node.id: node.config.name
+        for node in module_nodes
+        if isinstance(node.config, ModuleConfig)
+    }
+    for edge in document.edges:
+        if (
+            edge.src in slug_by_id
+            and edge.dst in slug_by_id
+            and slug_by_id[edge.src] == slug_by_id[edge.dst]
+        ):
+            diagnostics.append(
+                Diagnostic(
+                    node_id=edge.src,
+                    severity=DiagnosticSeverity.ERROR,
+                    code="module.self_import",
+                    message=f"Module {slug_by_id[edge.src]!r} imports itself",
+                    hint="A module's own members are always visible to it.",
+                )
+            )
+
+    # One derivation, shared with the emitter: a graph cannot validate as
+    # acyclic and then emit a cycle.
+    imports = module_import_graph(document)
+
+    for cycle in _import_cycles(imports):
+        diagnostics.append(
+            Diagnostic(
+                node_id=next(
+                    (nid for nid, slug in slug_by_id.items() if slug == cycle[0]),
+                    None,
+                ),
+                severity=DiagnosticSeverity.ERROR,
+                code="module.import_cycle",
+                message="Module imports form a cycle: " + " -> ".join(cycle),
+                hint=(
+                    "Move the shared piece into a third module both can "
+                    "import, mark it is_global, or invert one dependency "
+                    "with an exported protocol."
+                ),
+            )
+        )
+
+    # ── informational ────────────────────────────────────────────────────
+    members = {n.module for n in document.nodes if n.module is not None}
+    for node in module_nodes:
+        if isinstance(node.config, ModuleConfig) and node.config.name not in members:
+            diagnostics.append(
+                Diagnostic(
+                    node_id=node.id,
+                    severity=DiagnosticSeverity.INFO,
+                    code="module.empty",
+                    message=f"Module {node.config.name!r} has no members",
+                    hint=(
+                        "This is legal -- it matches `lexigram new module` -- "
+                        "and generates an empty bounded context."
+                    ),
+                )
+            )
+
+    return diagnostics

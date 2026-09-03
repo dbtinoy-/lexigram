@@ -9,10 +9,10 @@ sidebar:
 - The recommended layout for **Pattern 2** (Structured App) projects
 - The recommended layout for **Pattern 3** (Modular App) projects
 
-Both layouts are scaffolded with `lexigram new project --structure structured`
-and `lexigram new project --structure modular` respectively; `--structure
-minimal` produces the single-package starter documented in
-[Your First App](/getting-started/first-app/).
+Both are the same scaffolded tree at different stages: `lexigram new
+project` lays down the app package, and `lexigram new module <name>` grows
+a bounded context inside it. See
+[Your First App](/getting-started/first-app/) for the starting point.
 - What each directory and key file does
 :::
 

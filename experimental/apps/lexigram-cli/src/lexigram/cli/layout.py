@@ -1,4 +1,4 @@
-"""Canonical generator -> project-path map for every project structure.
+"""Canonical generator -> project-path map.
 
 Single source of truth shared by:
 
@@ -6,19 +6,23 @@ Single source of truth shared by:
 - ``lexigram gen`` (where a generator writes inside the current project)
 - the alignment gate (``dev/checks/generator_output.py``)
 
-Three first-class structures are supported:
+**A project has no structure.** There is one tree, and a node either belongs
+to a module or it does not::
 
-- ``minimal`` — single package ``src/<app>/``; generators write *inside*
-  that package (``src/<app>/<component>/...``).
-- ``structured`` — generator-native layout: ``src/<app>/`` composition root
-  plus sibling component packages at ``src/`` (default).
-- ``modular`` — bounded contexts at ``src/<app>/modules/<feature>/``,
-  cross-cutting packages at ``src/<app>/shared/`` and shared infrastructure
-  wiring at ``src/<app>/infrastructure/``.
+    src/<app>/main.py                      composition root
+    src/<app>/controllers/...              feature code, unscoped
+    src/<app>/shared/middleware/...        cross-cutting, decided by the kind
+    src/<app>/modules/sales/controllers/   feature code scoped to a module
 
-The structured path for every component is exactly the ``default_output_dir``
-declared by the generator contributors, so scaffolding and code generation
-can never drift apart.  The alignment gate validates that guarantee.
+Two questions decide every path, each asked of exactly one authority: *is
+this component cross-cutting?* (``ComponentDir.shared``) and *is this node in
+a module?* (the caller's ``module`` argument). The project-wide
+``minimal``/``structured``/``modular`` mode that used to sit on top of them
+was a second, coarser answer to the same question, and it made growth a
+migration: adopting bounded contexts relocated every file in the project.
+Now scoping a node moves that node.
+
+See ``docs/PROJECT_LAYOUT.md``.
 """
 
 from __future__ import annotations
@@ -31,11 +35,10 @@ try:
 except ImportError:  # pragma: no cover - Python < 3.11
     import tomli as tomllib  # type: ignore[no-redef]
 
-MINIMAL = "minimal"
-STRUCTURED = "structured"
-MODULAR = "modular"
-STRUCTURES: tuple[str, ...] = (MINIMAL, STRUCTURED, MODULAR)
-DEFAULT_STRUCTURE = STRUCTURED
+#: Package holding cross-cutting components inside the app package.
+SHARED_DIR = "shared"
+#: Package holding bounded contexts inside the app package.
+MODULES_DIR = "modules"
 
 
 @dataclass(frozen=True)
@@ -136,24 +139,32 @@ _ROOTS_BY_GENERATOR: dict[str, str] = {
 
 @dataclass(frozen=True)
 class ProjectLayout:
-    """Project layout metadata read from ``[tool.lexigram]``."""
+    """Project layout metadata read from ``[tool.lexigram]``.
 
-    structure: str = DEFAULT_STRUCTURE
+    Only the application package is recorded. There is nothing else to
+    record: the tree is the same for every project, and where a component
+    lands is decided per node rather than per project.
+    """
+
     app_package: str = "app"
     declared: bool = False
-    structure_declared: bool = False
 
     def module_target(self) -> str:
-        """Return the default ``[tool.lexigram] module`` target."""
+        """Return the default ``[tool.lexigram] module`` target.
+
+        ``app.py`` is the composition root: it defines ``create_app`` and
+        exposes the ``app`` it returns. ``main.py`` only imports that, so
+        booting it is a level of indirection with nothing behind it.
+        """
         return f"{self.app_package}.app:app"
 
 
 def read_project_layout(cwd: Path | None = None) -> ProjectLayout:
     """Read ``[tool.lexigram]`` from ``pyproject.toml`` in *cwd*.
 
-    Falls back to the structured default when no project metadata exists
-    (``declared=False``).  ``app_package`` is derived from ``module``
-    (``"my_app.app:app"`` -> ``"my_app"``).
+    ``app_package`` is derived from ``module`` (``"my_app.main:app"`` ->
+    ``"my_app"``); ``declared`` is False when there is no project metadata
+    to read.
     """
     root = Path(cwd or Path.cwd())
     pyproject = root / "pyproject.toml"
@@ -170,10 +181,6 @@ def read_project_layout(cwd: Path | None = None) -> ProjectLayout:
     if not isinstance(lexigram_tool, dict):
         return ProjectLayout()
 
-    structure = lexigram_tool.get("structure", DEFAULT_STRUCTURE)
-    if structure not in STRUCTURES:
-        structure = DEFAULT_STRUCTURE
-
     module_target = lexigram_tool.get("module", "")
     app_package = "app"
     if isinstance(module_target, str) and module_target.strip():
@@ -181,12 +188,7 @@ def read_project_layout(cwd: Path | None = None) -> ProjectLayout:
         if raw_package:
             app_package = raw_package
 
-    return ProjectLayout(
-        structure=structure,
-        app_package=app_package,
-        declared=bool(lexigram_tool),
-        structure_declared="structure" in lexigram_tool,
-    )
+    return ProjectLayout(app_package=app_package, declared=bool(lexigram_tool))
 
 
 def component_metadata(output_dir: str) -> ComponentDir | None:
@@ -211,71 +213,66 @@ def generator_root_output(generator: str) -> str | None:
 def resolve_output_dir(
     default_output_dir: str,
     *,
-    structure: str = DEFAULT_STRUCTURE,
     app_package: str = "app",
     module: str | None = None,
     generator: str | None = None,
 ) -> str:
-    """Map a generator's default output dir onto the active structure.
+    """Map a generator's default output dir onto the project tree.
+
+    One algorithm, no modes::
+
+        "src"                          -> src/<app>                (composition root)
+        "src/<component>", shared      -> src/<app>/shared/<component>
+        "src/<component>", no module   -> src/<app>/<component>
+        "src/<component>", module      -> src/<app>/modules/<module>/<component>
+        "tests/unit" with a module     -> src/<app>/modules/<module>/tests
+        other root dirs                -> unchanged
+
+    Unscoped feature code lands at the app root rather than in ``shared/``.
+    That is the whole reason a project can start without bounded contexts and
+    grow into them: ``shared/`` keeps meaning *cross-cutting*, so nothing has
+    to be moved out of it later, and a node that joins a module moves alone.
 
     Args:
         default_output_dir: The contributor-declared default (``src/...``,
             ``migrations/versions``, ``seeds``, ``tests/unit`` or ``src``).
-        structure: One of :data:`STRUCTURES`.
         app_package: The application package (``my_app``).
-        module: Optional feature module name (modular structure only).
-        generator: Optional generator name — needed for the two ``src``-root
+        module: Bounded context this node belongs to, if any.
+        generator: Optional generator name — needed for the ``src``-root
             generators whose real target differs from their declared default
             (``resource`` writes into ``<dir>/controllers``).
 
     Returns:
-        The structure-relative output path.
+        The project-relative output path.
 
     Raises:
-        ValueError: ``module``-local generator used without ``--module`` in
-            the modular structure, or an unknown output directory.
+        ValueError: Unknown output directory.
     """
-    if structure == STRUCTURED:
-        return default_output_dir
-
     if default_output_dir == "src":
-        if generator == _RESOURCE_OUTPUT:
+        if generator == _RESOURCE_OUTPUT and module is not None:
             # Delegates to the controller generator: <dir>/controllers.
-            component = _COMPONENTS_BY_PATH["controllers"]
-            if structure == MINIMAL:
-                return f"src/{app_package}"
-            if module is None:
-                raise ValueError(
-                    "'resource' is module-local in the modular structure; "
-                    "re-run with --module <feature>."
-                )
-            return f"src/{app_package}/modules/{module}"
-        if structure == MINIMAL:
-            return f"src/{app_package}"
-        return f"src/{app_package}/shared"
+            return f"src/{app_package}/{MODULES_DIR}/{module}"
+        if module is not None:
+            return f"src/{app_package}/{MODULES_DIR}/{module}"
+        return f"src/{app_package}"
 
     if _looks_like_src(default_output_dir):
-        suffix = _strip_src(default_output_dir)  # "" for "src"
-        if structure == MINIMAL:
-            target = f"src/{app_package}"
-            return f"{target}/{suffix}" if suffix else target
-        # modular
-        matched_component: ComponentDir | None = _COMPONENTS_BY_PATH.get(suffix)
-        if matched_component is not None and not matched_component.shared and module is None:
-            raise ValueError(
-                f"'{suffix}' is module-local in the modular structure; "
-                "re-run with --module <feature> (or pick src/<app>/shared "
-                "for cross-cutting generators)."
-            )
-        if matched_component is not None and matched_component.shared:
-            return f"src/{app_package}/shared/{suffix}"
+        suffix = _strip_src(default_output_dir)
+        if not suffix:
+            return f"src/{app_package}"
+        component = _COMPONENTS_BY_PATH.get(suffix)
+        if component is not None and component.shared:
+            # Cross-cutting by kind: never inside one bounded context, and
+            # never at the app root either -- shared/ is where "belongs to
+            # everything" lives, and it says so in the path.
+            return f"src/{app_package}/{SHARED_DIR}/{suffix}"
         if module is None:
-            return f"src/{app_package}/shared/{suffix}"
-        return f"src/{app_package}/modules/{module}/{suffix}"
+            return f"src/{app_package}/{suffix}"
+        return f"src/{app_package}/{MODULES_DIR}/{module}/{suffix}"
 
     if default_output_dir in _ROOTS_BY_PATH:
         if default_output_dir == "tests/unit" and module is not None:
-            return f"src/{app_package}/modules/{module}/tests"
+            return f"src/{app_package}/{MODULES_DIR}/{module}/tests"
         return default_output_dir
 
     raise ValueError(f"Unknown generator output directory: {default_output_dir}")
@@ -344,13 +341,10 @@ def _strip_src(output_dir: str) -> str:
 
 __all__ = [
     "COMPONENTS",
-    "DEFAULT_STRUCTURE",
-    "MINIMAL",
-    "MODULAR",
+    "MODULES_DIR",
     "ROOT_DIRS",
+    "SHARED_DIR",
     "SRC_ROOT_GENERATORS",
-    "STRUCTURED",
-    "STRUCTURES",
     "ComponentDir",
     "ProjectLayout",
     "component_metadata",

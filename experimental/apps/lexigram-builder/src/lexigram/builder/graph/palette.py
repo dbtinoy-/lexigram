@@ -4,9 +4,14 @@ from __future__ import annotations
 
 import keyword
 
+from lexigram.cli.layout import COMPONENTS
+
 # ── Node Kinds ────────────────────────────────────────────────────────
 
 KIND_APP_SETTINGS = "app_settings"
+#: A bounded context. Not a peer of the emitting kinds -- a Module is a
+#: *scope* that other nodes point at via ``GraphNode.module``.
+KIND_MODULE = "module"
 KIND_ENTITY = "entity"
 KIND_FIELD = "field"
 KIND_ROUTE = "route"
@@ -61,7 +66,7 @@ KNOWN_KINDS: frozenset[str] = frozenset(
         KIND_EXCEPTION_FILTER, KIND_ERROR, KIND_GRAPHQL, KIND_HEALTH,
         KIND_EVENT_HANDLER, KIND_COMMAND, KIND_QUERY,
         KIND_PROJECTION, KIND_METRIC, KIND_SAGA, KIND_INTERCEPTOR, KIND_DATALOADER, KIND_AUTH_POLICY, KIND_API_CLIENT, KIND_STORAGE_DRIVER,
-        KIND_FEATURE_FLAG, KIND_CONTRACT,
+        KIND_FEATURE_FLAG, KIND_CONTRACT, KIND_MODULE,
     }
 )
 
@@ -82,44 +87,6 @@ ENTITY_OPS: frozenset[str] = frozenset({"create", "get", "list", "update", "dele
 # ── Database & Structure ──────────────────────────────────────────────
 
 DB_PRESETS: frozenset[str] = frozenset({"sqlite", "postgres"})
-
-# Project structures mirror the framework's canonical vocabulary in
-# ``lexigram.cli.layout`` (minimal / structured / modular). Keeping the same
-# names means a generated project's ``[tool.lexigram] structure`` is directly
-# understood by ``lexigram gen`` inside that project.
-STRUCTURE_MINIMAL = "minimal"
-STRUCTURE_STRUCTURED = "structured"
-STRUCTURE_MODULAR = "modular"
-
-PROJECT_STRUCTURES: dict[str, str] = {
-    STRUCTURE_MINIMAL: (
-        "Single app package (src/<app>) — components nested inside it"
-    ),
-    STRUCTURE_STRUCTURED: (
-        "Generator-native layout — app composition root plus sibling "
-        "src/ component packages"
-    ),
-    STRUCTURE_MODULAR: (
-        "Bounded contexts — src/<app>/modules/<feature>, shared/, infrastructure/"
-    ),
-}
-
-# Legacy playground names, mapped onto the canonical structures so graphs
-# saved before the alignment still load and validate.
-LEGACY_STRUCTURES: dict[str, str] = {
-    "standard": STRUCTURE_MINIMAL,
-    "service_layered": STRUCTURE_STRUCTURED,
-    "modular_monolith": STRUCTURE_MODULAR,
-}
-
-
-def normalize_structure(name: str) -> str:
-    """Return the canonical structure for *name*, mapping legacy spellings.
-
-    Unknown names are passed through untouched so validation can flag them
-    as ``unknown-structure`` instead of silently defaulting.
-    """
-    return LEGACY_STRUCTURES.get(name, name)
 
 # ── Auth Providers ────────────────────────────────────────────────────
 
@@ -169,9 +136,13 @@ PORT_TYPE_ROUTE_REF = "route_ref"
 PORT_TYPE_EVENT_REF = "event_ref"
 PORT_TYPE_CONFIG_REF = "config_ref"
 PORT_TYPE_DATA_REF = "data_ref"
+# Module frames connect only to other module frames, and the connection
+# carries no data -- it means "imports". A dedicated port type is what keeps
+# a primitive from ever being wired into a frame (taxonomy §6.3).
+PORT_TYPE_MODULE_REF = "module_ref"
 
 PORT_TYPES: frozenset[str] = frozenset(
-    {PORT_TYPE_ENTITY_REF, PORT_TYPE_ROUTE_REF, PORT_TYPE_EVENT_REF, PORT_TYPE_CONFIG_REF, PORT_TYPE_DATA_REF}
+    {PORT_TYPE_ENTITY_REF, PORT_TYPE_ROUTE_REF, PORT_TYPE_EVENT_REF, PORT_TYPE_CONFIG_REF, PORT_TYPE_DATA_REF, PORT_TYPE_MODULE_REF}
 )
 
 # ── Port Definitions per Node Kind ────────────────────────────────────
@@ -194,6 +165,17 @@ NODE_PORTS: dict[str, dict[str, list[dict[str, object]]]] = {
         ],
     },
     KIND_FIELD: {"inputs": [], "outputs": []},
+    # A Module frame has no data ports at all: primitives are assigned to it
+    # by scope, never wired to it. Its two ports carry import declarations,
+    # drawn importer -> imported.
+    KIND_MODULE: {
+        "inputs": [
+            {"id": "input_imported_by", "side": "left", "type": PORT_TYPE_MODULE_REF, "label": "Imported by", "max": None},
+        ],
+        "outputs": [
+            {"id": "output_imports", "side": "right", "type": PORT_TYPE_MODULE_REF, "label": "Imports", "max": None},
+        ],
+    },
     KIND_ROUTE: {
         "inputs": [],
         "outputs": [
@@ -518,6 +500,9 @@ ALLOWED_EDGES: frozenset[tuple[str, str]] = frozenset(
         (KIND_PAGE, KIND_COMPONENT),
         (KIND_PAGE, KIND_ROUTE),
         (KIND_DASHBOARD, KIND_ENTITY),
+        # Module frame -> module frame: an import declaration, not a data
+        # flow. The only edge whose endpoints are both scope (taxonomy T6).
+        (KIND_MODULE, KIND_MODULE),
     }
 )
 
@@ -529,6 +514,7 @@ PORT_COMPATIBILITY: dict[str, frozenset[str]] = {
     PORT_TYPE_EVENT_REF: frozenset({PORT_TYPE_EVENT_REF}),
     PORT_TYPE_CONFIG_REF: frozenset({PORT_TYPE_CONFIG_REF}),
     PORT_TYPE_DATA_REF: frozenset({PORT_TYPE_DATA_REF}),
+    PORT_TYPE_MODULE_REF: frozenset({PORT_TYPE_MODULE_REF}),
 }
 
 # ── Edge kind mapping: (source_kind, target_kind) -> edge_kind ───────
@@ -582,6 +568,7 @@ EDGE_KIND_MAP: dict[tuple[str, str], str] = {
     (KIND_PAGE, KIND_COMPONENT): "page_to_component",
     (KIND_PAGE, KIND_ROUTE): "page_to_route",
     (KIND_DASHBOARD, KIND_ENTITY): "dashboard_to_entity",
+    (KIND_MODULE, KIND_MODULE): "module_imports",
 }
 
 # ── Node default configs ──────────────────────────────────────────────
@@ -792,6 +779,7 @@ NODE_DEFAULTS: dict[str, dict[str, object]] = {
 
 NODE_COLORS: dict[str, str] = {
     KIND_APP_SETTINGS: "#7c3aed",
+    KIND_MODULE: "#6366f1",
     KIND_ENTITY: "#2563eb",
     KIND_FIELD: "#6366f1",
     KIND_ROUTE: "#059669",
@@ -856,6 +844,16 @@ NODE_COLORS: dict[str, str] = {
 
 PALETTE_CATEGORIES: list[dict[str, object]] = [
     {
+        # A module is not an emitter -- it emits a boundary, and everything
+        # inside it is drawn from the other categories. Its own category keeps
+        # that difference visible in the palette instead of filing a container
+        # next to the things it contains.
+        "id": "structure", "label": "Structure", "icon": "box", "color": "#6366f1",
+        "nodes": [
+            {"kind": KIND_MODULE, "label": "Module", "description": "Bounded context - groups nodes and, in the Modular structure, owns their directory", "icon": "box", "color": NODE_COLORS[KIND_MODULE], "maxCount": None, "required": False},
+        ],
+    },
+    {
         "id": "core", "label": "Core", "icon": "layers", "color": "#3b82f6",
         "nodes": [
             {"kind": KIND_ENTITY, "label": "Entity", "description": "Database model with fields", "icon": "database", "color": NODE_COLORS[KIND_ENTITY], "maxCount": None, "required": False},
@@ -869,14 +867,14 @@ PALETTE_CATEGORIES: list[dict[str, object]] = [
         "id": "processing", "label": "Processing", "icon": "cpu", "color": "#f59e0b",
         "nodes": [
             {"kind": KIND_MIDDLEWARE, "label": "Middleware", "description": "Request/response pipeline", "icon": "filter", "color": NODE_COLORS[KIND_MIDDLEWARE], "maxCount": None, "required": False},
-            {"kind": KIND_INTERCEPTOR, "label": "Interceptor", "description": "WebInterceptorBase around handlers (lexigram-web)", "icon": "filter", "color": NODE_COLORS[KIND_INTERCEPTOR], "maxCount": None, "required": False},
+            {"kind": KIND_INTERCEPTOR, "label": "Interceptor", "description": "WebInterceptorBase around handlers (lexigram-web)", "icon": "waypoints", "color": NODE_COLORS[KIND_INTERCEPTOR], "maxCount": None, "required": False},
             {"kind": KIND_JOB, "label": "Background Job", "description": "Async task processor", "icon": "clock", "color": NODE_COLORS[KIND_JOB], "maxCount": None, "required": False},
             {"kind": KIND_CRON, "label": "Cron", "description": "Scheduled trigger", "icon": "calendar", "color": NODE_COLORS[KIND_CRON], "maxCount": None, "required": False},
             {"kind": KIND_EXCEPTION_FILTER, "label": "Exception Filter", "description": "Map exceptions to HTTP responses", "icon": "shield-alert", "color": NODE_COLORS[KIND_EXCEPTION_FILTER], "maxCount": None, "required": False},
             {"kind": KIND_ERROR, "label": "HTTP Error", "description": "Domain HTTP error class raised by handlers", "icon": "alert-octagon", "color": NODE_COLORS[KIND_ERROR], "maxCount": None, "required": False},
             {"kind": KIND_HEALTH, "label": "Health Check", "description": "Observability health probe for an entity", "icon": "heart-pulse", "color": NODE_COLORS[KIND_HEALTH], "maxCount": None, "required": False},
             {"kind": KIND_METRIC, "label": "Metric", "description": "Custom application metric recorded by services", "icon": "gauge", "color": NODE_COLORS[KIND_METRIC], "maxCount": None, "required": False},
-            {"kind": KIND_API_CLIENT, "label": "API Client", "description": "Outbound HTTP client wrapping lexigram-http BaseURLHTTPClient", "icon": "globe", "color": NODE_COLORS[KIND_API_CLIENT], "maxCount": None, "required": False},
+            {"kind": KIND_API_CLIENT, "label": "API Client", "description": "Outbound HTTP client wrapping lexigram-http BaseURLHTTPClient", "icon": "cloud", "color": NODE_COLORS[KIND_API_CLIENT], "maxCount": None, "required": False},
         ],
     },
     {
@@ -959,3 +957,117 @@ def get_edge_kind(source_kind: str, target_kind: str) -> str | None:
 def can_connect(source_kind: str, target_kind: str) -> bool:
     """Return True if an edge is allowed between these node kinds."""
     return (source_kind, target_kind) in ALLOWED_EDGES
+
+
+# ── Module scope (taxonomy task T3) ───────────────────────────────────────
+#
+# Under the modular structure every component lands in one of two places:
+# inside a bounded context (``modules/<slug>/…``) or in the cross-cutting
+# layer (``shared/…``). Which one is not a builder opinion — it is declared
+# upstream by ``lexigram.cli.layout.COMPONENTS[].shared``, the same table the
+# path authority resolves against.
+#
+# The only thing declared here is the join key: which canonical component a
+# drawable kind primarily lives in. Scope is then *derived*, never restated,
+# so a component that changes sides upstream moves every kind with it.
+# ``test_module_scope.py`` pins the join against `VERB_SPECS`.
+
+#: Drawable kind -> the canonical component (or builder-owned package) that
+#: is the node's primary home. Kinds that emit into several components are
+#: keyed by the one that decides their scope: an entity emits a model, a
+#: repository and a migration, and it is ``models`` that makes it
+#: module-scoped.
+KIND_COMPONENT: dict[str, str] = {
+    KIND_ENTITY: "models",
+    KIND_ROUTE: "controllers",
+    KIND_SERVICE: "services",
+    KIND_GRAPHQL: "schema",
+    KIND_DATALOADER: "schema/dataloaders",
+    KIND_MIDDLEWARE: "middleware",
+    KIND_INTERCEPTOR: "interceptors",
+    KIND_JOB: "tasks",
+    KIND_CRON: "tasks",
+    KIND_EXCEPTION_FILTER: "filters",
+    KIND_ERROR: "errors",
+    KIND_HEALTH: "health",
+    KIND_METRIC: "metrics",
+    KIND_API_CLIENT: "clients",
+    KIND_EVENT: "events",
+    KIND_EVENT_HANDLER: "handlers",
+    KIND_COMMAND: "commands",
+    KIND_QUERY: "queries",
+    KIND_PROJECTION: "projections",
+    KIND_WEBHOOK: "webhooks",
+    KIND_REALTIME_CHANNEL: "websocket",
+    KIND_CACHE: "repositories",
+    KIND_AUDIT_LOG: "audit",
+    KIND_STORAGE_DRIVER: "storage/backends",
+    KIND_AUTH_POLICY: "policies",
+    KIND_FEATURE_FLAG: "features",
+    KIND_SEARCH_INDEX: "search",
+    KIND_RATE_LIMIT: "middleware",
+    # Builder-owned packages (no canonical row upstream yet — OQ-L3).
+    KIND_AUTH: "auth",
+    KIND_ROLE: "auth",
+    KIND_CONTRACT: "contracts",
+    KIND_VALIDATOR: "validators",
+    KIND_FILE_UPLOAD: "uploads",
+    # Pinned deviation: seeders keep ``src/app/seeders`` in every structure
+    # (OQ-L1), so they are effectively shared.
+    KIND_SEEDER: "seeders",
+}
+
+#: Shared flags for packages the canonical map does not cover. Mirrors
+#: ``lexigram.builder.gen.layout.BUILDER_COMPONENTS`` — duplicated because
+#: that table lives in the generation layer, which imports this one, and a
+#: gate test asserts the two never disagree.
+_BUILDER_PACKAGE_SHARED: dict[str, bool] = {
+    "di": True,
+    "emails": False,
+    "uploads": False,
+    "auth": True,
+    "contracts": True,
+    "validators": False,
+    "seeders": True,
+}
+
+
+def _component_is_shared(component: str) -> bool:
+    """True when *component* lives in the cross-cutting ``shared/`` layer."""
+    for row in COMPONENTS:
+        if row.structured == component:
+            return bool(row.shared)
+    if component in _BUILDER_PACKAGE_SHARED:
+        return _BUILDER_PACKAGE_SHARED[component]
+    raise KeyError(
+        f"Unknown component {component!r}: it is neither a canonical row in "
+        f"lexigram.cli.layout.COMPONENTS nor a builder-owned package."
+    )
+
+
+#: Kinds whose files are cross-cutting: they land in ``shared/`` under the
+#: modular structure no matter which module the node is assigned to.
+SHARED_KINDS: frozenset[str] = frozenset(
+    kind for kind, component in KIND_COMPONENT.items()
+    if _component_is_shared(component)
+)
+
+#: Kinds whose files land inside a bounded context. These are the kinds for
+#: which ``GraphNode.module`` actually changes the output path.
+MODULE_SCOPED_KINDS: frozenset[str] = frozenset(
+    kind for kind in KIND_COMPONENT if kind not in SHARED_KINDS
+)
+
+
+def scope_for_kind(kind: str) -> str:
+    """Return ``"shared"``, ``"module"``, or ``"none"`` for *kind*.
+
+    ``"none"`` covers kinds that generate nothing positional — settings and
+    the module node itself — so callers can distinguish "cross-cutting"
+    from "not a placeable component at all".
+    """
+    if kind in SHARED_KINDS:
+        return "shared"
+    if kind in MODULE_SCOPED_KINDS:
+        return "module"
+    return "none"

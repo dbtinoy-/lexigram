@@ -22,6 +22,7 @@ see docs/LEXIGRAM_FRAMEWORK_BUGS.md before touching this.
 from __future__ import annotations
 
 from lexigram.builder.gen.emitters.context import pascal_entity, table_name
+from lexigram.builder.gen.layout import DEFAULT_LAYOUT
 from lexigram.builder.graph.models import SearchIndexConfig
 
 _EXTERNAL_ENGINES: frozenset[str] = frozenset({"meilisearch", "elasticsearch"})
@@ -245,8 +246,13 @@ def emit_search_repository(entity_name: str, config: SearchIndexConfig) -> str:
     )
 
 
-def emit_search_controller(entity_name: str, route_path: str) -> str:
+def emit_search_controller(
+    entity_name: str,
+    route_path: str,
+    mods: dict[str, str] | None = None,
+) -> str:
     """Render ``src/app/controllers/<entity>_search_controller.py``."""
+    mods = mods or DEFAULT_LAYOUT.module_names()
     pascal = pascal_entity(entity_name)
     route_path = route_path.rstrip("/") or f"/{entity_name}"
     pascal_repo = f"{pascal}SearchRepository"
@@ -260,7 +266,7 @@ def emit_search_controller(entity_name: str, route_path: str) -> str:
             "",
             "from lexigram.web import Controller, get",
             "",
-            f"from app.repositories.{entity_name}_search_repository import (",
+            f"from {mods['repositories']}.{entity_name}_search_repository import (",
             f"    {pascal_repo},",
             ")",
             "",

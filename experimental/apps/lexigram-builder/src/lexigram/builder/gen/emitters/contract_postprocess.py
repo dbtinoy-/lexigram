@@ -29,6 +29,7 @@ from lexigram.builder.gen.emitters.model_postprocess import (
     _FIELD_ANNOTATIONS,
     _IMPORT_SPECS,
 )
+from lexigram.builder.gen.layout import DEFAULT_LAYOUT
 from lexigram.builder.graph.models import ContractConfig
 
 # Per-op handler payload lines rendered by the framework controller
@@ -164,7 +165,11 @@ def emit_contract_module(config: ContractConfig) -> str:
     )
 
 
-def apply_contract(text: str, wiring: ControllerContract) -> str:
+def apply_contract(
+    text: str,
+    wiring: ControllerContract,
+    mods: dict[str, str] | None = None,
+) -> str:
     """Swap auto-derived DTOs for contract models in a controller source.
 
     Request-direction contracts replace the ``payload = <Entity>Create/
@@ -172,6 +177,7 @@ def apply_contract(text: str, wiring: ControllerContract) -> str:
     ``return _to_dict(...)`` (single item) and the ``items`` comprehension
     (list) in ``<Pascal>Response.model_validate(...).model_dump()``.
     """
+    mods = mods or DEFAULT_LAYOUT.module_names()
     if not wiring.wired:
         return text
 
@@ -185,7 +191,7 @@ def apply_contract(text: str, wiring: ControllerContract) -> str:
             names.append(f"{binding.pascal}Response")
         if not names:
             continue
-        line = f"from app.contracts.{binding.contract.name} import " + ", ".join(names)
+        line = f"from {mods['contracts']}.{binding.contract.name} import " + ", ".join(names)
         if line not in contract_imports:
             contract_imports.append(line)
     if contract_imports:
@@ -207,7 +213,7 @@ def apply_contract(text: str, wiring: ControllerContract) -> str:
         return f"{indent}payload = {binding.pascal}Request(**data)"
 
     text = _PAYLOAD_LINE.sub(_swap_payload, text)
-    text = _prune_dead_dto_imports(text)
+    text = _prune_dead_dto_imports(text, mods)
 
     # ── response validation wraps (per op) ───────────────────────────
     def _wrap(expr: str, op: str) -> str:
@@ -249,9 +255,12 @@ def _op_for_var(var: str) -> str:
     )
 
 
-def _prune_dead_dto_imports(text: str) -> str:
+def _prune_dead_dto_imports(
+    text: str, mods: dict[str, str] | None = None
+) -> str:
     """Drop ``<Entity>Create``/``<Entity>Update`` import names the swap
     orphaned (the docstring mentions them too, so usage means *called*)."""
+    mods = mods or DEFAULT_LAYOUT.module_names()
     match = re.search(
         r"^from app\.models\.(?P<module>[a-z0-9_]+) "
         r"import (?P<names>[A-Za-z0-9_, ]+)$",
@@ -274,7 +283,7 @@ def _prune_dead_dto_imports(text: str) -> str:
         return text[:line_start] + text[match.end() + 1 :]
     return (
         text[:line_start]
-        + f"from app.models.{match.group('module')} import "
+        + f"from {mods['models']}.{match.group('module')} import "
         + ", ".join(kept)
         + text[match.end():]
     )

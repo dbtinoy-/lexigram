@@ -2,10 +2,9 @@
 
 The web package's ``controller`` generator
 (``lexigram.web.cli.generators.controller:ControllerGenerator``) renders a
-controller that assumes the CLI's project-relative layout. In the builder's
-generated *minimal* structure every module lives flat under ``src/app``
-(``app.controllers``, ``app.repositories``, ``app.models``), and the template
-makes two assumptions that do not hold there:
+controller that assumes the CLI's project-relative layout. Wherever the layout puts those packages -- flat under ``src/app`` in the
+minimal structure, sibling packages at ``src/`` in the structured one --
+the template makes two assumptions that do not hold:
 
 1. it imports the repository as ``from repositories.<model>_repository import ...``
    (a bare ``repositories`` package that does not exist on ``sys.path``) —
@@ -26,6 +25,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 import re
 
+from lexigram.builder.gen.layout import DEFAULT_LAYOUT
 from lexigram.logging import get_logger
 
 _logger = get_logger(__name__)
@@ -98,7 +98,7 @@ def reconcile_controller(
     *,
     entity_name: str,
     pascal: str,
-    app_package: str = "app",
+    mods: dict[str, str] | None = None,
 ) -> ControllerRewrite:
     """Reconcile a generated controller's source for *entity_name*.
 
@@ -106,12 +106,16 @@ def reconcile_controller(
         text: Raw controller source emitted by the framework generator.
         entity_name: snake_case entity name (e.g. ``note``).
         pascal: PascalCase entity/class name (e.g. ``Note``).
-        app_package: Top-level package of the generated app (``app`` for
-            the minimal structure).
+        mods: Dotted import paths for this run's structure, from
+            :meth:`WriterLayout.module_names`. Repaired imports must name
+            the packages the *layout* chose (``app.repositories`` under
+            minimal, ``repositories`` under structured), so this is the
+            only correct source for them. Defaults to the minimal map.
 
     Returns:
         A :class:`ControllerRewrite` describing the changes applied.
     """
+    mods = mods or DEFAULT_LAYOUT.module_names()
     original = text
 
     # ── 1. sibling-package imports → absolute app-package paths (LEX-1) ──
@@ -122,7 +126,7 @@ def reconcile_controller(
             nonlocal fixed_imports
             fixed_imports = True
             return (
-                f"from {app_package}.{package}.{match.group('module')}{suffix} "
+                f"from {mods[package]}.{match.group('module')}{suffix} "
                 f"import {match.group('cls').strip()}"
             )
 
@@ -140,7 +144,9 @@ def reconcile_controller(
 
     # ── 2. entity NotFound exception (idempotent) ─────────────────────────
     wired_exception = False
-    exc_import = f"from {app_package}.exceptions import {pascal}NotFoundError"
+    exc_import = (
+        f"from {mods['app']}.exceptions import {pascal}NotFoundError"
+    )
     if exc_import not in text:
         # The framework template renders `from lexigram.web.exceptions import
         # <Err, ...>` either as a parenthesised block or a single line —
@@ -203,11 +209,13 @@ def reconcile_controller(
         text = new_text
         # Ensure the supporting symbols are imported in legacy templates.
         model_import = (
-            f"from {app_package}.models.{entity_name} import {pascal}Create, "
+            f"from {mods['models']}.{entity_name} import {pascal}Create, "
             f"{pascal}Update"
         )
         if f"{pascal}Create(" in text and f"{pascal}Create" not in _imported_names(text):
-            anchor = f"from {app_package}.repositories.{entity_name}_repository"
+            anchor = (
+                f"from {mods['repositories']}.{entity_name}_repository"
+            )
             if anchor in text:
                 text = re.sub(
                     r"^(" + re.escape(anchor) + r"[^\n]*\n)",
