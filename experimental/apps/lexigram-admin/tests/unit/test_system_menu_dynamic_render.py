@@ -29,5 +29,7 @@ def test_settings_renders_as_block_when_flagged():
     assert 'href="/admin/settings"' in html
     # Data-test hook should come from the nav attrs
     assert 'data-test="system-settings"' in html
-    # The block item should be rendered directly as a stacked list
-    assert "block px-4 py-2" in html
+    # The block item should be rendered directly as a stacked list in the
+    # sidebar utility area rather than in the account dropdown.
+    assert "admin-sidebar-utilities" in html
+    assert "group flex items-center" in html

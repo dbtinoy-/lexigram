@@ -2,9 +2,9 @@
 
 :class:`NavigationManager` is the single per-request entry point for
 navigation state: it resolves the primary nav (resource items + assembler
-contributions with dedup and per-request active state), the cluster
-secondary sidebar for the active cluster center, and the user-menu entries
-(cluster landings + settings/plugins) as :class:`MenuItem` values.
+contributions with dedup, placement, and per-request active state), the cluster
+secondary sidebar for the active cluster center, the sidebar utility links, and
+the personal user-menu entries as :class:`MenuItem` values.
 
 Everything is derived from request-scoped app state, so a fresh manager is
 built per request — the mount lifecycle.
@@ -31,10 +31,86 @@ def _menu_entry(
     suffix: str,
     icon: str,
 ) -> MenuItem:
-    """Build a user-menu entry under the configured admin prefix."""
+    """Build a shell navigation entry under the configured admin prefix."""
     base = (prefix or DEFAULT_ADMIN_PREFIX).rstrip("/")
     href = f"{base}/{suffix.lstrip('/')}"
     return MenuItem(label=label, href=href, icon=icon)
+
+
+# Known shell groups get a stable visual order. Unknown consumer groups retain
+# their relative order after these sections, so contributors can extend the
+# sidebar without being silently reordered alphabetically.
+_PRIMARY_GROUP_ORDER: dict[str, int] = {
+    "workspace": 10,
+    "operations": 20,
+    "security": 30,
+    "integrations": 40,
+    "search": 50,
+    "tools": 50,
+    "administration": 90,
+}
+
+
+def _group_order(label: object) -> int:
+    """Return the presentation rank for a primary sidebar group."""
+    return _PRIMARY_GROUP_ORDER.get(str(label or "").strip().casefold(), 60)
+
+
+def _order_primary_nav(items: list[Any]) -> list[Any]:
+    """Order complete sidebar sections without disturbing item order.
+
+    Top-level links remain at the top. Grouped sections are treated as
+    indivisible blocks, then ranked by the shell's information architecture;
+    unrecognized groups retain their original relative ordering.
+    """
+    leading: list[Any] = []
+    blocks: list[tuple[int, int, list[Any]]] = []
+    current: list[Any] | None = None
+    current_rank = 60
+    section_index = 0
+
+    for item in items:
+        if isinstance(item, dict) and item.get("is_group"):
+            if current is not None:
+                blocks.append((current_rank, section_index, current))
+                section_index += 1
+            current = [item]
+            current_rank = _group_order(item.get("label"))
+        elif current is None:
+            leading.append(item)
+        else:
+            current.append(item)
+
+    if current is not None:
+        blocks.append((current_rank, section_index, current))
+
+    blocks.sort(key=lambda block: (block[0], block[1]))
+    return leading + [item for _rank, _index, block in blocks for item in block]
+
+
+def _append_unique_group(
+    items: list[Any],
+    label: str,
+    entries: list[dict[str, Any]],
+) -> None:
+    """Append a labeled group while avoiding duplicate destinations."""
+    existing_hrefs = {
+        str(item.get("href", "")).strip()
+        for item in items
+        if isinstance(item, dict) and item.get("href")
+    }
+    unique_entries: list[dict[str, Any]] = []
+    for entry in entries:
+        href = str(entry.get("href", "")).strip()
+        if href and href in existing_hrefs:
+            continue
+        unique_entries.append(entry)
+        if href:
+            existing_hrefs.add(href)
+
+    if unique_entries:
+        items.append({"is_group": True, "label": label})
+        items.extend(unique_entries)
 
 
 class NavigationManager:
@@ -76,7 +152,14 @@ class NavigationManager:
         registry = (
             getattr(self._state, "cluster_registry", None) if self._state else None
         )
-        self._cluster_registry = registry or ClusterRegistry.with_defaults()
+        # An explicitly supplied empty registry is meaningful (for example,
+        # an installation that disables optional centers); only fall back to
+        # built-ins when app state has not provided a real registry.
+        self._cluster_registry = (
+            registry
+            if isinstance(registry, ClusterRegistry)
+            else ClusterRegistry.with_defaults()
+        )
 
     # ------------------------------------------------------------------
     # Clusters
@@ -112,9 +195,9 @@ class NavigationManager:
         """Resolve the full navigation state for this request.
 
         Merges NavItemBuilder resource items with NavigationAssembler
-        contributor items, computes per-request active states, collapses
-        every cluster group from the primary sidebar, and — when the path
-        belongs to a cluster center — returns its secondary nav.
+        contributor items, computes per-request active states, promotes
+        registered cluster centers into the primary sidebar, and — when the
+        path belongs to a cluster center — returns its secondary nav.
 
         Returns:
             A tuple of (nav_items, system_menu_items, secondary_nav).
@@ -143,12 +226,39 @@ class NavigationManager:
             assembler_nav_items.append(item)
 
         cluster_nav: list | None = None
+        cluster_landing_items: list[tuple[int, int, dict[str, Any]]] = []
         items_by_cluster: dict[Any, list] = {}
-        for cluster in self._cluster_registry.all():
+        for cluster_index, cluster in enumerate(self._cluster_registry.all()):
             items = cluster_items(self._assembler_groups, cluster=cluster)
-            if not items:
-                continue
+            # A registered center is a destination even when no contributor
+            # has populated it yet; its controller can render an empty state.
             items_by_cluster[cluster] = items
+            cluster_slug = str(
+                getattr(cluster, "slug", None)
+                or getattr(cluster, "name", "cluster")
+            ).strip("/") or "cluster"
+            cluster_label = (
+                getattr(cluster, "label", None)
+                or getattr(cluster, "name", None)
+                or "Operations"
+            )
+            cluster_landing_items.append(
+                (
+                    int(getattr(cluster, "order", 0) or 0),
+                    cluster_index,
+                    {
+                        "label": cluster_label,
+                        "href": f"{self._admin_prefix}/{cluster_slug}",
+                        "icon": getattr(cluster, "icon", None) or "server",
+                        "active": is_cluster_path(
+                            current_path,
+                            items,
+                            cluster=cluster,
+                            admin_prefix=self._admin_prefix,
+                        ),
+                    },
+                )
+            )
             if cluster_nav is None and is_cluster_path(
                 current_path,
                 items,
@@ -161,6 +271,7 @@ class NavigationManager:
                     cluster=cluster,
                     admin_prefix=self._admin_prefix,
                 )
+        cluster_landing_items.sort(key=lambda item: (item[0], item[1]))
         for cluster, items in items_by_cluster.items():
             assembler_nav_items = collapse_cluster_in_primary(
                 assembler_nav_items,
@@ -170,7 +281,10 @@ class NavigationManager:
             )
 
         builder_items = self._nav_builder.build_nav_items(current_path=current_path)
-        system_menu_items = self._nav_builder.build_system_menu_items()
+        system_menu_items = self._build_system_menu_items(
+            self._nav_builder.build_system_menu_items(),
+            current_path,
+        )
 
         merged = list(builder_items)
         seen_hrefs: set[str] = set()
@@ -209,6 +323,18 @@ class NavigationManager:
                 group_labels.setdefault("", set()).add(label)
             top_items.append(item)
 
+        visible_cluster_items = [
+            item
+            for _order, _index, item in cluster_landing_items
+            if not item["href"] or item["href"] not in seen_hrefs
+        ]
+        for item in visible_cluster_items:
+            if item.get("href"):
+                seen_hrefs.add(str(item["href"]))
+        if visible_cluster_items:
+            top_items.append({"is_group": True, "label": "Operations"})
+            top_items.extend(visible_cluster_items)
+
         merged = top_items + merged
 
         current_group = ""
@@ -246,23 +372,134 @@ class NavigationManager:
                 group_labels.setdefault(current_group, set()).add(label)
             merged.append(item)
 
-        return merged, system_menu_items, cluster_nav
+        # Plugins is a destination, not an account action. Keep it visible in
+        # the sidebar while preserving the existing user-menu API for direct
+        # integrations that still request the full navigation set.
+        _append_unique_group(
+            merged,
+            "Tools",
+            [
+                _menu_entry(
+                    "Plugins",
+                    self._admin_prefix,
+                    "plugins",
+                    "plugins",
+                ).to_dict(),
+            ],
+        )
+
+        # Administrative destinations are deliberately request-gated here so
+        # the shell never renders a privileged link to a regular operator.
+        if self._is_super_admin():
+            _append_unique_group(
+                merged,
+                "Administration",
+                [
+                    _menu_entry(
+                        "Users", self._admin_prefix, "users", "users"
+                    ).to_dict(),
+                    _menu_entry(
+                        "Roles", self._admin_prefix, "roles", "shield-check"
+                    ).to_dict(),
+                    _menu_entry(
+                        "Security", self._admin_prefix, "security", "shield"
+                    ).to_dict(),
+                    _menu_entry("Email", self._admin_prefix, "email", "mail").to_dict(),
+                ],
+            )
+
+        return _order_primary_nav(merged), system_menu_items, cluster_nav
+
+    def _build_system_menu_items(
+        self,
+        supplied_items: list[Any],
+        current_path: str | None,
+    ) -> list[dict[str, Any]]:
+        """Build the persistent sidebar utility area.
+
+        Settings is a global application destination rather than a personal
+        account action, so it belongs in the sidebar footer. Consumer-supplied
+        system links remain supported and win when they already provide a
+        Settings entry.
+        """
+        settings: dict[str, Any] = _menu_entry(
+            "Settings",
+            self._admin_prefix,
+            "settings",
+            "settings",
+        ).to_dict()
+        settings["render"] = "block"
+        settings["active"] = bool(
+            current_path
+            and (
+                current_path == settings["href"]
+                or current_path.startswith(str(settings["href"]) + "/")
+            )
+        )
+
+        normalized: list[dict[str, Any]] = []
+        existing_hrefs: set[str] = set()
+        existing_labels: set[str] = set()
+        for item in supplied_items:
+            if not isinstance(item, dict):
+                continue
+            normalized_item = dict(item)
+            if normalized_item.get("href"):
+                normalized_item["href"] = mount_admin_url(
+                    str(normalized_item["href"]), self._admin_prefix
+                )
+            if normalized_item.get("badge"):
+                normalized_item["badge"] = mount_admin_url(
+                    str(normalized_item["badge"]), self._admin_prefix
+                )
+            href = str(normalized_item.get("href", "")).strip()
+            label = str(normalized_item.get("label", "")).strip().casefold()
+            if href and href in existing_hrefs:
+                continue
+            if label and label in existing_labels:
+                continue
+            if (
+                current_path
+                and href
+                and (current_path == href or current_path.startswith(href + "/"))
+            ):
+                normalized_item["active"] = True
+            normalized.append(normalized_item)
+            if href:
+                existing_hrefs.add(href)
+            if label:
+                existing_labels.add(label)
+
+        if (
+            str(settings["href"]) not in existing_hrefs
+            and "settings" not in existing_labels
+        ):
+            normalized.insert(0, settings)
+        return normalized
 
     # ------------------------------------------------------------------
     # User menu
     # ------------------------------------------------------------------
 
     def user_menu_items(
-        self, include_plugins: bool = True
+        self,
+        include_plugins: bool = True,
+        *,
+        include_navigation: bool = True,
     ) -> list[dict[str, str | None]]:
         """Build the shell user-menu entries for this request.
 
-        The Profile entry comes first, then cluster centers (one entry per
-        registered cluster), then Plugins and Settings.
+        The Profile entry is always first. When ``include_navigation`` is
+        true, the legacy full set (cluster centers, superadmin destinations,
+        Plugins, and Settings) is also returned for direct API callers. The
+        rendered shell passes ``include_navigation=False`` because those
+        application destinations now live in the sidebar.
 
         Args:
-            include_plugins: Include the Plugins landing entry (skipped by
-                the placeholder/under-construction shell).
+            include_plugins: Include the Plugins landing entry in the legacy
+                full set (skipped by the placeholder shell).
+            include_navigation: Keep application navigation entries in this
+                menu. Set false for the shell's personal account menu.
 
         Returns:
             Shell-compatible menu entry dicts (label, href, icon).
@@ -271,6 +508,9 @@ class NavigationManager:
         entries: list[MenuItem] = [
             _menu_entry("Profile", prefix, "profile", "user-circle")
         ]
+        if not include_navigation:
+            return [entry.to_dict() for entry in entries]
+
         entries.extend(
             _menu_entry(
                 cluster.label,
@@ -302,9 +542,7 @@ class NavigationManager:
             return False
         if getattr(user, "is_superuser", False) is True:
             return True
-        role = str(
-            getattr(self._state, "super_admin_role", "") if self._state else ""
-        )
+        role = str(getattr(self._state, "super_admin_role", "") if self._state else "")
         if not role:
             return False
         roles = getattr(user, "roles", None) or ()

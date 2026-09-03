@@ -341,7 +341,9 @@ async def wrap_page_in_shell(
     from lexigram.admin.navigation.manager import NavigationManager
 
     user_menu_items: list[dict[str, str | None]] = (
-        NavigationManager(request).user_menu_items() if request is not None else []
+        NavigationManager(request).user_menu_items(include_navigation=False)
+        if request is not None
+        else []
     )
 
     branding: dict[str, str] = {}

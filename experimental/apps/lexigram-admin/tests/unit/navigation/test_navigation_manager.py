@@ -50,7 +50,9 @@ def _request_with_content(path: str = "/admin/") -> MagicMock:
 class TestResolveNav:
     def test_returns_builder_items_and_system_menu(self) -> None:
         nav, system, cluster_nav = NavigationManager(_request()).resolve_nav()
-        assert [i["label"] for i in nav] == ["Dashboard"]
+        labels = [i["label"] for i in nav]
+        assert labels[0] == "Dashboard"
+        assert labels[-2:] == ["Tools", "Plugins"]
         assert system == [{"label": "Settings", "href": "/admin/settings"}]
         assert cluster_nav is None
 

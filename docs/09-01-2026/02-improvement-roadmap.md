@@ -188,16 +188,28 @@ The first 15 minutes decide whether a team adopts an admin framework.
   graph remains unchanged, and the package suite collects without the former
   resilience import error. Full Plan:
   [54-tasks-test-dependency.md](54-tasks-test-dependency.md).
+- **R56. Sidebar information architecture and account placement.** ✅ **Done
+  2026-09-03** — the navigation manager now composes an ordered Overview →
+  Workspace → Operations → Security/Integrations → Tools → Administration
+  sidebar while preserving contributor groups, permissions, active state, and
+  custom prefixes. Registered cluster centers are first-class Operations
+  links; Settings and supplied system links remain in the utility footer;
+  Profile and Sign out move to a reusable topbar UserBox variant. Direct
+  user-menu callers retain the legacy full-navigation default, while rendered
+  shells request the personal-only menu. Full Plan:
+  [56-sidebar-information-architecture.md](56-sidebar-information-architecture.md).
 
 ---
 
 ## Completion status (2026-09-03)
 
-The concrete roadmap and follow-up records through R55 are implemented and
+The concrete roadmap and follow-up records through R56 are implemented and
 have regression coverage. R14 phase 2 is implemented with its own verification
 record in [53-bulk-live-progress.md](53-bulk-live-progress.md); only its
-playground/browser round trip is intentionally deferred. The repository release
-gate is tracked in the [reliability audit Full Plan](50-reliability-audit.md):
+playground/browser round trip is intentionally deferred. Sidebar information
+architecture and account placement are recorded in
+[56-sidebar-information-architecture.md](56-sidebar-information-architecture.md).
+The repository release gate is tracked in the [reliability audit Full Plan](50-reliability-audit.md):
 targeted package suites, ruff, mypy, and the first-run scenario must remain
 green before the branch is pushed. Deliberate future projects (shared/team
 saved views, durable/distributed progress tasks and task history, optional

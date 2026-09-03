@@ -57,12 +57,17 @@ class Dropdown(Component):
             )
             for item in self.items
         ]
+        wrapper_class = self.props.get(
+            "class_", "relative inline-block text-left w-full"
+        )
+        trigger_attrs = dict(self.props.get("trigger_attrs", {}))
+        trigger_attrs.setdefault("aria-haspopup", "menu")
 
         return el(
             "div",
             {
                 "x-data": "{ open: false, focusedIndex: -1 }",
-                "class": "relative inline-block text-left w-full",
+                "class": wrapper_class,
                 "x-on:keydown.escape.prevent": "open = false",
                 "x-on:keydown.down.prevent": "focusedIndex = Math.min(focusedIndex + 1, "
                 + str(len(self.items) - 1)
@@ -77,11 +82,15 @@ class Dropdown(Component):
                     "x-on:click": "open = !open",
                     "x-on:click.outside": "open = false",
                     ":aria-expanded": "open",
-                    "class": "w-full",
+                    "class": (
+                        "w-full focus-visible:outline-none focus-visible:ring-2 "
+                        "focus-visible:ring-ring focus-visible:ring-offset-1"
+                    ),
                     "tabindex": "0",
                     "role": "button",
                     "x-on:keydown.enter.prevent": "open = !open",
                     "x-on:keydown.space.prevent": "open = !open",
+                    **trigger_attrs,
                 },
                 self.trigger,
             ),

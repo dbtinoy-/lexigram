@@ -245,7 +245,11 @@ class SidebarSection(Component):
 
 class Sidebar(Component):
     """
-    Main Sidebar container with Logo, Navigation Sections, and User profile.
+    Main Sidebar container with Logo, Navigation Sections, and utilities.
+
+    Account identity and account actions are rendered by the topbar; the
+    footer remains dedicated to application utilities and the collapse
+    control.
     """
 
     def __init__(
@@ -296,7 +300,7 @@ class Sidebar(Component):
         self.admin_prefix = admin_prefix.rstrip("/") or "/admin"
 
     def render(self) -> Any:
-        from lexigram.ui import SystemBox, UserBox
+        from lexigram.ui import SystemBox
 
         # Logo Icon - Navigates to /admin dashboard
         if self.logo_url:
@@ -360,38 +364,23 @@ class Sidebar(Component):
             aria_label="Main navigation",
         )
 
-        # User Footer
-        def _get_user_val(key, default=None) -> Any:
-            if isinstance(self.user, dict):
-                return self.user.get(key, default)
-            return getattr(self.user, key, default)
-
+        # Footer utilities. Account identity/actions live in the topbar so
+        # this region stays reserved for persistent application utilities and
+        # the sidebar affordance itself.
         system_menu_bar = SystemBox(
             system_menu_items=self.system_menu_items,
             direction="up",
             user=self.raw_user,
-        )
-
-        user_node = UserBox(
-            _get_user_val("username") or _get_user_val("name", "Admin"),
-            avatar_url=_get_user_val("avatar") or _get_user_val("avatar_url"),
-            direction="up",  # Open upwards to avoid clipping/overflow
-            position="left",  # Open to the right (left-aligned) to avoid clipping off-screen in mini mode
-            roles=_get_user_val("roles", []),
-            user_menu_items=self.user_menu_items,
-            user=self.raw_user,
-            logout_url=f"{self.admin_prefix}/logout",
         )
         footer = el(
             "div",
             system_menu_bar,
             el(
                 "div",
-                user_node,
                 toggle_btn,
-                class_="flex items-center gap-1 px-2 py-1",
+                class_="flex items-center justify-end gap-1 px-2 py-2",
             ),
-            class_="dark:border-border",
+            class_="admin-sidebar-footer mt-auto border-t border-border dark:border-border",
         )
 
         return el(

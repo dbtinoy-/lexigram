@@ -1048,6 +1048,37 @@ body.modal-open {
   transform: translateX(2px);
 }
 
+/* Account actions belong to the topbar, not the navigation footer. Keep the
+   dropdown intrinsic-width so it cannot stretch the action row or the page
+   content when the sidebar is collapsed. */
+.admin-topbar-user,
+.admin-topbar-user-dropdown,
+.admin-topbar-user-dropdown > [x-ref="trigger"] {
+  width: auto !important;
+}
+
+.admin-topbar-user-dropdown > [x-ref="trigger"] {
+  display: flex;
+  align-items: center;
+}
+
+.admin-topbar-user-name {
+  min-width: 0;
+}
+
+.admin-sidebar-footer {
+  border-color: var(--admin-border) !important;
+  background: color-mix(in srgb, var(--admin-surface) 72%, transparent);
+}
+
+.admin-sidebar-utilities {
+  border-bottom-color: var(--admin-border) !important;
+}
+
+.admin-sidebar-footer a[aria-current="page"] {
+  box-shadow: inset 2px 0 0 var(--admin-primary, #6366f1);
+}
+
 .dashboard-page {
   animation: dashboard-enter 280ms ease-out both;
 }
