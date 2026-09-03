@@ -5,6 +5,7 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+import structlog.testing
 
 from lexigram.contracts.admin import MessageContent, StatContent
 from lexigram.contracts.admin.errors import WidgetNotFoundError
@@ -28,9 +29,7 @@ class TestEventsAdminContributor:
         """Mock EventsThroughputWidgetHandler returning MessageContent."""
         handler = MagicMock(spec=WidgetHandlerProtocol)
         handler.get_data = AsyncMock(
-            return_value=Ok(
-                MessageContent(text="stub", tone="default")
-            )
+            return_value=Ok(MessageContent(text="stub", tone="default"))
         )
         return handler
 
@@ -142,6 +141,7 @@ __all__ = [
     "TestEventsAdminContributor",
 ]
 
+
 class TestWidgetAdvertising:
     """Post-boot widget filtering (R49 — docs/09-01-2026/45-dead-dashboard-widgets.md).
 
@@ -186,3 +186,33 @@ class TestWidgetAdvertising:
         result = await contributor.render_widget("live_events", WidgetParams())
         assert result.is_err()
         assert isinstance(result.unwrap_err(), WidgetNotFoundError)
+
+
+@pytest.mark.asyncio
+async def test_missing_dependencies_log_contributor_as_disabled() -> None:
+    """Expected handler misses use concise events without raw error chains."""
+    from lexigram.contracts.exceptions.container import UnresolvableDependencyError
+
+    container = MagicMock()
+    container.resolve = AsyncMock(
+        side_effect=UnresolvableDependencyError(
+            "[LEX_ERR_DI_004] missing\n  → Fix: register it",
+            dependency="EventsThroughputWidgetHandler",
+        )
+    )
+    contributor = EventsAdminContributor()
+
+    with structlog.testing.capture_logs() as captured:
+        await contributor.on_admin_boot(container)
+
+    disabled = [
+        log for log in captured if log.get("event") == "admin.contributor_disabled"
+    ]
+    assert len(disabled) == 3
+    assert {log["feature"] for log in disabled} == {
+        "events throughput widget",
+        "dead-letter widget",
+        "live-events widget",
+    }
+    assert all(log["contributor"] == "events" for log in disabled)
+    assert all("LEX_ERR" not in str(log) and "\n" not in str(log) for log in disabled)

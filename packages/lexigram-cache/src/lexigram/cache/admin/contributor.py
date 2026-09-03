@@ -8,6 +8,9 @@ from collections.abc import Sequence
 from typing import TYPE_CHECKING, cast
 
 from lexigram.contracts.admin.contributor import BaseAdminContributor
+from lexigram.contracts.admin.contributor_boot import (
+    summarize_contributor_boot_failure,
+)
 from lexigram.contracts.admin.errors import WidgetNotFoundError
 from lexigram.contracts.admin.types import (
     AdminActionDefinition,
@@ -169,12 +172,26 @@ class CacheAdminContributor(BaseAdminContributor):
         )
         from lexigram.contracts.infra.cache.protocols import CacheBackendProtocol
 
+        self._handlers = None
         try:
             cache = await container.resolve(CacheBackendProtocol)
         except Exception as exc:  # noqa: BLE001
-            logger.warning(
-                "cache_contributor.cache_backend_unavailable", error=str(exc)
-            )
+            failure = summarize_contributor_boot_failure(exc)
+            if failure.expected:
+                logger.info(
+                    "admin.contributor_disabled",
+                    contributor=self.name,
+                    feature="cache widget handlers",
+                    reason=failure.reason,
+                    missing=failure.summary,
+                )
+            else:
+                logger.warning(
+                    "cache_contributor.cache_backend_unavailable",
+                    error=failure.summary,
+                    error_type=type(exc).__name__,
+                    exc_info=True,
+                )
             cache = None
 
         if cache is not None:

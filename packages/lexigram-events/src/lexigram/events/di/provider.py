@@ -8,6 +8,9 @@ from __future__ import annotations
 import time
 from typing import TYPE_CHECKING, Any, cast
 
+from lexigram.contracts.admin.contributor_boot import (
+    summarize_contributor_boot_failure,
+)
 from lexigram.contracts.core import (
     HealthCheckCategory,
     HealthCheckResult,
@@ -256,7 +259,22 @@ class EventsProvider(Provider):
             if hasattr(contributor, "on_admin_boot"):
                 await contributor.on_admin_boot(container)
         except Exception as exc:  # noqa: BLE001
-            logger.warning("events_admin_contributor_boot_failed", error=str(exc))
+            failure = summarize_contributor_boot_failure(exc)
+            if failure.expected:
+                logger.info(
+                    "admin.contributor_disabled",
+                    contributor="events",
+                    feature="admin contributor",
+                    reason=failure.reason,
+                    missing=failure.summary,
+                )
+            else:
+                logger.warning(
+                    "events_admin_contributor_boot_failed",
+                    error=failure.summary,
+                    error_type=type(exc).__name__,
+                    exc_info=True,
+                )
 
     async def _wire_adapters(self, container: ContainerResolverProtocol) -> None:
         """Connect registered adapters to the EventBusProtocol when configured."""

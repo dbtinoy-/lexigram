@@ -170,5 +170,7 @@ sqlite3 experimental/apps/lexigram-admin/playground/playground.db \
 - `unpkg.com`/`jsdelivr.net` may be blocked in CI sandboxes;
   `registry.npmjs.org` is the reliable source for asset tarballs (doc 03) —
   and since B6, the admin UI no longer needs any of them at runtime.
-- Known cosmetic boot noise: webhook-contributor traceback for
-  `WebhookSubscriptionStoreProtocol` (roadmap R8) — boot continues normally.
+- Known optional-route boot noise: `admin.sse_widgets_route_skipped` when
+  `ReactiveSseBridgeProtocol` is not registered. This is an expected
+  availability warning for the separately mounted SSE route; contributor
+  boot misses use concise INFO events and the clean boot has no traceback.

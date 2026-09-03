@@ -8,6 +8,9 @@ from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
 from lexigram.contracts.admin.contributor import BaseAdminContributor
+from lexigram.contracts.admin.contributor_boot import (
+    summarize_contributor_boot_failure,
+)
 from lexigram.contracts.admin.errors import AdminError, WidgetNotFoundError
 from lexigram.contracts.admin.types import (
     AdminActionDefinition,
@@ -167,9 +170,22 @@ class EventsAdminContributor(BaseAdminContributor):
                 EventsThroughputWidgetHandler
             )
         except Exception as exc:  # noqa: BLE001
-            logger.warning(
-                "events_contributor.throughput_handler_unavailable", error=str(exc)
-            )
+            failure = summarize_contributor_boot_failure(exc)
+            if failure.expected:
+                logger.info(
+                    "admin.contributor_disabled",
+                    contributor=self.name,
+                    feature="events throughput widget",
+                    reason=failure.reason,
+                    missing=failure.summary,
+                )
+            else:
+                logger.warning(
+                    "events_contributor.throughput_handler_unavailable",
+                    error=failure.summary,
+                    error_type=type(exc).__name__,
+                    exc_info=True,
+                )
             self._throughput_handler = None
 
         try:
@@ -177,17 +193,43 @@ class EventsAdminContributor(BaseAdminContributor):
                 DeadLetterCountWidgetHandler
             )
         except Exception as exc:  # noqa: BLE001
-            logger.warning(
-                "events_contributor.dead_letter_handler_unavailable", error=str(exc)
-            )
+            failure = summarize_contributor_boot_failure(exc)
+            if failure.expected:
+                logger.info(
+                    "admin.contributor_disabled",
+                    contributor=self.name,
+                    feature="dead-letter widget",
+                    reason=failure.reason,
+                    missing=failure.summary,
+                )
+            else:
+                logger.warning(
+                    "events_contributor.dead_letter_handler_unavailable",
+                    error=failure.summary,
+                    error_type=type(exc).__name__,
+                    exc_info=True,
+                )
             self._dead_letter_handler = None
 
         try:
             self._live_events_handler = await container.resolve(LiveEventsWidgetHandler)
         except Exception as exc:  # noqa: BLE001
-            logger.warning(
-                "events_contributor.live_events_handler_unavailable", error=str(exc)
-            )
+            failure = summarize_contributor_boot_failure(exc)
+            if failure.expected:
+                logger.info(
+                    "admin.contributor_disabled",
+                    contributor=self.name,
+                    feature="live-events widget",
+                    reason=failure.reason,
+                    missing=failure.summary,
+                )
+            else:
+                logger.warning(
+                    "events_contributor.live_events_handler_unavailable",
+                    error=failure.summary,
+                    error_type=type(exc).__name__,
+                    exc_info=True,
+                )
             self._live_events_handler = None
         self._booted = True
 
