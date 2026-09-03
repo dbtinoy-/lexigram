@@ -151,6 +151,70 @@ def search_overlay_markup() -> Any:
                 }
                 window.scrollTo(0, 0);
             });
+
+            // Keep contributor settings links truthful when a panel swaps
+            // only the Configuration Center content column. The sidebar
+            // survives the swap, so update its active styling from the URL
+            // rather than asking every panel handler to know about layout
+            // markup. Delegation keeps this alive across body swaps.
+            function syncSettingsPanelNavigation(path) {
+                var currentPath;
+                try {
+                    currentPath = new URL(path || location.href, location.href).pathname;
+                } catch (err) {
+                    currentPath = location.pathname;
+                }
+                currentPath = currentPath.length > 1
+                    ? currentPath.replace(new RegExp('/+$'), '')
+                    : currentPath;
+
+                document.querySelectorAll('[data-settings-panel-nav]').forEach(function(link) {
+                    var linkPath;
+                    try {
+                        linkPath = new URL(link.href, location.href).pathname;
+                    } catch (err) {
+                        return;
+                    }
+                    linkPath = linkPath.length > 1
+                        ? linkPath.replace(new RegExp('/+$'), '')
+                        : linkPath;
+                    var active = linkPath === currentPath;
+                    [
+                        'bg-primary-50', 'text-primary-700',
+                        'dark:bg-primary-900/30', 'dark:text-primary-400',
+                        'font-medium'
+                    ].forEach(function(className) {
+                        link.classList.toggle(className, active);
+                    });
+                    [
+                        'text-muted-foreground', 'hover:bg-muted',
+                        'dark:text-muted-foreground', 'dark:hover:bg-card'
+                    ].forEach(function(className) {
+                        link.classList.toggle(className, !active);
+                    });
+                    if (active) {
+                        link.setAttribute('aria-current', 'page');
+                    } else {
+                        link.removeAttribute('aria-current');
+                    }
+                });
+            }
+
+            document.addEventListener('htmx:pushedIntoHistory', function(e) {
+                var path = e.detail && e.detail.path;
+                syncSettingsPanelNavigation(path || location.href);
+            });
+            document.addEventListener('htmx:historyRestore', function() {
+                syncSettingsPanelNavigation(location.href);
+            });
+            window.addEventListener('popstate', function() {
+                window.setTimeout(function() {
+                    syncSettingsPanelNavigation(location.href);
+                }, 0);
+            });
+            window.setTimeout(function() {
+                syncSettingsPanelNavigation(location.href);
+            }, 0);
             })();
         </script>
         """,

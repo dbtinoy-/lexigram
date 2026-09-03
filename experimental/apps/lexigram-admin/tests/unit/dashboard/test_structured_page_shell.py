@@ -110,6 +110,31 @@ class TestStructuredPageShell:
         assert "<title>System Info" in body.decode()
 
     @pytest.mark.asyncio
+    async def test_settings_panel_full_navigation_has_contextual_back_link(self):
+        code, body = await _run(
+            StructuredPageHandler(_Handler(), settings_url="/admin/settings"),
+            _scope(),
+        )
+        html = body.decode()
+        assert code == 200
+        assert 'href="/admin/settings"' in html
+        assert "Back to Settings" in html
+
+    @pytest.mark.asyncio
+    async def test_in_place_settings_panel_fragment_omits_redundant_back_link(self):
+        scope = _scope(
+            headers=[(b"hx-request", b"true"), (b"hx-target", b"settings-content")]
+        )
+        code, body = await _run(
+            StructuredPageHandler(_Handler(), settings_url="/admin/settings"),
+            scope,
+        )
+        html = body.decode()
+        assert code == 200
+        assert "<html" not in html.lower()
+        assert "Back to Settings" not in html
+
+    @pytest.mark.asyncio
     async def test_htmx_fragment_request_still_gets_bare_fragment(self):
         """wants_fragment keys off HX-Target (fragment swaps); boosted
         navigations carry no target and correctly get the full shell."""

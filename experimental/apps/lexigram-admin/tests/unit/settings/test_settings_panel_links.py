@@ -86,11 +86,13 @@ class TestConfigLayoutPanelLinks:
         assert "System Info" in html
         assert 'href="/admin/system/info"' in html
         assert 'hx-get="/admin/system/info"' in html
-        assert 'hx-target="#main-content"' in html
+        assert 'hx-target="#settings-content"' in html
         assert 'hx-swap="innerHTML"' in html
         assert 'hx-push-url="true"' in html
         assert "data-admin-navigation" in html
         assert "data-settings-nav" in html
+        assert "data-settings-panel-nav" in html
+        assert 'id="settings-content"' in html
 
     def test_panel_links_grouped_by_category_in_sorted_order(self) -> None:
         html = render_to_string(

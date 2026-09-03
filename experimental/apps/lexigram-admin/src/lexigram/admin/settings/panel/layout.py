@@ -153,8 +153,9 @@ class ConfigLayout(Component):
         separate catalog from ConfigRegistry specs; the sidebar is the
         union. Links reuse the spec-link classes and htmx attributes —
         structured pages return bare fragments for ``HX-Target`` fetches
-        (doc 32), so swapping into ``#main-content`` behaves identically.
-        With no panels this renders nothing (output identical to before).
+        (doc 32), so swapping into the stable ``#settings-content`` column
+        preserves the sidebar. With no panels this renders nothing (output
+        identical to before).
         """
         if not self.panel_links:
             return []
@@ -180,11 +181,12 @@ class ConfigLayout(Component):
                     el("span", link.title, class_="truncate"),
                     href=link.url,
                     hx_get=link.url,
-                    hx_target="#main-content",
+                    hx_target="#settings-content",
                     hx_swap="innerHTML",
                     hx_push_url="true",
                     data_admin_navigation=True,
                     data_settings_nav=True,
+                    data_settings_panel_nav=True,
                     class_=(
                         "block px-3 py-2 pl-9 text-sm rounded-lg transition-colors "
                         "focus-visible:outline-none focus-visible:ring-2 "
@@ -211,6 +213,7 @@ class ConfigLayout(Component):
             return el(
                 "div",
                 el("div", self.content, class_="p-6"),
+                id="settings-content",
                 class_="flex-1 min-w-0",
             )
 
@@ -233,6 +236,7 @@ class ConfigLayout(Component):
                     class_="text-center py-16",
                 ),
             ],
+            id="settings-content",
             class_="flex-1",
         )
 
