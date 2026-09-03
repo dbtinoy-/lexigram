@@ -78,7 +78,7 @@ test = [
 ]
 dev = [
     "black>=23.0.0",
-    "ruff>=0.16.4",
+    "ruff>=0.16.5",
     "mypy>=1.0.0",
 ]
 all = [
@@ -114,7 +114,7 @@ sql = "lexigram.sql.cli.contributor:SqlCliContributor"
 [dependency-groups]
 dev = [
     "black>=23.0.0",
-    "ruff>=0.16.4",
+    "ruff>=0.16.5",
     "mypy>=1.0.0",
     "lexigram-testing>=0.1.4",
 ]
