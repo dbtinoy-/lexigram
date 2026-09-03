@@ -116,6 +116,7 @@ async def test_expected_boot_failure_is_one_concise_disabled_event(
     ]
     assert len(disabled) == 1
     assert disabled[0]["contributor"] == "optional"
+    assert disabled[0]["feature"] == "admin contributor"
     assert disabled[0]["missing"] == "OptionalService"
     assert "LEX_ERR" not in str(disabled[0])
     assert "\n" not in str(disabled[0])

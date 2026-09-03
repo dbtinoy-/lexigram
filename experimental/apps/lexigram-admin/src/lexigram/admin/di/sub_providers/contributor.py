@@ -137,6 +137,7 @@ class AdminContributorSubProvider:
                         logger.info(
                             "admin.contributor_disabled",
                             contributor=contributor.name,
+                            feature="admin contributor",
                             reason=failure.reason,
                             missing=failure.summary,
                         )
@@ -172,6 +173,7 @@ class AdminContributorSubProvider:
                     logger.info(
                         "admin.contributor_disabled",
                         contributor=contributor.contributor_id,
+                        feature="admin contributor",
                         reason=failure.reason,
                         missing=failure.summary,
                     )
