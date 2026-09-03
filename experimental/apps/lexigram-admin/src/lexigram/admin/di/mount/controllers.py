@@ -707,6 +707,21 @@ class AdminMountControllersMixin:
 
             settings_audit = await self._resolve_audit_service(resolver)
 
+            # Best-effort dashboard assembler so contributor settings panels
+            # (e.g. System Info) appear in the Settings sidebar (R50, doc 46).
+            settings_dashboard = None
+            try:
+                from lexigram.admin.dashboard.assembler import DashboardAssembler
+
+                settings_dashboard = await resolver.resolve(
+                    DashboardAssembler,
+                    bypass_visibility=True,
+                )
+            except Exception as exc:  # noqa: BLE001 — panel links are optional
+                _log.warning(
+                    "admin.settings_panel_links_unavailable", reason=str(exc)
+                )
+
             renderer = await resolver.resolve(
                 AdminRenderer,
                 bypass_visibility=True,
@@ -718,6 +733,7 @@ class AdminMountControllersMixin:
                 audit_service=settings_audit,
                 registry=settings_registry,
                 rbac_config=self._config.rbac,
+                dashboard=settings_dashboard,
             )
             ctx.controllers.append(settings_controller)
         except Exception as exc:

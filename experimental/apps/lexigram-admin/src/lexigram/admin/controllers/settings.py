@@ -22,7 +22,7 @@ from lexigram.admin.settings.conflict import SettingsConflictError
 from lexigram.admin.settings.panel import BooleanNode, SecretNode
 from lexigram.admin.settings.panel.layout import ConfigLayout
 from lexigram.admin.settings.panel.registry import ConfigRegistry
-from lexigram.admin.settings.panel.types import ConfigCategory
+from lexigram.admin.settings.panel.types import ConfigCategory, PanelLink
 from lexigram.admin.settings.panel.ui import ConfigDashboardUI
 from lexigram.admin.settings.revision import (
     extract_submitted_revision,
@@ -64,6 +64,7 @@ class SettingsController(SettingsHistoryMixin, AdminController):
         registry: ConfigRegistry | None = None,
         rbac_config: AdminRbacConfig | None = None,
         snapshot_service: SettingsSnapshotService | None = None,
+        dashboard: Any = None,
     ) -> None:
         super().__init__(renderer=renderer, settings_service=settings_service)
         self._csrf_service = csrf_service
@@ -73,6 +74,11 @@ class SettingsController(SettingsHistoryMixin, AdminController):
         # History is on by default so a mistaken save is always recoverable;
         # pass an explicit store via DI to make it durable across restarts.
         self._snapshots = snapshot_service or SettingsSnapshotService()
+        # Duck-typed provider with `async get_settings_panels(user)` (the
+        # DashboardAssembler singleton) — surfaces contributor panels such
+        # as System Info in the sidebar (R50, doc 46). Optional: without it
+        # the sidebar is spec-only, exactly as before.
+        self._dashboard = dashboard
 
     # -- helpers --
 
@@ -176,6 +182,37 @@ class SettingsController(SettingsHistoryMixin, AdminController):
                 )
             )
         return categories, visible
+
+    async def _panel_links(self, request: Request) -> list[PanelLink]:
+        """Contributor settings-panel links for the sidebar (R50, doc 46).
+
+        Panels (e.g. the core contributor's System Info page) live in the
+        dashboard contributor catalog, not the ConfigRegistry — the sidebar
+        renders the union. Permission filtering happens inside the
+        assembler, keyed off the requesting user. Any failure degrades to a
+        spec-only sidebar rather than breaking the Settings page.
+        """
+        if self._dashboard is None:
+            return []
+        try:
+            user = getattr(getattr(request, "state", None), "user", None)
+            panels = await self._dashboard.get_settings_panels(user)
+            return [
+                PanelLink(
+                    title=panel.title,
+                    url=panel.route_path,
+                    icon=getattr(panel, "icon", "") or "file-text",
+                    category=getattr(panel, "category", "") or "Tools",
+                )
+                for panel in sorted(
+                    panels,
+                    key=lambda p: (getattr(p, "order", 100), p.title),
+                )
+                if getattr(panel, "route_path", "")
+            ]
+        except Exception:  # noqa: BLE001 — sidebar extras must never 500
+            logger.warning("settings.panel_links_unavailable")
+            return []
 
     def _get_csrf_token(self, request: Request) -> str | None:
         """Resolve the CSRF token for form rendering, if available."""
@@ -340,6 +377,7 @@ class SettingsController(SettingsHistoryMixin, AdminController):
             content=None,
             title="Settings",
             admin_prefix=admin_prefix_from_request(request),
+            panel_links=await self._panel_links(request),
         )
         return await self.render_admin(
             request,
@@ -390,6 +428,7 @@ class SettingsController(SettingsHistoryMixin, AdminController):
             content=form_content,
             title="Settings",
             admin_prefix=admin_prefix_from_request(request),
+            panel_links=await self._panel_links(request),
         )
 
         response = await self.render_admin(

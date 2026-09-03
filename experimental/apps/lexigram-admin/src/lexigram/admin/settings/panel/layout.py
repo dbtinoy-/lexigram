@@ -44,6 +44,7 @@ class ConfigLayout(Component):
         content: Any = None,
         title: str = "Configuration",
         admin_prefix: str = "/admin",
+        panel_links: list[Any] | None = None,
         **props,
     ) -> None:
         super().__init__(**props)
@@ -53,6 +54,7 @@ class ConfigLayout(Component):
         self.content = content
         self.title = title
         self.admin_prefix = admin_prefix.rstrip("/") or "/admin"
+        self.panel_links = panel_links or []
 
     def render(self) -> Any:
         """Render the full two-column configuration layout."""
@@ -139,9 +141,69 @@ class ConfigLayout(Component):
         return el(
             "nav",
             *groups,
+            *self._render_panel_groups(),
             class_="w-full md:w-64 flex-shrink-0",
             aria_label="Configuration categories",
         )
+
+    def _render_panel_groups(self) -> list[Any]:
+        """Contributor-panel link groups (R50, docs/09-01-2026/46-…md).
+
+        Panels (e.g. the core contributor's System Info page) live in a
+        separate catalog from ConfigRegistry specs; the sidebar is the
+        union. Links reuse the spec-link classes and htmx attributes —
+        structured pages return bare fragments for ``HX-Target`` fetches
+        (doc 32), so swapping into ``#main-content`` behaves identically.
+        With no panels this renders nothing (output identical to before).
+        """
+        if not self.panel_links:
+            return []
+        by_category: dict[str, list[Any]] = {}
+        for link in self.panel_links:
+            by_category.setdefault(str(getattr(link, "category", "Tools")), []).append(
+                link
+            )
+        groups: list[Any] = []
+        for category_label in sorted(by_category):
+            header = el(
+                "div",
+                self._render_icon("folder"),
+                el("span", category_label, class_="font-medium"),
+                class_=(
+                    "flex items-center gap-2 px-3 py-2 text-sm "
+                    "text-muted-foreground dark:text-muted-foreground"
+                ),
+            )
+            links = [
+                el(
+                    "a",
+                    el("span", link.title, class_="truncate"),
+                    href=link.url,
+                    hx_get=link.url,
+                    hx_target="#main-content",
+                    hx_swap="innerHTML",
+                    hx_push_url="true",
+                    data_admin_navigation=True,
+                    data_settings_nav=True,
+                    class_=(
+                        "block px-3 py-2 pl-9 text-sm rounded-lg transition-colors "
+                        "focus-visible:outline-none focus-visible:ring-2 "
+                        "focus-visible:ring-ring text-muted-foreground hover:bg-muted "
+                        "dark:text-muted-foreground dark:hover:bg-card"
+                    ),
+                )
+                for link in by_category[category_label]
+            ]
+            groups.append(
+                el(
+                    "div",
+                    header,
+                    el("div", *links, class_="space-y-1"),
+                    class_="mb-4",
+                    data_testid="settings-panel-links",
+                )
+            )
+        return groups
 
     def _render_main(self) -> Any:
         """Render the main content area."""
