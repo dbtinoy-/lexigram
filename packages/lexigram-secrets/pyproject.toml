@@ -64,7 +64,7 @@ test = [
     "pytest-mock>=3.10.0",
 ]
 dev = [
-    "ruff>=0.16.4",
+    "ruff>=0.16.5",
     "mypy>=1.0.0",
 ]
 
@@ -90,7 +90,7 @@ azure = "lexigram.secrets.backends.azure:AzureKeyVaultStore"
 
 [dependency-groups]
 dev = [
-    "ruff>=0.16.4",
+    "ruff>=0.16.5",
     "mypy>=1.0.0",
 ]
 test = [

@@ -94,7 +94,7 @@ test = [
 ]
 dev = [
     "black>=23.0.0",
-    "ruff>=0.16.4",
+    "ruff>=0.16.5",
     "mypy>=1.0.0",
     "types-aiofiles>=23.0.0",
 ]
@@ -145,7 +145,7 @@ web = "lexigram.web.server.runner:run_server"
 [dependency-groups]
 dev = [
     "black>=23.0.0",
-    "ruff>=0.16.4",
+    "ruff>=0.16.5",
     "mypy>=1.0.0",
     "types-aiofiles>=23.0.0",
 ]
