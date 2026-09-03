@@ -181,12 +181,19 @@ The first 15 minutes decide whether a team adopts an admin framework.
   controls, and one-time auto-apply only for clean full-page visits. Explicit
   query state, HTMX fragments, and mutation notices remain authoritative.
   Full Plan: [52-default-saved-view.md](52-default-saved-view.md).
+- **R55. Tasks test dependency closure.** ✅ **Done 2026-09-03** — the
+  `lexigram-tasks` package's `test` and `all` extras and development `test`
+  group now declare the existing `lexigram-resilience` test dependency, with
+  workspace source and lock metadata synchronized. The production dependency
+  graph remains unchanged, and the package suite collects without the former
+  resilience import error. Full Plan:
+  [54-tasks-test-dependency.md](54-tasks-test-dependency.md).
 
 ---
 
 ## Completion status (2026-09-03)
 
-The concrete roadmap and follow-up records through R54 are implemented and
+The concrete roadmap and follow-up records through R55 are implemented and
 have regression coverage. R14 phase 2 is implemented with its own verification
 record in [53-bulk-live-progress.md](53-bulk-live-progress.md); only its
 playground/browser round trip is intentionally deferred. The repository release

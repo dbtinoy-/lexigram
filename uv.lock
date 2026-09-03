@@ -8419,6 +8419,7 @@ dependencies = [
 [package.optional-dependencies]
 all = [
     { name = "aio-pika" },
+    { name = "lexigram-resilience" },
     { name = "lexigram-testing" },
     { name = "pika" },
     { name = "pytest" },
@@ -8443,6 +8444,7 @@ redis = [
     { name = "rq" },
 ]
 test = [
+    { name = "lexigram-resilience" },
     { name = "lexigram-testing" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
@@ -8458,6 +8460,7 @@ dev = [
     { name = "types-croniter" },
 ]
 test = [
+    { name = "lexigram-resilience" },
     { name = "lexigram-testing" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
@@ -8474,6 +8477,8 @@ requires-dist = [
     { name = "jinja2", specifier = ">=3.1.0" },
     { name = "lexigram", editable = "core/lexigram" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
+    { name = "lexigram-resilience", marker = "extra == 'all'", editable = "packages/lexigram-resilience" },
+    { name = "lexigram-resilience", marker = "extra == 'test'", editable = "packages/lexigram-resilience" },
     { name = "lexigram-testing", marker = "extra == 'all'", editable = "packages/lexigram-testing" },
     { name = "lexigram-testing", marker = "extra == 'test'", editable = "packages/lexigram-testing" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
@@ -8507,6 +8512,7 @@ dev = [
     { name = "types-croniter", specifier = ">=2.0.0" },
 ]
 test = [
+    { name = "lexigram-resilience", editable = "packages/lexigram-resilience" },
     { name = "lexigram-testing", editable = "packages/lexigram-testing" },
     { name = "pytest", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", specifier = ">=0.21.0" },

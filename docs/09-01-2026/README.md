@@ -61,13 +61,16 @@ deployment, the fixes shipped on this date, and the forward-looking roadmap.
 | [51-toast-overlay-layout.md](51-toast-overlay-layout.md) | First-load toast overlay layout (R53): keeps the server-rendered flash zone fixed and viewport-bounded, reuses it for client toasts, and prevents notification markup from changing dashboard width. |
 | [52-default-saved-view.md](52-default-saved-view.md) | Default saved view (R54): adds a per-user/resource default marker, safe set/clear controls, and one-time auto-apply on clean full-page list visits without overriding explicit state. |
 | [53-bulk-live-progress.md](53-bulk-live-progress.md) | R14 phase 2 live bulk progress: thresholded HTMX delete/purge/restore tasks, owner-bound status/SSE streams, accessible DataTable progress UI, terminal toast metadata, and synchronous fallbacks. Playground/browser verification remains deferred. |
+| [54-tasks-test-dependency.md](54-tasks-test-dependency.md) | Tasks package test dependency closure: declares `lexigram-resilience` for the `test`/`all` extras and development test group, adds workspace source metadata, and keeps `uv.lock` aligned without adding a production dependency. |
 
 ## Status at time of writing
 
-- Concrete roadmap and follow-up records through **R54 are implemented** and
+- Concrete roadmap and follow-up records through **R55 are implemented** and
   each behavior change has regression coverage in the owning package. R14
   phase 2 is implemented in [53-bulk-live-progress.md](53-bulk-live-progress.md);
-  its playground/browser round trip remains intentionally deferred. The final
+  its playground/browser round trip remains intentionally deferred. The tasks
+  package test-install graph is closed in
+  [54-tasks-test-dependency.md](54-tasks-test-dependency.md). The final
   audit and release gate are recorded in
   [50-reliability-audit.md](50-reliability-audit.md).
 - The current verification matrix is maintained from the repository checkout:
