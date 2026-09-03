@@ -115,3 +115,4 @@ security header changes converge within one TTL window per worker.
 No wiring changes were needed: `bundle_provider` does not pass
 `settings_ttl`, so the 30 s default applies everywhere the middleware
 is constructed with a store.
+

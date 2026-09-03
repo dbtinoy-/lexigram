@@ -85,3 +85,5 @@ rows checked" as "export the current filtered view": they append
   `list_query=page=2&per_page=5` still exports the full set; an id-less
   POST without `scope=filtered` remains 400; `ids=3&ids=7` still exports
   exactly the selection.
+
+

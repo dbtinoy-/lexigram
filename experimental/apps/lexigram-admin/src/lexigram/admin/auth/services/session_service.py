@@ -318,34 +318,6 @@ class AdminSessionService:
         now = datetime.now(UTC)
         return list(await list_active(now, limit))
 
-    async def list_user_sessions(
-        self, user_id: str, limit: int = 50
-    ) -> list[dict[str, Any]]:
-        """Return active, non-expired sessions for ONE user (R42, doc 38).
-
-        Powers the per-user session panel on the user edit page. Like
-        :meth:`list_active_sessions`, this is deliberately NOT part of
-        ``AdminSessionServiceProtocol`` (runtime-checkable — extending it
-        would break third-party implementations); callers duck-type via
-        ``getattr`` and degrade gracefully when absent.
-
-        Args:
-            user_id: Owner identifier.
-            limit: Maximum number of sessions to return.
-
-        Returns:
-            Raw session row dicts ordered by ``last_active_at``
-            descending; empty list when the repository does not support
-            per-user listing.
-        """
-        finder = getattr(self._repo, "find_active_by_user", None)
-        if finder is None:
-            logger.debug("session.find_active_by_user_unsupported")
-            return []
-        now = datetime.now(UTC)
-        rows = list(await finder(user_id, now))
-        return rows[: int(limit)]
-
 
 # ---------------------------------------------------------------------------
 # Module-level helpers

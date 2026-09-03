@@ -262,55 +262,6 @@ class TopBar(Component):
         self.csrf_token = csrf_token
         self.admin_prefix = admin_prefix.rstrip("/") or "/admin"
 
-    @staticmethod
-    def _user_value(user: Any, *keys: str, default: Any = None) -> Any:
-        """Read a user value from dict- or protocol-shaped user objects."""
-        for key in keys:
-            if isinstance(user, dict):
-                value = user.get(key)
-            else:
-                value = getattr(user, key, None)
-            if value not in (None, ""):
-                return value
-        return default
-
-    def _render_user_menu(self) -> Any:
-        """Render the personal account control for the topbar."""
-        if not self.user:
-            return ""
-
-        from lexigram.ui import UserBox
-
-        username = str(
-            self._user_value(self.user, "name", "username", default="Admin") or "Admin"
-        )
-        roles = self._user_value(self.user, "roles", default=[])
-        if isinstance(roles, str):
-            roles = [roles]
-        if not isinstance(roles, list):
-            roles = list(roles or [])
-
-        return el(
-            "div",
-            UserBox(
-                username,
-                avatar_url=self._user_value(
-                    self.user,
-                    "avatar_url",
-                    "avatar",
-                ),
-                direction="down",
-                position="right",
-                roles=roles,
-                user_menu_items=self.user_menu_items or [],
-                user=self.user,
-                logout_url=f"{self.admin_prefix}/logout",
-                variant="topbar",
-                collapse_var=None,
-            ),
-            class_="admin-topbar-user shrink-0",
-        )
-
     def render(self) -> Any:
         # Default Left: Mobile toggle + Title
         left_node = self.left
@@ -353,9 +304,7 @@ class TopBar(Component):
                 class_="flex items-center",
             )
 
-        # Default Right: TenantSwitcher (superadmin only) + NotificationBell +
-        # ThemeToggle + account menu. Application destinations stay in the
-        # sidebar; the account control is reserved for personal actions.
+        # Default Right: TenantSwitcher (superadmin only) + NotificationBell + ThemeToggle
         right_node = self.right
         if right_node is None:
             from lexigram.ui import NotificationBell
@@ -381,9 +330,6 @@ class TopBar(Component):
                 ).render()
             )
             right_elements.append(ThemeToggle())
-            account_menu = self._render_user_menu()
-            if account_menu:
-                right_elements.append(account_menu)
             right_node = el(
                 "div",
                 *right_elements,

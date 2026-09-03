@@ -260,7 +260,6 @@ class TestDelete:
     async def test_deletes_unassigned_role(self) -> None:
         service = MagicMock()
         service.delete_role = AsyncMock(return_value=Ok(True))
-        service.list_roles = AsyncMock(return_value=[])
         c = _controller(role_service=service)
         c._user_store = self._users(["other"])
         form = _FakeForm({"csrf_token": ""})
@@ -288,7 +287,6 @@ class TestDelete:
     async def test_system_role_error_surfaces(self) -> None:
         service = MagicMock()
         service.delete_role = AsyncMock(return_value=Err(ValueError("system role")))
-        service.list_roles = AsyncMock(return_value=[])
         c = _controller(role_service=service)
         c._user_store = self._users([])
         form = _FakeForm({"csrf_token": ""})
@@ -317,150 +315,3 @@ class TestMatrixRendering:
     def test_no_inventory_still_renders_custom_field(self) -> None:
         html = _controller()._matrix_html(set())
         assert "custom_permissions" in html
-
-
-class TestEffectiveCard:
-    """R40 (doc 36): effective-permissions preview card."""
-
-    def test_inherited_permissions_show_provenance(self) -> None:
-        roles = [
-            _role("viewer", ["posts.read"]),
-            _role("editor", ["posts.write"], inherits=["viewer"]),
-        ]
-        html = _controller()._effective_html("editor", roles)
-        assert "Effective permissions" in html
-        assert "(2 total)" in html
-        assert "posts.write" in html
-        assert "posts.read" in html
-        assert "via viewer" in html
-
-    def test_missing_inherited_role_warns(self) -> None:
-        roles = [_role("editor", ["posts.write"], inherits=["ghost"])]
-        html = _controller()._effective_html("editor", roles)
-        assert "Warning" in html
-        assert "ghost" in html
-        assert "grant nothing" in html
-
-    def test_cycle_terminates_and_renders(self) -> None:
-        roles = [
-            _role("a", ["p.a"], inherits=["b"]),
-            _role("b", ["p.b"], inherits=["a"]),
-        ]
-        html = _controller()._effective_html("a", roles)
-        assert "(2 total)" in html
-        assert "via b" in html
-
-    def test_no_permissions_renders_none_placeholders(self) -> None:
-        html = _controller()._effective_html("empty", [_role("empty")])
-        assert "none" in html
-
-
-class TestDuplicatePrefill:
-    """R40 (doc 36 §2.4): GET /roles/new?from=<role> prefill."""
-
-    def _controller_with_page_capture(self, roles: list) -> tuple[Any, list]:
-        service = MagicMock()
-        service.list_roles = AsyncMock(return_value=roles)
-        c = _controller(role_service=service)
-        captured: list = []
-
-        async def _page(request, html, *a, **kw):
-            captured.append(html)
-            return MagicMock()
-
-        c._page = _page
-        return c, captured
-
-    @pytest.mark.asyncio
-    async def test_unknown_source_redirects_with_error(self) -> None:
-        c, _ = self._controller_with_page_capture([])
-        response = await c.new_page(
-            _request(_FakeUser(is_superuser=True), query={"from": "ghost"})
-        )
-        assert "error=" in response.headers["location"]
-
-    @pytest.mark.asyncio
-    async def test_prefills_from_source_role(self) -> None:
-        roles = [
-            _role("viewer", ["posts.read"]),
-            _role(
-                "editor",
-                ["posts.write"],
-                inherits=["viewer"],
-                description="Editing role",
-            ),
-        ]
-        c, captured = self._controller_with_page_capture(roles)
-        await c.new_page(
-            _request(_FakeUser(is_superuser=True), query={"from": "editor"})
-        )
-        html = captured[0]
-        assert 'value="editor-copy"' in html
-        assert "Duplicating" in html
-        assert "Editing role" in html
-        assert 'value="viewer" checked' in html  # inherits prefilled
-        assert "posts.write" in html  # custom textarea (no inventory)
-
-    @pytest.mark.asyncio
-    async def test_blank_form_without_from(self) -> None:
-        c, captured = self._controller_with_page_capture([])
-        await c.new_page(_request(_FakeUser(is_superuser=True)))
-        assert "Duplicating" not in captured[0]
-        assert 'name="name" value=""' in captured[0]
-
-
-class TestDeleteInheritedGuard:
-    """R40 (doc 36 §2.5): deletion blocked while other roles inherit."""
-
-    @pytest.mark.asyncio
-    async def test_blocks_delete_while_inherited(self) -> None:
-        service = MagicMock()
-        service.delete_role = AsyncMock()
-        service.list_roles = AsyncMock(
-            return_value=[
-                _role("viewer"),
-                _role("editor", inherits=["viewer"]),
-            ]
-        )
-        c = _controller(role_service=service)
-        store = MagicMock()
-        store.list_users = AsyncMock(return_value=[])
-        c._user_store = store
-        form = _FakeForm({"csrf_token": ""})
-        response = await c.delete(
-            _request(_FakeUser(is_superuser=True), form=form), "viewer"
-        )
-        service.delete_role.assert_not_awaited()
-        location = response.headers["location"]
-        assert "error=" in location
-        assert "editor" in location
-
-
-class TestListEffectiveCounts:
-    """R40 (doc 36 §2.3): list page shows inherited counts + Duplicate."""
-
-    @pytest.mark.asyncio
-    async def test_inherited_count_and_duplicate_link(self) -> None:
-        service = MagicMock()
-        service.list_roles = AsyncMock(
-            return_value=[
-                _role("viewer", ["posts.read"]),
-                _role("editor", ["posts.write"], inherits=["viewer"]),
-            ]
-        )
-        c = _controller(role_service=service)
-        store = MagicMock()
-        store.list_users = AsyncMock(return_value=[])
-        c._user_store = store
-        captured: list = []
-
-        async def _page(request, html, *a, **kw):
-            captured.append(html)
-            return MagicMock()
-
-        c._page = _page
-        await c.list_page(_request(_FakeUser(is_superuser=True)))
-        html = captured[0]
-        assert "(+1 inherited)" in html
-        assert "/admin/roles/new?from=editor" in html
-        assert ">Duplicate</a>" in html

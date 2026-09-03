@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-import time
 from typing import Any
 
 from lexigram.admin.config import AdminNotificationConfig
@@ -18,10 +17,7 @@ from lexigram.admin.services.notifications.sender import EmailSender
 from lexigram.admin.services.notifications.templates import TemplateRenderer
 from lexigram.contracts.mailer.protocols import MailerProtocol
 from lexigram.di.decorators import inject
-from lexigram.logging import get_logger
 from lexigram.result import Err, Ok, Result
-
-logger = get_logger(__name__)
 
 
 @inject
@@ -74,133 +70,6 @@ class AdminNotificationService:
 
         self._sent_count = 0
 
-        # Settings-panel overrides (R39, doc 35): attached best-effort at
-        # mount time; sender identity re-resolved on a monotonic TTL so
-        # panel saves apply without a restart (R37 pattern).
-        self._settings_store: Any = None
-        self._settings_ttl: float = 30.0
-        self._identity_refreshed_at: float | None = None
-        # Delivery log (R46, doc 42): attached best-effort at mount time.
-        self._delivery_log: Any = None
-
-    # ------------------------------------------------------------------
-    # Delivery log (R46 — docs/09-01-2026/42-email-delivery-log.md)
-    # ------------------------------------------------------------------
-
-    def attach_delivery_log(self, store: Any) -> None:
-        """Attach a persistent delivery log (AdminEmailLogSqlStore-like).
-
-        Args:
-            store: Object with ``async record(notification_type, recipient,
-                subject, success, error)``.
-        """
-        self._delivery_log = store
-
-    async def _log_delivery(
-        self,
-        notification_type: Any,
-        recipient: str,
-        subject: str,
-        success: bool,
-        error: str | None = None,
-    ) -> None:
-        """Best-effort delivery-log append — must never break a send."""
-        if self._delivery_log is None:
-            return
-        try:
-            await self._delivery_log.record(
-                notification_type=str(
-                    getattr(notification_type, "value", notification_type)
-                ),
-                recipient=recipient,
-                subject=subject,
-                success=success,
-                error=error,
-            )
-        except Exception:  # noqa: BLE001 — a broken log must never break a send
-            logger.warning("notification.delivery_log_failed")
-
-    # ------------------------------------------------------------------
-    # Settings overrides (R39 — docs/09-01-2026/35-notification-settings.md)
-    # ------------------------------------------------------------------
-
-    def attach_settings_store(self, store: Any, ttl: float = 30.0) -> None:
-        """Attach a settings store for panel-editable sender identity.
-
-        Args:
-            store: StoreBase-like object with ``async get(key)``.
-            ttl: Seconds between refreshes; ``<= 0`` refreshes every send.
-        """
-        self._settings_store = store
-        self._settings_ttl = ttl
-        self._identity_refreshed_at = None
-
-    def _identity_fresh(self) -> bool:
-        """True while the last identity refresh is within the TTL."""
-        return (
-            self._identity_refreshed_at is not None
-            and self._settings_ttl > 0
-            and time.monotonic() - self._identity_refreshed_at < self._settings_ttl
-        )
-
-    async def _refresh_sender_identity(self) -> None:
-        """Apply ``admin.notifications.*`` overrides to the email sender.
-
-        Non-empty values override the sender identity; empty/absent values
-        reset to the config defaults (clearing a panel field undoes the
-        override). Read errors keep the current identity and advance the
-        retry timestamp so a flapping store is not hammered per send.
-        """
-        if self._settings_store is None or self._identity_fresh():
-            return
-        try:
-            email_from = await self._settings_store.get(
-                "admin.notifications.email_from"
-            )
-            from_name = await self._settings_store.get(
-                "admin.notifications.email_from_name"
-            )
-        except Exception:  # noqa: BLE001 — stale identity over broken sends
-            logger.warning("admin.notifications.settings_read_failed")
-            self._identity_refreshed_at = time.monotonic()
-            return
-        self.email_sender.from_email = (
-            str(email_from).strip()
-            if email_from and str(email_from).strip()
-            else self.config.email_from
-        )
-        self.email_sender.from_name = (
-            str(from_name).strip()
-            if from_name and str(from_name).strip()
-            else self.config.email_from_name
-        )
-        self._identity_refreshed_at = time.monotonic()
-
-    async def effective_sender(self) -> tuple[str, str]:
-        """Return the ``(from_email, from_name)`` outbound emails carry now."""
-        await self._refresh_sender_identity()
-        return self.email_sender.from_email, self.email_sender.from_name
-
-    async def mailer_health(self) -> Any | None:
-        """Best-effort backend health check for the status card.
-
-        Returns the backend's ``HealthCheckResult`` when it exposes
-        ``health_check()``; ``None`` when no mailer is bound, the backend
-        lacks the method, or the check raises (logged, never rendered).
-        """
-        mailer = self.email_sender.mailer
-        check = getattr(mailer, "health_check", None) if mailer else None
-        if not callable(check):
-            return None
-        try:
-            return await check()
-        except Exception:  # noqa: BLE001 — diagnostics must not break the page
-            logger.warning(
-                "admin.notifications.health_check_failed",
-                backend=type(mailer).__name__,
-            )
-            return None
-
     async def send(
         self,
         notification: Notification,
@@ -214,19 +83,8 @@ class AdminNotificationService:
             ``Ok(NotificationResult)`` on success or partial success.
             ``Err(NotificationError)`` when all recipients failed.
         """
-        await self._refresh_sender_identity()
         enabled_types = getattr(self.config, "enabled_types", None)
         if enabled_types and notification.type not in enabled_types:
-            # Visible in the delivery log: a silently disabled type is the
-            # exact "where did my email go" case (R46, doc 42 §2.2).
-            for recipient in notification.recipients:
-                await self._log_delivery(
-                    notification.type,
-                    recipient.email,
-                    notification.subject,
-                    success=False,
-                    error="Notification type not enabled",
-                )
             result = NotificationResult(
                 notification_id=notification.id,
                 recipients_sent=0,
@@ -254,22 +112,9 @@ class AdminNotificationService:
                             html_body=notification.html_body,
                         )
                         sent += 1
-                        await self._log_delivery(
-                            notification.type,
-                            recipient.email,
-                            notification.subject,
-                            success=True,
-                        )
                     except (RuntimeError, OSError, ConnectionError) as e:
                         failed += 1
                         errors.append(f"Email to {recipient.email}: {e}")
-                        await self._log_delivery(
-                            notification.type,
-                            recipient.email,
-                            notification.subject,
-                            success=False,
-                            error=str(e),
-                        )
 
         result = NotificationResult(
             notification_id=notification.id,
@@ -679,7 +524,6 @@ class AdminNotificationService:
                     "(or enable debug mode for the console fallback)."
                 )
             )
-        await self._refresh_sender_identity()
         subject = "Test email from Lexigram Admin"
         body = (
             "This is a test email sent from the Email delivery page.\n\n"
@@ -692,12 +536,8 @@ class AdminNotificationService:
                 body=body,
             )
         except (RuntimeError, OSError, ConnectionError) as exc:
-            await self._log_delivery(
-                "test_email", recipient.email, subject, success=False, error=str(exc)
-            )
             return Err(NotificationError(f"Test email failed: {exc}"))
         self._sent_count += 1
-        await self._log_delivery("test_email", recipient.email, subject, success=True)
         return Ok(NotificationResult(recipients_sent=1))
 
 

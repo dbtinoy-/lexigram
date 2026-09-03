@@ -81,13 +81,6 @@ _PAGE_HEADER_RE = re.compile(
 )
 
 
-def _settings_back_url(request: StarletteRequest, settings_url: str | None) -> str | None:
-    """Return a contextual settings link unless the sidebar is still visible."""
-    if not settings_url or request.headers.get("HX-Target") == "settings-content":
-        return None
-    return settings_url
-
-
 class AdminPageHandler:
     """ASGI adapter that resolves a management page handler from the DI
     container at request time and delegates to its ``handle()`` method.
@@ -105,12 +98,9 @@ class AdminPageHandler:
         self,
         page_cls: type,
         container: ContainerResolverProtocol,
-        *,
-        settings_url: str | None = None,
     ) -> None:
         self._page_cls = page_cls
         self._container = container
-        self._settings_url = settings_url
 
     async def __call__(self, scope: Any, receive: Any, send: Any) -> None:
         request = StarletteRequest(scope, receive, send)
@@ -124,10 +114,7 @@ class AdminPageHandler:
                 from lexigram.contracts.admin.page_content import PageContent
 
                 if isinstance(response, PageContent):
-                    response = render_page_content(
-                        response,
-                        back_url=_settings_back_url(request, self._settings_url),
-                    )
+                    response = render_page_content(response)
                 else:
                     logger.error(
                         "admin_page_contract_violation",
@@ -341,9 +328,7 @@ async def wrap_page_in_shell(
     from lexigram.admin.navigation.manager import NavigationManager
 
     user_menu_items: list[dict[str, str | None]] = (
-        NavigationManager(request).user_menu_items(include_navigation=False)
-        if request is not None
-        else []
+        NavigationManager(request).user_menu_items() if request is not None else []
     )
 
     branding: dict[str, str] = {}
@@ -447,16 +432,9 @@ class StructuredPageHandler:
     violation: it is logged and replaced with an error page.
     """
 
-    def __init__(
-        self,
-        handler: Any,
-        container: Any = None,
-        *,
-        settings_url: str | None = None,
-    ) -> None:
+    def __init__(self, handler: Any, container: Any = None) -> None:
         self._handler = handler
         self._container = container
-        self._settings_url = settings_url
 
     async def __call__(self, scope: Any, receive: Any, send: Any) -> None:
         from lexigram.admin.dashboard.page_renderer import render_page_content
@@ -466,10 +444,7 @@ class StructuredPageHandler:
         callable_handler = handler.handle if hasattr(handler, "handle") else handler
         result = await callable_handler(request)
         if isinstance(result, PageContent):
-            response = render_page_content(
-                result,
-                back_url=_settings_back_url(request, self._settings_url),
-            )
+            response = render_page_content(result)
         else:
             logger.error(
                 "page_contract_violation",
@@ -487,8 +462,7 @@ class StructuredPageHandler:
                         ),
                         icon="alert-triangle",
                     ),
-                ),
-                back_url=_settings_back_url(request, self._settings_url),
+                )
             )
 
         # Same response ladder as AdminPageHandler: cluster pages get the

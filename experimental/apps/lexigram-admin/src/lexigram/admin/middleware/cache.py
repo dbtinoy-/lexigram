@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import inspect
 import re
 from typing import Any
 
@@ -89,47 +88,17 @@ class AdminCacheMiddleware:
 
         if self.settings_service:
             try:
-                # AdminSettingsService is tenant-oriented (tenant, name),
-                # while older test/application adapters expose get(name,
-                # default). Prefer its explicit runtime adapter so the real
-                # service cannot accidentally treat the setting name as a
-                # tenant id and the default as a setting name.
-                runtime_get = getattr(self.settings_service, "get_setting", None)
-                # ``Mock`` creates arbitrary attributes on demand.  Only use
-                # the adapter when it is actually declared by the integration
-                # object (or stored on its instance), not when a legacy test
-                # double happens to manufacture the name.
-                has_runtime_adapter = (
-                    inspect.getattr_static(self.settings_service, "get_setting", None)
-                    is not None
+                val = await self.settings_service.get(
+                    "admin.cache.enabled", self.enabled
                 )
-                if callable(runtime_get) and has_runtime_adapter:
-                    state = scope.get("state", {}) or {}
-                    tenant_id = str(state.get("tenant_id", "default"))
-                    val = await runtime_get(
-                        "admin.cache.enabled",
-                        self.enabled,
-                        tenant_id=tenant_id,
-                    )
-                    if val is not None:
-                        enabled = bool(val)
-                    val = await runtime_get(
-                        "admin.cache.default_ttl",
-                        self.ttl,
-                        tenant_id=tenant_id,
-                    )
-                else:
-                    val = await self.settings_service.get(
-                        "admin.cache.enabled", self.enabled
-                    )
-                    if val is not None:
-                        enabled = bool(val)
-                    val = await self.settings_service.get(
-                        "admin.cache.default_ttl", self.ttl
-                    )
+                if val is not None:
+                    enabled = bool(val)
+                val = await self.settings_service.get(
+                    "admin.cache.default_ttl", self.ttl
+                )
                 if val is not None:
                     ttl = int(val)
-            except (RuntimeError, ValueError, OSError, TypeError) as exc:
+            except (RuntimeError, ValueError, OSError) as exc:
                 _log.warning(
                     "admin.cache_middleware.settings_error",
                     error=str(exc),

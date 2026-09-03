@@ -98,10 +98,7 @@ async def _placeholder_page(
         from lexigram.admin.navigation.manager import NavigationManager
 
         user_menu_items = (
-            NavigationManager(request).user_menu_items(
-                include_plugins=False,
-                include_navigation=False,
-            )
+            NavigationManager(request).user_menu_items(include_plugins=False)
             if request is not None
             else []
         )

@@ -101,20 +101,6 @@ class AdminMountCoreMixin:
             admin_settings_service = AdminSettingsService(
                 config_provider=config_provider,
             )
-            try:
-                from lexigram.admin.settings.snapshots import (
-                    SettingsSnapshotService,
-                    SqlSettingsSnapshotStore,
-                )
-
-                ctx.snapshot_service = SettingsSnapshotService(
-                    store=SqlSettingsSnapshotStore(db_provider)
-                )
-            except Exception as exc:  # noqa: BLE001 — history is auxiliary
-                _log.warning(
-                    "admin.settings_snapshot_store_unavailable",
-                    reason=str(exc),
-                )
             from lexigram.admin.settings.panel.registry import ConfigRegistry
             from lexigram.admin.settings.store import TenantConfigStore
 

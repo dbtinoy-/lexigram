@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import pytest
-import structlog.testing
 
 from lexigram.cache.admin.contributor import CacheAdminContributor
 from lexigram.contracts.admin import (
@@ -175,36 +174,6 @@ class TestCacheAdminContributor:
 
         assert result.is_err()
         assert isinstance(result.unwrap_err(), WidgetNotFoundError)
-
-
-@pytest.mark.asyncio
-async def test_missing_dependency_logs_contributor_as_disabled() -> None:
-    """Expected cache-backend misses use one concise, structured event."""
-    from unittest.mock import AsyncMock, MagicMock
-
-    from lexigram.contracts.exceptions.container import UnresolvableDependencyError
-
-    container = MagicMock()
-    container.resolve = AsyncMock(
-        side_effect=UnresolvableDependencyError(
-            "[LEX_ERR_DI_004] missing\n  → Fix: register it",
-            dependency="CacheBackendProtocol",
-        )
-    )
-    contributor = CacheAdminContributor()
-
-    with structlog.testing.capture_logs() as captured:
-        await contributor.on_admin_boot(container)
-
-    disabled = [
-        log for log in captured if log.get("event") == "admin.contributor_disabled"
-    ]
-    assert len(disabled) == 1
-    assert disabled[0]["contributor"] == "cache"
-    assert disabled[0]["feature"] == "cache widget handlers"
-    assert disabled[0]["missing"] == "CacheBackendProtocol"
-    assert "LEX_ERR" not in str(disabled[0])
-    assert "\n" not in str(disabled[0])
 
 
 __all__ = ["TestCacheAdminContributor"]

@@ -134,20 +134,6 @@ class TestLocalExportBlobStore:
         listed = [i.path async for i in store.list()]
         assert listed == ["dir/a.csv"]
 
-    @pytest.mark.asyncio
-    async def test_protocol_capabilities_are_honest(self, tmp_path):
-        from lexigram.contracts.core import HealthStatus
-        from lexigram.contracts.infra.storage.protocols import BlobStoreProtocol
-
-        store = LocalExportBlobStore(tmp_path)
-        assert isinstance(store, BlobStoreProtocol)
-        await store.upload("artifact.csv", b"data")
-        assert (await store.get_url("artifact.csv")).startswith("file://")
-        health = await store.health_check()
-        assert health.status is HealthStatus.HEALTHY
-        with pytest.raises(NotImplementedError, match="no presigned URLs"):
-            await store.get_presigned_url("artifact.csv")
-
 
 # ---------------------------------------------------------------------------
 # InlineTaskRunner

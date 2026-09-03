@@ -1,6 +1,6 @@
 # 07 — Mailer Onboarding (R11)
 
-**Date:** 2026-09-01 · **Status:** ✅ Shipped · **Roadmap:** R11 (doc 02, Phase 3)
+**Date:** 2026-09-01 · **Status:** implementing · **Roadmap:** R11 (doc 02, Phase 3)
 
 ## Why
 
@@ -100,16 +100,11 @@ doc 05, B10).
 - [x] **Phase 1 (this change):** console mailer + debug DI fallback,
       `/admin/email` status page + test send, nav entry, tests, live
       verification.
-- [x] **Phase 2 (R39 — doc 35):** `admin.notifications` settings-spec
-      (from address/name editable in the settings panel, empty = config
-      default, 30 s TTL runtime pickup); backend health surfaced on the
-      status card via duck-typed `MailerProtocol.health_check`.
-      `enabled`/retry knobs stay code-level by design (doc 35 §2.1).
-- [x] **Phase 3:** delivery log (recent sends with outcome) once a
-      persistent outbox story exists. _Done in R46 — see
-      [42-email-delivery-log.md](42-email-delivery-log.md): `admin_email_log`
-      SQL store attached to the shared notification service, "Recent
-      deliveries" table on `/admin/email`._
+- [ ] **Phase 2:** settings-spec for `AdminNotificationConfig`
+      (from address/name editable in the settings panel); backend health
+      check surfaced on the status card via `MailerProtocol.health_check`.
+- [ ] **Phase 3:** delivery log (recent sends with outcome) once a
+      persistent outbox story exists.
 
 ## Verification
 

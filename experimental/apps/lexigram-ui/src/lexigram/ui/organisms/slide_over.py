@@ -148,11 +148,10 @@ class SlideOver(Component):
                 from lexigram.ui.atoms.button import Button, SubmitButton
 
                 save_label = getattr(form_obj, "submit_label", "Save")
-                cancel_props: dict[str, Any] = {"x-on:click": "open = false"}
                 cancel_btn = Button(
                     "Cancel",
                     variant="outline",
-                    **cancel_props,
+                    **{"x-on:click": "open = false"},
                 )
                 save_btn = SubmitButton(
                     label=save_label,

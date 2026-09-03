@@ -83,27 +83,3 @@ async def test_service_degrades_when_repo_lacks_list_active() -> None:
 
     service = AdminSessionService(session_repo=MinimalRepo())  # type: ignore[arg-type]
     assert await service.list_active_sessions() == []
-
-
-@pytest.mark.asyncio
-async def test_list_user_sessions_delegates_with_cutoff() -> None:
-    """R42 (doc 38): per-user wrapper over find_active_by_user."""
-    repo = MagicMock()
-    repo.find_active_by_user = AsyncMock(
-        return_value=[{"session_id": f"s{i}"} for i in range(5)]
-    )
-    service = AdminSessionService(session_repo=repo)
-
-    rows = await service.list_user_sessions("u-9", limit=3)
-
-    args = repo.find_active_by_user.await_args.args
-    assert args[0] == "u-9"
-    assert isinstance(args[1], datetime)  # cutoff excludes expired rows
-    assert len(rows) == 3  # limit slice (repo method is unbounded)
-
-
-@pytest.mark.asyncio
-async def test_list_user_sessions_unsupported_repo_returns_empty() -> None:
-    repo = SimpleNamespace()  # no find_active_by_user
-    service = AdminSessionService(session_repo=repo)
-    assert await service.list_user_sessions("u-9") == []

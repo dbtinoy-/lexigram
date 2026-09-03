@@ -82,12 +82,7 @@ def prepare_navigation(
 
         # Handle Group Header
         if item.get("is_group"):
-            current_section = SidebarSection(
-                title=item.get("label", ""),
-                items=[],
-                icon=item.get("icon"),
-                default_expanded=item.get("default_expanded"),
-            )
+            current_section = SidebarSection(title=item.get("label", ""), items=[])
             items.append(current_section)  # type: ignore[arg-type]
             continue
 
@@ -112,7 +107,6 @@ def prepare_navigation(
         inferred_permissions: list[str] = []
         if (
             not required_permission
-            and not item.get("skip_permission_inference")
             and href
             and href.startswith(admin_prefix.rstrip("/") + "/")
         ):

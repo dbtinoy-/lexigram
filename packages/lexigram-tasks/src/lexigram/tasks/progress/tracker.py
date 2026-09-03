@@ -104,18 +104,12 @@ class InMemoryProgressTracker:
             percent=snapshot.percent,
         )
 
-    async def complete(
-        self,
-        task_id: str,
-        result: str = "",
-        metadata: dict[str, Any] | None = None,
-    ) -> None:
+    async def complete(self, task_id: str, result: str = "") -> None:
         """Mark a task as successfully completed and close all subscriptions.
 
         Args:
             task_id: Unique identifier for the task.
             result: Optional human-readable completion message.
-            metadata: Optional JSON-safe result metadata.
         """
         existing = self._snapshots.get(task_id)
         total = existing.total if existing is not None else 0
@@ -125,23 +119,16 @@ class InMemoryProgressTracker:
             total=total,
             status=ProgressStatus.COMPLETE,
             message=result,
-            metadata=dict(metadata or {}),
         )
         await self._broadcast(task_id, snapshot, close=True)
         logger.debug("tasks.progress.complete", task_id=task_id)
 
-    async def fail(
-        self,
-        task_id: str,
-        error: str,
-        metadata: dict[str, Any] | None = None,
-    ) -> None:
+    async def fail(self, task_id: str, error: str) -> None:
         """Mark a task as failed and close all subscriptions.
 
         Args:
             task_id: Unique identifier for the task.
             error: Description of the failure.
-            metadata: Optional JSON-safe failure metadata.
         """
         existing = self._snapshots.get(task_id)
         snapshot = ProgressSnapshot(
@@ -150,7 +137,6 @@ class InMemoryProgressTracker:
             total=existing.total if existing is not None else 0,
             status=ProgressStatus.FAILED,
             error=error,
-            metadata=dict(metadata or {}),
         )
         await self._broadcast(task_id, snapshot, close=True)
         logger.debug("tasks.progress.fail", task_id=task_id, error=error)

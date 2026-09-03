@@ -1,6 +1,6 @@
 # 18 — Working Bulk Export from the List Toolbar (R22 / B28–B29) (Full Plan)
 
-**Date:** 2026-09-02 · **Status:** ✅ Shipped · **Branch:** `arena/01a05b98-lexigram`
+**Date:** 2026-09-02 · **Status:** 🚧 In progress · **Branch:** `arena/01a05b98-lexigram`
 
 ## 1. Findings
 

@@ -48,22 +48,6 @@ class TestSpecs:
         assert isinstance(nodes["default_ttl"], IntNode)
         assert nodes["default_ttl"].default == 60
 
-    def test_semantic_overrides_retain_model_constraints(self) -> None:
-        from lexigram.admin.settings.panel import I18nSpec, NotificationsSpec
-
-        branding = BrandingSpec.get_nodes()
-        assert branding["logo_url"].validation_error("x" * 2049) is not None
-
-        i18n = I18nSpec.get_nodes()
-        assert i18n["default_timezone"].validation_error("") is not None
-        assert i18n["default_timezone"].validation_error("x" * 65) is not None
-
-        notifications = NotificationsSpec.get_nodes()
-        assert (
-            notifications["email_from"].validation_error("a" * 251 + "@x.com")
-            is not None
-        )
-
     def test_security_spec_nodes(self) -> None:
         nodes = SecuritySpec.get_nodes()
         assert set(nodes) == {
@@ -138,7 +122,6 @@ class TestSpecs:
             "admin.security",
             "admin.features",
             "admin.i18n",
-            "admin.notifications",
             "admin.profiler",
             "admin.rate_limit",
             "admin.rbac",
@@ -205,15 +188,6 @@ class TestStoreTenantIdParameter:
         await store.set("k", "v", tenant_id="tenant-a")
         assert await store.get("k", tenant_id="tenant-a") == "v"
 
-    async def test_memory_store_isolates_tenant_values(self) -> None:
-        store = MemoryStore()
-        await store.set("k", "a", tenant_id="tenant-a")
-        await store.set("k", "b", tenant_id="tenant-b")
-
-        assert await store.get("k", tenant_id="tenant-a") == "a"
-        assert await store.get("k", tenant_id="tenant-b") == "b"
-        assert await store.get("k", tenant_id="tenant-c") is None
-
     async def test_env_store_accepts_and_ignores_tenant_id_kwarg(
         self, monkeypatch
     ) -> None:
@@ -234,9 +208,7 @@ class TestRegistryTenantThreading:
         store.get.return_value = None
         registry.register_store("test", store)
 
-        await registry.get_values(
-            "admin.cache", store_name="test", tenant_id="tenant-a"
-        )
+        await registry.get_values("admin.cache", store_name="test", tenant_id="tenant-a")
         for call in store.get.await_args_list:
             assert call.kwargs.get("tenant_id") == "tenant-a"
 

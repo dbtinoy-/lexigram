@@ -1,6 +1,6 @@
 # 19 — Import Upload End-to-End (R23 / B31) (Full Plan)
 
-**Date:** 2026-09-02 · **Status:** ✅ Shipped · **Branch:** `arena/01a05b98-lexigram`
+**Date:** 2026-09-02 · **Status:** 🚧 In progress · **Branch:** `arena/01a05b98-lexigram`
 
 ## 1. Findings
 

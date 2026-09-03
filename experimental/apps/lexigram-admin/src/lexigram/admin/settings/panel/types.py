@@ -9,30 +9,7 @@ from lexigram.validation import Field
 
 __all__ = [
     "ConfigCategory",
-    "PanelLink",
 ]
-
-
-@dataclass(frozen=True, slots=True)
-class PanelLink:
-    """Sidebar link to a contributor-owned settings panel (R50, doc 46).
-
-    Contributor panels (``SettingsPanelDefinition``) are self-owned pages
-    on their own routes, not ConfigRegistry specs — this is the plain
-    presentation shape the sidebar renders so the layout holds data, not
-    live handler references.
-
-    Attributes:
-        title: Display label.
-        url: Absolute panel route (e.g. ``/admin/system/info``).
-        icon: Icon identifier for the link.
-        category: Sidebar group label (e.g. ``System``).
-    """
-
-    title: str
-    url: str
-    icon: str = "file-text"
-    category: str = "Tools"
 
 
 @dataclass(init=False)

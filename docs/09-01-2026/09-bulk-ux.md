@@ -29,10 +29,10 @@ code:
    503 "Purge is unavailable" via `NotImplementedError`.
 
 The roadmap (doc 02, R14) also names progress feedback for long
-operations. That work was deliberately separated as phase 2 because bulk
-batches are request-scoped and hard-capped at 1000 ids. Phase 1 therefore
-focused on honest per-row outcomes; the completed phase-2 SSE implementation
-is recorded in [53-bulk-live-progress.md](53-bulk-live-progress.md).
+operations. That is scoped below as an explicit phase 2: bulk batches are
+request-scoped and hard-capped at 1000 ids, so per-row error reporting is
+the dominant UX gap; live progress needs client-side SSE wiring in the
+DataTable submit hook and is deliberately deferred.
 
 ## 2. Goals / Non-goals
 
@@ -53,15 +53,14 @@ is recorded in [53-bulk-live-progress.md](53-bulk-live-progress.md).
   `Deleted N item(s)` / `Purged N item(s)` / `Restored N item(s)` (no
   churn for tests, translations, or muscle memory).
 
-**Remaining non-goals (phase 3+, recorded for later)**
+**Non-goals (phase 2+, recorded for later)**
 
-- **Durable/distributed live progress**: phase 2 now wires the loop to the
-  existing `ProgressTrackerProtocol` (`controllers/progress.py` SSE endpoint
-  + `LocalProgressTracker` fallback) keyed by an owner-bound task id, and the
-  DataTable bulk submit opens the stream. Durable workers, cross-process
-  synchronization, cancellation, retry, and persisted task history remain
-  outside this request-scoped implementation; see
-  [53-bulk-live-progress.md](53-bulk-live-progress.md).
+- **Live progress for long batches**: wire the loop to the existing
+  `ProgressTrackerProtocol` (`controllers/progress.py` SSE endpoint +
+  `LocalProgressTracker` fallback) keyed by a per-request task id, and
+  have the DataTable bulk submit open the SSE stream. Needs JS work in
+  the table organism; the server-side seam (`BulkOutcome` accounting per
+  row) is already the right shape to emit `update(current, total)`.
 - Adopting `actions/bulk_manager.py` (`BulkActionManager` with undo
   snapshots) for the wired path — a large refactor; its ideas (progress,
   error lists) are folded into `BulkOutcome` at a fraction of the risk.
@@ -153,7 +152,7 @@ cases become visible.
   production 500 on any partial failure). `BulkOutcome.message()` is now
   guaranteed ASCII, including record ids from user data
   (`encode("ascii", "replace")`); full ids stay in the structured log.
-- 31 new unit tests (`test_bulk_outcome.py`,
+- 31 new unit tests (`test_bulk_outcome.py`, 
   `test_bulk_handler_outcomes.py`); full admin suite **5305 passed / 8
   skipped / 75.89%**, e2e 72 / 2. Verified live on the playground:
   mixed present/missing ids → `warning` toast with per-row reasons +

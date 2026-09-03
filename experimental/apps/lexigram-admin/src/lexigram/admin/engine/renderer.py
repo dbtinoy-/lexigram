@@ -28,9 +28,9 @@ def resolve_admin_nav(request: Any) -> tuple[list, list, list | None]:
     navigation items. Active-state detection is computed per-request based on
     the current URL path.
 
-    Cluster groups (e.g. infrastructure) are represented in the primary
-    sidebar by single landing entries; when the current path belongs to a
-    cluster center, the secondary nav for that center is returned as the third
+    Cluster groups (e.g. infrastructure) are collapsed in the primary sidebar
+    into single landing entries; when the current path belongs to a cluster
+    center, the secondary nav for that center is returned as the third
     element.
 
     Duplicates are removed at three levels:
@@ -159,9 +159,7 @@ class AdminRenderer:
             pass
 
         user_menu_items: list[dict[str, str | None]] = (
-            NavigationManager(request).user_menu_items(include_navigation=False)
-            if request is not None
-            else []
+            NavigationManager(request).user_menu_items() if request is not None else []
         )
 
         site_name = extra_context.get("site_name") or self.config.site_name

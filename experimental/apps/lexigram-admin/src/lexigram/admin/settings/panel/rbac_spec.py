@@ -15,11 +15,7 @@ class RBACSpec(PydanticConfigSpec):
     namespace = "admin.rbac"
     label = "Access Control (RBAC)"
     icon = "shield-check"
-    description = (
-        "Default role and anonymous access policy. Changes are applied when "
-        "the access-control services are rebuilt, normally after a restart."
-    )
-    runtime_status = "restart_required"
+    description = "Default role and anonymous access policy."
     model = RbacSettings
     required_permissions = frozenset({"admin.settings.edit"})
 

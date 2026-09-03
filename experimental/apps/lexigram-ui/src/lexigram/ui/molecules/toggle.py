@@ -57,7 +57,6 @@ class Toggle(Component):
             "type": "button",
             "role": "switch",
             "aria_checked": str(self.checked).lower(),
-            "x-bind:aria-checked": "enabled.toString()",
             "aria_labelledby": f"{self.name}-label",
             "aria_disabled": "true" if self.disabled or self.readonly else None,
             "aria_invalid": "true" if self.error else None,
@@ -65,7 +64,7 @@ class Toggle(Component):
             "disabled": self.disabled or self.readonly,
             "x_data": f"{{ enabled: {'true' if self.checked else 'false'} }}",
             "x-on:click": "enabled = !enabled; $refs.hiddenInput.checked = enabled",
-            "x-bind:class": "enabled ? 'bg-primary' : 'bg-input'",
+            "x_bind__class": "enabled ? 'bg-primary' : 'bg-input'",
             "class_": wrapper_cls,
             **self.props,
         }
@@ -87,9 +86,7 @@ class Toggle(Component):
                             "span",
                             aria_hidden="true",
                             class_=knob_cls,
-                            **{
-                                "x-bind:class": "enabled ? 'translate-x-5' : 'translate-x-0'"
-                            },
+                            x_bind__class="enabled ? 'translate-x-5' : 'translate-x-0'",
                         ),
                         **button_attrs,
                     ),

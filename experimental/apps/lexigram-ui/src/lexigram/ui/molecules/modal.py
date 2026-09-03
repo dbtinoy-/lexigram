@@ -91,8 +91,10 @@ class Modal(Component):
         trigger_node = None
         if getattr(self, "render_trigger", True) and self.trigger is not None:
             if isinstance(self.trigger, str):
-                trigger_props: dict[str, Any] = {"x-on:click": "open = true"}
-                trigger_node = Button(self.trigger, **trigger_props)
+                trigger_node = Button(
+                    self.trigger,
+                    **{"x-on:click": "open = true"},
+                )
             else:
                 trigger_node = el(
                     "div",
@@ -166,11 +168,10 @@ class Modal(Component):
                 form_id = auto_form_id
 
             if form_obj and form_suppresses and form_id:
-                cancel_props: dict[str, Any] = {"x-on:click": "open = false"}
                 cancel_btn = Button(
                     "Cancel",
                     variant=self.DEFAULT_CANCEL_VARIANT,
-                    **cancel_props,
+                    **{"x-on:click": "open = false"},
                 )
                 save_btn = SubmitButton(
                     label=getattr(form_obj, "submit_label", "Save"),

@@ -1,9 +1,6 @@
 from __future__ import annotations
 
-import asyncio
-from collections.abc import Mapping
 import inspect
-import secrets
 from typing import Any
 
 from starlette.requests import Request as StarletteRequest
@@ -16,12 +13,6 @@ from lexigram.logging import get_logger
 from lexigram.serialization import dumps_str
 
 logger = get_logger(__name__)
-
-# Large mutating selections are handed to the in-process progress task so the
-# request can return while the same row-isolated operation continues. Keep the
-# fallback threshold conservative: callers without an SSE-capable tracker stay
-# on the synchronous path.
-BULK_PROGRESS_THRESHOLD = 20
 
 
 async def _maybe_await(value: Any) -> Any:
@@ -311,305 +302,6 @@ class BulkActionHandler:
         "bulk-purge-confirm": ("purge", "Purge", "PURGE"),
         "bulk-restore-confirm": ("restore", "Restore", "RESTORE"),
     }
-    # Public on the handler as well as module-level so an application/test can
-    # tune the rollout without changing the endpoint contract.
-    BULK_PROGRESS_THRESHOLD = BULK_PROGRESS_THRESHOLD
-
-    def __init__(self) -> None:
-        # A task must be strongly referenced until it reaches a terminal state;
-        # asyncio keeps only weak references to tasks. Each handler instance is
-        # attached to a long-lived resource route.
-        self._background_tasks: set[asyncio.Task[Any]] = set()
-
-    @staticmethod
-    def _state_value(request: StarletteRequest, name: str) -> Any | None:
-        """Read an explicitly stored app-state value without MagicMock leaks."""
-        app = getattr(request, "app", None)
-        state = getattr(app, "state", None)
-        if isinstance(state, Mapping):
-            return state.get(name)
-        storage = getattr(state, "_state", None)
-        if isinstance(storage, Mapping):
-            return storage.get(name)
-        try:
-            values = vars(state)
-        except TypeError:
-            return None
-        return values.get(name) if isinstance(values, Mapping) else None
-
-    @classmethod
-    def _progress_components(
-        cls, request: StarletteRequest
-    ) -> tuple[Any, Any, str] | None:
-        """Resolve the tracker, owner registry, and caller identity.
-
-        The generic resource handler is also used in standalone/unit setups,
-        so progress is opt-in through explicit mounted app state. Missing or
-        incomplete infrastructure deliberately selects the synchronous path.
-        """
-        tracker = cls._state_value(request, "progress_tracker")
-        access = cls._state_value(request, "progress_access")
-        if tracker is None or access is None:
-            return None
-        required_tracker_methods = ("update", "complete", "fail", "get", "subscribe")
-        if not all(
-            callable(getattr(tracker, method, None))
-            for method in required_tracker_methods
-        ):
-            return None
-        if not callable(getattr(access, "register", None)) or not callable(
-            getattr(access, "unregister", None)
-        ):
-            return None
-        from lexigram.admin.controllers.progress import progress_principal_key
-
-        owner_key = progress_principal_key(request)
-        if not owner_key:
-            return None
-        return tracker, access, owner_key
-
-    @staticmethod
-    async def _publish_progress(
-        tracker: Any | None,
-        task_id: str,
-        current: int,
-        total: int,
-        message: str,
-    ) -> None:
-        """Publish an update without allowing tracker outages to break writes."""
-        if tracker is None:
-            return
-        try:
-            await tracker.update(task_id, current, total, message)
-        except Exception:  # noqa: BLE001 — progress is observational only
-            logger.warning(
-                "admin.bulk_progress_update_failed",
-                task_id=task_id,
-                current=current,
-                total=total,
-            )
-
-    @staticmethod
-    async def _terminal_progress(
-        tracker: Any,
-        method_name: str,
-        task_id: str,
-        value: str,
-        metadata: dict[str, Any],
-    ) -> None:
-        """Call a terminal tracker method with old-implementation compatibility."""
-        method = getattr(tracker, method_name)
-        try:
-            parameters = inspect.signature(method).parameters.values()
-            accepts_metadata = any(
-                parameter.name == "metadata"
-                or parameter.kind is inspect.Parameter.VAR_KEYWORD
-                for parameter in parameters
-            )
-        except (TypeError, ValueError):
-            # Some extension callables do not expose a signature. Try the
-            # current form; the outer task handler treats a failure as
-            # observational and does not undo the mutation.
-            accepts_metadata = True
-
-        if accepts_metadata:
-            result = method(task_id, value, metadata=metadata)
-        else:
-            result = method(task_id, value)
-        if inspect.isawaitable(result):
-            await result
-
-    @classmethod
-    async def _safe_terminal_progress(
-        cls,
-        tracker: Any,
-        method_name: str,
-        task_id: str,
-        value: str,
-        metadata: dict[str, Any],
-    ) -> None:
-        """Best-effort terminal publication for a background mutation."""
-        try:
-            await cls._terminal_progress(tracker, method_name, task_id, value, metadata)
-        except Exception:  # noqa: BLE001 — tracker failures are non-fatal
-            logger.warning(
-                "admin.bulk_progress_terminal_failed",
-                task_id=task_id,
-                status="failed" if method_name == "fail" else "complete",
-            )
-
-    @classmethod
-    async def _run_progress_bulk(
-        cls,
-        tracker: Any,
-        task_id: str,
-        resource: Any,
-        data_source: Any,
-        action: str,
-        item_ids: list[str],
-    ) -> None:
-        """Run a built-in bulk mutation and publish its terminal outcome."""
-        try:
-            if action == "delete":
-                outcome = await cls._bulk_delete(
-                    resource,
-                    data_source,
-                    item_ids,
-                    purge=False,
-                    progress=tracker,
-                    task_id=task_id,
-                )
-            elif action == "purge":
-                outcome = await cls._bulk_delete(
-                    resource,
-                    data_source,
-                    item_ids,
-                    purge=True,
-                    progress=tracker,
-                    task_id=task_id,
-                )
-            else:
-                outcome = await cls._bulk_restore(
-                    resource,
-                    data_source,
-                    item_ids,
-                    progress=tracker,
-                    task_id=task_id,
-                )
-
-            logger.info(
-                "admin.bulk_outcome",
-                resource=str(resource.name or ""),
-                action=action,
-                task_id=task_id,
-                **outcome.log_fields(),
-            )
-            message = outcome.message()
-            await cls._safe_terminal_progress(
-                tracker,
-                "complete",
-                task_id,
-                message,
-                {
-                    "toast_type": outcome.toast_type(),
-                    "duration": 8000 if not outcome.all_ok else 3000,
-                    "refresh": True,
-                },
-            )
-        except NotImplementedError:
-            error = {
-                "delete": "Delete is unavailable",
-                "purge": "Purge is unavailable",
-                "restore": "Restore is unavailable",
-            }[action]
-            await cls._safe_terminal_progress(
-                tracker,
-                "fail",
-                task_id,
-                error,
-                {"toast_type": "error", "duration": 8000, "refresh": False},
-            )
-        except (PermissionError, PermissionDeniedError):
-            await cls._safe_terminal_progress(
-                tracker,
-                "fail",
-                task_id,
-                "Forbidden",
-                {"toast_type": "error", "duration": 8000, "refresh": False},
-            )
-        except Exception:  # noqa: BLE001 — details stay in server logs
-            logger.exception(
-                "admin.bulk_progress_operation_failed",
-                task_id=task_id,
-                action=action,
-            )
-            message = {
-                "delete": "Unable to delete selected records",
-                "purge": "Unable to purge selected records",
-                "restore": "Unable to restore selected records",
-            }[action]
-            await cls._safe_terminal_progress(
-                tracker,
-                "fail",
-                task_id,
-                message,
-                {"toast_type": "error", "duration": 8000, "refresh": False},
-            )
-
-    async def _queue_progress_bulk(
-        self,
-        request: StarletteRequest,
-        resource: Any,
-        data_source: Any,
-        action: str,
-        item_ids: list[str],
-    ) -> Response | None:
-        """Queue a large built-in mutation, or return ``None`` to run inline."""
-        components = self._progress_components(request)
-        if components is None or len(item_ids) < self.BULK_PROGRESS_THRESHOLD:
-            return None
-        tracker, access, owner_key = components
-        task_id = f"bulk-{secrets.token_urlsafe(24)}"
-        if not access.register(task_id, owner_key):
-            return None
-
-        try:
-            # Publish before creating the task so the first browser SSE
-            # connection cannot race an unknown task response.
-            await tracker.update(
-                task_id,
-                0,
-                len(item_ids),
-                f"Queued {action} for {len(item_ids)} item(s)",
-            )
-            task = asyncio.create_task(
-                self._run_progress_bulk(
-                    tracker,
-                    task_id,
-                    resource,
-                    data_source,
-                    action,
-                    list(item_ids),
-                )
-            )
-        except Exception:  # noqa: BLE001 — valid mutation falls back inline
-            access.unregister(task_id)
-            logger.warning(
-                "admin.bulk_progress_start_failed",
-                task_id=task_id,
-                action=action,
-            )
-            return None
-
-        self._background_tasks.add(task)
-        task.add_done_callback(self._background_tasks.discard)
-        from urllib.parse import quote
-
-        prefix = admin_prefix_from_request(request)
-        encoded_id = quote(task_id, safe="")
-        status_url = admin_url(prefix, "", f"progress/{encoded_id}")
-        stream_url = admin_url(prefix, "", f"progress/{encoded_id}/stream")
-        response = HTMLResponse("", status_code=202)
-        response.headers["HX-Reswap"] = "none"
-        response.headers["Cache-Control"] = "no-store"
-        response.headers["HX-Trigger"] = dumps_str(
-            {
-                "bulk-progress-start": {
-                    "task_id": task_id,
-                    "status_url": status_url,
-                    "stream_url": stream_url,
-                    "total": len(item_ids),
-                }
-            }
-        )
-        logger.info(
-            "admin.bulk_progress_started",
-            task_id=task_id,
-            resource=str(resource.name or ""),
-            action=action,
-            total=len(item_ids),
-        )
-        return response
 
     def can_handle(self, action: str) -> bool:
         return action in (
@@ -626,8 +318,6 @@ class BulkActionHandler:
         item_ids: list[str],
         *,
         purge: bool,
-        progress: Any | None = None,
-        task_id: str = "",
     ) -> BulkOutcome:
         """Delete selected records with per-row failure isolation (R14).
 
@@ -639,19 +329,6 @@ class BulkActionHandler:
         outcome = BulkOutcome(
             verb="Purged" if purge else "Deleted", total=len(item_ids)
         )
-        processed = 0
-
-        async def mark_processed() -> None:
-            nonlocal processed
-            processed += 1
-            await BulkActionHandler._publish_progress(
-                progress,
-                task_id,
-                processed,
-                len(item_ids),
-                f"{outcome.verb} {processed}/{len(item_ids)} item(s)",
-            )
-
         if purge:
             operation = getattr(resource, "purge", None)
             if not callable(operation):
@@ -675,8 +352,6 @@ class BulkActionHandler:
                     outcome.record_failure(item_id, "error")
                 else:
                     outcome.record_success()
-                finally:
-                    await mark_processed()
             return outcome
 
         for item_id in item_ids:
@@ -714,8 +389,6 @@ class BulkActionHandler:
                 outcome.record_failure(item_id, "error")
             else:
                 outcome.record_success()
-            finally:
-                await mark_processed()
         return outcome
 
     @staticmethod
@@ -723,26 +396,10 @@ class BulkActionHandler:
         resource: Any,
         data_source: Any,
         item_ids: list[str],
-        *,
-        progress: Any | None = None,
-        task_id: str = "",
     ) -> BulkOutcome:
         """Restore selected records with per-row failure isolation (R14)."""
         operation = getattr(resource, "restore", None)
         outcome = BulkOutcome(verb="Restored", total=len(item_ids))
-        processed = 0
-
-        async def mark_processed() -> None:
-            nonlocal processed
-            processed += 1
-            await BulkActionHandler._publish_progress(
-                progress,
-                task_id,
-                processed,
-                len(item_ids),
-                f"{outcome.verb} {processed}/{len(item_ids)} item(s)",
-            )
-
         for item_id in item_ids:
             try:
                 if callable(operation):
@@ -766,8 +423,6 @@ class BulkActionHandler:
                 outcome.record_failure(item_id, "error")
             else:
                 outcome.record_success()
-            finally:
-                await mark_processed()
         return outcome
 
     @staticmethod
@@ -1058,7 +713,7 @@ class BulkActionHandler:
         }.get(execution_action)
         if required_capability:
             capabilities = getattr(getattr(request, "state", None), "permissions", None)
-            if isinstance(capabilities, Mapping) and not capabilities.get(
+            if isinstance(capabilities, dict) and not capabilities.get(
                 required_capability, False
             ):
                 return HTMLResponse("Forbidden", status_code=403)
@@ -1120,60 +775,14 @@ class BulkActionHandler:
                     if not allowed:
                         message = "One or more selected records cannot be deleted"
                         if is_htmx:
-                            denied_response = HTMLResponse("", status_code=409)
-                            denied_response.headers["HX-Trigger"] = (
+                            response = HTMLResponse("", status_code=409)
+                            response.headers["HX-Trigger"] = (
                                 '{"show-toast":{"message":"'
                                 + message
                                 + '","type":"error"}}'
                             )
-                            return denied_response
+                            return response
                         return HTMLResponse(message, status_code=409)
-
-        # Restore has the same record-level authorization boundary as delete.
-        # Run it before queueing so the background task cannot outlive the
-        # request's permission decision and mutate a newly-forbidden row.
-        if execution_action == "restore":
-            can_update = getattr(resource, "can_update", None)
-            if can_update:
-                for item_id in form_ids:
-                    try:
-                        item = await data_source.find_one(item_id)
-                    except Exception as exc:  # noqa: BLE001 — storage details stay private
-                        logger.exception(
-                            "admin.bulk_restore_lookup_failed", error=str(exc)
-                        )
-                        return HTMLResponse(
-                            "Unable to load selected records", status_code=503
-                        )
-                    if item is None:
-                        continue
-                    try:
-                        allowed = await _maybe_await(can_update(item))
-                    except Exception:  # noqa: BLE001 — record authorization fails closed
-                        logger.exception("admin.bulk_restore_record_permission_failed")
-                        allowed = False
-                    if not allowed:
-                        message = "One or more selected records cannot be restored"
-                        if is_htmx:
-                            denied_response = HTMLResponse("", status_code=409)
-                            denied_response.headers["HX-Trigger"] = dumps_str(
-                                {"show-toast": {"message": message, "type": "error"}}
-                            )
-                            return denied_response
-                        return HTMLResponse(message, status_code=409)
-
-        # Queue only the built-in mutating actions. Exports and custom declared
-        # actions retain their existing request/response semantics.
-        if is_htmx and execution_action in {"delete", "purge", "restore"}:
-            progress_response = await self._queue_progress_bulk(
-                request,
-                resource,
-                data_source,
-                execution_action,
-                form_ids,
-            )
-            if progress_response is not None:
-                return progress_response
 
         # A declared action object owns custom execution. String declarations
         # without a server hook intentionally remain non-executable, except
@@ -1206,14 +815,14 @@ class BulkActionHandler:
                     status_code=403 if message == "Forbidden" else 400,
                 )
             if is_htmx:
-                custom_response = HTMLResponse(render_to_string(el("p", message)))
-                custom_response.headers["HX-Trigger"] = dumps_str(
+                response = HTMLResponse(render_to_string(el("p", message)))
+                response.headers["HX-Trigger"] = dumps_str(
                     {
                         "refresh-list": True,
                         "show-toast": {"message": message, "type": "success"},
                     }
                 )
-                return custom_response
+                return response
             return RedirectResponse(
                 url=admin_url(
                     admin_prefix_from_request(request),
@@ -1325,6 +934,36 @@ class BulkActionHandler:
                 response.headers["HX-Reswap"] = "none"
             return response
         elif execution_action == "restore":
+            can_update = getattr(resource, "can_update", None)
+            if can_update:
+                for item_id in form_ids:
+                    try:
+                        item = await data_source.find_one(item_id)
+                    except Exception as exc:  # noqa: BLE001 — storage details stay private
+                        logger.exception(
+                            "admin.bulk_restore_lookup_failed", error=str(exc)
+                        )
+                        return HTMLResponse(
+                            "Unable to load selected records", status_code=503
+                        )
+                    if item is None:
+                        continue
+                    try:
+                        allowed = await _maybe_await(can_update(item))
+                    except Exception:  # noqa: BLE001 — record authorization fails closed
+                        logger.exception("admin.bulk_restore_record_permission_failed")
+                        allowed = False
+                    if not allowed:
+                        message = "One or more selected records cannot be restored"
+                        if is_htmx:
+                            response = HTMLResponse("", status_code=409)
+                            response.headers["HX-Trigger"] = (
+                                '{"show-toast":{"message":"'
+                                + message
+                                + '","type":"error"}}'
+                            )
+                            return response
+                        return HTMLResponse(message, status_code=409)
             try:
                 outcome = await self._bulk_restore(resource, data_source, form_ids)
             except (PermissionError, PermissionDeniedError):

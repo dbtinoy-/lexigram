@@ -21,14 +21,12 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 import mimetypes
-import os
 from pathlib import Path
 import tempfile
 from typing import TYPE_CHECKING, Any
 
-from lexigram.contracts.core import HealthCheckResult, HealthStatus
 from lexigram.contracts.infra.storage.models import FileInfo, UploadOptions
 
 if TYPE_CHECKING:
@@ -157,39 +155,6 @@ class LocalExportBlobStore:
         for item in sorted(base.rglob("*")):
             if item.is_file():
                 yield self._file_info(str(item.relative_to(self._root)), item)
-
-    async def get_url(self, path: str) -> str:
-        """Return a local ``file:`` URL for diagnostics and non-HTTP callers.
-
-        The admin download route remains the supported browser-facing path;
-        this URL is intentionally not treated as a public or signed URL.
-        """
-        return self._resolve(path).as_uri()
-
-    async def get_presigned_url(
-        self,
-        path: str,
-        expires_in: timedelta = timedelta(hours=1),
-        method: str = "GET",
-    ) -> str:
-        """Reject presigned URLs because filesystem files have no signer."""
-        del path, expires_in, method
-        raise NotImplementedError("Local export storage has no presigned URLs")
-
-    async def health_check(self, timeout: float = 5.0) -> HealthCheckResult:
-        """Report whether the local export root is available and writable."""
-        del timeout
-        if self._root.is_dir() and os.access(self._root, os.W_OK):
-            return HealthCheckResult(
-                component="admin_export.local_storage",
-                status=HealthStatus.HEALTHY,
-                message="Local export storage is ready",
-            )
-        return HealthCheckResult(
-            component="admin_export.local_storage",
-            status=HealthStatus.UNHEALTHY,
-            error=f"Export root is unavailable or not writable: {self._root}",
-        )
 
 
 class InlineTaskRunner:

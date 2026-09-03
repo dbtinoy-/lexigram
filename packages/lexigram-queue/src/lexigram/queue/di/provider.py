@@ -6,9 +6,6 @@ import asyncio
 import time
 from typing import TYPE_CHECKING, Any, cast
 
-from lexigram.contracts.admin.contributor_boot import (
-    summarize_contributor_boot_failure,
-)
 from lexigram.contracts.core import (
     HealthCheckResult,
     HealthStatus,
@@ -221,22 +218,7 @@ class QueueProvider(Provider):
             contributor = await container.resolve(QueueAdminContributor)
             await contributor.on_admin_boot(container)
         except Exception as exc:  # noqa: BLE001
-            failure = summarize_contributor_boot_failure(exc)
-            if failure.expected:
-                logger.info(
-                    "admin.contributor_disabled",
-                    contributor="queue",
-                    feature="admin contributor",
-                    reason=failure.reason,
-                    missing=failure.summary,
-                )
-            else:
-                logger.warning(
-                    "queue_admin_contributor_boot_failed",
-                    error=failure.summary,
-                    error_type=type(exc).__name__,
-                    exc_info=True,
-                )
+            logger.warning("queue_admin_contributor_boot_failed", error=str(exc))
 
     async def shutdown(self) -> None:
         """Shutdown phase — close all queue backends in reverse order."""

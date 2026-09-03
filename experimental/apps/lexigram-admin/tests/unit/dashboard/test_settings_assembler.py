@@ -25,7 +25,6 @@ class FakeContributor(BaseAdminContributor):
                 contributor="fake_pkg",
                 route_path="/admin/fake/settings/general",
                 handler="fake_pkg.module:func",
-                order=37,
             ),
         ]
 

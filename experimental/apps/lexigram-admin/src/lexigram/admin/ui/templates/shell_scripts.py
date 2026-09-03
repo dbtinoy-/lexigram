@@ -151,70 +151,6 @@ def search_overlay_markup() -> Any:
                 }
                 window.scrollTo(0, 0);
             });
-
-            // Keep contributor settings links truthful when a panel swaps
-            // only the Configuration Center content column. The sidebar
-            // survives the swap, so update its active styling from the URL
-            // rather than asking every panel handler to know about layout
-            // markup. Delegation keeps this alive across body swaps.
-            function syncSettingsPanelNavigation(path) {
-                var currentPath;
-                try {
-                    currentPath = new URL(path || location.href, location.href).pathname;
-                } catch (err) {
-                    currentPath = location.pathname;
-                }
-                currentPath = currentPath.length > 1
-                    ? currentPath.replace(new RegExp('/+$'), '')
-                    : currentPath;
-
-                document.querySelectorAll('[data-settings-panel-nav]').forEach(function(link) {
-                    var linkPath;
-                    try {
-                        linkPath = new URL(link.href, location.href).pathname;
-                    } catch (err) {
-                        return;
-                    }
-                    linkPath = linkPath.length > 1
-                        ? linkPath.replace(new RegExp('/+$'), '')
-                        : linkPath;
-                    var active = linkPath === currentPath;
-                    [
-                        'bg-primary-50', 'text-primary-700',
-                        'dark:bg-primary-900/30', 'dark:text-primary-400',
-                        'font-medium'
-                    ].forEach(function(className) {
-                        link.classList.toggle(className, active);
-                    });
-                    [
-                        'text-muted-foreground', 'hover:bg-muted',
-                        'dark:text-muted-foreground', 'dark:hover:bg-card'
-                    ].forEach(function(className) {
-                        link.classList.toggle(className, !active);
-                    });
-                    if (active) {
-                        link.setAttribute('aria-current', 'page');
-                    } else {
-                        link.removeAttribute('aria-current');
-                    }
-                });
-            }
-
-            document.addEventListener('htmx:pushedIntoHistory', function(e) {
-                var path = e.detail && e.detail.path;
-                syncSettingsPanelNavigation(path || location.href);
-            });
-            document.addEventListener('htmx:historyRestore', function() {
-                syncSettingsPanelNavigation(location.href);
-            });
-            window.addEventListener('popstate', function() {
-                window.setTimeout(function() {
-                    syncSettingsPanelNavigation(location.href);
-                }, 0);
-            });
-            window.setTimeout(function() {
-                syncSettingsPanelNavigation(location.href);
-            }, 0);
             })();
         </script>
         """,
@@ -347,37 +283,25 @@ def loading_bar_script(flash_zone_id: str) -> Any:
             }});
 
             // Show toast helper
-            function showToast(message, type, duration) {{
+            function showToast(message, type) {{
                 const flashContainer = document.getElementById('{flash_zone_id}');
-                duration = Number.isFinite(Number(duration)) ? Number(duration) : 5000;
                 if (!flashContainer) return;
                 const bgColors = {{success: 'bg-success/10 border border-success/30 text-success', error: 'bg-destructive/10 border border-destructive/30 text-destructive', warning: 'bg-warning/10 border border-warning/30 text-warning', info: 'bg-info/10 border border-info/30 text-info'}};
                 const icons = {{success: 'M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z', error: 'M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z', warning: 'M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z', info: 'M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z'}};
                 const colorClass = bgColors[type] || bgColors.info;
                 const iconPath = icons[type] || icons.info;
                 const labels = {{success: 'Success', error: 'Error', warning: 'Warning', info: 'Info'}};
-                // Bulk outcome messages can contain record ids. Escape them
-                // before placing them in the legacy innerHTML-based shell
-                // renderer; the server-side toast renderer already escapes.
-                const messageNode = document.createElement('span');
-                messageNode.textContent = String(message || '');
-                const safeMessage = messageNode.innerHTML;
                 flashContainer.innerHTML = `<div class="fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg ${{colorClass}} border max-w-sm" role="alert">
                     <div class="flex items-start gap-3">
                         <svg class="w-5 h-5 flex-shrink-0" aria-hidden="true" focusable="false" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="${{iconPath}}" clip-rule="evenodd"></path></svg>
                         <div class="flex-1">
                             <p class="font-medium">${{labels[type] || 'Info'}}</p>
-                            <p class="text-sm mt-1">${{safeMessage}}</p>
+                            <p class="text-sm mt-1">${{message}}</p>
                         </div>
                         <button type="button" aria-label="Dismiss notification" onclick="this.closest('[role=alert]').remove()" class="opacity-60 hover:opacity-100"><svg class="w-4 h-4" aria-hidden="true" focusable="false" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg></button>
                     </div>
                 </div>`;
-                const toast = flashContainer.firstElementChild;
-                if (duration > 0) {{
-                    setTimeout(() => {{
-                        if (toast && toast.parentNode === flashContainer) toast.remove();
-                    }}, duration);
-                }}
+                setTimeout(() => {{ if (flashContainer.firstChild) flashContainer.innerHTML = ''; }}, 5000);
             }}
 
             // Listen for show-toast custom event (fired via HX-Trigger)

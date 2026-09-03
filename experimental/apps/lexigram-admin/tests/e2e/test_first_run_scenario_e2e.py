@@ -27,8 +27,8 @@ import re
 from typing import Any
 
 import httpx
-from pydantic import BaseModel, Field
 import pytest
+from pydantic import BaseModel, Field
 
 from lexigram.admin.actions.standard.header import CreateAction
 from lexigram.admin.actions.standard.row import DeleteAction, EditAction
@@ -38,8 +38,6 @@ from lexigram.admin.resources import Resource
 from lexigram.di.container import Container
 from lexigram.sql.di.provider import DatabaseProvider
 from lexigram.ui.columns.types import TextColumn
-
-pytestmark = pytest.mark.e2e
 
 SETUP_TOKEN = "e2e-first-run-token"
 ADMIN_EMAIL = "operator@example.test"
@@ -207,18 +205,11 @@ async def app(tmp_path):
         }
     )
 
-    application = await create_app(
+    return await create_app(
         resources=[GadgetResource],
         config=config,
         container=container,
     )
-    try:
-        yield application
-    finally:
-        # The factory accepts a pre-populated container but intentionally does
-        # not own its lifecycle. Close the test-owned database provider so its
-        # aiosqlite worker cannot keep pytest alive after the scenario passes.
-        await db.shutdown()
 
 
 @pytest.fixture

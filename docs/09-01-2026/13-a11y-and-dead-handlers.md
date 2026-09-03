@@ -1,6 +1,6 @@
 # 13 — Accessibility Pass + Dead Alpine Handler Class (R17 / B13) (Full Plan)
 
-**Date:** 2026-09-02 · **Status:** ✅ Shipped · **Branch:** `arena/01a05b98-lexigram`
+**Date:** 2026-09-02 · **Status:** 🚧 In progress · **Branch:** `arena/01a05b98-lexigram`
 
 ## 1. Audit findings (live HTML, playground)
 
@@ -117,3 +117,4 @@ tokens / schema fingerprint).
   * row checkboxes: 10 unique `row-select-{id}` ids, `id="ids"` gone;
   * result count is `role="status" aria-live="polite"`; 3 flash close
     buttons labeled `Dismiss notification`.
+

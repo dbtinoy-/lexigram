@@ -5,18 +5,8 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 import copy
 from dataclasses import MISSING
-import json  # noqa: TID251 — form JSON parsing needs the decoder exception
 import re
-import types
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Literal,
-    Union,
-    get_args,
-    get_origin,
-    get_type_hints,
-)
+from typing import TYPE_CHECKING, Any, Literal, get_args, get_origin, get_type_hints
 
 if TYPE_CHECKING:
     from lexigram.domain import DomainModel
@@ -27,32 +17,14 @@ __all__ = [
     "ColorNode",
     "ConfigSpec",
     "ConfigSpecMeta",
-    "EmailNode",
     "EnumNode",
     "IntNode",
-    "JsonNode",
     "PydanticConfigSpec",
     "SecretNode",
     "StringNode",
-    "TimezoneNode",
-    "UrlNode",
 ]
 
 _HEX_COLOR_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
-_EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
-_BCP47_RE = re.compile(r"^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$")
-
-
-def _unwrap_optional(annotation: Any) -> Any:
-    """Return the non-None member of an optional annotation when possible."""
-    origin = get_origin(annotation)
-    if origin in (Union, types.UnionType):
-        members = tuple(
-            member for member in get_args(annotation) if member is not type(None)
-        )
-        if len(members) == 1:
-            return members[0]
-    return annotation
 
 
 class AbstractConfigNode(ABC):
@@ -112,151 +84,11 @@ class AbstractConfigNode(ABC):
 
 
 class StringNode(AbstractConfigNode):
-    """Configuration node for string values.
+    """Configuration node for string values."""
 
-    Common constraints are kept in ``extra`` so contributors can add a
-    bounded/patterned string without creating a bespoke node class. ``validate``
-    retains the historical fallback-to-default behavior for legacy reads;
-    ``validation_error`` is the strict path used by settings POSTs.
-    """
-
-    def validate(self, value: Any) -> str | None:
-        """Validate and coerce value to string, falling back when invalid."""
-        text = str(value) if value is not None else self.default
-        if text is None:
-            return text
-        if self.validation_error(text) is not None:
-            return self.default
-        return text
-
-    def validation_error(self, value: Any) -> str | None:
-        """Validate length, pattern, and optional semantic string formats."""
-        error = super().validation_error(value)
-        if error:
-            return error
-        text = str(value)
-        minimum = self.extra.get("min_length")
-        maximum = self.extra.get("max_length")
-        pattern = self.extra.get("pattern")
-        minimum_value = int(minimum) if minimum is not None else None
-        if minimum_value is not None and minimum_value > 0 and not text.strip():
-            return f"{self.label} must not be blank."
-        if minimum_value is not None and len(text) < minimum_value:
-            return f"{self.label} must be at least {minimum} characters."
-        if maximum is not None and len(text) > int(maximum):
-            return f"{self.label} must be at most {maximum} characters."
-        if pattern and re.fullmatch(str(pattern), text) is None:
-            return f"{self.label} has an invalid format."
-        semantic_format = self.extra.get("format")
-        if semantic_format == "email" and text and _EMAIL_RE.fullmatch(text) is None:
-            return f"{self.label} must be a valid email address."
-        if semantic_format == "url" and text:
-            absolute_path = text.startswith("/") and not text.startswith("//")
-            if not (absolute_path or re.match(r"^https?://[^\s]+$", text)):
-                return f"{self.label} must be an HTTP(S) URL or an absolute path."
-        if semantic_format == "locale" and text and _BCP47_RE.fullmatch(text) is None:
-            return f"{self.label} must be a valid BCP 47 locale tag."
-        return None
-
-    def to_dict(self) -> dict[str, Any]:
-        """Expose string constraints to the shared renderer."""
-        data = super().to_dict()
-        for key in ("min_length", "max_length", "pattern", "format", "multiline"):
-            if key in self.extra:
-                data[key] = self.extra[key]
-        return data
-
-
-class EmailNode(StringNode):
-    """Configuration node for an optional or required email address."""
-
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        kwargs.setdefault("format", "email")
-        super().__init__(*args, **kwargs)
-
-
-class UrlNode(StringNode):
-    """Configuration node for an HTTP(S) URL or absolute application path."""
-
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        kwargs.setdefault("format", "url")
-        super().__init__(*args, **kwargs)
-
-
-class TimezoneNode(StringNode):
-    """Configuration node for an IANA timezone name."""
-
-    def validation_error(self, value: Any) -> str | None:
-        """Reject names that the runtime timezone database cannot resolve."""
-        error = super().validation_error(value)
-        if error or not str(value).strip():
-            return error
-        try:
-            from zoneinfo import ZoneInfo
-
-            ZoneInfo(str(value))
-        except (KeyError, TypeError, ValueError):
-            return f"{self.label} must be a valid IANA timezone name."
-        return None
-
-
-class JsonNode(AbstractConfigNode):
-    """Configuration node for JSON-encoded list, mapping, or nested values."""
-
-    @staticmethod
-    def _normalise(value: Any) -> Any:
-        """Convert Python collection values to JSON-compatible containers."""
-        if isinstance(value, tuple | set | frozenset):
-            return list(value)
-        return value
-
-    def _matches_expected_type(self, value: Any) -> bool:
-        """Check the optional collection shape derived from a model annotation."""
-        expected = self.extra.get("json_type")
-        if expected == "array":
-            return isinstance(value, list)
-        if expected == "object":
-            return isinstance(value, dict)
-        return True
-
-    def validate(self, value: Any) -> Any:
-        """Parse JSON form values, falling back to the declared default."""
-        value = self._normalise(value)
-        if isinstance(value, (dict, list)):
-            return value if self._matches_expected_type(value) else self.default
-        if value is None:
-            return self.default
-        try:
-            parsed = self._normalise(json.loads(str(value)))
-        except (TypeError, ValueError, json.JSONDecodeError):
-            return self.default
-        return parsed if self._matches_expected_type(parsed) else self.default
-
-    def validation_error(self, value: Any) -> str | None:
-        """Require valid JSON and the declared collection shape."""
-        error = super().validation_error(value)
-        if error:
-            return error
-        value = self._normalise(value)
-        if isinstance(value, (dict, list)):
-            parsed = value
-        else:
-            try:
-                parsed = self._normalise(json.loads(str(value)))
-            except (TypeError, ValueError, json.JSONDecodeError):
-                return f"{self.label} must contain valid JSON."
-        if not self._matches_expected_type(parsed):
-            expected = self.extra.get("json_type")
-            description = "an array" if expected == "array" else "an object"
-            return f"{self.label} must contain {description}."
-        return None
-
-    def to_dict(self) -> dict[str, Any]:
-        """Expose the expected JSON shape to generic form renderers."""
-        data = super().to_dict()
-        if "json_type" in self.extra:
-            data["json_type"] = self.extra["json_type"]
-        return data
+    def validate(self, value: Any) -> str:
+        """Validate and coerce value to string."""
+        return str(value) if value is not None else self.default
 
 
 class ColorNode(StringNode):
@@ -265,7 +97,7 @@ class ColorNode(StringNode):
     def validate(self, value: Any) -> str:
         """Validate value is a 6-digit hex color, else fall back to default."""
         val = str(value) if value is not None else self.default
-        if not isinstance(val, str) or _HEX_COLOR_RE.fullmatch(val) is None:
+        if not _HEX_COLOR_RE.match(val):
             return self.default
         return val
 
@@ -274,7 +106,7 @@ class ColorNode(StringNode):
         error = super().validation_error(value)
         if error:
             return error
-        if _HEX_COLOR_RE.fullmatch(str(value)) is None:
+        if not _HEX_COLOR_RE.match(str(value)):
             return (
                 f"{self.label} must be a six-digit hexadecimal color, such as #6b7280."
             )
@@ -407,12 +239,6 @@ class EnumNode(AbstractConfigNode):
 class SecretNode(StringNode):
     """Field for sensitive data, usually masked in UI."""
 
-    def to_dict(self) -> dict[str, Any]:
-        """Expose metadata without serializing a secret default."""
-        data = super().to_dict()
-        data["default"] = None
-        return data
-
 
 class ConfigSpecMeta(type):
     """Metaclass to collect nodes defined on a spec."""
@@ -516,19 +342,11 @@ class PydanticConfigSpec(ConfigSpec):
 
         nodes: dict[str, AbstractConfigNode] = {}
         for name, field in dc_fields.items():
-            annotation = _unwrap_optional(hints.get(name, str))
+            annotation = hints.get(name, str)
             has_default = (
                 field.default is not MISSING or field.default_factory is not MISSING
             )
-            if field.default is not MISSING:
-                default = field.default
-            elif field.default_factory is not MISSING:
-                try:
-                    default = field.default_factory()
-                except Exception:  # noqa: BLE001 — metadata must remain discoverable
-                    default = None
-            else:
-                default = None
+            default = None if field.default is MISSING else field.default
             metadata = field.metadata or {}
 
             kwargs: dict[str, Any] = {
@@ -547,26 +365,13 @@ class PydanticConfigSpec(ConfigSpec):
 
             node_cls = override
             if node_cls is None:
-                # Keep imports local so the node module remains usable in
-                # deployments that do not install pydantic directly.
-                secret_type: Any = ()
-                try:
-                    from lexigram.validation import SecretStr
-
-                    secret_type = SecretStr
-                except ImportError:  # pragma: no cover - workspace always has it
-                    pass
-
-                origin = get_origin(annotation)
                 if annotation is bool:
                     node_cls = BooleanNode
                 elif annotation is int:
                     node_cls = IntNode
                     kwargs["ge"] = metadata.get("ge")
                     kwargs["le"] = metadata.get("le")
-                elif annotation is secret_type:
-                    node_cls = SecretNode
-                elif origin is Literal:
+                elif get_origin(annotation) is Literal:
                     node_cls = EnumNode
                     options = [str(o) for o in get_args(annotation)]
                     kwargs["options"] = options
@@ -576,32 +381,8 @@ class PydanticConfigSpec(ConfigSpec):
                         kwargs["default"] = options[0]
                     if kwargs["default"] is not None:
                         kwargs["default"] = str(kwargs["default"])
-                elif origin in (list, tuple, dict, set):
-                    node_cls = JsonNode
-                    # JSON is easier to inspect and edit safely than a
-                    # Python repr, and the validator returns the parsed type.
-                    kwargs["multiline"] = True
-                    kwargs["json_type"] = "object" if origin is dict else "array"
-                elif isinstance(annotation, type) and hasattr(
-                    annotation, "__dataclass_fields__"
-                ):
-                    node_cls = JsonNode
-                    kwargs["multiline"] = True
-                    kwargs["json_type"] = "object"
                 else:
                     node_cls = StringNode
-
-            # Model constraints remain part of the contract even when a
-            # contributor selects a semantic override such as EmailNode,
-            # UrlNode, or TimezoneNode. This also lets an IntNode override
-            # retain its declared numeric bounds.
-            if isinstance(node_cls, type) and issubclass(node_cls, IntNode):
-                for key in ("ge", "le"):
-                    if key in metadata:
-                        kwargs.setdefault(key, metadata[key])
-            for key in ("min_length", "max_length", "pattern"):
-                if key in metadata:
-                    kwargs.setdefault(key, metadata[key])
 
             node = node_cls(**kwargs)
             node._name = name

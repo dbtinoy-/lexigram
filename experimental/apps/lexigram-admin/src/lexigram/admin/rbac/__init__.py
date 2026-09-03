@@ -2,10 +2,6 @@
 
 from __future__ import annotations
 
-from lexigram.admin.rbac.effective import (
-    EffectivePermissions,
-    resolve_effective_permissions,
-)
 from lexigram.admin.rbac.policies import (
     PolicyRegistry,
     get_policy,
@@ -28,7 +24,6 @@ from lexigram.contracts.auth import RoleDefinition
 __all__ = [
     "ActionPermission",
     "AdminRoleStoreProtocol",
-    "EffectivePermissions",
     "FieldPermission",
     "Policy",
     "PolicyContext",
@@ -40,5 +35,4 @@ __all__ = [
     "get_resource_permissions",
     "register_policy",
     "register_resource_permissions",
-    "resolve_effective_permissions",
 ]

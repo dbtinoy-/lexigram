@@ -1,6 +1,6 @@
 # 20 — Relations Inline Mutations & Follow-ups (R24 / B32–B34) (Full Plan)
 
-**Date:** 2026-09-02 · **Status:** ✅ Shipped · **Branch:** `arena/01a05b98-lexigram`
+**Date:** 2026-09-02 · **Status:** 🚧 In progress · **Branch:** `arena/01a05b98-lexigram`
 
 ## 1. Findings
 
@@ -46,3 +46,4 @@ Deferred follow-ups from R21 (doc 17 §5), now confirmed and fixed:
 - Verified: 12 new regressions + 198 relation-scoped tests green; full
   admin unit suite **5441 passed / 8 skipped, 76.32% coverage**; ruff
   check + format clean.
+

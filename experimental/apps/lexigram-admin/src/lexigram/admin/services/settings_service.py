@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from collections.abc import Collection
 from typing import TYPE_CHECKING, Any
 
 from lexigram.admin.settings.conflict import SettingsConflictError
@@ -123,14 +122,6 @@ class AdminSettingsDbProvider(TenantConfigProviderProtocol):
             [tenant_id, key, dumps_str(value)],
         )
 
-    async def delete_config(self, tenant_id: str, key: str) -> None:
-        """Remove one explicit tenant setting, leaving model defaults intact."""
-        await self._ensure_table()
-        await self._db.execute(
-            f"DELETE FROM {_TABLE} WHERE tenant_id = ? AND key = ?",  # noqa: S608 — table constant
-            [tenant_id, key],
-        )
-
     def _upsert_sql(self) -> str:
         """Return the single-row upsert statement for the configured dialect."""
         return f"""INSERT INTO {_TABLE} (tenant_id, key, value)
@@ -139,59 +130,34 @@ class AdminSettingsDbProvider(TenantConfigProviderProtocol):
                DO UPDATE SET value = excluded.value, updated_at = {now_expr(self._db)}"""  # noqa: S608 — table name is module constant, now_expr yields fixed NOW()/CURRENT_TIMESTAMP
 
     async def set_config_many(self, tenant_id: str, items: dict[str, Any]) -> None:
-        """Upsert several config rows inside one transaction when supported."""
-        await self.apply_config_many(tenant_id, items)
+        """Upsert several config rows inside one transaction when supported.
 
-    async def delete_config_many(self, tenant_id: str, keys: Collection[str]) -> None:
-        """Remove several explicit config rows inside one transaction when supported."""
-        await self.apply_config_many(tenant_id, {}, delete_keys=keys)
+        Falls back to sequential writes only when the database provider does
+        not expose a usable ``transaction()`` context manager.
 
-    async def apply_config_many(
-        self,
-        tenant_id: str,
-        items: dict[str, Any],
-        delete_keys: Collection[str] = frozenset(),
-        expected: dict[str, Any] | None = None,
-    ) -> None:
-        """Apply writes and removals with one conditional transaction.
-
-        ``delete_keys`` is used by exact rollback to restore values that were
-        previously inherited from model defaults. When a provider exposes no
-        transaction context, the method keeps the pre-existing best-effort
-        fallback but logs that the combined operation is not atomic.
+        Args:
+            tenant_id: Tenant scope for every row.
+            items: Mapping of fully-qualified key to value.
         """
-        if not items and not delete_keys:
+        if not items:
             return
         await self._ensure_table()
-        upsert_sql = self._upsert_sql()
-        delete_sql = f"DELETE FROM {_TABLE} WHERE tenant_id = ? AND key = ?"  # noqa: S608 — table constant
-
-        async def _mutate() -> None:
-            if expected is not None:
-                await self._verify_unchanged(tenant_id, expected)
-            for key, value in items.items():
-                await self._db.execute(
-                    upsert_sql,
-                    [tenant_id, key, dumps_str(value)],
-                )
-            for key in delete_keys:
-                await self._db.execute(delete_sql, [tenant_id, key])
+        sql = self._upsert_sql()
+        params = [[tenant_id, key, dumps_str(value)] for key, value in items.items()]
 
         transaction = getattr(self._db, "transaction", None)
         if callable(transaction):
             async with transaction():
-                await _mutate()
+                for row in params:
+                    await self._db.execute(sql, row)
             return
 
         logger.warning(
             "Database provider exposes no transaction(); "
-            "settings combined write is not atomic"
+            "settings batch write is not atomic"
         )
-        await _mutate()
-
-    def supports_conditional_write(self) -> bool:
-        """Report whether the database provider can close the race atomically."""
-        return callable(getattr(self._db, "transaction", None))
+        for row in params:
+            await self._db.execute(sql, row)
 
     async def set_config_many_if_unchanged(
         self,
@@ -199,8 +165,41 @@ class AdminSettingsDbProvider(TenantConfigProviderProtocol):
         items: dict[str, Any],
         expected: dict[str, Any],
     ) -> None:
-        """Compatibility wrapper for the original conditional-write API."""
-        await self.apply_config_many(tenant_id, items, expected=expected)
+        """Upsert rows only if their stored values still match *expected*.
+
+        The comparison is re-executed inside the write transaction, so a
+        concurrent update committed after the caller rendered its form is
+        detected here rather than being silently overwritten. Raising rolls
+        the transaction back, leaving no partial write behind.
+
+        Args:
+            tenant_id: Tenant scope for every row.
+            items: Mapping of fully-qualified key to value.
+            expected: Mapping of key to the value observed at render time. A
+                key mapped to ``None`` is expected to be absent from storage.
+
+        Raises:
+            SettingsConflictError: If any row changed concurrently.
+        """
+        if not items:
+            return
+        await self._ensure_table()
+
+        transaction = getattr(self._db, "transaction", None)
+        if not callable(transaction):
+            logger.warning(
+                "Database provider exposes no transaction(); settings "
+                "conditional write cannot be enforced atomically"
+            )
+            await self._verify_unchanged(tenant_id, expected)
+            await self.set_config_many(tenant_id, items)
+            return
+
+        sql = self._upsert_sql()
+        async with transaction():
+            await self._verify_unchanged(tenant_id, expected)
+            for key, value in items.items():
+                await self._db.execute(sql, [tenant_id, key, dumps_str(value)])
 
     async def _verify_unchanged(self, tenant_id: str, expected: dict[str, Any]) -> None:
         """Raise if stored values diverge from *expected*.
@@ -216,9 +215,9 @@ class AdminSettingsDbProvider(TenantConfigProviderProtocol):
             return
         current = await self.get_all_config(tenant_id)
         # A key absent from storage was never written, so the value the form
-        # rendered was the node default and no conflicting write can be
-        # inferred. A stored row with a different value is always a conflict;
-        # this also protects rollback deletes from removing a later override.
+        # rendered was the node default and no concurrent write can have
+        # occurred. Only stored rows can conflict. This settings surface has
+        # no delete path, so an absent row cannot mean "removed since read".
         conflicts = sorted(
             key
             for key, value in expected.items()
@@ -243,54 +242,14 @@ class AdminSettingsService:
         return f"{KEY_PREFIX}{name}"
 
     async def get(self, tenant_id: str, name: str) -> Any:
-        """Read a setting while preserving explicitly stored falsy values.
-
-        ``dict.get(...) or default`` is incorrect for configuration: ``False``,
-        ``0``, and ``""`` can all be intentional operator choices. Presence
-        is checked separately so only an absent value falls back to the
-        application default.
-        """
         if self._provider is None:
-            tenant_values = self._memory.get(tenant_id, {})
-            if name in tenant_values:
-                return tenant_values[name]
-            return DEFAULT_SETTINGS.get(name)
+            return self._memory.get(tenant_id, {}).get(name) or DEFAULT_SETTINGS.get(
+                name
+            )
         raw = await self._provider.get_config(tenant_id, self._key(name))
         if raw is not None:
             return raw
         return DEFAULT_SETTINGS.get(name)
-
-    async def contains(self, tenant_id: str, name: str) -> bool | None:
-        """Report whether a tenant has an explicit stored setting.
-
-        ``None`` is reserved for providers that cannot prove presence. The
-        built-in provider can inspect its tenant row set, which lets the
-        settings UI distinguish an explicit ``false`` from a default ``true``.
-        """
-        if self._provider is None:
-            return name in self._memory.get(tenant_id, {})
-        try:
-            values = await self._provider.get_all_config(tenant_id)
-            return self._key(name) in values if isinstance(values, dict) else None
-        except Exception:
-            return None
-
-    async def get_setting(
-        self,
-        name: str,
-        default: Any = None,
-        *,
-        tenant_id: str = "default",
-    ) -> Any:
-        """Read a runtime setting using the key/default calling convention.
-
-        Middleware integrations historically accepted ``get(name, default)``
-        while :class:`AdminSettingsService` is tenant-oriented
-        (``get(tenant_id, name)``). This explicit adapter keeps both contracts
-        correct and makes the runtime call site self-documenting.
-        """
-        value = await self.get(tenant_id, name)
-        return default if value is None else value
 
     async def set(self, tenant_id: str, name: str, value: Any) -> None:
         if self._provider is None:
@@ -330,78 +289,6 @@ class AdminSettingsService:
             return
         for key, value in keyed.items():
             await self._provider.set_config(tenant_id, key, value)
-
-    async def delete(self, tenant_id: str, name: str) -> None:
-        """Remove an explicit setting while preserving its declared default."""
-        if self._provider is None:
-            self._memory.get(tenant_id, {}).pop(name, None)
-            return
-        delete = getattr(self._provider, "delete_config", None)
-        if callable(delete):
-            await delete(tenant_id, self._key(name))
-            return
-        logger.warning(
-            "Tenant config provider does not support deletion; "
-            "settings ownership cannot be restored exactly"
-        )
-
-    async def apply_many_if_unchanged(
-        self,
-        tenant_id: str,
-        items: dict[str, Any],
-        delete_names: Collection[str] = frozenset(),
-        expected: dict[str, Any] | None = None,
-    ) -> None:
-        """Apply value writes and explicit-key removals as one logical save."""
-        if not items and not delete_names:
-            return
-
-        if self._provider is None:
-            stored = self._memory.setdefault(tenant_id, {})
-            if expected:
-                conflicts = sorted(
-                    name
-                    for name, value in expected.items()
-                    if name in stored
-                    and _normalize_config_value(stored[name])
-                    != _normalize_config_value(value)
-                )
-                if conflicts:
-                    raise SettingsConflictError(
-                        "Settings changed since the form was rendered: "
-                        f"{', '.join(conflicts)}"
-                    )
-            stored.update(items)
-            for name in delete_names:
-                stored.pop(name, None)
-            return
-
-        keyed = {self._key(name): value for name, value in items.items()}
-        keyed_delete = {self._key(name) for name in delete_names}
-        keyed_expected = (
-            {self._key(name): value for name, value in expected.items()}
-            if expected is not None
-            else None
-        )
-        conditional = getattr(self._provider, "apply_config_many", None)
-        if callable(conditional):
-            await conditional(
-                tenant_id,
-                keyed,
-                keyed_delete,
-                keyed_expected,
-            )
-            return
-
-        # Providers predating combined writes retain the old conditional
-        # behavior for value updates and perform removals afterward.
-        if keyed:
-            if keyed_expected is None:
-                await self.set_many(tenant_id, items)
-            else:
-                await self.set_many_if_unchanged(tenant_id, items, expected or {})
-        for name in delete_names:
-            await self.delete(tenant_id, name)
 
     async def set_many_if_unchanged(
         self,
@@ -460,12 +347,6 @@ class AdminSettingsService:
         """Report whether the backing provider enforces conditional writes."""
         if self._provider is None:
             return True
-        probe = getattr(self._provider, "supports_conditional_write", None)
-        if callable(probe):
-            try:
-                return bool(probe())
-            except Exception:  # noqa: BLE001 — capability is best-effort
-                return False
         return callable(getattr(self._provider, "set_config_many_if_unchanged", None))
 
     async def set_all(self, tenant_id: str, settings: dict[str, Any]) -> None:

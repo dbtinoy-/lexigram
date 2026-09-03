@@ -93,9 +93,7 @@ class TestSanitizeQuery:
 class TestSaveView:
     @pytest.mark.asyncio
     async def test_save_and_list_roundtrip(self, service: SavedViewService) -> None:
-        entry = await service.save_view(
-            "u-1", "users", "Active", "filter_status=active"
-        )
+        entry = await service.save_view("u-1", "users", "Active", "filter_status=active")
         assert entry["name"] == "Active"
         assert entry["query"] == "filter_status=active"
         views = await service.list_views("u-1", "users")
@@ -212,7 +210,9 @@ class TestListViews:
         assert await SavedViewService(None).list_views("u-1", "users") == []
 
     @pytest.mark.asyncio
-    async def test_invalid_inputs_return_empty(self, service: SavedViewService) -> None:
+    async def test_invalid_inputs_return_empty(
+        self, service: SavedViewService
+    ) -> None:
         assert await service.list_views("guest", "users") == []
         assert await service.list_views("u-1", "Bad Resource") == []
 
@@ -242,104 +242,6 @@ class TestListViews:
     ) -> None:
         settings.data[("default", "saved_views.u-1.users")] = {"oops": True}
         assert await service.list_views("u-1", "users") == []
-
-
-class TestDefaultView:
-    @pytest.mark.asyncio
-    async def test_legacy_view_is_not_default(self, service: SavedViewService) -> None:
-        await service.save_view("u-1", "users", "Mine", "search=a")
-        views = await service.list_views("u-1", "users")
-        assert views[0]["default"] is False
-        assert await service.get_default_view("u-1", "users") is None
-
-    @pytest.mark.asyncio
-    async def test_set_default_returns_sanitized_entry(
-        self, service: SavedViewService
-    ) -> None:
-        await service.save_view("u-1", "users", "Mine", "search=a&page=4")
-        assert await service.set_default_view("u-1", "users", "Mine") is True
-        default = await service.get_default_view("u-1", "users")
-        assert default is not None
-        assert default["name"] == "Mine"
-        assert default["query"] == "search=a"
-        assert default["default"] is True
-
-    @pytest.mark.asyncio
-    async def test_setting_another_default_replaces_the_old_one(
-        self, service: SavedViewService
-    ) -> None:
-        await service.save_view("u-1", "users", "Mine", "search=a")
-        await service.save_view("u-1", "users", "Other", "search=b")
-        await service.set_default_view("u-1", "users", "Mine")
-        await service.set_default_view("u-1", "users", "OTHER")
-        views = await service.list_views("u-1", "users")
-        assert [(v["name"], v["default"]) for v in views] == [
-            ("Mine", False),
-            ("Other", True),
-        ]
-
-    @pytest.mark.asyncio
-    async def test_upsert_preserves_default_marker(
-        self, service: SavedViewService
-    ) -> None:
-        await service.save_view("u-1", "users", "Mine", "search=a")
-        await service.set_default_view("u-1", "users", "Mine")
-        await service.save_view("u-1", "users", "mine", "search=b")
-        default = await service.get_default_view("u-1", "users")
-        assert default is not None
-        assert default["query"] == "search=b"
-
-    @pytest.mark.asyncio
-    async def test_clear_default_is_idempotent(self, service: SavedViewService) -> None:
-        await service.save_view("u-1", "users", "Mine", "search=a")
-        assert await service.set_default_view("u-1", "users", None) is False
-        await service.set_default_view("u-1", "users", "Mine")
-        assert await service.set_default_view("u-1", "users", None) is True
-        assert await service.get_default_view("u-1", "users") is None
-        assert await service.set_default_view("u-1", "users", None) is False
-
-    @pytest.mark.asyncio
-    async def test_missing_default_target_errors(
-        self, service: SavedViewService
-    ) -> None:
-        with pytest.raises(SavedViewError, match="not found"):
-            await service.set_default_view("u-1", "users", "Missing")
-
-    @pytest.mark.asyncio
-    async def test_corrupt_multiple_defaults_choose_first_valid(
-        self, service: SavedViewService, settings: _FakeSettings
-    ) -> None:
-        settings.data[("default", "saved_views.u-1.users")] = [
-            {"name": "Empty", "query": "page=4", "default": True},
-            {"name": "Good", "query": "search=ok", "default": True},
-            {"name": "StringFlag", "query": "search=no", "default": "false"},
-        ]
-        views = await service.list_views("u-1", "users")
-        assert [(v["name"], v["default"]) for v in views] == [
-            ("Empty", False),
-            ("Good", True),
-            ("StringFlag", False),
-        ]
-        default = await service.get_default_view("u-1", "users")
-        assert default is not None
-        assert default["name"] == "Good"
-
-    @pytest.mark.asyncio
-    async def test_default_read_failure_is_friendly(
-        self, service: SavedViewService, settings: _FakeSettings
-    ) -> None:
-        settings.fail_get = True
-        with pytest.raises(SavedViewError, match="update the default"):
-            await service.set_default_view("u-1", "users", "Mine")
-
-    @pytest.mark.asyncio
-    async def test_default_write_failure_is_friendly(
-        self, service: SavedViewService, settings: _FakeSettings
-    ) -> None:
-        await service.save_view("u-1", "users", "Mine", "search=a")
-        settings.fail_set = True
-        with pytest.raises(SavedViewError, match="update the default"):
-            await service.set_default_view("u-1", "users", "Mine")
 
 
 class TestDeleteView:

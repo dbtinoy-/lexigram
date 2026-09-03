@@ -102,19 +102,3 @@ class AdminAccountLockoutStoreProtocol(Protocol):
             email: Email to unlock.
         """
         ...
-
-    async def list_active_lockouts(self, limit: int = 100) -> list[dict[str, Any]]:
-        """Return currently active lockouts across all accounts (R41, doc 37).
-
-        Expired temporary lockouts are swept (deactivated) before
-        listing, so every returned row is genuinely in effect.
-
-        Args:
-            limit: Maximum number of rows to return.
-
-        Returns:
-            Raw row dicts (``email``, ``locked_at``, ``unlock_at``,
-            ``consecutive_failures``, ``is_permanent``) ordered by
-            ``locked_at`` descending.
-        """
-        ...

@@ -63,3 +63,4 @@ the `export` extra) — so `.xlsx` uploads failing with
   with the refresh/toast HX-Trigger, both rows searchable afterwards
   (padded name stripped); corrupt bytes named `.xlsx` → clean 400
   "Invalid Excel file: File is not a zip file".
+

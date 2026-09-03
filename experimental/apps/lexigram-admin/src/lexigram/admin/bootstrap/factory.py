@@ -66,10 +66,9 @@ async def create_app(
     """
     from lexigram.admin.config import AdminConfig as AdminConfigCls
 
-    config_loader: AdminConfigLoader | None = kwargs.pop("config_loader", None)
     if config is None and config_path is not None:
-        config_loader = AdminConfigLoader(yaml_path=Path(config_path))
-        config = await config_loader.load()
+        loader = AdminConfigLoader(yaml_path=Path(config_path))
+        config = await loader.load()
 
     if config is None:
         config = AdminConfigCls(title=title, prefix=prefix, debug=debug)
@@ -98,12 +97,7 @@ async def create_app(
         await db_provider.register(container)
         await db_provider.boot(container)
 
-    admin = AdminProvider(
-        config=config,
-        resources=resources_list,
-        config_loader=config_loader,
-        **kwargs,
-    )
+    admin = AdminProvider(config=config, resources=resources_list, **kwargs)
     await admin.register(container)
     await admin.boot(container)
 
@@ -136,10 +130,9 @@ async def create_admin_provider(
     """Create an AdminProvider for use with Application."""
     from lexigram.admin.config import AdminConfig as AdminConfigCls
 
-    config_loader: AdminConfigLoader | None = kwargs.pop("config_loader", None)
     if config is None and config_path is not None:
-        config_loader = AdminConfigLoader(yaml_path=Path(config_path))
-        config = await config_loader.load()
+        loader = AdminConfigLoader(yaml_path=Path(config_path))
+        config = await loader.load()
 
     if config is None:
         config = AdminConfigCls(title=title, prefix=prefix, debug=debug)
@@ -151,11 +144,7 @@ async def create_admin_provider(
         else:
             resources_list = list(resources)
 
-    admin = AdminProvider(
-        config=config,
-        resources=resources_list,
-        config_loader=config_loader,
-    )
+    admin = AdminProvider(config=config, resources=resources_list)
     logger.info("AdminProvider created for prefix %s", prefix)
     return admin
 

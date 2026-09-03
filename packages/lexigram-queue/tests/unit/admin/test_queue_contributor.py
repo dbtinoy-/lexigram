@@ -5,7 +5,6 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-import structlog.testing
 
 from lexigram.contracts.admin import Stat, StatContent, Tone, WidgetParams
 from lexigram.contracts.admin.errors import AdminError, WidgetNotFoundError
@@ -53,7 +52,9 @@ class TestQueueAdminContributor:
         failed_handler.get_data = AsyncMock(
             return_value=Ok(
                 StatContent(
-                    stats=(Stat(label="Failed messages", value="0", tone=Tone.SUCCESS),)
+                    stats=(
+                        Stat(label="Failed messages", value="0", tone=Tone.SUCCESS),
+                    )
                 )
             )
         )
@@ -86,9 +87,7 @@ class TestQueueAdminContributor:
         await contrib.on_admin_boot(container)
         return contrib
 
-    def test_contributor_metadata(
-        self, booted_contributor: QueueAdminContributor
-    ) -> None:
+    def test_contributor_metadata(self, booted_contributor: QueueAdminContributor) -> None:
         """Test contributor name and display properties."""
         assert booted_contributor.name == "queue"
         assert booted_contributor.display_name == "Queue"
@@ -256,34 +255,6 @@ class TestQueueAdminContributor:
 
         assert result.is_err()
         assert isinstance(result.unwrap_err(), WidgetNotFoundError)
-
-
-@pytest.mark.asyncio
-async def test_missing_dependency_logs_contributor_as_disabled() -> None:
-    """Expected queue-handler misses use one concise, structured event."""
-    from lexigram.contracts.exceptions.container import UnresolvableDependencyError
-
-    container = MagicMock()
-    container.resolve = AsyncMock(
-        side_effect=UnresolvableDependencyError(
-            "[LEX_ERR_DI_004] missing\n  → Fix: register it",
-            dependency="QueueDepthWidgetHandler",
-        )
-    )
-    contributor = QueueAdminContributor()
-
-    with structlog.testing.capture_logs() as captured:
-        await contributor.on_admin_boot(container)
-
-    disabled = [
-        log for log in captured if log.get("event") == "admin.contributor_disabled"
-    ]
-    assert len(disabled) == 1
-    assert disabled[0]["contributor"] == "queue"
-    assert disabled[0]["feature"] == "widget handlers"
-    assert disabled[0]["missing"] == "QueueDepthWidgetHandler"
-    assert "LEX_ERR" not in str(disabled[0])
-    assert "\n" not in str(disabled[0])
 
 
 __all__ = ["TestQueueAdminContributor"]

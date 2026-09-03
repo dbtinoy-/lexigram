@@ -110,28 +110,6 @@ def test_numeric_constraints_and_settings_form_metadata_are_rendered() -> None:
     assert "Source: Database" in html
 
 
-def test_invalid_json_is_preserved_for_correction() -> None:
-    node = {
-        "name": "options",
-        "label": "Options",
-        "type": "json",
-        "default": [],
-        "help_text": None,
-        "readonly": False,
-        "options": [],
-        "json_type": "array",
-    }
-
-    html = render_to_string(
-        ConfigDashboardUI().render_field(
-            node, {"options": "[broken"}, {"options": "Invalid JSON"}
-        )
-    )
-
-    assert "[broken" in html
-    assert "&quot;[broken&quot;" not in html
-
-
 def test_csp_is_rendered_as_multiline_textarea() -> None:
     registry = ConfigRegistry.with_defaults()
     spec = registry.get_spec("admin.security")

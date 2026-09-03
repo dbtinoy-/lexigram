@@ -9,9 +9,6 @@ from importlib import import_module
 from typing import Any, cast
 
 from lexigram.contracts.admin.contributor import BaseAdminContributor
-from lexigram.contracts.admin.contributor_boot import (
-    summarize_contributor_boot_failure,
-)
 from lexigram.contracts.admin.errors import AdminError, WidgetNotFoundError
 from lexigram.contracts.admin.types import (
     AdminActionDefinition,
@@ -147,7 +144,6 @@ class QueueAdminContributor(BaseAdminContributor):
         """
         typed_container = cast("ContainerResolverProtocol", container)
         self._container = typed_container
-        self._handlers = {}
         try:
             depth_handler = await typed_container.resolve(QueueDepthWidgetHandler)
             lag_handler = await typed_container.resolve(ConsumerLagWidgetHandler)
@@ -158,22 +154,7 @@ class QueueAdminContributor(BaseAdminContributor):
                 "failed_messages": failed_handler,
             }
         except Exception as exc:  # noqa: BLE001
-            failure = summarize_contributor_boot_failure(exc)
-            if failure.expected:
-                logger.info(
-                    "admin.contributor_disabled",
-                    contributor=self.name,
-                    feature="widget handlers",
-                    reason=failure.reason,
-                    missing=failure.summary,
-                )
-            else:
-                logger.warning(
-                    "queue_contributor.handlers_unavailable",
-                    error=failure.summary,
-                    error_type=type(exc).__name__,
-                    exc_info=True,
-                )
+            logger.warning("queue_contributor.handlers_unavailable", error=str(exc))
 
         self._action_handlers = {}
         try:
@@ -182,13 +163,7 @@ class QueueAdminContributor(BaseAdminContributor):
                 module = import_module(module_path)
                 self._action_handlers[action.name] = getattr(module, handler_name)
         except Exception as exc:  # noqa: BLE001
-            failure = summarize_contributor_boot_failure(exc)
-            logger.warning(
-                "queue_contributor.actions_unavailable",
-                error=failure.summary,
-                error_type=type(exc).__name__,
-                exc_info=True,
-            )
+            logger.warning("queue_contributor.actions_unavailable", error=str(exc))
 
     def get_dashboard_widgets(self) -> Sequence[DashboardWidgetDefinition]:
         return list(_WIDGETS)

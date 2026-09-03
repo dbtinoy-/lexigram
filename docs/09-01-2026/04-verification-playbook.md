@@ -11,25 +11,16 @@ verifying any future change to lexigram-admin. Auth/authz changes require
 uv run pytest experimental/apps/lexigram-admin/tests/unit -q
 ```
 
-- Verified 2026-09-03: admin unit suite **5811 passed, 7 skipped**;
-  lexigram-ui **1452 passed, 78 skipped**; lexigram-sql **1443 passed, 8
-  skipped**. Counts may move as optional tests are added, but an enabled test
-  must never be silently omitted.
-- The workspace must be synced with the related package graph together
-  (including `lexigram-secrets`, `lexigram-monitor`, `lexigram-search`, and
-  `lexigram-graphql`); a missing workspace import is an environment failure,
-  not a passing/ skipped product test. See Full Plan 50 for the complete
-  command family and release gate.
+- Baseline 2026-09-02: **5357 passed, 8 skipped**, coverage
+  ≈ 76.0% (configured minimum 60%). lexigram-sql package suite baseline:
+  **1403 passed, 48 skipped** (`cd packages/lexigram-sql && uv run pytest tests -q`).
 - The suite adds `--cov` flags from `pyproject.toml`; use `--no-cov` for
   quick single-file runs.
 - New regression tests added this date:
   - `tests/e2e/test_first_run_scenario_e2e.py` — **the first-run scenario**
     (roadmap R5): real SQL stores via `create_app()`, full operator journey.
-    Run it for any change touching auth/authz/middleware/bootstrap (the
-    explicit flag is required):
-    `uv run pytest experimental/apps/lexigram-admin/tests/e2e/test_first_run_scenario_e2e.py --no-cov --run-e2e`
-    Without `--run-e2e`, the e2e directory is collection-safe and skips the
-    opt-in scenarios rather than opening real database resources.
+    Run it for any change touching auth/authz/middleware/bootstrap:
+    `uv run pytest experimental/apps/lexigram-admin/tests/e2e/test_first_run_scenario_e2e.py --no-cov`
   - `tests/unit/middleware/test_super_admin_marking.py` (B1)
   - `tests/unit/middleware/test_setup_middleware.py` — caching tests (P1)
   - `tests/unit/auth/test_email_verification_store.py` — `mark_verified` (B3)
@@ -179,7 +170,5 @@ sqlite3 experimental/apps/lexigram-admin/playground/playground.db \
 - `unpkg.com`/`jsdelivr.net` may be blocked in CI sandboxes;
   `registry.npmjs.org` is the reliable source for asset tarballs (doc 03) —
   and since B6, the admin UI no longer needs any of them at runtime.
-- Known optional-route boot noise: `admin.sse_widgets_route_skipped` when
-  `ReactiveSseBridgeProtocol` is not registered. This is an expected
-  availability warning for the separately mounted SSE route; contributor
-  boot misses use concise INFO events and the clean boot has no traceback.
+- Known cosmetic boot noise: webhook-contributor traceback for
+  `WebhookSubscriptionStoreProtocol` (roadmap R8) — boot continues normally.

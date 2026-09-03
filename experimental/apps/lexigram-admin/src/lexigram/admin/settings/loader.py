@@ -81,17 +81,6 @@ class AdminConfigLoader:
         self._config: AdminConfig | None = None
         self._runtime_overrides: dict[str, Any] = {}
         self._reload_callbacks: list[Callable[[AdminConfig], None]] = []
-        self._yaml_path_used: Path | None = None
-        self._provenance: dict[str, str] = {}
-
-    @property
-    def yaml_path(self) -> Path | None:
-        """Return the YAML file used by the last load, when one was found."""
-        return self._yaml_path_used
-
-    def get_provenance(self) -> dict[str, str]:
-        """Return a copy of effective leaf-path source labels."""
-        return dict(self._provenance)
 
     @property
     def config(self) -> AdminConfig:
@@ -108,40 +97,25 @@ class AdminConfigLoader:
         Returns:
             Merged AdminConfig instance
         """
-        # Layer 1: Start with defaults from the model itself. We fill source
-        # labels after validation so fields omitted by every input layer are
-        # still represented as declared model defaults.
+        # Layer 1: Start with defaults from Pydantic model
         config_data: dict[str, Any] = {}
-        self._provenance = {}
-
-        # Explicit loader defaults are still defaults: they fill gaps before
-        # deployment-owned YAML and environment layers, rather than silently
-        # overriding an operator's environment variable.
-        self._deep_merge(config_data, self._defaults)
-        self._mark_provenance(self._defaults, "loader constructor default")
 
         # Layer 2: Load from YAML
         yaml_data = await self._load_yaml()
         self._deep_merge(config_data, yaml_data)
-        self._mark_provenance(yaml_data, self._yaml_source_label())
 
         # Layer 3: Apply environment variables
         env_data = self._load_env()
         self._deep_merge(config_data, env_data)
-        self._mark_provenance(env_data, "environment override")
 
-        # Layer 4: Apply runtime overrides
+        # Layer 4: Apply constructor defaults
+        self._deep_merge(config_data, self._defaults)
+
+        # Layer 5: Apply runtime overrides
         self._deep_merge(config_data, self._runtime_overrides)
-        self._mark_provenance(self._runtime_overrides, "runtime override")
 
         # Construct config model
         self._config = AdminConfig.model_validate(config_data)
-        try:
-            effective = self._config.model_dump(mode="python")
-        except (AttributeError, TypeError, ValueError):
-            effective = vars(self._config)
-        for path in self._leaf_paths(effective):
-            self._provenance.setdefault(path, "declared model default")
         return self._config
 
     async def reload(self) -> AdminConfig:
@@ -210,33 +184,6 @@ class AdminConfigLoader:
                 return default
         return obj
 
-    @staticmethod
-    def _leaf_paths(value: Any, prefix: str = "") -> list[str]:
-        """Return dotted paths for scalar leaves in a nested value."""
-        if isinstance(value, dict):
-            paths: list[str] = []
-            for key, child in value.items():
-                path = f"{prefix}.{key}" if prefix else str(key)
-                paths.extend(AdminConfigLoader._leaf_paths(child, path))
-            return paths
-        if isinstance(value, (list, tuple)):
-            paths = []
-            for index, child in enumerate(value):
-                paths.extend(AdminConfigLoader._leaf_paths(child, f"{prefix}[{index}]"))
-            return paths or ([prefix] if prefix else [])
-        return [prefix] if prefix else []
-
-    def _mark_provenance(self, value: Any, source: str, prefix: str = "") -> None:
-        """Mark every supplied leaf, allowing later layers to overwrite it."""
-        for path in self._leaf_paths(value, prefix):
-            self._provenance[path] = source
-
-    def _yaml_source_label(self) -> str:
-        """Describe the YAML source without exposing file contents."""
-        if self._yaml_path_used is None:
-            return "YAML/application config"
-        return f"YAML ({self._yaml_path_used})"
-
     async def _load_yaml(self) -> dict[str, Any]:
         """Load configuration from YAML file.
 
@@ -248,7 +195,6 @@ class AdminConfigLoader:
             Dict of admin configuration from YAML, or empty dict
         """
         paths_to_try = []
-        self._yaml_path_used = None
 
         if self._yaml_path:
             paths_to_try.append(self._yaml_path)
@@ -268,11 +214,7 @@ class AdminConfigLoader:
                     async with aiofiles.open(path) as f:
                         content = await f.read()
                         data = yaml.safe_load(content) or {}
-                        if not isinstance(data, dict):
-                            continue
-                        self._yaml_path_used = path
-                        section = data.get(self.YAML_SECTION, {})
-                        return section if isinstance(section, dict) else {}
+                        return data.get(self.YAML_SECTION, {})
                 except (yaml.YAMLError, ValueError, OSError):
                     continue
 
@@ -293,8 +235,6 @@ class AdminConfigLoader:
 
             # Remove prefix and convert to path
             config_key = key[len(self.ENV_PREFIX) :]
-            if not config_key.strip("_"):
-                continue
             if "__" in config_key:
                 # Canonical format: LEX_ADMIN__AUTH__SESSION_LIFETIME
                 resolved_path = [

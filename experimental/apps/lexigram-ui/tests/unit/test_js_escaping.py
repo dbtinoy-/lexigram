@@ -15,7 +15,7 @@ text, so a substring check passes for the wrong reason.
 from __future__ import annotations
 
 import html
-import json  # noqa: TID251 — JSONDecoder is needed to parse emitted JS literals
+import json
 
 import pytest
 
@@ -392,17 +392,6 @@ class TestDataTableAllIds:
         rendered = self._render(["r1", "r2"])
 
         assert _literal_at(rendered, "allIds: ") == ["r1", "r2"]
-
-    def test_bulk_progress_listener_is_idempotent_and_accessible(self) -> None:
-        rendered = self._render([])
-
-        assert "LexigramBulkProgressInitialized" in rendered
-        assert "bulk-progress-start" in rendered
-        assert "new EventSource" in rendered
-        assert "sameOriginUrl" in rendered
-        assert "root.setAttribute('role', 'status')" in rendered
-        assert "root.setAttribute('aria-live', 'polite')" in rendered
-        assert "refreshTable" in rendered
 
 
 class TestAdminLayoutCsrf:
