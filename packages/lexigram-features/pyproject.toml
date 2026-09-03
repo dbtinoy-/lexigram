@@ -28,7 +28,7 @@ maintainers = [{ name = "Lexigram Framework Team", email = "team@lexigram.dev" }
 dependencies = [
     "lexigram-contracts>=0.1.4",
     "lexigram>=0.1.4",
-    "typer>=0.9.0",
+    "typer>=0.27.2",
 ]
 
 [project.urls]
