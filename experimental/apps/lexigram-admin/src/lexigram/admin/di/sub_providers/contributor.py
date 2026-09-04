@@ -9,6 +9,9 @@ from lexigram.admin.contributors.core import CoreAdminContributor
 from lexigram.admin.contributors.registry import ContributorRegistry
 from lexigram.admin.contributors.resource_collector import ResourceCollector
 from lexigram.admin.dashboard.naming_policy import NamingPolicy
+from lexigram.contracts.admin.contributor_boot import (
+    summarize_contributor_boot_failure,
+)
 from lexigram.contracts.admin.dependencies import sort_contributors
 from lexigram.contracts.admin.protocols import AdminContributorRegistryProtocol
 from lexigram.contracts.core.health import HealthCheckResult, HealthStatus
@@ -118,36 +121,37 @@ class AdminContributorSubProvider:
 
     async def boot(self, container: ContainerResolverProtocol) -> None:
         """Boot all discovered contributors, sorted by dependency order."""
-        from lexigram.contracts.exceptions.container import (
-            UnresolvableDependencyError,
-        )
-
         contributors = sort_contributors(self._registry.get_all())  # type: ignore[type-var]
         for contributor in contributors:
             if self._is_enabled(contributor.name):
                 try:
                     await contributor.on_admin_boot(container)
-                except UnresolvableDependencyError as exc:
-                    # Expected for optional contributors whose backing
-                    # services are simply not registered in this deployment:
-                    # the feature is disabled, not broken. One readable line
-                    # — boot output is the operator's first impression;
-                    # tracebacks are reserved for genuine faults below.
-                    logger.info(
-                        "admin.contributor_disabled",
-                        contributor=contributor.name,
-                        reason="required service not registered",
-                        missing=str(exc).split(".", 1)[0][:120],
-                    )
-                    self._boot_failures[contributor.name] = str(exc)
                 except Exception as exc:  # noqa: BLE001 — continue booting other contributors
-                    logger.warning(
-                        "admin.contributor_on_boot_failed",
-                        contributor=contributor.name,
-                        error=str(exc),
-                        exc_info=True,
-                    )
-                    self._boot_failures[contributor.name] = str(exc)
+                    failure = summarize_contributor_boot_failure(exc)
+                    if failure.expected:
+                        # Expected for optional contributors whose backing
+                        # services are not registered in this deployment:
+                        # the feature is disabled, not broken. Keep this one
+                        # concise structured event; the helper avoids the
+                        # multi-line LexigramError representation.
+                        logger.info(
+                            "admin.contributor_disabled",
+                            contributor=contributor.name,
+                            feature="admin contributor",
+                            reason=failure.reason,
+                            missing=failure.summary,
+                        )
+                    else:
+                        # Genuine faults retain their traceback while the
+                        # structured summary remains safe to emit as one line.
+                        logger.warning(
+                            "admin.contributor_on_boot_failed",
+                            contributor=contributor.name,
+                            error=failure.summary,
+                            error_type=type(exc).__name__,
+                            exc_info=True,
+                        )
+                    self._boot_failures[contributor.name] = failure.summary
 
     async def boot_all(self) -> None:
         """Boot directly-supplied contributors, tracking failures.
@@ -164,12 +168,24 @@ class AdminContributorSubProvider:
             try:
                 await contributor.on_admin_boot(None)  # type: ignore[arg-type]
             except Exception as exc:  # noqa: BLE001 — track failure and continue
-                logger.error(
-                    "admin.contributor_boot_failed",
-                    contributor_id=contributor.contributor_id,
-                    error=str(exc),
-                )
-                self._boot_failures[contributor.contributor_id] = str(exc)
+                failure = summarize_contributor_boot_failure(exc)
+                if failure.expected:
+                    logger.info(
+                        "admin.contributor_disabled",
+                        contributor=contributor.contributor_id,
+                        feature="admin contributor",
+                        reason=failure.reason,
+                        missing=failure.summary,
+                    )
+                else:
+                    logger.warning(
+                        "admin.contributor_boot_failed",
+                        contributor_id=contributor.contributor_id,
+                        error=failure.summary,
+                        error_type=type(exc).__name__,
+                        exc_info=True,
+                    )
+                self._boot_failures[contributor.contributor_id] = failure.summary
 
         # Collect resources from all contributors (both direct and entry-point)
         try:

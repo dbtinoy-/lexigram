@@ -6,8 +6,11 @@ from lexigram.ui import Component, el
 
 
 class UserBox(Component):
-    """
-    A compact user profile display for headers or sidebars.
+    """Compact account control for a sidebar or topbar.
+
+    The sidebar variant can react to the shell's ``sidebarMini`` state. The
+    topbar variant deliberately does not depend on sidebar state, so a user
+    identity remains visible when the primary navigation is collapsed.
     """
 
     def __init__(
@@ -20,8 +23,15 @@ class UserBox(Component):
         user_menu_items: list[dict] | None = None,
         user: Any | None = None,
         logout_url: str = "/admin/logout",
+        variant: str = "sidebar",
+        collapse_var: str | None = "sidebarMini",
         **props: Any,
     ) -> None:
+        # A topbar control must be independent of the sidebar's Alpine state,
+        # even when callers only opt into ``variant="topbar"``.
+        if variant == "topbar":
+            collapse_var = None
+
         super().__init__(
             username=username,
             avatar_url=avatar_url,
@@ -31,6 +41,8 @@ class UserBox(Component):
             user_menu_items=user_menu_items,
             user=user,
             logout_url=logout_url,
+            variant=variant,
+            collapse_var=collapse_var,
             **props,
         )
         self.username = username
@@ -41,47 +53,78 @@ class UserBox(Component):
         self.user_menu_items = user_menu_items or []
         self.user = user
         self.logout_url = logout_url
+        self.variant = variant
+        self.collapse_var = collapse_var
 
     def render(self) -> Any:
         from lexigram.ui import Dropdown
 
+        expanded_visibility = f"!{self.collapse_var}" if self.collapse_var else None
         if not self.avatar_url:
             avatar = el(
                 "div",
-                self.username[0].upper(),
+                self.username[:1].upper() or "U",
                 class_="w-8 h-8 rounded-full bg-primary-100 text-primary-600 flex items-center justify-center font-bold text-sm dark:bg-primary-900/30 dark:text-primary-400 border border-border",
+                aria_hidden="true",
             )
         else:
             avatar = el(
                 "img",
                 src=self.avatar_url,
+                alt="",
                 class_="w-8 h-8 rounded-full border border-border",
             )
 
+        name_class = "font-medium text-sm text-foreground truncate flex-1 text-left"
+        if self.variant == "topbar":
+            name_class += " admin-topbar-user-name hidden sm:block max-w-[10rem]"
         name = el(
             "div",
             self.username,
-            class_="font-medium text-sm text-foreground truncate flex-1 text-left",
-            x_show="!sidebarMini",
+            class_=name_class,
+            x_show=expanded_visibility,
         )
+
+        chevron = el(
+            "svg",
+            el("path", d="M19 9l-7 7-7-7"),
+            class_="ml-auto h-4 w-4 text-muted-foreground",
+            fill="none",
+            viewBox="0 0 24 24",
+            stroke="currentColor",
+            x_show=expanded_visibility,
+            aria_hidden="true",
+            focusable="false",
+        )
+        dropdown_trigger_attrs: dict[str, Any] = {}
+        if self.variant == "topbar":
+            trigger_class = (
+                "flex items-center gap-2 rounded-xl px-2 py-1.5 "
+                "hover:bg-muted dark:hover:bg-card transition-colors "
+                "cursor-pointer border border-transparent hover:border-border"
+            )
+            dropdown_trigger_attrs["aria-label"] = (
+                f"Open account menu for {self.username}"
+            )
+            trigger_attrs: dict[str, Any] = {}
+        else:
+            trigger_class = (
+                "flex items-center space-x-3 p-2 hover:bg-card transition-colors "
+                "cursor-pointer w-full border border-transparent hover:border-border"
+            )
+            trigger_attrs = {}
+            if self.collapse_var:
+                trigger_attrs["x-bind:class"] = (
+                    f"{self.collapse_var} ? 'justify-center' : ''"
+                )
 
         trigger = el(
             "div",
             avatar,
             name,
-            el(
-                "svg",
-                el("path", d="M19 9l-7 7-7-7"),
-                class_="ml-auto h-4 w-4 text-muted-foreground",
-                fill="none",
-                viewBox="0 0 24 24",
-                stroke="currentColor",
-                x_show="!sidebarMini",
-                aria_hidden="true",
-                focusable="false",
-            ),
-            class_="flex items-center space-x-3 p-2 hover:bg-card transition-colors cursor-pointer w-full border border-transparent hover:border-border",
-            **{"x-bind:class": "sidebarMini ? 'justify-center' : ''"},
+            chevron,
+            class_=trigger_class,
+            **trigger_attrs,
         )
 
         # Dropdown Items
@@ -161,4 +204,10 @@ class UserBox(Component):
             items=items,
             direction=self.direction,
             position=self.position,
+            class_=(
+                "admin-topbar-user-dropdown relative inline-block text-left"
+                if self.variant == "topbar"
+                else "relative inline-block text-left w-full"
+            ),
+            trigger_attrs=dropdown_trigger_attrs,
         )

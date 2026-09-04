@@ -11,7 +11,6 @@ it.
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
@@ -19,6 +18,7 @@ from typing import TYPE_CHECKING, Any
 from starlette.responses import JSONResponse, PlainTextResponse, Response
 
 from lexigram.logging import get_logger
+from lexigram.serialization import loads
 
 if TYPE_CHECKING:
     from starlette.requests import Request
@@ -82,7 +82,7 @@ def parse_csp_reports(body: bytes, content_type: str) -> list[dict[str, str]]:
     """
     del content_type  # both formats are sniffed from the JSON shape
     try:
-        payload = json.loads(body.decode("utf-8"))
+        payload = loads(body)
     except (ValueError, UnicodeDecodeError):
         return []
 

@@ -23,7 +23,9 @@ class TestCapture:
     async def test_values_are_captured(self) -> None:
         service = SettingsSnapshotService()
 
-        snapshot = await service.capture("admin.cache", {"enabled": "true", "ttl": "60"})
+        snapshot = await service.capture(
+            "admin.cache", {"enabled": "true", "ttl": "60"}
+        )
 
         assert snapshot.values == {"enabled": "true", "ttl": "60"}
 
@@ -39,6 +41,29 @@ class TestCapture:
         )
 
         assert "api_key" not in snapshot.values
+        assert "super-secret" not in str(snapshot.values)
+
+    @pytest.mark.asyncio
+    async def test_nested_credential_keys_are_redacted(self) -> None:
+        """Generic JSON settings cannot smuggle credentials into history."""
+        service = SettingsSnapshotService()
+
+        snapshot = await service.capture(
+            "admin.integration",
+            {
+                "options": {
+                    "client_secret": "super-secret",
+                    "endpoint": "https://example.test",
+                }
+            },
+        )
+
+        assert snapshot.values == {
+            "options": {
+                "client_secret": "[redacted]",
+                "endpoint": "https://example.test",
+            }
+        }
         assert "super-secret" not in str(snapshot.values)
 
     @pytest.mark.asyncio
@@ -123,13 +148,21 @@ class TestRollbackValues:
     """Rollback resolves a payload; it never writes on its own."""
 
     @pytest.mark.asyncio
-    async def test_returns_captured_values(self) -> None:
+    async def test_returns_captured_values_and_unset_ownership(self) -> None:
         service = SettingsSnapshotService()
-        snapshot = await service.capture("admin.cache", {"enabled": "false"})
+        snapshot = await service.capture(
+            "admin.cache",
+            {"enabled": "false", "ttl": 60},
+            unset_keys={"ttl"},
+        )
 
         assert await service.rollback_values(snapshot.snapshot_id) == {
-            "enabled": "false"
+            "enabled": "false",
+            "ttl": 60,
         }
+        state = await service.rollback_state(snapshot.snapshot_id)
+        assert state is not None
+        assert state.unset_keys == {"ttl"}
 
     @pytest.mark.asyncio
     async def test_unknown_id_returns_none(self) -> None:
@@ -162,6 +195,17 @@ class TestRollbackValues:
         )
 
         assert result is None
+
+    @pytest.mark.asyncio
+    async def test_tenant_filter_also_applies_without_namespace(self) -> None:
+        service = SettingsSnapshotService()
+        snapshot = await service.capture(
+            "admin.cache", {"enabled": "false"}, tenant_id="t1"
+        )
+
+        assert (
+            await service.rollback_state(snapshot.snapshot_id, tenant_id="t2") is None
+        )
 
     @pytest.mark.asyncio
     async def test_matching_scope_is_allowed(self) -> None:

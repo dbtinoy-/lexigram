@@ -1,6 +1,6 @@
 # 14 — CSP Correctness & Hardening (R18 / B14) (Full Plan)
 
-**Date:** 2026-09-02 · **Status:** 🚧 In progress · **Branch:** `arena/01a05b98-lexigram`
+**Date:** 2026-09-02 · **Status:** ✅ Shipped · **Branch:** `arena/01a05b98-lexigram`
 
 ## 1. Findings
 
@@ -107,4 +107,3 @@ and the middleware inherit the fix; operator overrides stored in
 * Real-browser confirmation of the pre-fix breakage was not possible in
   this sandbox (Playwright browser CDN blocked); conclusive static
   evidence recorded in §1.1.
-

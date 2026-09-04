@@ -39,9 +39,6 @@ Phase 2.
 - Shared/team views (would need an ownership + permission model; the storage
   shape below is forward-compatible — add a `shared` flag + a second key
   namespace later).
-- Default view auto-apply on first visit (easy follow-up: a `default: true`
-  flag per view + a redirect in `ListRenderer` when the request has no
-  query params).
 - Editing a view in place (delete + re-save is equivalent at this size).
 
 ## 3. Architecture facts this design is built on (verified in code)
@@ -231,3 +228,13 @@ updated after implementation; committed to PR #26.
   playground: save (volatile `page` stripped) → apply from a clean URL
   (active pill highlighted) → delete, with notices throughout; bad/missing
   CSRF rejected by the middleware (403 + audit `csrf_violation`).
+
+## Follow-up implementation (R54, 2026-09-03)
+
+The default-view follow-up is shipped in [52-default-saved-view.md](52-default-saved-view.md).
+Saved-view entries now carry an optional boolean `default` marker, with
+legacy records normalized safely. The views bar exposes accessible star/unstar
+POST controls, and a clean full-page visit redirects once to the sanitized
+default query. Explicit list state, HTMX fragments, and mutation notices are
+never overridden. Shared/team views and in-place editing remain intentionally
+separate future work.

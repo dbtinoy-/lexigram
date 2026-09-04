@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json  # noqa: TID251 — operator-facing JSON is rendered prettily
 import re
 from typing import Any
 
@@ -36,6 +37,7 @@ class BooleanField(Component):
         disabled: bool = False,
         required: bool = False,
         error: str | None = None,
+        description: str | None = None,
     ) -> None:
         super().__init__()
         self.name = name
@@ -44,6 +46,7 @@ class BooleanField(Component):
         self.disabled = disabled
         self.required = required
         self.error = error
+        self.description = description
 
     def render(self) -> Any:
         return el(
@@ -56,6 +59,7 @@ class BooleanField(Component):
                 disabled=self.disabled,
                 required=self.required,
                 error=self.error,
+                description=self.description,
             ),
             # Disabled controls are not submitted. The controller also
             # normalizes missing booleans, but keep the fallback for normal
@@ -83,6 +87,7 @@ class ConfigDashboardUI:
         return {
             "env": "Environment",
             "db": "Database",
+            "application": "Application configuration",
             "default": "Application memory",
         }.get(store_name, store_name.replace("_", " ").title())
 
@@ -262,6 +267,7 @@ class ConfigDashboardUI:
         errors: dict[str, str] | None = None,
         value_metadata: dict[str, dict[str, Any]] | None = None,
         revision: str | None = None,
+        history_url: str | None = None,
     ) -> Any:
         """Render a standalone configuration form.
 
@@ -274,6 +280,7 @@ class ConfigDashboardUI:
         nodes = spec.get("nodes", [])
         namespace = spec.get("namespace", "")
         can_edit = bool(spec.get("can_edit", True))
+        history_url = history_url or spec.get("history_url")
         fields = [
             self.render_field(
                 {**node, "readonly": node.get("readonly", False) or not can_edit},
@@ -296,16 +303,34 @@ class ConfigDashboardUI:
         runtime_label = runtime_labels.get(runtime_status, "Runtime status unknown")
         metadata = el(
             "div",
-            Badge(scope_label, variant="gray"),
-            Badge(f"Source: {source_label}", variant="gray"),
-            # The runtime badge reports live state, so it is the one chip
-            # here that should be announced when it changes.
-            Badge(
-                runtime_label,
-                variant="gray" if runtime_status == "active" else "warning",
-                live=True,
+            el(
+                "div",
+                Badge(scope_label, variant="gray"),
+                Badge(f"Source: {source_label}", variant="gray"),
+                # The runtime badge reports live state, so it is the one chip
+                # here that should be announced when it changes.
+                Badge(
+                    runtime_label,
+                    variant="gray" if runtime_status == "active" else "warning",
+                    live=True,
+                ),
+                class_="flex flex-wrap gap-2",
             ),
-            class_="flex flex-wrap gap-2 mb-5",
+            el(
+                "a",
+                "View change history",
+                href=history_url,
+                hx_get=history_url,
+                hx_target="#settings-content",
+                hx_swap="innerHTML",
+                hx_push_url="true",
+                data_admin_navigation=True,
+                data_settings_nav=True,
+                class_="text-sm font-medium text-primary-700 underline-offset-4 hover:underline dark:text-primary-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            )
+            if history_url
+            else "",
+            class_="flex flex-wrap items-center justify-between gap-3 mb-5",
         )
 
         form_level_error = errors.get("__all__")
@@ -394,6 +419,11 @@ class ConfigDashboardUI:
                         # target settings-specific forms during migration.
                         "data-settings-form": "true",
                         "data-settings-namespace": namespace,
+                        "x-data": "{ dirty: false }",
+                        "x-on:input": "dirty = true",
+                        "x-on:change": "dirty = true",
+                        "x-on:submit": "dirty = false",
+                        "data-settings-dirty": "true",
                     },
                     hx_target="#config-card",
                     hx_swap="outerHTML",
@@ -414,6 +444,16 @@ class ConfigDashboardUI:
                             },
                             aria_live="polite",
                             class_="sr-only",
+                        ),
+                        el(
+                            "span",
+                            "Unsaved changes",
+                            x_show="dirty",
+                            x_cloak=True,
+                            role="status",
+                            aria_live="polite",
+                            data_settings_unsaved="true",
+                            class_="text-sm font-medium text-warning",
                         ),
                         actions,
                     ],
@@ -474,6 +514,7 @@ class ConfigDashboardUI:
                 disabled=readonly,
                 required=required,
                 error=errors.get(name),
+                description=help_text,
             )
         elif node_type == "int":
             input_comp = NumberInput(
@@ -482,7 +523,8 @@ class ConfigDashboardUI:
                 min_value=node.get("min"),
                 max_value=node.get("max"),
                 step=1,
-                disabled=readonly,
+                disabled=False,
+                readonly=readonly,
                 required=required,
             )
         elif node_type == "enum":
@@ -514,11 +556,38 @@ class ConfigDashboardUI:
                 autocomplete="new-password",
             )
         elif node_type == "color":
+            # A browser color input drops an invalid value visually. Switch to
+            # a text input while showing a server validation error so the
+            # operator can see and correct the exact submitted value.
             input_comp = TextInput(
                 name=name,
                 value=str(value) if value is not None else "",
-                input_type="color",
+                input_type="text" if errors.get(name) else "color",
                 disabled=readonly,
+                required=required,
+            )
+        elif node_type == "json":
+            if isinstance(value, str):
+                try:
+                    parsed_json = json.loads(value)
+                except (TypeError, ValueError, json.JSONDecodeError):
+                    # Preserve an invalid submitted JSON document byte-for-byte
+                    # enough for correction instead of turning it into a
+                    # quoted JSON string on the error re-render.
+                    json_value = value
+                else:
+                    json_value = json.dumps(parsed_json, indent=2, sort_keys=True)
+            else:
+                try:
+                    json_value = json.dumps(value, indent=2, sort_keys=True)
+                except (TypeError, ValueError):
+                    json_value = str(value) if value is not None else ""
+            input_comp = TextArea(
+                name=name,
+                value=json_value,
+                rows=8,
+                disabled=False,
+                readonly=readonly,
                 required=required,
             )
         elif node.get("extra", {}).get("multiline") or name in {"csp", "description"}:
@@ -526,29 +595,51 @@ class ConfigDashboardUI:
                 name=name,
                 value=str(value) if value is not None else "",
                 rows=7 if name == "csp" else 4,
-                disabled=readonly,
+                disabled=False,
+                readonly=readonly,
                 required=required,
             )
         else:
-            input_type = "url" if name.endswith("_url") else "text"
+            input_type = {
+                "email": "email",
+                # UrlNode accepts mount-relative asset paths as well as
+                # absolute URLs, so native type=url would reject a valid
+                # /static/logo.svg before the server validator sees it.
+                "url": "text",
+            }.get(node_type, "url" if name.endswith("_url") else "text")
             input_comp = TextInput(
                 name=name,
                 value=str(value) if value is not None else "",
                 input_type=input_type,
-                disabled=readonly,
+                disabled=False,
+                readonly=readonly,
                 required=required,
             )
 
-        origin_label = (value_metadata or {}).get("source_label")
+        metadata = value_metadata or {}
+        origin_label = metadata.get("source_label")
         hint_parts = ["Read only"] if readonly else []
         if origin_label:
             hint_parts.append(str(origin_label))
+        if metadata.get("is_default"):
+            hint_parts.append("Using default")
+        declared_default = metadata.get("default")
+        if declared_default is not None and not isinstance(value, (dict, list, tuple)):
+            default_text = str(declared_default) if str(declared_default) else "empty"
+            help_text = (
+                f"{help_text} Declared default: {default_text}."
+                if help_text
+                else f"Declared default: {default_text}."
+            )
 
         return FieldSchema(
             input_component=input_comp,
             label=label if node_type != "boolean" else None,
-            help_text=help_text,
-            error=errors.get(name),
+            help_text=None if node_type == "boolean" else help_text,
+            # BooleanField/Toggle owns its error markup and ARIA association;
+            # passing it a second time through FormField would create a
+            # duplicate error id.
+            error=None if node_type == "boolean" else errors.get(name),
             required=required,
             hint=" · ".join(hint_parts) if hint_parts else None,
             class_="mb-0",

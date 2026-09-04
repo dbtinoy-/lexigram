@@ -134,6 +134,266 @@ class DataTableScriptRenderer:
                 return false;
             }};
 
+            // Large built-in bulk mutations return a progress-start trigger
+            // instead of swapping the table. Register this listener before
+            // the table-init guard so it survives HTMX body swaps without
+            // accumulating duplicate EventSource connections.
+            if (!window.LexigramBulkProgressInitialized) {{
+                window.LexigramBulkProgressInitialized = true;
+                window.LexigramBulkProgressTasks = window.LexigramBulkProgressTasks || {{}};
+
+                const sameOriginUrl = (value) => {{
+                    try {{
+                        const url = new URL(String(value || ''), window.location.origin);
+                        return url.origin === window.location.origin ? url.href : null;
+                    }} catch (err) {{
+                        return null;
+                    }}
+                }};
+
+                const notifyBulkProgress = (message, type, duration) => {{
+                    const detail = {{
+                        message: String(message || ''),
+                        type: type || 'info',
+                        duration: duration
+                    }};
+                    if (window.showToast) {{
+                        window.showToast(detail.message, detail.type, detail.duration);
+                    }} else if (document.body) {{
+                        document.body.dispatchEvent(new CustomEvent('show-toast', {{ detail: detail }}));
+                    }}
+                }};
+
+                const refreshBulkTable = () => {{
+                    if (window.htmx && typeof window.htmx.trigger === 'function') {{
+                        window.htmx.trigger(document.body, 'refreshTable');
+                        // Keep the legacy event available to integrations that
+                        // listened for the phase-1 bulk response trigger.
+                        window.htmx.trigger(document.body, 'refresh-list');
+                    }} else if (document.body) {{
+                        document.body.dispatchEvent(new CustomEvent('refreshTable'));
+                        document.body.dispatchEvent(new CustomEvent('refresh-list'));
+                    }}
+                }};
+
+                const buildBulkProgressRegion = (taskId, total) => {{
+                    const domId = 'lexigram-bulk-progress-' +
+                        String(taskId).replace(/[^A-Za-z0-9_-]/g, '-');
+                    let root = document.getElementById(domId);
+                    if (!root) {{
+                        root = document.createElement('div');
+                        root.id = domId;
+                        root.setAttribute('role', 'status');
+                        root.setAttribute('aria-live', 'polite');
+                        root.setAttribute('aria-atomic', 'true');
+                        root.style.position = 'fixed';
+                        root.style.right = '1rem';
+                        root.style.bottom = '1rem';
+                        root.style.zIndex = '60';
+                        root.style.width = 'min(24rem, calc(100vw - 2rem))';
+                        root.style.padding = '1rem';
+                        root.style.border = '1px solid var(--border, #d1d5db)';
+                        root.style.borderRadius = '0.5rem';
+                        root.style.background = 'var(--card, #ffffff)';
+                        root.style.boxShadow = '0 10px 25px rgba(0, 0, 0, 0.12)';
+
+                        const title = document.createElement('strong');
+                        title.textContent = 'Bulk action in progress';
+                        title.style.display = 'block';
+                        title.style.marginBottom = '0.5rem';
+                        root.appendChild(title);
+
+                        const progress = document.createElement('div');
+                        progress.setAttribute('role', 'progressbar');
+                        progress.setAttribute('aria-valuemin', '0');
+                        progress.setAttribute('aria-valuemax', '100');
+                        progress.setAttribute('aria-valuenow', '0');
+                        progress.style.height = '0.5rem';
+                        progress.style.overflow = 'hidden';
+                        progress.style.borderRadius = '999px';
+                        progress.style.background = 'var(--muted, #e5e7eb)';
+                        progress.style.marginBottom = '0.5rem';
+                        const fill = document.createElement('div');
+                        fill.style.height = '100%';
+                        fill.style.width = '0%';
+                        fill.style.background = 'var(--primary, #2563eb)';
+                        fill.style.transition = 'width 150ms ease-out';
+                        progress.appendChild(fill);
+                        root.appendChild(progress);
+
+                        const count = document.createElement('span');
+                        count.style.display = 'block';
+                        count.style.fontSize = '0.875rem';
+                        count.style.color = 'var(--muted-foreground, #6b7280)';
+                        root.appendChild(count);
+
+                        const message = document.createElement('span');
+                        message.style.display = 'block';
+                        message.style.marginTop = '0.25rem';
+                        message.style.fontSize = '0.875rem';
+                        root.appendChild(message);
+                        root._lexigramProgress = {{ progress: progress, fill: fill, count: count, message: message }};
+                        document.body.appendChild(root);
+                    }}
+                    const nodes = root._lexigramProgress;
+                    if (nodes) nodes.count.textContent = '0 of ' + String(total || 0) + ' items';
+                    return root;
+                }};
+
+                const setBulkProgress = (state, snapshot) => {{
+                    if (!snapshot || typeof snapshot !== 'object') return false;
+                    const status = String(snapshot.status || 'running');
+                    const totalValue = Number(snapshot.total);
+                    const total = Number.isFinite(totalValue) && totalValue >= 0
+                        ? totalValue : state.total;
+                    const currentValue = Number(snapshot.current);
+                    const current = Number.isFinite(currentValue) && currentValue >= 0
+                        ? currentValue : 0;
+                    let percent = Number(snapshot.progress);
+                    if (!Number.isFinite(percent)) {{
+                        percent = total > 0 ? (current / total) * 100 : 0;
+                    }}
+                    percent = Math.max(0, Math.min(100, percent));
+                    state.total = total;
+                    const nodes = state.region && state.region._lexigramProgress;
+                    if (nodes) {{
+                        nodes.fill.style.width = percent + '%';
+                        nodes.progress.setAttribute('aria-valuenow', String(Math.round(percent)));
+                        nodes.count.textContent = String(Math.min(current, total)) +
+                            ' of ' + String(total) + ' items';
+                        const message = typeof snapshot.message === 'string'
+                            ? snapshot.message : '';
+                        if (message) nodes.message.textContent = message;
+                    }}
+
+                    if (status === 'complete' || status === 'failed') {{
+                        finishBulkProgress(state, snapshot, status);
+                    }}
+                    return true;
+                }};
+
+                const finishBulkProgress = (state, snapshot, status) => {{
+                    if (!state || state.done) return;
+                    state.done = true;
+                    if (state.source) state.source.close();
+                    const metadata = snapshot && snapshot.metadata &&
+                        typeof snapshot.metadata === 'object' ? snapshot.metadata : {{}};
+                    const message = (snapshot && typeof snapshot.message === 'string' && snapshot.message) ||
+                        (snapshot && typeof snapshot.error === 'string' && snapshot.error) ||
+                        (status === 'failed' ? 'Bulk action failed.' : 'Bulk action completed.');
+                    const type = metadata.toast_type ||
+                        (status === 'failed' ? 'error' : 'success');
+                    const duration = Number.isFinite(Number(metadata.duration))
+                        ? Number(metadata.duration) : (type === 'success' ? 3000 : 8000);
+                    notifyBulkProgress(message, type, duration);
+                    if (metadata.refresh !== false) refreshBulkTable();
+                    window.setTimeout(() => {{
+                        if (state.region && state.region.parentNode) state.region.remove();
+                    }}, 250);
+                    // Keep a short-lived completed marker so a duplicate
+                    // HTMX trigger cannot open a second stream immediately;
+                    // release it later to avoid retaining task ids forever.
+                    window.setTimeout(() => {{
+                        if (window.LexigramBulkProgressTasks[state.taskId] === state) {{
+                            delete window.LexigramBulkProgressTasks[state.taskId];
+                        }}
+                    }}, 30000);
+                }};
+
+                const fetchBulkStatusOnce = (state) => {{
+                    if (!state || state.statusRequested || state.done) return;
+                    state.statusRequested = true;
+                    fetch(state.statusUrl, {{
+                        method: 'GET',
+                        credentials: 'same-origin',
+                        headers: {{ 'Accept': 'application/json' }}
+                    }}).then((response) => {{
+                        if (!response.ok) throw new Error('status-' + response.status);
+                        return response.json();
+                    }}).then((snapshot) => {{
+                        if (snapshot && (snapshot.status === 'complete' || snapshot.status === 'failed')) {{
+                            setBulkProgress(state, snapshot);
+                            return;
+                        }}
+                        const nodes = state.region && state.region._lexigramProgress;
+                        if (nodes) nodes.message.textContent =
+                            'Live updates disconnected; the operation may still be running.';
+                        notifyBulkProgress(
+                            'Live progress disconnected; the operation may still be running.',
+                            'warning',
+                            8000
+                        );
+                        // There is no reliable terminal signal after the
+                        // one allowed status lookup. Keep the warning visible
+                        // briefly, then remove the stale region without
+                        // pretending the mutation finished or retrying it.
+                        window.setTimeout(() => {{
+                            if (state.done) return;
+                            if (state.region && state.region.parentNode) state.region.remove();
+                            if (window.LexigramBulkProgressTasks[state.taskId] === state) {{
+                                delete window.LexigramBulkProgressTasks[state.taskId];
+                            }}
+                        }}, 8000);
+                    }}).catch(() => {{
+                        finishBulkProgress(state, {{
+                            status: 'failed',
+                            error: 'Unable to follow bulk action progress.',
+                            metadata: {{ toast_type: 'error', duration: 8000, refresh: false }}
+                        }}, 'failed');
+                    }});
+                }};
+
+                document.addEventListener('bulk-progress-start', (event) => {{
+                    let detail = event && event.detail ? event.detail : {{}};
+                    if (detail.value && typeof detail.value === 'object') detail = detail.value;
+                    const taskId = typeof detail.task_id === 'string' ? detail.task_id : '';
+                    const streamUrl = sameOriginUrl(detail.stream_url);
+                    const statusUrl = sameOriginUrl(detail.status_url);
+                    const total = Number(detail.total);
+                    if (!taskId || !streamUrl || !statusUrl ||
+                        !Number.isFinite(total) || total < 1) {{
+                        notifyBulkProgress('Unable to start bulk progress updates.', 'error', 8000);
+                        return;
+                    }}
+                    const existing = window.LexigramBulkProgressTasks[taskId];
+                    if (existing) return;
+                    const state = {{
+                        taskId: taskId,
+                        total: total,
+                        streamUrl: streamUrl,
+                        statusUrl: statusUrl,
+                        source: null,
+                        region: buildBulkProgressRegion(taskId, total),
+                        done: false,
+                        statusRequested: false
+                    }};
+                    window.LexigramBulkProgressTasks[taskId] = state;
+                    if (typeof window.EventSource !== 'function') {{
+                        fetchBulkStatusOnce(state);
+                        return;
+                    }}
+                    try {{
+                        state.source = new EventSource(streamUrl, {{ withCredentials: true }});
+                        state.source.addEventListener('progress', (progressEvent) => {{
+                            try {{
+                                const snapshot = JSON.parse(progressEvent.data || '{{}}');
+                                setBulkProgress(state, snapshot);
+                            }} catch (err) {{
+                                // Ignore malformed snapshots; do not create a
+                                // second mutation request or break the table.
+                            }}
+                        }});
+                        state.source.addEventListener('error', () => {{
+                            if (state.done) return;
+                            if (state.source) state.source.close();
+                            fetchBulkStatusOnce(state);
+                        }});
+                    }} catch (err) {{
+                        fetchBulkStatusOnce(state);
+                    }}
+                }});
+            }}
+
             if (window.LexigramTableInitialized) return;
             window.LexigramTableInitialized = true;
 

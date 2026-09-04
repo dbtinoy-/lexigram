@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 from typing import Any
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -31,14 +31,21 @@ def _renderer(resource_name: str = "users") -> ListRenderer:
 def _request(
     service: SavedViewService | None,
     user: Any = None,
-    csrf_token: str = "tok-123",
+    csrf_value: str = "tok-123",
+    *,
+    raw_query: str = "",
+    query_params: Any | None = None,
+    headers: dict[str, str] | None = None,
 ) -> SimpleNamespace:
     app_state = SimpleNamespace()
     if service is not None:
         app_state.saved_view_service = service
     return SimpleNamespace(
         app=SimpleNamespace(state=app_state),
-        state=SimpleNamespace(user=user, csrf_token=csrf_token),
+        state=SimpleNamespace(user=user, csrf_token=csrf_value),
+        headers=headers or {},
+        query_params={} if query_params is None else query_params,
+        url=SimpleNamespace(query=raw_query),
     )
 
 
@@ -80,8 +87,8 @@ class TestBarVisibility:
         html = await _renderer()._render_saved_views_bar(
             _request(service, user=_user()), _STATE, "/admin/users", "/admin"
         )
-        assert 'data-saved-views' in html
-        assert 'data-saved-view-save' in html
+        assert "data-saved-views" in html
+        assert "data-saved-view-save" in html
         assert 'action="/admin/views/users/save"' in html
         assert 'name="csrf_token" value="tok-123"' in html
 
@@ -101,9 +108,7 @@ class TestBarContent:
     @pytest.mark.asyncio
     async def test_view_names_are_escaped(self) -> None:
         service = SavedViewService(_FakeSettings())
-        await service.save_view(
-            "u-1", "users", '<script>alert(1)</script>', "search=a"
-        )
+        await service.save_view("u-1", "users", "<script>alert(1)</script>", "search=a")
         html = await _renderer()._render_saved_views_bar(
             _request(service, user=_user()), _STATE, "/admin/users", "/admin"
         )
@@ -113,7 +118,9 @@ class TestBarContent:
     @pytest.mark.asyncio
     async def test_active_view_highlighted(self) -> None:
         service = SavedViewService(_FakeSettings())
-        await service.save_view("u-1", "users", "Sorted", "sort_by=name&filter_status=active")
+        await service.save_view(
+            "u-1", "users", "Sorted", "sort_by=name&filter_status=active"
+        )
         html = await _renderer()._render_saved_views_bar(
             _request(service, user=_user()),
             _FILTERED_STATE,
@@ -160,6 +167,110 @@ class TestBarContent:
         assert "filter_status=active" in html
         assert "sort_by=name" in html
         assert "page=" not in html
+
+    @pytest.mark.asyncio
+    async def test_default_view_has_clear_control(self) -> None:
+        service = SavedViewService(_FakeSettings())
+        await service.save_view("u-1", "users", "Mine", "search=a")
+        await service.set_default_view("u-1", "users", "Mine")
+        html = await _renderer()._render_saved_views_bar(
+            _request(service, user=_user()), _STATE, "/admin/users", "/admin"
+        )
+        assert 'action="/admin/views/users/default"' in html
+        assert 'name="default" value="0"' in html
+        assert "Clear default view Mine" in html
+        assert "★" in html
+
+    @pytest.mark.asyncio
+    async def test_non_default_view_has_set_control(self) -> None:
+        service = SavedViewService(_FakeSettings())
+        await service.save_view("u-1", "users", "Mine", "search=a")
+        html = await _renderer()._render_saved_views_bar(
+            _request(service, user=_user()), _STATE, "/admin/users", "/admin"
+        )
+        assert 'name="default" value="1"' in html
+        assert "Set Mine as default view" in html
+        assert "☆" in html
+
+
+class TestDefaultRedirect:
+    @pytest.mark.asyncio
+    async def test_clean_full_page_visit_redirects_to_default(self) -> None:
+        service = SavedViewService(_FakeSettings())
+        await service.save_view("u-1", "users", "Mine", "search=active&page=4")
+        await service.set_default_view("u-1", "users", "Mine")
+        response = await _renderer()._default_view_redirect(
+            _request(service, user=_user()), "/admin/users"
+        )
+        assert response is not None
+        assert response.status_code == 302
+        assert response.headers["location"] == "/admin/users?search=active"
+
+    @pytest.mark.asyncio
+    async def test_render_returns_default_redirect_before_fetching(self) -> None:
+        service = SavedViewService(_FakeSettings())
+        await service.save_view("u-1", "users", "Mine", "search=active")
+        await service.set_default_view("u-1", "users", "Mine")
+        response = await _renderer().render(
+            _request(service, user=_user()), MagicMock(), user=_user()
+        )
+        assert response.status_code == 302
+        assert response.headers["location"] == "/admin/users?search=active"
+
+    @pytest.mark.asyncio
+    async def test_explicit_query_is_authoritative(self) -> None:
+        service = SavedViewService(_FakeSettings())
+        await service.save_view("u-1", "users", "Mine", "search=active")
+        await service.set_default_view("u-1", "users", "Mine")
+        request = _request(
+            service,
+            user=_user(),
+            raw_query="search=other",
+            query_params={"search": "other"},
+        )
+        assert await _renderer()._default_view_redirect(request, "/admin/users") is None
+
+    @pytest.mark.asyncio
+    async def test_explicit_pagination_is_authoritative(self) -> None:
+        service = SavedViewService(_FakeSettings())
+        await service.save_view("u-1", "users", "Mine", "search=active")
+        await service.set_default_view("u-1", "users", "Mine")
+        request = _request(
+            service, user=_user(), raw_query="page=2", query_params={"page": "2"}
+        )
+        assert await _renderer()._default_view_redirect(request, "/admin/users") is None
+
+    @pytest.mark.asyncio
+    async def test_mutation_notice_is_preserved(self) -> None:
+        service = SavedViewService(_FakeSettings())
+        await service.save_view("u-1", "users", "Mine", "search=active")
+        await service.set_default_view("u-1", "users", "Mine")
+        request = _request(
+            service,
+            user=_user(),
+            raw_query="notice=Default+view+cleared.",
+            query_params={"notice": "Default view cleared."},
+        )
+        assert await _renderer()._default_view_redirect(request, "/admin/users") is None
+
+    @pytest.mark.asyncio
+    async def test_htmx_fragment_is_never_redirected(self) -> None:
+        service = SavedViewService(_FakeSettings())
+        await service.save_view("u-1", "users", "Mine", "search=active")
+        await service.set_default_view("u-1", "users", "Mine")
+        request = _request(
+            service,
+            user=_user(),
+            headers={"HX-Target": "table-data"},
+        )
+        assert await _renderer()._default_view_redirect(request, "/admin/users") is None
+
+    @pytest.mark.asyncio
+    async def test_default_storage_failure_falls_through(self) -> None:
+        service = MagicMock(spec=SavedViewService)
+        service.get_default_view = AsyncMock(side_effect=RuntimeError("boom"))
+        request = _request(service, user=_user())
+        assert await _renderer()._default_view_redirect(request, "/admin/users") is None
 
 
 class TestRobustness:

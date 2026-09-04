@@ -1,6 +1,6 @@
 # 17 — Relations Layer Correctness (R21 / B24–B27) (Full Plan)
 
-**Date:** 2026-09-02 · **Status:** 🚧 In progress · **Branch:** `arena/01a05b98-lexigram`
+**Date:** 2026-09-02 · **Status:** ✅ Shipped · **Branch:** `arena/01a05b98-lexigram`
 
 ## 1. Findings
 
@@ -65,4 +65,3 @@ validates all unsafe methods globally and the layout injects
 - `routes._handle_create` / `_handle_delete` are permission-checked
   no-op stubs (no persistence).
 - `AbstractRelationManager.get_items(**filters)` ignores its filters.
-

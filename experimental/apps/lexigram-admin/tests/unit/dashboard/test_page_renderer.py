@@ -66,6 +66,26 @@ async def test_render_page_content_table_markup_is_not_escaped() -> None:
     assert "&lt;table" not in html
 
 
+async def test_render_page_content_includes_contextual_settings_back_link() -> None:
+    response = render_page_content(
+        PageContent(title="System Info", body=EmptyContent(title="x")),
+        back_url="/backoffice/settings",
+    )
+    html = response.body.decode()
+    assert "Back to Settings" in html
+    assert 'href="/backoffice/settings"' in html
+    assert 'hx-get="/backoffice/settings"' in html
+    assert 'hx-target="#main-content"' in html
+    assert "data-settings-back" in html
+
+
+async def test_render_page_content_omits_back_link_by_default() -> None:
+    response = render_page_content(
+        PageContent(title="System Info", body=EmptyContent(title="x"))
+    )
+    assert "Back to Settings" not in response.body.decode()
+
+
 async def test_structured_page_handler_rejects_raw_html() -> None:
     async def bad_handler(request: Any) -> str:
         return "<script>alert(1)</script>"

@@ -127,10 +127,10 @@ class AdminRateLimitConfig(DomainModel):
     burst_size: int = Field(default=10, ge=1)
 
     # Per-action limits
-    create_per_minute: int = Field(default=30)
-    update_per_minute: int = Field(default=60)
-    delete_per_minute: int = Field(default=20)
-    bulk_per_minute: int = Field(default=5)
+    create_per_minute: int = Field(default=30, ge=0)
+    update_per_minute: int = Field(default=60, ge=0)
+    delete_per_minute: int = Field(default=20, ge=0)
+    bulk_per_minute: int = Field(default=5, ge=0)
 
     model_config = {"extra": "forbid"}
 

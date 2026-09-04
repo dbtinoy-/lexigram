@@ -73,11 +73,18 @@ Every mutating action writes to the audit log itself:
 
 - [x] **Phase 1 (this change):** sessions list + revoke, audit browser,
       lockout lookup + unlock, overview page, nav entry, tests.
-- [ ] **Phase 2:** lockout *listing* (needs a `list_active_lockouts` store
-      method), login-attempt sparkline on the overview, per-user session
-      panel on the (future R10) user form.
-- [ ] **Phase 3:** SSE live tail of the audit log (reuse the existing
-      realtime bridge when registered).
+- [x] **Phase 2 (core, R41 — doc 37):** lockout listing shipped —
+      `list_active_lockouts` store method (expired sweep + LIMIT guard)
+      and a fleet table with per-row unlock on the Lockouts tab.
+      Per-user session panel shipped in R42 (doc 38); login-activity
+      sparkline shipped in R43 (doc 39). Phase 2 complete.
+- [x] **Phase 3:** live tail of the audit log. _Done in R47 — see
+      [43-live-audit-tail.md](43-live-audit-tail.md): htmx-polled
+      fragment (`/audit/table`, every 5 s) driven by a Live checkbox
+      that preserves the browser's filters; polling chosen over SSE
+      because the realtime bridge is optional/unregistered and audit
+      writes emit no hook — an SSE upgrade can swap in later without
+      changing the page structure._
 
 ## Verification
 

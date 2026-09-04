@@ -70,12 +70,16 @@ class AdminProvider(
         resources: list[type] | None = None,
         controllers: list[type] | None = None,
         extra_providers: list[Any] | None = None,
+        config_loader: Any | None = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(name="admin", priority=ProviderPriority.APPLICATION)
         from lexigram.admin.config import AdminConfig as AdminConfigCls
 
+        if config_loader is None:
+            config_loader = kwargs.pop("config_loader", None)
         self._config = config or AdminConfigCls()
+        self._config_loader = config_loader
         self._auth_provider = auth_provider
         self._resources = resources or []
         self._controllers = controllers or []

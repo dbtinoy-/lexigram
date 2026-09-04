@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from lexigram.admin.settings.panel.models import BrandingSettings
-from lexigram.admin.settings.panel.nodes import ColorNode, PydanticConfigSpec
+from lexigram.admin.settings.panel.nodes import ColorNode, PydanticConfigSpec, UrlNode
 from lexigram.admin.settings.panel.registry import ConfigRegistry
 
 __all__ = ["BrandingSpec", "register_spec"]
@@ -17,7 +17,11 @@ class BrandingSpec(PydanticConfigSpec):
     icon = "palette"
     description = "Site name, colors, logo, and theme preference."
     model = BrandingSettings
-    node_overrides = {"primary_color": ColorNode}
+    node_overrides = {
+        "primary_color": ColorNode,
+        "logo_url": UrlNode,
+        "favicon_url": UrlNode,
+    }
     required_permissions = frozenset({"admin.settings.edit"})
     scope = "tenant"
 

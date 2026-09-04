@@ -144,4 +144,3 @@ admin paths (csrf, auth_guard, authorization).
 audit); no real-browser validation of report delivery in this sandbox (no
 Playwright browsers) — wire formats covered by unit fixtures matching the CSP2/CSP3
 specs; enforcement flip and inline-code migration remain out of scope (doc 14 §3).
-

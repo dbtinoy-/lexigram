@@ -2,9 +2,10 @@
 
 Per-user named list-view presets. The list page renders the views bar
 (``ListRenderer._render_saved_views_bar``); applying a view is a plain
-link, so this controller only needs the two POST mutations. Any signed-in
+link, while save/delete/default selection use POST mutations. Any signed-in
 admin may manage their *own* views — no role gate, since the data is
-strictly per-user. Design: docs/09-01-2026/08-saved-views.md.
+strictly per-user. Design: docs/09-01-2026/08-saved-views.md and
+52-default-saved-view.md.
 """
 
 from __future__ import annotations
@@ -12,8 +13,8 @@ from __future__ import annotations
 from starlette.requests import Request
 from starlette.responses import RedirectResponse, Response
 
-from lexigram.admin.auth.protocols import AdminCsrfServiceProtocol
 from lexigram.admin.auth.next_url import build_login_redirect
+from lexigram.admin.auth.protocols import AdminCsrfServiceProtocol
 from lexigram.admin.controllers.access_control import _AccessControlController
 from lexigram.admin.engine.renderer import AdminRenderer
 from lexigram.admin.services.saved_views import SavedViewError, SavedViewService
@@ -29,8 +30,9 @@ class SavedViewsController(_AccessControlController):
     """Save/delete per-user list views.
 
     Routes:
-        POST /admin/views/{resource_name}/save   - Save the current view
-        POST /admin/views/{resource_name}/delete - Delete a saved view
+        POST /admin/views/{resource_name}/save    - Save the current view
+        POST /admin/views/{resource_name}/delete  - Delete a saved view
+        POST /admin/views/{resource_name}/default - Set or clear its default
     """
 
     prefix = "/views"
@@ -136,6 +138,46 @@ class SavedViewsController(_AccessControlController):
             self._list_url(request, resource_name, entry["query"]),
             f"View \u201c{entry['name']}\u201d saved.",
         )
+
+    @post("/{resource_name:str}/default")
+    async def set_default(self, request: Request, resource_name: str) -> Response:
+        """Set or clear the acting admin's default view for a resource."""
+        denied = self._guard(request)
+        if denied is not None:
+            return denied
+        list_url = self._list_url(request, resource_name)
+        form = await self._form(request)
+        if not self._csrf_ok(request, str(form.get("csrf_token", ""))):
+            return self._redirect(
+                list_url, "Invalid or expired form token.", is_error=True
+            )
+        service = self._service(request)
+        if service is None:
+            return self._redirect(
+                list_url, "Saved views are unavailable.", is_error=True
+            )
+        make_default = str(form.get("default", "1")).lower() not in {
+            "0",
+            "false",
+            "off",
+            "no",
+        }
+        name = str(form.get("name", ""))
+        try:
+            changed = await service.set_default_view(
+                self._actor_id(request) or "",
+                resource_name,
+                name if make_default else None,
+            )
+        except SavedViewError as exc:
+            return self._redirect(list_url, str(exc), is_error=True)
+        if make_default:
+            return self._redirect(
+                list_url,
+                f"View \u201c{name.strip()}\u201d is now the default.",
+            )
+        message = "Default view cleared." if changed else "No default view was set."
+        return self._redirect(list_url, message)
 
     @post("/{resource_name:str}/delete")
     async def delete(self, request: Request, resource_name: str) -> Response:

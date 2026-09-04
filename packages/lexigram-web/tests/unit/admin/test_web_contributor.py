@@ -7,6 +7,7 @@ and WidgetContent integration.
 from __future__ import annotations
 
 import pytest
+import structlog.testing
 
 from lexigram.contracts.admin import HealthCheckPayload, StatContent
 from lexigram.contracts.admin.errors import WidgetNotFoundError
@@ -205,6 +206,36 @@ class TestWidgetHandlers:
         content = result.unwrap()
         assert isinstance(content, StatContent)
         assert content.stats[0].label == "Requests/sec"
+
+
+@pytest.mark.asyncio
+async def test_missing_dependency_logs_contributor_as_disabled() -> None:
+    """Expected resolver misses use one concise, structured event."""
+    from unittest.mock import AsyncMock, MagicMock
+
+    from lexigram.contracts.exceptions.container import UnresolvableDependencyError
+
+    container = MagicMock()
+    container.resolve = AsyncMock(
+        side_effect=UnresolvableDependencyError(
+            "[LEX_ERR_DI_004] missing\n  → Fix: register it",
+            dependency="ServerStatusWidgetHandler",
+        )
+    )
+    contributor = WebAdminContributor()
+
+    with structlog.testing.capture_logs() as captured:
+        await contributor.on_admin_boot(container)
+
+    disabled = [
+        log for log in captured if log.get("event") == "admin.contributor_disabled"
+    ]
+    assert len(disabled) == 1
+    assert disabled[0]["contributor"] == "web"
+    assert disabled[0]["feature"] == "widget handlers"
+    assert disabled[0]["missing"] == "ServerStatusWidgetHandler"
+    assert "LEX_ERR" not in str(disabled[0])
+    assert "\n" not in str(disabled[0])
 
 
 __all__ = [

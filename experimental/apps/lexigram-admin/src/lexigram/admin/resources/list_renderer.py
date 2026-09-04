@@ -13,7 +13,7 @@ import inspect
 from typing import Any
 from urllib.parse import parse_qsl, urlencode
 
-from starlette.responses import HTMLResponse
+from starlette.responses import HTMLResponse, RedirectResponse, Response
 
 from lexigram.admin.config import AdminConfig
 from lexigram.admin.engine.renderer import AdminRenderer
@@ -346,14 +346,95 @@ class ListRenderer:
             # the list remains renderable and middleware still fails closed.
             return
 
+    async def _default_view_redirect(
+        self,
+        request: Any,
+        resource_prefix: str,
+        user: Any | None = None,
+    ) -> RedirectResponse | None:
+        """Return a one-time redirect to the user's default saved view.
+
+        Defaults are deliberately applied only to full-page, query-free
+        visits. Explicit pagination/cursor state and mutation notices remain
+        authoritative, while service failures fall through to the normal list
+        response. The redirected URL contains a meaningful query, preventing
+        a redirect loop.
+        """
+        if wants_fragment(request):
+            return None
+
+        query_params = getattr(request, "query_params", None)
+        if query_params is None:
+            return None
+        if any(key in query_params for key in ("notice", "error")):
+            return None
+
+        url = getattr(request, "url", None)
+        raw_query = getattr(url, "query", "")
+        if not isinstance(raw_query, str):
+            raw_query = str(raw_query or "")
+        from lexigram.admin.services.saved_views import SavedViewService
+
+        # Persistence intentionally drops page/cursor, but an operator who
+        # explicitly asks for either must not be redirected to a default.
+        if any(
+            key in {"page", "cursor"}
+            for key, _value in parse_qsl(raw_query, keep_blank_values=True)
+        ):
+            return None
+        if SavedViewService.sanitize_query(raw_query):
+            return None
+
+        app_state = getattr(getattr(request, "app", None), "state", None)
+        service = getattr(app_state, "saved_view_service", None)
+        current_user = (
+            user
+            if user is not None
+            else getattr(getattr(request, "state", None), "user", None)
+        )
+        user_id = str(getattr(current_user, "user_id", "") or "")
+        if service is None or not user_id or user_id == "guest":
+            return None
+        loader = getattr(service, "get_default_view", None)
+        if not callable(loader):
+            return None
+        try:
+            default_view = await loader(user_id, self.resource_name)
+        except Exception as exc:  # noqa: BLE001 — defaults never break lists
+            logger.warning(
+                "list_renderer.default_saved_view_failed",
+                resource=self.resource_name,
+                error=str(exc),
+            )
+            return None
+        if not isinstance(default_view, dict):
+            return None
+        default_query = SavedViewService.sanitize_query(
+            str(default_view.get("query") or "")
+        )
+        if not default_query:
+            return None
+        return RedirectResponse(
+            url=f"{resource_prefix}?{default_query}",
+            status_code=302,
+        )
+
     async def render(
         self,
         request,
         resource,
         user=None,
-    ) -> HTMLResponse:
+    ) -> Response:
         """Render list view with DataTable component."""
         await self._ensure_csrf_token(request)
+        admin_prefix = admin_prefix_from_request(request)
+        resource_prefix = f"{admin_prefix}/{self.resource_name}"
+        default_redirect = await self._default_view_redirect(
+            request, resource_prefix, user=user
+        )
+        if default_redirect is not None:
+            return default_redirect
+
         # Get resource configuration
         table_config = (
             resource.get_table_config()
@@ -365,9 +446,6 @@ class ListRenderer:
             .replace("_", " ")
             .title()
         )
-        admin_prefix = admin_prefix_from_request(request)
-        resource_prefix = f"{admin_prefix}/{self.resource_name}"
-
         # Resolve Columns Early for Search
         source_columns = []
         if table_config and table_config.columns:
@@ -528,7 +606,7 @@ class ListRenderer:
             if hx_target == Zones.DATA.id:
                 dt.props["htmx_request"] = True
 
-            content = render_to_string(dt)
+            fragment_content = render_to_string(dt)
             resp_headers = {}
 
             # Synchronization: Force the browser URL to match the clean server-side state.
@@ -537,7 +615,7 @@ class ListRenderer:
             if request.headers.get("HX-Push-Url") != "false":
                 resp_headers["HX-Push-Url"] = state.to_url(resource_prefix)
 
-            return HTMLResponse(content, headers=resp_headers)
+            return HTMLResponse(fragment_content, headers=resp_headers)
 
         # Direct navigation — return full page via AdminRenderer (Jinja2 + nav population).
         # Saved views (R13): prepend the per-user views bar when available.
@@ -606,20 +684,41 @@ class ListRenderer:
 
             pills: list[str] = []
             for view in views:
-                name = escape(view["name"])
+                raw_name = str(view["name"])
+                name = escape(raw_name)
                 query = SavedViewService.sanitize_query(view["query"])
                 active = bool(query) and _comparable(query) == current_params
+                is_default = view.get("default") is True
                 pill_cls = (
                     "border-primary text-primary bg-primary/5"
                     if active
                     else "border-border bg-card text-foreground"
                 )
+                default_label = (
+                    f"Clear default view {raw_name}"
+                    if is_default
+                    else f"Set {raw_name} as default view"
+                )
+                default_value = "0" if is_default else "1"
+                default_symbol = "★" if is_default else "☆"
                 pills.append(
                     f'<span class="inline-flex items-center rounded-full border '
                     f'{pill_cls}" data-saved-view>'
                     f'<a href="{resource_prefix}?{escape(query)}" '
-                    f'class="pl-3 pr-1 py-1 text-sm hover:text-primary" '
+                    f'class="pl-3 py-1 text-sm hover:text-primary" '
                     f'title="Apply view">{name}</a>'
+                    f'<form method="post" '
+                    f'action="{admin_prefix}/views/{self.resource_name}/default" '
+                    f'data-saved-view-default class="inline-flex">'
+                    f'<input type="hidden" name="csrf_token" '
+                    f'value="{escape(csrf_token)}">'
+                    f'<input type="hidden" name="name" value="{name}">'
+                    f'<input type="hidden" name="default" value="{default_value}">'
+                    f'<button type="submit" class="px-1 py-1 text-sm '
+                    f'text-muted-foreground hover:text-primary" '
+                    f'title="{escape(default_label)}" '
+                    f'aria-label="{escape(default_label)}">{default_symbol}</button>'
+                    f"</form>"
                     f'<form method="post" '
                     f'action="{admin_prefix}/views/{self.resource_name}/delete" '
                     f'class="inline-flex">'
@@ -651,7 +750,7 @@ class ListRenderer:
 
             return (
                 '<div class="flex flex-wrap items-center gap-2 mb-4" '
-                'data-saved-views>'
+                "data-saved-views>"
                 '<span class="text-xs font-medium text-muted-foreground '
                 'uppercase tracking-wide">Views</span>'
                 + "".join(pills)

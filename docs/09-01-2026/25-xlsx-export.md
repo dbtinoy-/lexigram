@@ -92,4 +92,3 @@ toolbar (R28 infra; a jobs UI remains queued).
 - **Deliberately unchanged:** JSON/CSV encodings byte-for-byte; the R25
   filtered-export caps and parser; the `LexigramDownloadBulk` client (it
   posts `data-bulk-action` verbatim, so `export_xlsx` needed no JS).
-

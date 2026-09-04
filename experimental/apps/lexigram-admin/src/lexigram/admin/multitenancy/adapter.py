@@ -183,8 +183,11 @@ async def resolve_tenant_id(
 
     # 1. State override
     state_tenant = getattr(getattr(request, "state", None), "tenant_id", None)
-    if state_tenant:
-        return str(state_tenant)
+    # Tenant identifiers are strings. Requiring that shape also keeps request
+    # doubles with permissive attribute access (for example MagicMock) from
+    # manufacturing a tenant scope when no tenant was actually resolved.
+    if isinstance(state_tenant, str) and state_tenant:
+        return state_tenant
 
     # 2. Header
     headers = getattr(request, "headers", {})

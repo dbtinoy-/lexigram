@@ -1,6 +1,6 @@
 # 16 — Export Service Lifecycle Correctness (R20 / B20–B23) (Full Plan)
 
-**Date:** 2026-09-02 · **Status:** 🚧 In progress · **Branch:** `arena/01a05b98-lexigram`
+**Date:** 2026-09-02 · **Status:** ✅ Shipped · **Branch:** `arena/01a05b98-lexigram`
 
 ## 1. Findings (all repro-confirmed)
 
@@ -51,4 +51,3 @@ Notes:
 * New regression suite `test_export_lifecycle_bugs.py`: 12 tests.
 * All export-touching suites: 95 passed; full admin unit
   **5394 passed / 8 skipped**, cov 76.14%; e2e **72 passed / 2 skipped**.
-

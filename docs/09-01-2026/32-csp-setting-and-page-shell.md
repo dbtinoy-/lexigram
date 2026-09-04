@@ -139,4 +139,3 @@ Two robustness follow-ups landed during live verification:
   pages resolve real branding/theme instead of silently logging
   `admin.settings_service_resolve_failed` and falling back to
   defaults on every navigation.
-

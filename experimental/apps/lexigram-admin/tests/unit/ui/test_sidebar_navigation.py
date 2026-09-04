@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from lexigram.admin.navigation.types import SidebarNavItem
 
 
@@ -18,9 +16,17 @@ class TestSidebarNavItem:
         assert "is_group" not in d
 
     def test_to_dict_group(self) -> None:
-        item = SidebarNavItem(label="Settings", href="", is_group=True)
+        item = SidebarNavItem(
+            label="Settings",
+            href="",
+            icon="cog",
+            is_group=True,
+            default_expanded=True,
+        )
         d = item.to_dict()
         assert d["is_group"] is True
+        assert d["icon"] == "cog"
+        assert d["default_expanded"] is True
 
     def test_to_dict_with_permission(self) -> None:
         item = SidebarNavItem(
@@ -35,9 +41,7 @@ class TestSidebarNavItem:
         assert d["badge"] == "3"
 
     def test_to_dict_active(self) -> None:
-        item = SidebarNavItem(
-            label="Dashboard", href="/admin", active=True
-        )
+        item = SidebarNavItem(label="Dashboard", href="/admin", active=True)
         d = item.to_dict()
         assert d["active"] is True
 
@@ -74,11 +78,17 @@ class TestShellNavigation:
 
     def test_sidebar_navitem_group(self) -> None:
         """SidebarNavItem with is_group=True creates a SidebarSection."""
-        from lexigram.admin.ui.templates.shell import AdminShell
         from lexigram.admin.ui.organisms.sidebar import SidebarSection
+        from lexigram.admin.ui.templates.shell import AdminShell
 
         items = [
-            SidebarNavItem(label="System", href="", is_group=True),
+            SidebarNavItem(
+                label="System",
+                href="",
+                icon="cog",
+                is_group=True,
+                default_expanded=True,
+            ),
             SidebarNavItem(label="Users", href="/admin/users"),
         ]
         shell = AdminShell(content="", nav_items=items)
@@ -86,6 +96,8 @@ class TestShellNavigation:
         assert len(prepared) == 1
         assert isinstance(prepared[0], SidebarSection)
         assert prepared[0].title == "System"
+        assert prepared[0].icon == "cog"
+        assert prepared[0].default_expanded is True
         assert len(prepared[0].items) == 1
         assert prepared[0].items[0].label == "Users"
 

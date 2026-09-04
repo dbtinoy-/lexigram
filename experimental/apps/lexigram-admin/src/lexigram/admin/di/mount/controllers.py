@@ -405,6 +405,51 @@ class AdminMountControllersMixin:
                     audit_service = await self._resolve_audit_service(resolver)
                     if audit_service is not None:
                         ac_controller._audit_service = audit_service
+                    # User-lifecycle services (R38, doc 34): password policy
+                    # for creation, session service for revoke-on-deactivate.
+                    # Best-effort — the controller falls back to the default
+                    # policy rule set and skips revocation when absent.
+                    if hasattr(ac_controller, "_password_policy"):
+                        try:
+                            from lexigram.admin.auth.services.password_policy_service import (  # noqa: E501
+                                AdminPasswordPolicyService,
+                            )
+
+                            ac_controller._password_policy = await resolver.resolve(
+                                AdminPasswordPolicyService,
+                                bypass_visibility=True,
+                            )
+                        except Exception:
+                            pass
+                    if hasattr(ac_controller, "_session_service"):
+                        try:
+                            from lexigram.admin.auth.protocols.session import (
+                                AdminSessionServiceProtocol,
+                            )
+
+                            ac_controller._session_service = await resolver.resolve(
+                                AdminSessionServiceProtocol,
+                                bypass_visibility=True,
+                            )
+                        except Exception:
+                            pass
+                    # Admin-initiated password reset (R44, doc 40): reuses
+                    # the self-service reset flow. Best-effort — the edit
+                    # page explains when the action is unavailable.
+                    if hasattr(ac_controller, "_password_reset_service"):
+                        try:
+                            from lexigram.admin.auth.protocols import (
+                                AdminPasswordResetServiceProtocol,
+                            )
+
+                            ac_controller._password_reset_service = (
+                                await resolver.resolve(
+                                    AdminPasswordResetServiceProtocol,
+                                    bypass_visibility=True,
+                                )
+                            )
+                        except Exception:
+                            pass
                 except Exception as exc:
                     _log.error(
                         "admin.access_control_controller_resolution_failed",
@@ -461,6 +506,52 @@ class AdminMountControllersMixin:
             audit_service = await self._resolve_audit_service(resolver)
             if audit_service is not None:
                 email_controller._audit_service = audit_service
+            # Attach the settings store so panel-edited sender identity
+            # (admin.notifications.*) applies at runtime (R39, doc 35).
+            # Best-effort: the notification service is the shared singleton,
+            # so verification/reset emails pick the override up too.
+            try:
+                notification_service = getattr(
+                    email_controller, "_notification_service", None
+                )
+                if (
+                    notification_service is not None
+                    and ctx.settings_service is not None
+                    and hasattr(notification_service, "attach_settings_store")
+                ):
+                    from lexigram.admin.settings.store import TenantConfigStore
+
+                    notification_service.attach_settings_store(
+                        TenantConfigStore(ctx.settings_service)
+                    )
+            except Exception:
+                pass
+            # Attach the SQL delivery log so every email hand-off (test,
+            # verification, reset, invite) is recorded and surfaced on the
+            # Email page (R46, doc 42). Best-effort: without a database the
+            # page simply omits the "Recent deliveries" section.
+            try:
+                notification_service = getattr(
+                    email_controller, "_notification_service", None
+                )
+                if notification_service is not None and hasattr(
+                    notification_service, "attach_delivery_log"
+                ):
+                    from lexigram.admin.services.notifications.delivery_log_sql import (
+                        AdminEmailLogSqlStore,
+                    )
+                    from lexigram.contracts.data import DatabaseProviderProtocol
+
+                    db_provider = await resolver.resolve(
+                        DatabaseProviderProtocol,
+                        bypass_visibility=True,
+                    )
+                    delivery_log = AdminEmailLogSqlStore(db_provider)
+                    notification_service.attach_delivery_log(delivery_log)
+                    if hasattr(email_controller, "_delivery_log"):
+                        email_controller._delivery_log = delivery_log
+            except Exception:
+                pass
         except Exception as exc:
             _log.error(
                 "admin.email_controller_resolution_failed",
@@ -483,8 +574,8 @@ class AdminMountControllersMixin:
             ctx.controllers.append(saved_views_controller)
             if getattr(saved_views_controller, "_csrf_service", None) is None:
                 try:
-                    saved_views_controller._csrf_service = (
-                        await self._get_csrf_service(resolver)
+                    saved_views_controller._csrf_service = await self._get_csrf_service(
+                        resolver
                     )
                 except Exception:
                     pass
@@ -583,6 +674,10 @@ class AdminMountControllersMixin:
             except Exception:
                 progress_controller = ProgressController(tracker=LocalProgressTracker())
             ctx.controllers.append(progress_controller)
+            # Resource handlers resolve these values from the mounted app
+            # state, avoiding a direct admin -> tasks package dependency.
+            ctx.progress_tracker = getattr(progress_controller, "tracker", None)
+            ctx.progress_access = getattr(progress_controller, "access_registry", None)
         except ModuleNotFoundError as exc:
             _log.info(
                 "admin.progress_controller_skipped",
@@ -618,6 +713,19 @@ class AdminMountControllersMixin:
 
             settings_audit = await self._resolve_audit_service(resolver)
 
+            # Best-effort dashboard assembler so contributor settings panels
+            # (e.g. System Info) appear in the Settings sidebar (R50, doc 46).
+            settings_dashboard = None
+            try:
+                from lexigram.admin.dashboard.assembler import DashboardAssembler
+
+                settings_dashboard = await resolver.resolve(
+                    DashboardAssembler,
+                    bypass_visibility=True,
+                )
+            except Exception as exc:  # noqa: BLE001 — panel links are optional
+                _log.warning("admin.settings_panel_links_unavailable", reason=str(exc))
+
             renderer = await resolver.resolve(
                 AdminRenderer,
                 bypass_visibility=True,
@@ -629,6 +737,10 @@ class AdminMountControllersMixin:
                 audit_service=settings_audit,
                 registry=settings_registry,
                 rbac_config=self._config.rbac,
+                dashboard=settings_dashboard,
+                snapshot_service=ctx.snapshot_service,
+                application_config=self._config,
+                config_loader=getattr(self, "_config_loader", None),
             )
             ctx.controllers.append(settings_controller)
         except Exception as exc:
